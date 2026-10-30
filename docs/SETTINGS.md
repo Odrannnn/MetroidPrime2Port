@@ -383,6 +383,8 @@ System and Debug:
 
 - `overlay_windowed`, `ui_theme`, `ui_scale`: System > Overlay > Overlay as a floating window
   (desktop), Menu theme (`auto`, `prime`, `plain`, `echoes`), UI scale.
+- `texture_pack`: Game > Textures > Use the texture pack (off keeps the folder but shows the game's own
+  textures); the Texture pack binding (F7, Controls > Remap > Port) flips it in game.
 - `emulator_folder`, `share_emulator_card`, `mirror_trilogy_save` (desktop only): System > Memory
   card > Installed emulators (which Dolphin or PrimeHack install to use; empty = Auto, the first
   one found), Share memory card with emulator (the port and the emulator use the same saves: never

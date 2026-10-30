@@ -15,6 +15,7 @@
 #include "port_save.h"
 #include "port_settings.h"
 #include "port_suit_colours.h"
+#include "port_textures.h"
 #include "port_update_check.h"
 #include "port_video.h"
 
@@ -292,6 +293,8 @@ const SettingKey kSettingKeys[] = {
     {"share_emulator_card",
      [](const std::string& value) { PortSave::SetShareEmulatorCard(ParseBool(value)); },
      [](std::ostream& out) { WriteBool(out, PortSave::ShareEmulatorCard()); }, false, "1", "0"},
+    {"texture_pack", [](const std::string& value) { PortTextures::SetUserPackEnabled(ParseBool(value)); },
+     [](std::ostream& out) { WriteBool(out, PortTextures::UserPackEnabled()); }, false, "0", "1"},
     {"mirror_trilogy_save",
      [](const std::string& value) { PortSave::SetMirrorTrilogy(ParseBool(value)); },
      [](std::ostream& out) { WriteBool(out, PortSave::MirrorTrilogy()); }, false, "1", "0"},

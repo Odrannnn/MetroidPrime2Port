@@ -38,6 +38,11 @@ void RequestUserPackReload();
 // Thread-safe: ask the next Poll to unload and delete the user pack.
 void RequestUserPackRemoval();
 
+// Thread-safe: the user pack on or off (the texture_pack setting); the next
+// Poll unloads or reloads it. Off keeps the folder, unlike RequestUserPackRemoval.
+void SetUserPackEnabled(bool enabled);
+bool UserPackEnabled();
+
 // The user pack folder (never null; empty when there is none).
 const char* UserRoot();
 

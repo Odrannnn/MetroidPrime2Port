@@ -162,6 +162,7 @@ enum class ActionKind : uint8_t {
   X(LoadState, Digital, "load_state", "Load state")                                                \
   X(Screenshot, Digital, "screenshot", "Screenshot")                                               \
   X(ToggleOriginal, Digital, "toggle_original", "Original experience")                             \
+  X(ToggleTexturePack, Digital, "toggle_texture_pack", "Texture pack")                             \
   X(PhotoMode, Digital, "photo_mode", "Photo mode")                                                \
   X(GyroAim, Digital, "gyro_aim", "Gyro aim")                                                      \
   X(ResetAim, Digital, "reset_aim", "Reset aim")                                                   \

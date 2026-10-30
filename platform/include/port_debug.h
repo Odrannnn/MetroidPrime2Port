@@ -168,6 +168,8 @@ bool Visible();
 // Writes the settings file now instead of waiting for the next overlay frame,
 // so a disc chosen during startup is remembered even if no frame is drawn yet.
 void SaveSettingsNow();
+// The user's texture pack on or off (texture_pack, saved now); a note says which.
+void ToggleTexturePack();
 // A note at the top of the screen for a few seconds. Thread-safe.
 void ShowNote(const std::string& text);
 // The last session ended on a failed disc read: the F1 overlay says so, in red, for a while.

@@ -401,6 +401,7 @@ void BindPortControls(Profile& p) {
   Bind(p, Action::Screenshot, Make(Device::Key, SDL_SCANCODE_F12));
   // Photo mode toggles the free camera (PortFreeCam; stage 1 has no photo panel).
   Bind(p, Action::PhotoMode, Make(Device::Key, SDL_SCANCODE_F8));
+  Bind(p, Action::ToggleTexturePack, Make(Device::Key, SDL_SCANCODE_F7));
   // Save and load the selected save state slot (F1 > Game > Save states picks the slot).
   Bind(p, Action::SaveState, Make(Device::Key, SDL_SCANCODE_F5));
   Bind(p, Action::LoadState, Make(Device::Key, SDL_SCANCODE_F9));
@@ -727,7 +728,7 @@ void RouteDirectActions(const PortInput::Output& out, double nowSec) {
 // ticks, so they work while the game is paused or the F1 overlay is open.
 bool IsPortAction(Action a) {
   return a == Action::PortMenu || a == Action::Screenshot || a == Action::PhotoMode || a == Action::GyroAim ||
-         a == Action::ResetAim;
+         a == Action::ResetAim || a == Action::ToggleTexturePack;
 }
 
 // Keys pressed since the last PollPortActions, added by an SDL event watch: a short
@@ -1433,6 +1434,9 @@ void PollPortActions() {
   if (out.Pressed(Action::Screenshot)) aurora::request_screenshot();
   if (out.Pressed(Action::PhotoMode)) {
     PortPhoto::RequestToggle();
+  }
+  if (out.Pressed(Action::ToggleTexturePack)) {
+    PortDebug::ToggleTexturePack();
   }
 }
 
