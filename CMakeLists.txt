@@ -697,6 +697,11 @@ if(AURORA_SDL3_TARGET)
     mp_websocket_tls(mp_port_audio)
     # aurora::core carries ImGui's include directory, which the F1 overlay builds against.
     target_link_libraries(mp_port_audio PRIVATE ${AURORA_SDL3_TARGET} aurora::core)
+    # port_zip.cpp includes <zlib.h>: Aurora provides ZLIB::ZLIB (system or fetched zlib-ng),
+    # and Windows has no system header to fall back on.
+    if(TARGET ZLIB::ZLIB)
+        target_link_libraries(mp_port_audio PRIVATE ZLIB::ZLIB)
+    endif()
     # platform/main.cpp turns fd 1 and fd 2 into logcat lines and resolves its directories
     # through SDL_GetPrefPath on Android, so the entry object needs SDL3's headers there.
     # AURORA_SDL3_TARGET only exists once Aurora has been added, which is why this is here
