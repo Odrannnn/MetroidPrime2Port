@@ -12,6 +12,7 @@
 #include <SDL3/SDL_touch.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstdio>
 #include <mutex>
 #include <string>
@@ -36,6 +37,7 @@ struct PhotoTouch {
   SDL_FingerID stick = 0;
   SDL_FingerID look = 0;
   float stickX = 0.f, stickY = 0.f; // where the stick finger landed
+  float fingerX = 0.f, fingerY = 0.f; // where it is now
   float moveX = 0.f, moveY = 0.f;
   float lookX = 0.f, lookY = 0.f; // the look finger's last place
   float yaw = 0.f, pitch = 0.f;   // not taken yet
@@ -69,6 +71,8 @@ void PhotoTouchEvent(const SDL_Event& event) {
       t.stick = f.fingerID;
       t.stickX = f.x;
       t.stickY = f.y;
+      t.fingerX = f.x;
+      t.fingerY = f.y;
       t.moveX = t.moveY = 0.f;
     } else if (f.x >= 0.5f && !t.lookDown) {
       t.lookDown = true;
@@ -78,6 +82,8 @@ void PhotoTouchEvent(const SDL_Event& event) {
     }
   } else if (event.type == SDL_EVENT_FINGER_MOTION) {
     if (t.stickDown && f.fingerID == t.stick) {
+      t.fingerX = f.x;
+      t.fingerY = f.y;
       t.moveX = std::clamp((f.x - t.stickX) * t.aspect / kPhotoStickRadius, -1.f, 1.f);
       t.moveY = std::clamp((t.stickY - f.y) / kPhotoStickRadius, -1.f, 1.f);
     } else if (t.lookDown && f.fingerID == t.look) {
@@ -103,6 +109,8 @@ namespace {
 void PhotoTouchFrame(bool enabled, std::vector<ImVec4> windows) {
   const ImGuiViewport* viewport = ImGui::GetMainViewport();
   float moveX = 0.f, moveY = 0.f, yaw = 0.f, pitch = 0.f;
+  bool stickDown = false;
+  ImVec2 stickAt, fingerAt;
   {
     std::lock_guard lock(sPhotoTouchMutex);
     PhotoTouch& t = sPhotoTouch;
@@ -117,6 +125,9 @@ void PhotoTouchFrame(bool enabled, std::vector<ImVec4> windows) {
     }
     moveX = t.moveX;
     moveY = t.moveY;
+    stickDown = t.stickDown;
+    stickAt = ImVec2(t.stickX, t.stickY);
+    fingerAt = ImVec2(t.fingerX, t.fingerY);
     yaw = t.yaw;
     pitch = t.pitch;
     t.yaw = t.pitch = 0.f;
@@ -126,6 +137,26 @@ void PhotoTouchFrame(bool enabled, std::vector<ImVec4> windows) {
     if (enabled) {
       PortFreeCam::AddTouchTurn(yaw, pitch);
     }
+  }
+  // The floating stick, drawn like the touch controls' one while a finger holds it. Captures don't
+  // see it: they run with touch disabled, which lifts the stick.
+  if (stickDown && enabled) {
+    const ImVec2 origin = viewport->Pos;
+    const ImVec2 size = viewport->Size;
+    const float radius = kPhotoStickRadius * size.y;
+    const ImVec2 centre(origin.x + stickAt.x * size.x, origin.y + stickAt.y * size.y);
+    float dx = (fingerAt.x - stickAt.x) * size.x, dy = (fingerAt.y - stickAt.y) * size.y;
+    if (const float distance = std::hypot(dx, dy); distance > radius) {
+      dx *= radius / distance;
+      dy *= radius / distance;
+    }
+    const float ring = radius / 0.58f; // the knob reaches full tilt where the touch stick's does
+    const float line = 2.f * sUiAppliedScale;
+    const ImU32 stroke = IM_COL32(0xE1, 0xF8, 0xFF, 0xFF);
+    ImDrawList* dl = ImGui::GetBackgroundDrawList();
+    dl->AddCircleFilled(centre, ring, IM_COL32(0x48, 0xC8, 0xE8, 0x88), 48);
+    dl->AddCircle(centre, ring, stroke, 48, line);
+    dl->AddCircle(ImVec2(centre.x + dx, centre.y + dy), ring * 0.42f, stroke, 32, line);
   }
 }
 

@@ -3350,6 +3350,15 @@ void CPlayer::Render(const CStateManager& mgr) const {
       } else {
         mBallTransitionBeamModel->Touch(mgr, 0);
       }
+#ifdef TARGET_PC
+      // Port: the free and photo cameras' body holds its cannon; single player only places it
+      // during morph transitions, so put it on the gun locator here.
+      if (PortFreeCam::ShowPlayer() && !mgr.IsMultiplayer()) {
+        mBallTransitionBeamModel->Render(
+            mgr, GetTransform() * GetModelData()->GetScaledLocatorTransform(rstl::string_l(kGunLocator)),
+            GetActorLights(), mPlayerDrawFlags.UseShaderSet(mTransitionBeamShader));
+      } else
+#endif
       mBallTransitionBeamModel->Render(mgr, mGunWorldXf, GetActorLights(),
                                        mPlayerDrawFlags.UseShaderSet(mTransitionBeamShader));
     }
