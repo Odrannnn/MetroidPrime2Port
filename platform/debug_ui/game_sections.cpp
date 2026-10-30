@@ -8,6 +8,7 @@
 
 #include "port_config_reset.h"
 #include "port_disc_replace.h"
+#include "port_debug.h"
 #include "port_disc_verify.h"
 #include "port_discord.h"
 #include "port_freecam.h"
@@ -20,6 +21,7 @@
 #include "port_savestate.h"
 #include "port_settings.h"
 #include "port_textures.h"
+#include "port_zip.h"
 #include "port_update_check.h"
 #include "port_build_info.h"
 #include "port_env.h"
@@ -28,6 +30,7 @@
 #include "MetroidPrime/Player/CGameState.hpp"
 
 #include <aurora/aurora.h>
+#include <SDL3/SDL_dialog.h>
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_misc.h>
 #include <imgui.h>
@@ -38,7 +41,10 @@
 #include <cstdio>
 #include <filesystem>
 #include <string>
+#include <atomic>
 #include <mutex>
+#include <optional>
+#include <thread>
 #if defined(__ANDROID__)
 #include <jni.h>
 #include <SDL3/SDL_system.h>
@@ -318,8 +324,8 @@ void DrawSpeedrunSection() {
   ImGui::SetItemTooltip("Also splits on each new suit, beam, visor, ball part, key or other upgrade.");
 }
 
-#if defined(__ANDROID__)
-// The folder picker's progress, set from the Java copy thread.
+// The texture pack import's progress: set from the Java copy thread on Android, from the zip
+// extraction thread on the desktop.
 namespace {
 std::mutex sTexturePackStatusMutex;
 std::string sTexturePackStatus;
@@ -334,6 +340,8 @@ void SetTexturePackStatus(std::string status) {
   std::lock_guard lock(sTexturePackStatusMutex);
   sTexturePackStatus = std::move(status);
 }
+
+#if defined(__ANDROID__)
 
 // MetroidPrime2Activity.pickTexturePack opens the system folder picker and copies the chosen folder
 // in the background, reporting back through nativeTexturePackStatus / nativeTexturePackReady.
@@ -360,6 +368,92 @@ void PickTexturePack() {
   env->DeleteLocalRef(cls);
   env->DeleteLocalRef(activity);
 }
+#endif
+
+#if !defined(__ANDROID__)
+// Import texture pack .zip: the file dialog answers on another thread, so its pick waits in
+// sTexturePackZipPick for DrawTexturesSection; the extraction runs on its own detached thread (it
+// touches only statics) into `<root>.partial`, then the finished folder is renamed to
+// `<root>.new` for PortTextures to swap in.
+namespace {
+std::mutex sTexturePackZipMutex;
+std::optional<std::string> sTexturePackZipPick;
+std::atomic<bool> sTexturePackZipDialogOpen{false};
+std::atomic<bool> sTexturePackZipBusy{false};
+
+void ImportTexturePackZip(std::string zipPath, std::string root) {
+  namespace fs = std::filesystem;
+  const std::string partial = root + ".partial";
+  std::error_code ec;
+  fs::remove_all(PortUtf8::FromUtf8(partial), ec);
+  size_t count = 0;
+  std::string error;
+  const bool ok = PortZip::Extract(
+      zipPath, partial, PortZip::TexturePackFilter,
+      [](size_t done) { SetTexturePackStatus("Copying the texture pack... " + std::to_string(done) + " textures"); },
+      count, error);
+  if (!ok) {
+    fs::remove_all(PortUtf8::FromUtf8(partial), ec);
+    SetTexturePackStatus("Copying the texture pack failed: " + error);
+  } else if (count == 0) {
+    fs::remove_all(PortUtf8::FromUtf8(partial), ec);
+    SetTexturePackStatus("No .png or .dds textures in that file (is it a .zip?); nothing changed.");
+  } else {
+    fs::remove_all(PortUtf8::FromUtf8(root + ".new"), ec);
+    fs::rename(PortUtf8::FromUtf8(partial), PortUtf8::FromUtf8(root + ".new"), ec);
+    if (ec) {
+      fs::remove_all(PortUtf8::FromUtf8(partial), ec);
+      SetTexturePackStatus("Copying the texture pack failed: " + ec.message());
+    } else {
+      PortTextures::RequestUserPackReload();
+      SetTexturePackStatus("Copied " + std::to_string(count) + " textures.");
+    }
+  }
+  sTexturePackZipBusy = false;
+}
+
+void OpenTexturePackZipDialog() {
+  int windowCount = 0;
+  SDL_Window** windows = SDL_GetWindows(&windowCount);
+  SDL_Window* window = windows != nullptr && windowCount > 0 ? windows[0] : nullptr;
+  SDL_free(windows);
+  static const SDL_DialogFileFilter filters[] = {
+      {"Zip archives", "zip"},
+      {"All files", "*"},
+  };
+  const SDL_DialogFileCallback done = [](void*, const char* const* files, int) {
+    std::lock_guard lock(sTexturePackZipMutex);
+    // Empty = cancelled; a leading \x01 marks a failed dialog's error.
+    sTexturePackZipPick = files != nullptr ? std::string(files[0] != nullptr ? files[0] : "")
+                                           : std::string("\x01") + SDL_GetError();
+    sTexturePackZipDialogOpen = false;
+  };
+  sTexturePackZipDialogOpen = true;
+  SDL_ShowOpenFileDialog(done, nullptr, window, filters, 2, nullptr, false);
+}
+
+// Starts the extraction for a pick the dialog delivered.
+void ProcessTexturePackZipPick(const char* root) {
+  std::optional<std::string> pick;
+  {
+    std::lock_guard lock(sTexturePackZipMutex);
+    pick.swap(sTexturePackZipPick);
+  }
+  if (!pick || pick->empty()) {
+    return;
+  }
+  if ((*pick)[0] == '\x01') {
+    SetTexturePackStatus("Could not open the file picker: " + pick->substr(1));
+    return;
+  }
+  if (sTexturePackZipBusy.exchange(true)) {
+    SetTexturePackStatus("A texture pack is still being copied.");
+    return;
+  }
+  SetTexturePackStatus("Copying the texture pack... 0 textures");
+  std::thread(ImportTexturePackZip, std::move(*pick), std::string(root != nullptr ? root : "")).detach();
+}
+} // namespace
 #endif
 
 // The user's texture pack, layered over the built-in set (see port_textures.h). On Android the
@@ -410,9 +504,21 @@ void DrawTexturesSection() {
                      "original is moved. Pick it again after changing it.");
 #else
   ImGui::TextWrapped("Folder: %s", root);
+  ProcessTexturePackZipPick(root);
+  const std::string status = TexturePackStatus();
+  if (!status.empty()) {
+    ImGui::TextWrapped("%s", status.c_str());
+  }
   if (ImGui::Button("Reload texture pack")) {
     PortTextures::RequestUserPackReload();
   }
+  ImGui::SameLine();
+  const bool busy = sTexturePackZipBusy || sTexturePackZipDialogOpen;
+  ImGui::BeginDisabled(busy);
+  if (ImGui::Button("Import texture pack .zip...")) {
+    OpenTexturePackZipDialog();
+  }
+  ImGui::EndDisabled();
 #endif
 }
 

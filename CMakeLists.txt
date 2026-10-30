@@ -666,7 +666,7 @@ if(AURORA_SDL3_TARGET)
         platform/port_touch.cpp platform/port_touch_jni.cpp platform/touch_pad.cpp
         platform/input/port_input_remap_ui.cpp
         platform/input/port_input_devices.cpp
-        platform/port_embedded.cpp platform/port_textures.cpp platform/port_prompts.cpp
+        platform/port_embedded.cpp platform/port_textures.cpp platform/port_zip.cpp platform/port_prompts.cpp
         platform/port_discord.cpp
         platform/port_disc_verify.cpp
         platform/port_disc_verify_core.cpp)
@@ -818,6 +818,16 @@ if(AURORA_SDL3_TARGET)
     target_include_directories(port_suit_colours_tests PRIVATE platform/include)
     add_test(NAME port_suit_colours_tests COMMAND port_suit_colours_tests)
     set_tests_properties(port_suit_colours_tests PROPERTIES TIMEOUT 15 LABELS port)
+    # The texture-pack zip reader (platform/port_zip.cpp) against archives the test builds.
+    find_package(ZLIB QUIET)
+    if(ZLIB_FOUND)
+        add_executable(port_zip_tests tests/port_zip.cpp platform/port_zip.cpp)
+        target_include_directories(port_zip_tests PRIVATE platform/include tests)
+        target_link_libraries(port_zip_tests PRIVATE ZLIB::ZLIB)
+        add_test(NAME port_zip_tests COMMAND port_zip_tests)
+        set_tests_properties(port_zip_tests PROPERTIES TIMEOUT 30 LABELS port)
+    endif()
+
     add_executable(port_config_reset_tests tests/port_config_reset.cpp)
     target_include_directories(port_config_reset_tests PRIVATE platform/include)
     add_test(NAME port_config_reset_tests COMMAND port_config_reset_tests

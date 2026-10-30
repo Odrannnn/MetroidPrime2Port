@@ -30,6 +30,7 @@
 {"Game", "", "Speedrun", "Server (host:port)", "livesplit address ip"},
 {"Game", "", "Speedrun", "Split on upgrades", "livesplit items autosplit"},
 {"Game", "", "Textures", "Use the texture pack", "user pack replacements compare f7 toggle"},
+{"Game", "", "Textures", "Import texture pack .zip...", "texture pack zip archive import hd textures"},
 {"Mods", "", "Mods", "Load mods", "mods folder texture pack override"},
 {"Controls", "Options", "Quick setup", "Use mouse & keyboard", "mouse aim keyboard wasd preset layout kbm pc quick setup"},
 {"Controls", "Options", "Quick setup", "Use twin-stick controller", "twin stick dual sticks right stick aim controller gamepad remastered preset layout quick setup"},

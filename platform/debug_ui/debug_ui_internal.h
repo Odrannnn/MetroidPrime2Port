@@ -157,11 +157,11 @@ void DrawCutscenesSection();
 void DrawGameAudio();
 void DrawSpeedrunSection();
 void DrawTexturesSection(); // the Mods page's texture pack section
-#if defined(__ANDROID__)
 std::string TexturePackStatus();
+#if defined(__ANDROID__)
 void PickTexturePack();
-void SetTexturePackStatus(std::string status);
 #endif
+void SetTexturePackStatus(std::string status);
 void DrawOverlaySection();
 void DrawSettingsSection();
 void DrawMemoryCard();
