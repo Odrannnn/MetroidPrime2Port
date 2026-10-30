@@ -163,6 +163,7 @@ struct Presence {
 // The art asset the Discord application has for the large image.
 constexpr const char* kLargeImage = "logo";
 constexpr const char* kDefaultText = "Metroid Prime 2: Echoes native port";
+constexpr const char* kActivityName = "Metroid Prime 2: Echoes";
 
 inline std::string HandshakePayload(const std::string& appId) {
   return "{\"v\":1,\"client_id\":" + port::JsonQuote(appId) + "}";
@@ -170,7 +171,8 @@ inline std::string HandshakePayload(const std::string& appId) {
 
 inline std::string ActivityPayload(long pid, const Presence& presence, const std::string& nonce) {
   std::string out = "{\"cmd\":\"SET_ACTIVITY\",\"args\":{\"pid\":" + std::to_string(pid) +
-                    ",\"activity\":{\"details\":" + port::JsonQuote(FitField(presence.details));
+                    ",\"activity\":{\"name\":" + port::JsonQuote(kActivityName) +
+                    ",\"details\":" + port::JsonQuote(FitField(presence.details));
   if (!presence.state.empty()) {
     out += ",\"state\":" + port::JsonQuote(FitField(presence.state));
   }
