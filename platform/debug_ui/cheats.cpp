@@ -116,9 +116,15 @@ constexpr SItemCheck kAbilityItems[] = {
 };
 
 constexpr SItemCheck kKeyItems[] = {
-    {"Temple Key 1", CPlayerState::kIT_TempleKey1},
-    {"Temple Key 2", CPlayerState::kIT_TempleKey2},
-    {"Temple Key 3", CPlayerState::kIT_TempleKey3},
+    {"Sky Temple Key 1", CPlayerState::kIT_TempleKey1},
+    {"Sky Temple Key 2", CPlayerState::kIT_TempleKey2},
+    {"Sky Temple Key 3", CPlayerState::kIT_TempleKey3},
+    {"Sky Temple Key 4", CPlayerState::kIT_TempleKey4},
+    {"Sky Temple Key 5", CPlayerState::kIT_TempleKey5},
+    {"Sky Temple Key 6", CPlayerState::kIT_TempleKey6},
+    {"Sky Temple Key 7", CPlayerState::kIT_TempleKey7},
+    {"Sky Temple Key 8", CPlayerState::kIT_TempleKey8},
+    {"Sky Temple Key 9", CPlayerState::kIT_TempleKey9},
     {"Agon Key 1", CPlayerState::kIT_AgonKey1},
     {"Agon Key 2", CPlayerState::kIT_AgonKey2},
     {"Agon Key 3", CPlayerState::kIT_AgonKey3},
