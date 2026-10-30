@@ -146,7 +146,14 @@ void Runtime::Rebuild() {
   mSupersets.clear();
   mPasses[0].clear();
   mPasses[1].clear();
+  // What was held stays held for the next poll's edges: a rebuild with a key
+  // down must not read as a fresh press (MP1 issue #235, the F1 overlay flipping
+  // every frame while F1 was held).
+  const auto held = mOut.held;
+  const auto customHeld = mOut.customHeld;
   mOut = {};
+  mOut.held = held;
+  mOut.customHeld = customHeld;
   mHavePolled = false;
   if (mProfile == nullptr) {
     return;
@@ -160,7 +167,7 @@ void Runtime::Rebuild() {
     }
   }
   if (maxCustom != 0) {
-    mOut.customHeld.assign(size_t(maxCustom) + 1, 0);
+    mOut.customHeld.resize(std::max(mOut.customHeld.size(), size_t(maxCustom) + 1), 0);
     mOut.customPressed.assign(size_t(maxCustom) + 1, 0);
     mOut.customReleased.assign(size_t(maxCustom) + 1, 0);
   }
