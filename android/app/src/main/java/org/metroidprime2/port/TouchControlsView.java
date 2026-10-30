@@ -551,6 +551,7 @@ final class TouchControlsView extends View {
     private final Path shapePath = new Path();
     private final Path crossArmPath = new Path();
     private static native boolean nativeDebugOverlayVisible();
+    private static native boolean nativePhotoTouch();
     private static native boolean nativeTapUpdateToast(float x, float y);
     private static native boolean nativeTouchClassic();
     private static native boolean nativeTouchTwinStick();
@@ -1377,6 +1378,18 @@ final class TouchControlsView extends View {
                 sendToSdl(event, actionIndex, MotionEvent.ACTION_DOWN);
                 return true;
             case MotionEvent.ACTION_POINTER_DOWN:
+                // Photo mode: one finger moves and another looks (PhotoTouchEvent), so every
+                // finger is SDL's.
+                if (!scrolling && nativePhotoTouch()) {
+                    if (menuPointer == -1 &&
+                        menuDrawn.contains(event.getX(actionIndex), event.getY(actionIndex))) {
+                        menuPointer = id;
+                    } else {
+                        forwarded.add(id);
+                        sendToSdl(event, actionIndex, MotionEvent.ACTION_DOWN);
+                    }
+                    return true;
+                }
                 // A second finger: the gesture is a scroll, and the finger SDL already holds has
                 // to let go or its drag would move the window while it scrolls.
                 if (!scrolling) {
