@@ -1,6 +1,7 @@
 #include "port_input_user_presets.h"
 
-#include "port_debug.h"
+#include "port_mouse.h"
+#include "../port_overlay_internal.h"
 #include "port_input_devices.h"
 #include "port_input_map.h"
 
@@ -17,7 +18,7 @@
 #include <SDL3/SDL_filesystem.h>
 
 // The store half of port_input_user_presets.h: the files, and the live Aurora
-// mappings and PortDebug settings a preset snapshots and restores. The built-in
+// mappings and mouse settings a preset snapshots and restores. The built-in
 // presets write the same layers (port_controls.cpp).
 
 namespace PortInputUserPresets {
@@ -116,7 +117,7 @@ Layout Capture(Family family, const std::string& name) {
   l.family = family;
   l.name = name;
   if (family == Family::Touch) return l; // bindings only
-  l.twinStick = PortDebug::TwinStick();
+  l.twinStick = PortMouse::StickEnabled();
   if (family == Family::Pad) {
     u32 n = 0;
     if (const PADButtonMapping* b = PADGetButtonMappings(kPort, &n))
@@ -126,7 +127,7 @@ Layout Capture(Family family, const std::string& name) {
       for (u32 i = 0; i < n; ++i)
         l.padAxes.push_back({a[i].nativeAxis.nativeAxis, int(a[i].nativeAxis.sign), a[i].nativeButton, int(a[i].padAxis)});
   } else {
-    l.mouseAim = PortDebug::MouseAim();
+    l.mouseAim = PortMouse::Enabled();
     for (u32 slot = 0; slot < PAD_KEY_SLOT_COUNT; ++slot) {
       u32 n = 0;
       if (const PADKeyButtonBinding* b = PADGetKeyButtonBindingsSlot(kPort, slot, &n))
@@ -142,7 +143,7 @@ Layout Capture(Family family, const std::string& name) {
 // The same writes as the built-in presets (port_controls.cpp), from the snapshot.
 void Restore(const Layout& l) {
   if (l.family == Family::Touch) return;
-  PortDebug::SetTwinStick(l.twinStick);
+  PortMouse::SetStickEnabled(l.twinStick);
   if (l.family == Family::Pad) {
     // An empty snapshot (a hand-edited file) keeps the controller's mappings as they are.
     if (!l.padButtons.empty() || !l.padAxes.empty()) PADRestoreDefaultMapping(kPort);
@@ -155,10 +156,11 @@ void Restore(const Layout& l) {
     for (const auto& a : l.keyAxes)
       PADSetKeyAxisBindingSlot(kPort, u32(a.slot), {a.key, PADAxis(a.pad), s16(a.influence)});
     PADSetKeyboardActive(kPort, TRUE);
-    PortDebug::SetMouseAim(l.mouseAim);
+    PortMouse::SetEnabled(l.mouseAim);
   }
   PADSerializeMappings();
-  PortDebug::SaveSettingsNow();
+  PortOverlaySettings::MarkDirty();
+  PortOverlaySettings::SaveSettings();
 }
 
 } // namespace

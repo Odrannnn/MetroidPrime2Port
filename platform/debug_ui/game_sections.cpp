@@ -856,7 +856,8 @@ void ToggleTexturePack() {
   const bool on = !PortTextures::UserPackEnabled();
   PortTextures::SetUserPackEnabled(on);
   // Saved now: outside the overlay, changes are otherwise written at exit.
-  SaveSettingsNow();
+  PortOverlaySettings::MarkDirty();
+  PortOverlaySettings::SaveSettings();
   ShowNote(on ? "Texture pack: on" : "Texture pack: off");
 }
 

@@ -377,10 +377,6 @@ bool UserPackEnabled() { return sUserEnabled.load(std::memory_order_acquire); }
 
 const char* UserRoot() { return sUser.root.c_str(); }
 
-void SetUserPackEnabled(bool enabled) { sUserEnabled.store(enabled, std::memory_order_release); }
-
-bool UserPackEnabled() { return sUserEnabled.load(std::memory_order_acquire); }
-
 size_t UserPackCount() { return sUser.loaded ? sUser.group.registrations.size() : 0; }
 
 const char* DeviceName() { return sDevice.c_str(); }
