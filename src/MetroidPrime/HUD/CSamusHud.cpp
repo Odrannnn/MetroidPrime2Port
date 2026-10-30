@@ -562,6 +562,24 @@ void CSamusHud::UpdateHelmetWidgets() {
       widget->SetIsVisible(true);
     }
   }
+#ifdef TARGET_PC
+  // Trilogy's helmet (FRME_RS5_Helmet) has four Wii Remote battery bars, model_battery1..4, with
+  // greyscale textures: rs5mp2_p.dol 0x801968c0 colours them ModulateColor(FreeLookBarColor), and
+  // 0x801a13fc shows one bar per battery level (light 1 red at level 0, yellow at 1). There is no
+  // Wii Remote here, so all four show at full charge.
+  if (port::entry::IsTrilogy(port::entry::CurrentDiscVersion())) {
+    static const char* const sBatteryWidgets[] = {"model_battery1", "model_battery2",
+                                                  "model_battery3", "model_battery4"};
+    const CColor batteryColor = ModulateColor(gpTweakGuiColors->GetFreeLookBarColor());
+    for (uint i = 0; i < 4; ++i) {
+      CGuiWidget* widget = mLoadedHelmetFrame->FindWidget(sBatteryWidgets[i]);
+      if (widget != nullptr) {
+        widget->SetColor(batteryColor);
+        widget->SetIsVisible(true);
+      }
+    }
+  }
+#endif
 }
 
 void CSamusHud::UpdateHudWidgetColors() {
