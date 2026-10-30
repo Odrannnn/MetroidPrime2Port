@@ -213,6 +213,13 @@ Controls > Remap:
   GameCube, Remastered, Modern or Southpaw to all controllers, replacing your own bindings
   there; a selected kind or model keeps its own on top. Reset... removes a device's own
   bindings (after a confirmation), bringing back the Classic and GameCube layouts.
+- My presets... (beside Presets...): "Save current as..." keeps your bindings as a preset of your own. One list; a
+  preset covers every device it was saved with: keyboard & mouse, touch (when it has bindings) and, with a
+  controller connected, the controller (its bindings, custom actions, button/axis mapping), plus twin stick and
+  mouse aim. One click applies every part it has (replacing your own bindings for those devices), x deletes it;
+  saving over a name replaces it. One file per device part,
+  `control_presets/<keyboard|pad|touch>-<name>.toml` in the user folder: `controls.toml` text with `#! key = value`
+  header lines, so it can be shared.
 - Morph Ball rows (issue #167: Bomb, Power Bomb, Boost Ball, Spider Ball, Unmorph;
   `ball_bomb`, `ball_power_bomb`, `ball_boost`, `ball_spider`, `ball_unmorph` in
   controls.toml) press A, Y, B, R and X only in Morph Ball, so the ball's controls are

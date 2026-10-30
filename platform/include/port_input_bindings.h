@@ -179,6 +179,7 @@ void RemoveUserBinding(UserProfile& user, size_t index);
 // The action inherits again in that family (drops its bindings and unbinds).
 void Revert(UserProfile& user, Action action, Family family);
 // Every override and unbind in one family (a reset to the built-in controls).
+bool IsFamilyRow(const Binding& b, Family family);
 void ClearFamily(UserProfile& user, Family family);
 
 // The same physical input: mouse buttons match across their code runs (aim, key

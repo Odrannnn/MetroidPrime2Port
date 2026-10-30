@@ -666,6 +666,7 @@ if(AURORA_SDL3_TARGET)
         platform/port_touch.cpp platform/port_touch_jni.cpp platform/touch_pad.cpp
         platform/input/port_input_remap_ui.cpp
         platform/input/port_input_devices.cpp
+        platform/input/port_input_user_presets.cpp platform/input/port_input_user_presets_store.cpp
         platform/port_embedded.cpp platform/port_textures.cpp platform/port_zip.cpp platform/port_prompts.cpp
         platform/port_discord.cpp
         platform/port_disc_verify.cpp
@@ -928,6 +929,14 @@ if(AURORA_SDL3_TARGET)
     target_include_directories(port_input_bindings_tests PRIVATE platform/include)
     add_test(NAME port_input_bindings_tests COMMAND port_input_bindings_tests)
     set_tests_properties(port_input_bindings_tests PROPERTIES TIMEOUT 30 LABELS port)
+
+    # Saved binding presets (platform/input/port_input_user_presets.cpp): the file format round-trips.
+    add_executable(port_input_user_presets_tests tests/port_input_user_presets.cpp
+        platform/input/port_input_user_presets.cpp
+        platform/input/port_input_bindings.cpp platform/input/port_input_engine.cpp)
+    target_include_directories(port_input_user_presets_tests PRIVATE platform/include)
+    add_test(NAME port_input_user_presets_tests COMMAND port_input_user_presets_tests)
+    set_tests_properties(port_input_user_presets_tests PROPERTIES TIMEOUT 30 LABELS port)
 endif()
 
 # ---------------------------------------------------------------------------

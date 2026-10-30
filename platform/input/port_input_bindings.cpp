@@ -1005,9 +1005,11 @@ void Revert(UserProfile& user, Action action, Family family) {
                 [&](const Binding& b) { return b.count > 0 && b.action == action && BindingFamily(b) == family; });
 }
 
+bool IsFamilyRow(const Binding& b, Family family) { return b.count > 0 && BindingFamily(b) == family; }
+
 void ClearFamily(UserProfile& user, Family family) {
   std::erase_if(user.unbind, [&](const Unbind& u) { return u.family == family; });
-  std::erase_if(user.bindings, [&](const Binding& b) { return b.count > 0 && BindingFamily(b) == family; });
+  std::erase_if(user.bindings, [&](const Binding& b) { return IsFamilyRow(b, family); });
 }
 
 bool SamePhysicalInput(const Input& a, const Input& b) {

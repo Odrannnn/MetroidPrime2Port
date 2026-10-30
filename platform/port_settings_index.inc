@@ -110,6 +110,7 @@
 {"Controls", "Remap", "Remap", "Controller bindings for", "controller bindings profile device"},
 {"Controls", "Remap", "Remap", "Reset", "reset defaults bindings"},
 {"Controls", "Remap", "Remap", "Reset...", "reset defaults bindings profile presets classic mouse gamecube remastered modern southpaw"},
+{"Controls", "Remap", "Remap", "My presets...", "saved presets save current as layout bindings keyboard controller touch share"},
 {"Controls", "Remap", "Remap", "Separate menu buttons", "menu buttons standard layout map"},
 {"Controls", "Remap", "Remap", "Chord window (ms)", "combo simultaneous press timing"},
 {"Controls", "Remap", "Remap", "Replace the built-in controls", "replace built-in default profile"},

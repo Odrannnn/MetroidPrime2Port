@@ -8,6 +8,7 @@
 #include "port_input_bindings.h"
 #include "port_input_capture.h"
 #include "port_input_devices.h"
+#include "port_input_user_presets.h"
 #include "port_overlay.h"
 #include "port_savestate.h"
 
@@ -1825,6 +1826,109 @@ void DrawActiveController() {
                         "the profile to edit, independently.");
 }
 
+// The player's saved presets (port_input_user_presets.h), listed once when the
+// popup opens and after each save or delete; the files aren't read per frame.
+std::vector<PortInputUserPresets::Entry> sSaved;
+bool sSavedStale = true;
+char sSaveName[PortInputUserPresets::kMaxName + 1] = {};
+std::string sPendingDelete;
+
+const std::vector<PortInputUserPresets::Entry>& Saved() {
+  if (sSavedStale) {
+    sSaved = PortInputUserPresets::ListAll();
+    sSavedStale = false;
+  }
+  return sSaved;
+}
+
+// The page's copy goes stale when a preset writes the bindings, as for a built-in one.
+void ApplySaved(const std::string& name) {
+  EndCapture();
+  sEditing = kEditNone;
+  PortInputUserPresets::ApplyAll(name);
+  Reload();
+}
+
+// The player's own saved presets, behind their own popup: one list, a preset
+// covering every device it was saved with. One button applies it, a small x deletes
+// it (after a confirm), and Save current as... adds one.
+void DrawMyPresets() {
+  if (ImGui::Button("My presets...")) {
+    sSavedStale = true;
+    ImGui::OpenPopup("myPresets");
+  }
+  ImGui::SetItemTooltip("Your own saved layouts: keep the current bindings as a preset, apply or delete one.");
+  if (!ImGui::BeginPopup("myPresets")) return;
+  ImGui::TextDisabled("Applying one replaces your own bindings for the devices it covers.");
+  const std::vector<PortInputUserPresets::Entry> saved = Saved();
+  if (saved.empty()) ImGui::TextDisabled("None saved yet.");
+  for (size_t i = 0; i < saved.size(); ++i) {
+    ImGui::PushID(int(i));
+    if (ImGui::Button(saved[i].name.c_str())) {
+      ApplySaved(saved[i].name);
+      ImGui::CloseCurrentPopup();
+    }
+    std::string devices;
+    const auto add = [&](bool has, const char* what) {
+      if (!has) return;
+      if (!devices.empty()) devices += ", ";
+      devices += what;
+    };
+    add(saved[i].keyboard, "Keyboard & mouse");
+    add(saved[i].pad, "Controllers");
+    add(saved[i].touch, "Touch");
+    ImGui::SetItemTooltip("Your preset: %s. Replaces your own bindings for those devices.", devices.c_str());
+    ImGui::SameLine(0.f, 2.f);
+    if (ImGui::SmallButton("x")) {
+      sPendingDelete = saved[i].name;
+      ImGui::OpenPopup("deleteSaved");
+    }
+    ImGui::SetItemTooltip("Delete this saved preset.");
+    if (ImGui::BeginPopup("deleteSaved")) {
+      ImGui::Text("Delete the preset %s?", sPendingDelete.c_str());
+      if (ImGui::Button("Delete")) {
+        PortInputUserPresets::DeleteAll(sPendingDelete);
+        sSavedStale = true;
+        ImGui::CloseCurrentPopup();
+      }
+      ImGui::SameLine();
+      if (ImGui::Button("Cancel")) ImGui::CloseCurrentPopup();
+      ImGui::EndPopup();
+    }
+    ImGui::PopID();
+    if (ImGui::GetContentRegionAvail().x > ImGui::GetFontSize() * 10.f && i + 1 < saved.size()) ImGui::SameLine();
+  }
+  if (ImGui::Button("Save current as...")) {
+    sSaveName[0] = '\0';
+    ImGui::OpenPopup("saveCurrent");
+  }
+  ImGui::SetItemTooltip("Keep the current bindings of every device as a preset of your own.\n"
+                        "The controller part needs a controller connected.");
+  if (ImGui::BeginPopup("saveCurrent")) {
+    ImGui::SetNextItemWidth(ImGui::GetFontSize() * 14.f);
+    if (ImGui::IsWindowAppearing()) ImGui::SetKeyboardFocusHere();
+    ImGui::InputText("Name", sSaveName, sizeof(sSaveName));
+    const std::string name = PortInputUserPresets::CleanName(sSaveName);
+    bool exists = false;
+    for (const PortInputUserPresets::Entry& e : saved) {
+      exists = exists || PortInputUserPresets::Slug(e.name) == PortInputUserPresets::Slug(name);
+    }
+    ImGui::BeginDisabled(name.empty());
+    if (ImGui::Button(exists ? "Replace" : "Save")) {
+      PortInputUserPresets::SaveAll(name);
+      sSavedStale = true;
+      ImGui::CloseCurrentPopup();
+    }
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    if (ImGui::Button("Cancel")) ImGui::CloseCurrentPopup();
+    ImGui::EndPopup();
+  }
+  ImGui::Separator();
+  if (ImGui::Button("Close")) ImGui::CloseCurrentPopup();
+  ImGui::EndPopup();
+}
+
 } // namespace
 
 void ApplyPreset(PortInput::Family family, std::string_view id) {
@@ -1944,6 +2048,8 @@ void Draw() {
 
   ImGui::SameLine();
   DrawPresets(views);
+  ImGui::SameLine();
+  DrawMyPresets();
   ImGui::SameLine();
   DrawReset(views);
   bool menuStandard = PortOverlay::MenuStandardButtons();
