@@ -23,7 +23,8 @@ for binding examples, lifecycle rules, harness commands and desktop-only limitat
   driver.
 - F1: the settings overlay (the Prime 1 port's `platform/debug_ui/` layout). Pages: Game,
   Controls (Options, Mouse settings, Controller settings, Touch & gyro, Remap), Video (Display,
-  Quality, Frame rate), Randomizer, Cheats, Save states, System, Debug.
+  Quality, Frame rate, Compatibility), Enhancements, Mods, Save states, System, Debug; the
+  Randomizer page is built but hidden from the list.
   `MP2_DEBUG_TAB=<page>[/<sub-tab>]` opens the overlay on that page at launch; console
   `overlay <page>` does the same in a running game. `Cheats` (either way) opens Debug with Show
   cheats on.
@@ -39,8 +40,13 @@ for binding examples, lifecycle rules, harness commands and desktop-only limitat
   launch; System > Settings has **Save settings now**. Each key is one row of `kSettingKeys` in
   `platform/debug_ui/settings.cpp`, which both reads and writes it with two sample values;
   console `settings self-test` checks that every key reads back as written. An `MP2_<KEY>`
-  environment variable (the key upper-cased, unless listed otherwise below) overrides the file
-  for that run. A new key needs a mention here as `key`, or the index check fails.
+  environment variable (the key upper-cased, or the name the row here gives: `MP2_LOCK_ON_TOGGLE`
+  for `lockon_toggle`, `MP2_MOUSE_SENS` for `mouse_sensitivity`) overrides the file for that run
+  where the key's code reads one; most keys do, and the rows below name theirs. The file-only
+  keys are `mouse_dpi`, `texture_pack`, `overlay_windowed`, `ui_theme`, `show_cheats`,
+  `suit_colour_varia/dark/light`, `photo_supersample`, `photo_speed`, `discord`, `ui_sounds`,
+  `mods_disabled`, `low_power_gpu`, `game_options`, `emulator_folder`, `share_emulator_card`,
+  `mirror_trilogy_save` and `disc_path`. A new key needs a mention here as `key`, or the index check fails.
   `metroid_prime2_port --settings-selftest` runs the same check without starting the game
   (ctest `port_settings_roundtrip`).
 - F1 > System > Settings > **Reset configuration...** puts every port setting and control mapping
@@ -203,6 +209,11 @@ Controls > Mouse settings:
   sensitivity (same units); env `MP2_MOUSE_SENS_SPLIT`, `MP2_MOUSE_SENS_Y`.
 - `mouse_dpi`: Mouse aim > Mouse DPI (100..64000, default 800), only for the cm/360 readout.
 - `aim_crosshair`, `crosshair_size`: Mouse aim > Crosshair, Size.
+
+The cursor is not a setting: an uncaptured desktop cursor hides after 2 s without mouse input (a
+controller player in full screen) and shows again on the next motion, click or wheel. It stays
+while the overlay or photo mode's panel wants it, and mouse aim's capture hides it anyway
+(`PortMouse::UpdateIdleCursor`, #32).
 
 Controls > Controller settings:
 
@@ -404,7 +415,7 @@ System and Debug:
 
 - `overlay_windowed`, `ui_theme`, `ui_scale`: System > Overlay > Overlay as a floating window
   (desktop), Menu theme (`auto` = Echoes, `prime`, `plain`, `echoes`), UI scale.
-- `texture_pack`: Game > Textures > Use the texture pack (off keeps the folder but shows the game's own
+- `texture_pack`: Mods > Textures > Use the texture pack (off keeps the folder but shows the game's own
   textures); the Texture pack binding (F7, Controls > Remap > Port) flips it in game.
 - `emulator_folder`, `share_emulator_card`, `mirror_trilogy_save` (desktop only): System > Memory
   card > Installed emulators (which Dolphin or PrimeHack install to use; empty = Auto, the first
