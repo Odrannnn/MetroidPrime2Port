@@ -123,7 +123,13 @@ no run reaches (`tools/cov/force.sh`): coverage says which arm is missing, not h
 
 `$T` is the review-tools bin dir (`T=$PWD/../MetroidPrimePort/build/review-tools/bin`, AGENTS.md
 "Commands"). Build `$T/ninja -C build-port-link metroid_prime2_port` 0 FAILED; `python3 tools/gen_files_cmake.py
---check` rc 0; `tools/review_decomp_diff.sh <base>` output (every MARK/ASM line explained); the run:
+--check` rc 0; `python3 tools/gen_entity_schema.py --check` rc 0 when the lane touches an entity header
+(a `class ... : public <entity>` in `include/`): it re-derives the schema from those headers, so a field
+added, removed or retyped fails it, naming `platform/generated/port_entity_schema.inc` and
+`docs/SAVESTATE_SCHEMA.md` (rc 77 is clang-19 missing, not staleness; fix with `python3 tools/gen_entity_schema.py`);
+a lane that changes the savestate field code (`platform/port_savestate_fields.cpp`) instead keeps the
+generated `## What a save keeps` section true by hand - no checker sees that prose - and says so in its report;
+`tools/review_decomp_diff.sh <base>` output (every MARK/ASM line explained); the run:
 area, frames, `port: crashed:` (`[port] caught` is Android's crash-buffer line) / `reach-stub` count 0;
 upstream-file edits: TARGET_PC strip-diff clean
 and `python3 configure.py && $T/ninja` "87 files OK".

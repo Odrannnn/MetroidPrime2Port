@@ -528,7 +528,37 @@ def emit_doc(res):
          "| kind | fields |", "|---|---|"]
     for k in KINDS:
         o.append(f"| {k} | {kinds.get(k, 0)} |")
-    o += ["", "## `other`: types without a codec yet (by field count)", ""]
+    o += ["", "## What a save keeps (`kTagFields`)", "",
+          "An enemy gets one `kTagFields` block in the room record, and so do the pickups and debris a",
+          "generator made: `platform/port_savestate_fields.cpp` writes it for the objects",
+          "`EntityFieldsSaved` names, and applies it in passes - the plain fields, the AI and body",
+          "codecs, the animation, the path search, then the plain fields again over what entering the",
+          "saved states changed. A class whose fingerprint changed since the save is skipped, not",
+          "guessed. Plain kinds are written as values; `pointer`, `smart_ptr`, `container` and",
+          "`other` fields are never written; four kinds have a codec:", "",
+          "- `state_machine`: the active state's name, time and delay, and what re-enters it - for an",
+          "  FSM1 state its index, drawn randoms and code-trigger flag; for a `CGenericFSM2State` the",
+          "  whole active path: each level's own clock, the sub-machine names down the path, and the",
+          "  active node's index in its machine (two states can share a name). A restore walks that",
+          "  path back down, and a state saved before the path was written still loads, its extra",
+          "  bytes simply absent. Only the patterned shapes are taken (`CodecTypeKnown`): the",
+          "  player's body and gun machines and the grapple arm's are not.",
+          "- `body_controller`: state, additives, locomotion, the timers and the queued commands, and",
+          "  (policy 3) the `TUniqueId` a command carries, by identity.",
+          "- `anim_data`: the current animation, loop/animating, speed and phase.",
+          "- `path_search`: the waypoints the search found, the current one and its result.", "",
+          "`SavedField` drops fields on purpose too: `const` ones, the port's own `mPort*`/`xPort*`",
+          "members, anything named `...Loaded`/`...Loading` (asset streaming is this run's), every",
+          "field `CEntity` itself declares, all of `CActor`'s except a named few (its model, draw and",
+          "target flags, `mMuted`, `mCallTouch`), all of `CPhysicsActor`'s except its motion and force",
+          "members, and `CAi::mHealthInfo` (the health block's). `MP_SAVESTATE_FIELDS=0` turns the",
+          "whole block off - no capture, no apply - and `statedump` then reports every field under",
+          "`fields_other`; any other value, or unset, leaves it on."]
+    o += ["", "## `other`: types with no codec (by field count)", "",
+          "These fields the save state leaves alone. `CSfxHandle` is the common case and will never",
+          "get one: it names a runtime sound, so copying it restores nothing (`HANDLES` in",
+          "`tools/gen_entity_schema.py`). The rest would each need a codec of its own; the `pointer`,",
+          "`smart_ptr` and `container` rows above are skipped the same way.", ""]
     for t, n in unknown.most_common():
         o.append(f"- {n} `{t}`")
     o += ["", "## `pod`: pointer-free structs and arrays, copied as bytes", "",
