@@ -728,7 +728,8 @@ void RouteDirectActions(const PortInput::Output& out, double nowSec) {
 // ticks, so they work while the game is paused or the F1 overlay is open.
 bool IsPortAction(Action a) {
   return a == Action::PortMenu || a == Action::Screenshot || a == Action::PhotoMode || a == Action::GyroAim ||
-         a == Action::ResetAim || a == Action::ToggleTexturePack;
+         a == Action::ResetAim || a == Action::ToggleTexturePack || a == Action::SaveState ||
+         a == Action::LoadState;
 }
 
 // Keys pressed since the last PollPortActions, added by an SDL event watch: a short
