@@ -13,6 +13,7 @@
 **I recommend checking out Portal Transition Skip in F1 > Game!**
 
 [![Linux build](https://github.com/Odrannnn/MetroidPrime2Port/actions/workflows/linux-build.yml/badge.svg?branch=port)](https://github.com/Odrannnn/MetroidPrime2Port/actions/workflows/linux-build.yml)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FOdrannnn%2FMetroidPrime2Port.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2FOdrannnn%2FMetroidPrime2Port?ref=badge_shield)
 
 A native build of **Metroid Prime 2: Echoes** for Linux, Windows, macOS, Android and (experimentally) iOS,
 rendered through Aurora (SDL3/WebGPU). There's no emulator involved. Supported
@@ -166,6 +167,9 @@ Nintendo's. See `NOTICE` for the exact scope and the third-party terms.
 
 Metroid Prime 2: Echoes is a trademark of Nintendo. This project is unaffiliated
 with Nintendo and Retro Studios, and ships no game data.
+
+
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FOdrannnn%2FMetroidPrime2Port.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2FOdrannnn%2FMetroidPrime2Port?ref=badge_large)
 
 ## Documentation
 
