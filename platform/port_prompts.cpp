@@ -123,13 +123,6 @@ constexpr PromptAsset kAssets[] = {
     {0xFFFED384, PAD_BUTTON_LEFT},
 };
 
-// Echoes' "1" hint ring shares an id with the GameCube disc's Y art on Trilogy,
-// where it is the Z prompt.
-constexpr uint32_t kTrilogyZAsset = 0x3AA65ECD;
-// Trilogy GGuiSys art no Trilogy string uses; CTextParser borrows it for the map legend Key,
-// which is Y on GameCube (3AA65ECD is Nunchuk Z art on Trilogy and the texture is shared).
-constexpr uint32_t kTrilogyYAsset = 0xDFC47FA2;
-
 const PromptAsset* FindAsset(uint32_t id) {
   const auto it = std::lower_bound(std::begin(kAssets), std::end(kAssets), id,
                                    [](const PromptAsset& asset, uint32_t value) { return asset.id < value; });
@@ -1066,12 +1059,7 @@ bool BindTexture(const void* owner, uint32_t id, uint32_t width, uint32_t height
   if (asset == nullptr) {
     return false;
   }
-  uint32_t prompt = asset->prompt;
-  if (id == kTrilogyZAsset && port::entry::IsTrilogy(port::entry::CurrentDiscVersion())) {
-    prompt = PAD_TRIGGER_Z;
-  } else if (id == kTrilogyYAsset && port::entry::IsTrilogy(port::entry::CurrentDiscVersion())) {
-    prompt = PAD_BUTTON_Y;
-  }
+  const uint32_t prompt = asset->prompt;
   BoundPrompt& bound = sBound[owner];
   if (bound.registered) {
     aurora::texture::unregister_replacement(bound.handle);

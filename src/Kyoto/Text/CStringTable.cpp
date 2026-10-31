@@ -11,8 +11,11 @@
 #include <string.h>
 
 #ifdef TARGET_PC
+#include "port_entry.h"
+
 #include <algorithm>
 #include <utility>
+#include <wchar.h>
 #include <vector>
 
 static uint ReadBE32(const uchar* p) {
@@ -283,6 +286,50 @@ const wchar_t* const* CStringTable::PortStrings() const {
 }
 #endif
 
+#ifdef TARGET_PC
+// Trilogy's strings use one Wii art id for actions that are different buttons on GameCube, and
+// most are told apart by the shape of their tag (CTextParser). These few are not: the same
+// sentence shape means Z (Spider Ball) or D-pad down (Visor), against L and Y elsewhere. They are
+// named by STRG id and index, which every language of a table shares and which the GC discs of
+// both regions agree on, so no wording is matched. `from` is replaced by `to` (same length).
+void CStringTable::PortMarkTrilogyPrompts(uint strgId) {
+  struct Mark {
+    uint mStrg;
+    int mIndex;
+    const wchar_t* mFrom;
+    const wchar_t* mTo;
+  };
+  static const Mark kMarks[] = {
+      // Spider Ball (Z -> R)
+      {3001190506u, 1, L"60ACB985", L"60ACB986"},
+      {3001190506u, 2, L"60ACB985", L"60ACB986"},
+      {2139891765u, 0, L"60ACB985", L"60ACB986"},
+      {3546129389u, 0, L"60ACB985", L"60ACB986"},
+      {1297092839u, 2, L"60ACB985", L"60ACB986"},
+      {3887723722u, 1, L"60ACB985", L"60ACB986"},
+      // Echo Visor / "activate Visor" (D-pad down stays D-pad down; elsewhere it is Y)
+      {3542781720u, 2, L"13AD51E9", L"13AD51EA"},
+      {4047364830u, 1, L"13AD51E9", L"13AD51EA"},
+  };
+  if (!port::entry::IsTrilogy(port::entry::CurrentDiscVersion())) {
+    return;
+  }
+  for (const Mark& mark : kMarks) {
+    if (mark.mStrg != strgId || mark.mIndex >= mStringCount) {
+      continue;
+    }
+    for (PortSection& section : mPortSections) {
+      wchar_t* text = const_cast< wchar_t* >(section.Strings()[mark.mIndex]);
+      for (; *text != 0; ++text) {
+        if (wcsncmp(text, mark.mFrom, 8) == 0) {
+          memcpy(text, mark.mTo, 8 * sizeof(wchar_t));
+        }
+      }
+    }
+  }
+}
+#endif
+
 const wchar_t* CStringTable::GetString(int idx) const {
   if (idx < 0 || idx >= mStringCount) {
     return skInvalidString;
@@ -316,5 +363,11 @@ CStringTable::SReloadData::~SReloadData() {}
 
 CFactoryFnReturn FStringTableFactory(const SObjectTag& tag, CInputStream& in,
                                      const CVParamTransfer& xfer) {
+#ifdef TARGET_PC
+  CStringTable* table = rs_new CStringTable(in);
+  table->PortMarkTrilogyPrompts(static_cast< uint >(tag.GetId()));
+  return table;
+#else
   return rs_new CStringTable(in);
+#endif
 }
