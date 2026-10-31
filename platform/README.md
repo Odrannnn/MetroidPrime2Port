@@ -200,7 +200,8 @@ links `aurora::core` for its headers). It draws inside the open Aurora frame fro
 `DolphinCGraphics.cpp`, and every control in it is wired to something that exists:
 the warp buttons, mouse aim with inversion and sensitivity, the keyboard map, and
 the current world/area, which `CStateManager::Update` publishes every update. While
-it is open the cursor belongs to the window (`PortMouse::SetUiActive`).
+it is open the cursor belongs to the window (`PortMouse::SetUiActive`). Otherwise an
+uncaptured cursor hides after 2 s without mouse input (`PortMouse::UpdateIdleCursor`).
 
 ## Test runs: skipping the front end
 

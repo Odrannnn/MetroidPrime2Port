@@ -409,6 +409,30 @@ bool UiActive() { return sUiActive; }
 
 bool Captured() { return sCaptured; }
 
+void UpdateIdleCursor(bool mouseInput, bool keepVisible) {
+  constexpr Uint64 kIdleNs = 2'000'000'000;
+  static Uint64 sLastInputNs = 0;
+  static bool sIdleHidden = false;
+  const Uint64 now = SDL_GetTicksNS();
+  if (mouseInput || keepVisible || sUiActive || sLastInputNs == 0) {
+    sLastInputNs = now;
+  }
+  if (sCaptured) {
+    // ApplyCapture hid it, and shows it again on release; the idle state starts over from there.
+    sIdleHidden = false;
+    return;
+  }
+  const bool hide = now - sLastInputNs >= kIdleNs;
+  if (hide != sIdleHidden) {
+    sIdleHidden = hide;
+    if (hide) {
+      SDL_HideCursor();
+    } else {
+      SDL_ShowCursor();
+    }
+  }
+}
+
 void AddMotion(float dx, float dy) {
   if (!sCaptured || !std::isfinite(dx) || !std::isfinite(dy)) {
     return;

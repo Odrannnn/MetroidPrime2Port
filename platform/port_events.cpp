@@ -18,6 +18,7 @@
 #include "port_mouse.h"
 #include "port_input_gate.h"
 #include "port_overlay.h"
+#include "port_photo.h"
 #include "port_pointer.h"
 #include "port_prompts.h"
 #include "port_memory_log.h"
@@ -427,8 +428,19 @@ bool PortPumpEvents() {
   // PortMouse's travel is latched per tick (PortMouse::BeginTick, from CMain), not here.
   RunInputScript(ScriptFrame());
   PortPointer::BeginFrame();
+  bool mouseInput = false;
   for (const AuroraEvent* event = aurora_update(); event != nullptr && event->type != AURORA_NONE;
        ++event) {
+    if (event->type == AURORA_SDL_EVENT) {
+      const SDL_Event& e = event->sdl;
+      const SDL_MouseID which = e.type == SDL_EVENT_MOUSE_MOTION        ? e.motion.which
+                                : e.type == SDL_EVENT_MOUSE_BUTTON_DOWN ? e.button.which
+                                : e.type == SDL_EVENT_MOUSE_WHEEL       ? e.wheel.which
+                                                                        : SDL_TOUCH_MOUSEID;
+      if (which != SDL_TOUCH_MOUSEID && which != SDL_PEN_MOUSEID) {
+        mouseInput = true;
+      }
+    }
     if (event->type == AURORA_EXIT) {
       // A clean quit: between updates, with the game still whole, so the quick-resume state is
       // written here (MP1 does it at the same point of its loop).
@@ -487,6 +499,7 @@ bool PortPumpEvents() {
     // No warp hotkeys: warping is driven from the F1 menu's Game page (as in the Prime 1 port),
     // so the function keys stay free for the input engine's bindings (F8 is photo mode's).
   }
+  PortMouse::UpdateIdleCursor(mouseInput, PortPhoto::PanelWantsCursor());
   // Pad 0 is the input engine's (keyboard, mouse buttons and the controller through controls.toml),
   // read once per iteration, before the game's PADRead; Aurora still merges the console's and
   // MP2_INPUT's virtual pad on top of it.

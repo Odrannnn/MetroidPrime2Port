@@ -279,6 +279,11 @@ bool UiActive();
 // Mouse aim holds the pointer (cursor hidden, motion turns the view). Our own state, not
 // SDL's relative mode, which Android can report off while its pointer capture is on.
 bool Captured();
+// Once per loop iteration: hides the desktop cursor after a few seconds without mouse input
+// (a controller player in full screen) and shows it again on the next motion, click or wheel.
+// Never while the overlay or `keepVisible` (photo mode's panel) wants it, nor while captured
+// (capture hides it already).
+void UpdateIdleCursor(bool mouseInput, bool keepVisible);
 // Relative motion as it arrives from SDL's event queue, and the once-per-loop latch that
 // turns the pending deltas into this tick's deltas.
 void AddMotion(float dx, float dy);
