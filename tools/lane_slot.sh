@@ -6,7 +6,9 @@
 #   tools/lane_slot.sh take <branch> [start=port]  claim a free slot, switch it to a new <branch>
 #                                                  from <start> (or to <branch> if it exists),
 #                                                  build metroid_prime2_port, print the slot path
-#   tools/lane_slot.sh release <slot-dir>          free a slot once its branch is committed
+#   tools/lane_slot.sh release <slot-dir> <branch> free a slot once its branch is committed; refused
+#                                                  unless <branch> still holds the claim (a stale
+#                                                  owner must not free a slot someone re-took)
 #   tools/lane_slot.sh list                        slots, their branch and owner
 #   tools/lane_slot.sh add                         create one more slot (configured and built)
 #
@@ -43,8 +45,10 @@ take)
   done
   echo "no free slot: tools/lane_slot.sh add, or release one" >&2; exit 1 ;;
 release)
-  S=$(cd "${2:?slot dir}" && pwd)
+  S=$(cd "${2:?slot dir}" && pwd); BRANCH=${3:?branch the slot was claimed for}
   [ -e "$(claim_file "$S")" ] || { echo "$S is not claimed" >&2; exit 1; }
+  read -r OWNER _ < "$(claim_file "$S")"
+  [ "$OWNER" = "$BRANCH" ] || { echo "$S is claimed by $OWNER, not $BRANCH; left alone" >&2; exit 1; }
   is_clean "$S" || { echo "$S has uncommitted changes; commit or discard them first" >&2; exit 1; }
   git -C "$S" switch -q --detach port
   rm -f "$(claim_file "$S")"
@@ -63,5 +67,5 @@ add)
   git branch -q -D "slot/lane$n"
   build "$S"
   echo "$S added (detached at port, built)" ;;
-*) sed -n '2,15p' "$0" >&2; exit 2 ;;
+*) sed -n '2,17p' "$0" >&2; exit 2 ;;
 esac
