@@ -20,7 +20,8 @@ C N ticks after B and prints C against A, uncounted (for a restore that hands ov
 
 Objects are matched by (area MREA, editor id, class, generated); objects with no editor id (effects,
 projectiles: not saved by design) match by class only and differ as warnings. Missing or extra objects
-with an editor id are strict.
+with an editor id are strict, except one the room restore drops on purpose: a dead patterned actor
+(`alive` 0, or `hp` <= 0 in an older dump) is counted as expected, not strict.
 
 Exit 0 when nothing strict differs, 1 otherwise, 2 on a harness failure.
 """
@@ -46,6 +47,8 @@ STRICT = ["active", "hp", "kbres", "door_open", "door_lock", "timer", "timing", 
           "plat_time", "plat_delay", "rot_time", "cine", "ai_time"]
 # LOOSE: only reported beyond a tolerance, as warnings.
 LOOSE = ["pos", "vel", "mom", "fwd", "anim"]
+# The mark printed per severity: expected (a dead actor the restore drops) is not a diff.
+MARKS = {"STRICT": "!", "WARN": "~", "INFO": "."}
 PLAYER_STRICT = ["morph", "hp"]
 PLAYER_LOOSE = ["pos", "fwd"]
 TIME_FIELDS = ("timer", "ai_time", "plat_time", "plat_delay", "rot_time", "cine")
@@ -143,16 +146,44 @@ class Game:
                 os.killpg(self.proc.pid, signal.SIGKILL)
 
 
-def read_dump(path):
+def parse_dump(text):
     objs, player = [], None
-    with open(path) as f:
-        for l in f:
-            d = json.loads(l)
-            if d["t"] == "player":
-                player = d
-            else:
-                objs.append(d)
+    for l in text.splitlines():
+        d = json.loads(l)
+        if d["t"] == "player":
+            player = d
+        else:
+            objs.append(d)
     return {"player": player, "objs": objs}
+
+
+def read_dump(path, timeout=30.0, stable=0.5):
+    """Read a statedump, waiting for the game to finish writing it.
+
+    `statedump` returns once the dump is queued, not written, so the file can still be absent or
+    half written: wait until it exists, its size has not changed for `stable` seconds and its last
+    line is complete JSON (a trailing newline parses every line).
+    """
+    deadline = time.time() + timeout
+    size, since = None, time.time()
+    while True:
+        now = time.time()
+        try:
+            cur = os.path.getsize(path)
+        except OSError:
+            cur = None
+        if cur is None or cur == 0 or cur != size:
+            size, since = cur, now
+        elif now - since >= stable:
+            text = Path(path).read_text(errors="replace")
+            if text.endswith("\n"):
+                try:
+                    return parse_dump(text)
+                except ValueError:
+                    pass
+        if now >= deadline:
+            raise RuntimeError(f"{path} was not complete after {timeout:.0f}s")
+        time.sleep(0.05)
 
 
 def roundtrip(con, game, tag, outdir, a):
@@ -199,6 +230,20 @@ def vec_dist(p, q):
     return sum((x - y) ** 2 for x, y in zip(p, q)) ** 0.5
 
 
+def is_dead_patterned(o):
+    """A patterned actor the room restore drops on purpose (port_savestate_room.cpp IsGone).
+
+    Dead enemies are gone for the room even while the corpse still runs, so the restored room has
+    no such object: `alive` (new dumps) says it, `hp` <= 0 is the same thing on older ones.
+    """
+    if "alive" not in o and "ai" not in o:
+        return False  # not a patterned record
+    if "alive" in o:
+        return not o["alive"]
+    hp = o.get("hp")
+    return hp is not None and hp <= 0.0
+
+
 def fields_differ(field, x, y, a):
     """None when equal (within tolerance), else a short text. x or y may be None (absent)."""
     if x is None and y is None:
@@ -232,6 +277,8 @@ def schema_differ(x, y, a):
 
 
 def show(v):
+    if v is None:
+        return "(none)"
     if isinstance(v, list):
         return "(" + ", ".join(f"{p:.1f}" for p in v) + ")"
     if isinstance(v, float):
@@ -270,7 +317,9 @@ def compare(da, da1, db, a, with_drift=True):
         if len(la) != len(lb):
             sev = "WARN" if dyn else "STRICT"
             kind = "missing" if len(lb) < len(la) else "extra"
-            if not dyn and len(la) > 0 and len(l1) == len(lb):
+            if kind == "missing" and la and all(is_dead_patterned(o) for o in la):
+                sev, kind = "INFO", "dead"  # dropped by design: not a restore gap
+            elif not dyn and len(la) > 0 and len(l1) == len(lb):
                 kind, sev = "gone-in-tick", "WARN"  # A1 (one tick later) already differed: not a restore gap
             rep.add(sev, cls, f"{mrea}:{tag}", kind, f"{len(la)} before, {len(lb)} after the round trip")
         if dyn:
@@ -312,7 +361,11 @@ def compare(da, da1, db, a, with_drift=True):
 def print_report(title, rep, a):
     strict = rep.strict()
     warn = [r for r in rep.rows if r[0] == "WARN"]
-    print(f"=== {title}: {rep.total} objects, {len(strict)} strict diff(s), {len(warn)} warning(s) ===")
+    info = [r for r in rep.rows if r[0] == "INFO"]
+    head = f"=== {title}: {rep.total} objects, {len(strict)} strict diff(s), {len(warn)} warning(s)"
+    if info:
+        head += f", {len(info)} expected (dead actors the restore drops)"
+    print(head + " ===")
     if rep.drift:
         print("tick drift (B equals the dump one tick after the save; ignored): " +
               ", ".join(f"{c}.{f} x{n}" for (c, f), n in sorted(rep.drift.items())))
@@ -327,17 +380,17 @@ def print_report(title, rep, a):
     if not classes:
         print("no differences")
         return
-    print("\nby class (objects in the room; ! strict / ~ warning, by field):")
+    print("\nby class (objects in the room; ! strict / ~ warning / . expected, by field):")
     for cls in classes:
         kinds = collections.Counter((r[0], r[3]) for r in rep.rows if r[1] == cls)
-        text = ", ".join(f"{'!' if s == 'STRICT' else '~'}{k} x{n}" for (s, k), n in sorted(kinds.items()))
+        text = ", ".join(f"{MARKS.get(s, '~')}{k} x{n}" for (s, k), n in sorted(kinds.items()))
         print(f"  {cls} ({rep.per_class_total.get(cls, 1)}): {text}")
     print("\ndetails:")
     for cls in classes:
         rows = sorted((r for r in rep.rows if r[1] == cls), key=lambda r: (r[0] != "STRICT", r[3], r[2]))
         print(f"  {cls}")
         for sev, _, label, kind, text in (rows if a.all else rows[:a.detail]):
-            print(f"    {'!' if sev == 'STRICT' else '~'} {label}: {kind} {text}")
+            print(f"    {MARKS.get(sev, '~')} {label}: {kind} {text}")
         if not a.all and len(rows) > a.detail:
             print(f"    ... {len(rows) - a.detail} more (--all)")
 
