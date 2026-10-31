@@ -3,9 +3,9 @@
  * format, under the repository's MIT licence. **This file is port-only**: `configure.py` does not
  * declare it, so mwcceppc never sees it.
  *
- * Upstream's `src/Kyoto/Streams/CLZOSupport.cpp` calls the GPL LZO 1.08 library in `src/LZO/`, which
- * the matching build still links. The host build excludes both, so no GPL code reaches the port
- * binary.
+ * Upstream's `src/Kyoto/Streams/CLZOSupport.cpp` calls the GPL LZO 1.08 library, which upstream
+ * vendors in `src/LZO/`. This tree removes that library (the matching build links the original
+ * objects for those units instead, as NonMatching) and the host build excludes `CLZOSupport.cpp`.
  *
  * Unlike retail's `lzo1x_decompress`, this one bounds-checks: `destLen` is the output capacity on
  * entry (every caller passes the space left) and the byte count written on return. A corrupt stream

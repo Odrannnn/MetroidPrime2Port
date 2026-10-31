@@ -38,7 +38,7 @@ FRIEND_BLOCK = ("#ifdef TARGET_PC\n{ind}{friend} // save-state field schema (pla
 # mp_game's flags (CMakeLists.txt): definitions, include directories and the forced include.
 FLAGS = ["-x", "c++", "-std=gnu++20", "-fsigned-char", "-fsyntax-only", "-Wno-everything",
          "-DAURORA", "-DAURORA_ENABLE_GX", "-DTARGET_PC", "-DMUSY_TARGET=MUSY_TARGET_PC",
-         "-Iplatform/include", "-Iinclude", "-Iextern/aurora/include", "-Iextern/musyx-port/include", "-Iinclude/LZO",
+         "-Iplatform/include", "-Iinclude", "-Iextern/aurora/include", "-Iextern/musyx-port/include",
          "-include", "platform/compat.h"]
 
 # Kinds, in PortSchemaKind order.

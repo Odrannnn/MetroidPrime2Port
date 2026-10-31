@@ -1190,7 +1190,7 @@ config.libs = [
             Object(MatchingFor("G2ME01", "G2MP01"), "Kyoto/Streams/CBitStreamReader.cpp"),
             Object(MatchingFor("G2ME01"), "Kyoto/Streams/DolphinCInputStream.cpp"),
             Object(Matching, "Kyoto/Streams/CLookaheadRes.cpp"),
-            Object(MatchingFor("G2ME01", "G2MP01"), "Kyoto/Streams/CLZOSupport.cpp", extra_cflags=["-i include/LZO"]),
+            Object(NonMatching, "Kyoto/Streams/CLZOSupport.cpp"),
             Object(NonMatching, "Kyoto/Streams/DolphinCLZOInputStream.cpp"),
             Object(NonMatching, "Kyoto/Streams/CStreamPreloadedToken.cpp"),
         ],
@@ -1198,13 +1198,13 @@ config.libs = [
     {
         "lib": "LZO",
         "mw_version": "GC/2.7",
-        "cflags": cflags_runtime + ["-i include/LZO"],
+        "cflags": cflags_runtime,
         "progress_category": "sdk",
         "host": False,
         "objects": [
-            Object(MatchingFor("G2ME01"), "LZO/lzo_init.c"),
-            Object(MatchingFor("G2ME01", "G2MP01"), "LZO/lzo_ptr.c"),
-            Object(MatchingFor("G2ME01", "G2MP01"), "LZO/lzo1x_d1.c"),
+            Object(NonMatching, "LZO/lzo_init.c"),
+            Object(NonMatching, "LZO/lzo_ptr.c"),
+            Object(NonMatching, "LZO/lzo1x_d1.c"),
         ],
     },
     {

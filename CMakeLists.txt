@@ -224,9 +224,7 @@ mp_signed_char(mp_game)
 # Include order is deliberate: `include/` (the decompilation's own headers) is
 # searched *after* Aurora, because Echoes' `include/dolphin/` tree is the partial
 # SDK decompilation and must not shadow Aurora's complete, PC-aware SDK view.
-# `platform/include/dolphin` fills the SDK headers Aurora omits. `include/LZO`
-# stays off the path: the GPL LZO library is matching-build only, and
-# src/Kyoto/Streams/CLZOSupportPort.cpp is the host decompressor.
+# `platform/include/dolphin` fills the SDK headers Aurora omits.
 target_include_directories(mp_game PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/platform/include
     ${CMAKE_CURRENT_SOURCE_DIR}/extern/aurora/include
