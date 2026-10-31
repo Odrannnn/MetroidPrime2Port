@@ -3,6 +3,34 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-10-31: save-state sweep, second session
+
+Merged into port (unpushed):
+- sc/restorehold: `src/MetroidPrime/main.cpp` fixed-tick loop counts ticks actually run and stops on
+  `PortOverlay::TickHold()` (Rezbit timer / ai_time drift after a restore).
+- kbres: `port_savestate_room.cpp` saves knockback resistance after hp (optional trailing field;
+  Dark Trooper).
+- ds2doors: an hp <= 0 restore marks actors/platforms dead (`PortRoomState::MarkDead`); DS2 debris
+  0 strict in 2 runs. DS2/Ing3 door_open 1→0 not reproduced.
+- sc/quadraxis: FSM2 machines saved with their sub-machine path and leaf node index
+  (`CGenericFSM2State.hpp`, `CGenericFSM2StateImpl.hpp` TARGET_PC, `port_savestate_fields.cpp`);
+  `PortSetStateDeep` follows the path (same-named nodes no longer restart FaceTarget).
+- Docs audits: GOTCHAS.md, TRILOGY.md (touch overlay rewritten), DECOMP_README.md, LANE_BRIEF.md,
+  DECOMP_WORKFLOW.md + `tools/review_decomp_diff.sh` (crash gate `port: crashed:|reach-stub`).
+
+Lanes running at handoff (review with the diff, then merge):
+- sonnet `ses_e6cd854abffeETfhrA5kCCHUtY` sc/ing3stage1 → /tmp/opencode/reports/sc-ing3stage1.md.
+- sonnet `ses_e6cf04357ffeEheMffD74DpuCV` Quadraxis re-run on restorehold (lane1; appends to
+  /tmp/opencode/reports/sc-quadraxis.md with setup commands; releases lane1).
+- worker `ses_e6cdee07cffeYuxvSJ3iEwasnf` docs/modules-audit in ../wt-mp2-sc-stall →
+  /tmp/opencode/reports/modules-audit.md.
+
+Open: CMinorIng ai Idle→PathFind diff in Ing3 (seen once); console routes for an engaged Puffer and
+for lowering Quadraxis hp (knee collider or counter 0035005F); RUNNING.md ending slots 47/50/53/56/58
+vs `sweep_areas.sh` "slot 53"; RUNNING.md and MODULES.md not yet audited. Elite Pirate, Amorbis,
+Splinter: 0 strict. Statecheck runs: copy the userdir, own --port/--display, `--build <tree>/build-port-link`.
+Upstream DOL: if ninja rebuilds nothing, compare `build/G2ME01/main.dol` sha1 with `config/G2ME01/build.sha1`.
+
 ## 2026-10-31: behaviour audit 2 (A8) complete
 
 - Ledger `docs/AUDIT.md` A8-1..A8-28 all closed. Fixes merged: A8-17 morph-ball Render PC arm
