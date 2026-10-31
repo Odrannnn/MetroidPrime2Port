@@ -21,7 +21,10 @@ C N ticks after B and prints C against A, uncounted (for a restore that hands ov
 Objects are matched by (area MREA, editor id, class, generated); objects with no editor id (effects,
 projectiles: not saved by design) match by class only and differ as warnings. Missing or extra objects
 with an editor id are strict, except one the room restore drops on purpose: a dead patterned actor
-(`alive` 0, or `hp` <= 0 in an older dump) is counted as expected, not strict.
+(`alive` 0, or `hp` <= 0 in an older dump) is counted as expected, not strict. A generated copy of a
+generator (`:gen`) is strict only for the classes the room record saves: CScriptSound and
+CScriptEffect copies are left to their generators (platform/port_savestate_room.cpp SavesCopy), so a
+copy count that changes across the round trip is expected there and not counted.
 
 Exit 0 when nothing strict differs, 1 otherwise, 2 on a harness failure.
 """
@@ -49,6 +52,10 @@ STRICT = ["active", "hp", "kbres", "door_open", "door_lock", "timer", "timing", 
 LOOSE = ["pos", "vel", "mom", "fwd", "anim"]
 # The mark printed per severity: expected (a dead actor the restore drops) is not a diff.
 MARKS = {"STRICT": "!", "WARN": "~", "INFO": "."}
+# Generated copies of these classes are re-made by their own generators, not restored from the room
+# record (platform/port_savestate_room.cpp SavesCopy returns false for them), so a copy count that
+# differs across the round trip is not a save-state gap. Every other class stays strict.
+GEN_REGENERATED = {"CScriptSound", "CScriptEffect"}
 PLAYER_STRICT = ["morph", "hp"]
 PLAYER_LOOSE = ["pos", "fwd"]
 TIME_FIELDS = ("timer", "ai_time", "plat_time", "plat_delay", "rot_time", "cine")
@@ -346,6 +353,8 @@ def compare(da, da1, db, a, with_drift=True):
             kind = "missing" if len(lb) < len(la) else "extra"
             if kind == "missing" and la and all(is_dead_patterned(o) for o in la):
                 sev, kind = "INFO", "dead"  # dropped by design: not a restore gap
+            elif gen and cls in GEN_REGENERATED:
+                sev = "INFO"  # re-made by its generator: not a restore gap
             elif not dyn and len(la) > 0 and len(l1) == len(lb):
                 kind, sev = "gone-in-tick", "WARN"  # A1 (one tick later) already differed: not a restore gap
             rep.add(sev, cls, f"{mrea}:{tag}", kind, f"{len(la)} before, {len(lb)} after the round trip")
@@ -391,7 +400,7 @@ def print_report(title, rep, a):
     info = [r for r in rep.rows if r[0] == "INFO"]
     head = f"=== {title}: {rep.total} objects, {len(strict)} strict diff(s), {len(warn)} warning(s)"
     if info:
-        head += f", {len(info)} expected (dead actors the restore drops)"
+        head += f", {len(info)} expected (dead actors the restore drops, re-made generated copies)"
     print(head + " ===")
     if rep.drift:
         print("tick drift (B equals the dump one tick after the save; ignored): " +
