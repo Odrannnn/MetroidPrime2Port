@@ -45,6 +45,11 @@ guessed. Plain kinds are written as values; `pointer`, `smart_ptr`, `container` 
 - `anim_data`: the current animation, loop/animating, speed and phase.
 - `path_search`: the waypoints the search found, the current one and its result.
 
+A pickup a `CScriptDebris` drops (`mGeneratedObject`, made in the debris' own Activate) is not
+noted as a generated copy on purpose: the restored debris is activated again and drops its own
+pickup, so saving the drop as a copy too doubles it (tried 2026-10-31: 1 -> 2 pickups after the
+round trip). Such a drop is rebuilt fresh (life timer restarts, position follows the debris).
+
 `SavedField` drops fields on purpose too: `const` ones, the port's own `mPort*`/`xPort*`
 members, anything named `...Loaded`/`...Loading` (asset streaming is this run's), every
 field `CEntity` itself declares, all of `CActor`'s except a named few (its model, draw and
