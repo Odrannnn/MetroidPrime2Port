@@ -512,6 +512,12 @@ void SwapGameState(const State& s) {
 void DoSave(CStateManager& mgr, int slot) {
   State s;
   std::string error;
+  // The title and file select run a CMFGame in the 'FRND' front-end world: a state of it is useless
+  // and would overwrite the slot. Loads stay allowed there.
+  if (gpGameState != nullptr && gpGameState->GetGameMode().GetGameModeType() == 'FRND') {
+    SetMessage("save to slot " + std::to_string(slot) + " failed: no game running (title screen)");
+    return;
+  }
   if (!Capture(mgr, s, error) || !WriteSlot(slot, s, error)) {
     SetMessage("save to slot " + std::to_string(slot) + " failed: " + error);
     return;
