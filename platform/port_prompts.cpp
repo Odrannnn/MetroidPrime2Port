@@ -102,7 +102,9 @@ constexpr PromptAsset kAssets[] = {
     {0x6D482337, PAD_BUTTON_A},
     {0x71AA55E3, PAD_BUTTON_B}, // Trilogy only: Wii B, jump / Space Jump / Screw Attack
     {0x72A83A41, PROMPT_STICK},
-    {0x738A4798, PROMPT_CSTICK_UP}, {0x73E9B3B2, PROMPT_CSTICK_LEFT}, {0x83A73184, PAD_BUTTON_START},
+    {0x738A4798, PROMPT_CSTICK_UP}, {0x73E9B3B2, PROMPT_CSTICK_LEFT},
+    {0x7F409C85, PAD_BUTTON_A}, // the logbook's "A to scroll the text" prompt (#34)
+    {0x83A73184, PAD_BUTTON_START},
     {0x8D13D507, PROMPT_CSTICK_UP}, {0x8E28D58C, PROMPT_STICK}, {0x9016E5BF, PROMPT_CSTICK_RIGHT},
     {0x944EBD78, PROMPT_STICK}, {0x967A3516, PAD_TRIGGER_L},
     {0x9FFB4F4D, PROMPT_STICK}, // Trilogy only: Nunchuk stick frame (Dash)
