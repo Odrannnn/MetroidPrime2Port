@@ -78,7 +78,7 @@ slices are not lane work.
 A lane reports `STATUS: DONE` only with all of these pasted (one line each):
 host build `0 FAILED`; `gen_files_cmake.py --check` rc 0; for upstream-file edits, the
 TARGET_PC strip-diff CLEAN and the matching build's `fuzzy/matched` percentages; the runtime
-area, frame count and `grep -c '[port] caught\|reach-stub'` = 0. Anything skipped makes it
+area, frame count and `grep -c 'port: crashed:\|reach-stub'` = 0 (`[port] caught` is only Android's crash line). Anything skipped makes it
 `STATUS: INCOMPLETE - <what>`.
 
 Run game runs in the foreground (with `timeout`). A lane that ends its turn waiting on a
@@ -103,7 +103,7 @@ orchestrator marks that module. A marker needs a run that exercised the function
 the asm-vs-C++ structure check, `tools/asmcheck.py check <Module> <cpp> [fn...]` with all tags (calls,
 compares, conditional branches, stores, bits, float constants (`FCONST`); the orchestrator reads only what it flags; tags and
 tolerances in its docstring). `tools/review_decomp_diff.sh` runs its correctness tags on every
-changed `Port*.cpp` (`ASM` lines); any hit means an Opus audit before merge. Bit/compare reading
+changed `Port*.cpp` (`ASM` lines); any hit means a fresh `sonnet` review before merge. Bit/compare reading
 for a brief: `asmcheck.py annotate <Module> fn_<id>_<off> [--header H --class C]`. Changing the
 tool: `tools/asmcheck_regress.sh` must stay all PASS.
 
@@ -116,12 +116,12 @@ tool: `tools/asmcheck_regress.sh` must stay all PASS.
   is one. Code with no offset
   is rejected.
 - Bit-heavy functions (message handlers, ctor flag unpacking, trigger tables, CR extractions) go
-  one or two per lane. Long briefs are where MiniMax guesses.
-- A `claude` (Opus) audit only for diffs the checks flag or that are bit-heavy, not per merge.
+  one or two per lane. Long briefs are where worker lanes guess.
+- A fresh `sonnet` review only for diffs the checks flag or that are bit-heavy, not per merge.
 
 ## Review every lane patch
 
-MiniMax lanes pass the gate first time but slip in the same places. Before committing a lane's
+Lanes pass the gate first time but slip in the same places. Before committing a lane's
 patch, run `tools/review_decomp_diff.sh <lane-base>` and answer every hit:
 
 - **NULL** - null guards retail doesn't have. Keep one only if the asm has the test or a named

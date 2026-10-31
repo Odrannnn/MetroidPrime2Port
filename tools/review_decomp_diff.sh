@@ -1,6 +1,6 @@
 #!/bin/bash
 # Usage: tools/review_decomp_diff.sh <base> [head]   (default head: HEAD)
-# Flags the slips MiniMax lanes make in decomp patches, on added lines of src/ and include/ C++:
+# Flags the slips lanes make in decomp patches, on added lines of src/ and include/ C++:
 #   NULL   null guards (retail rarely has them; each needs a reason or goes)
 #   ADDR   retail address literals (0x80xxxxxx) - thunks that compare against retail addresses
 #   STUB   stub/stand-in/TODO/forwarding text added next to ported code
