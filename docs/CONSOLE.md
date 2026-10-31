@@ -91,7 +91,7 @@ hp, hp_max, visor, beam, freecam) for scripts.
 - `scaninfo <id>` — the SCAN asset an actor's GetScannableObjectInfo answers
 - `orbit [id]` — lock-on state; with id: orbit position, ValidateOrbitTargetId
 - `hint <id> [type] [area n] [radius <r>]` — an AI hint's type, area, active flag, radius; set type / area / radius (coverage)
-- `place <id> <x y z>|player [d]` — move an actor to a point, or d (6) units in front of the player
+- `place <id> <x y z>|player [d] [yaw [pitch [roll]]]` — move an actor to a point, or d (6) units in front of the player; the x y z form also sets its rotation, yaw (then pitch, roll) in degrees
 - `finger down|move|up <id> <x> <y> | tap <x> <y> | drag <x0> <y0> <x1> <y1> [steps]` — push SDL touch events at window pixels, to test the touch overlay on a desktop build (MP1's `finger`)
 - `spawn <fourcc> [n] [d <dist>] [ancs <id>|u<id> [char [anim]]] [fsm <id>] [model <id>|u<id>] [inactive] [prop <pid> <v>]` — create script objects via their loader [rules <id>] knockback RULE (patterned default 393ca543; ffffffff = none) [conn <state> <msg> <id>] add a script connection (names as obj prints them) [wpsc <id>] projectile WPSC (CHOG's two; else prop ef485db9; CHOG default 681f3907)
 - `touch <mover id> <other id>` — call the mover's CollidedWith with the other actor's material list, the way the collision code does (no real collision needed)

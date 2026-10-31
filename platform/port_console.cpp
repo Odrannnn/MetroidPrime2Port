@@ -4968,7 +4968,8 @@ const CommandSpec kCommands[] = {
     {"statedump", CmdStateDump,
       "statedump <file>            every live object's state as JSON lines (tools/statecheck.py)\n"},
     {"state", CmdState,
-      "state save|load <slot>      the F5/F9 save states (load 0 = undo the last load)\n"},
+      "state save <1..8>|load <0..8> [hold]  the F5/F9 save states (load 0 = undo the last load),\n"
+      "                            hold stops the simulation once the load has restored\n"},
     {"reloadmods", CmdReloadMods,
       "reloadmods                  read the mods folder again and rebuild the room (F1 Mods)\n"},
     {"reloadroom", CmdReloadRoom,
@@ -4995,8 +4996,8 @@ const CommandSpec kCommands[] = {
     {"hudopacity", CmdHudOpacity,
       "hudopacity <echo|dark|scan> <visor|0..100>  that visor HUD's opacity, or Visor Opacity's\n"},
     {"crosshair", CmdCrosshair,
-      "crosshair [<25..100>]       aim crosshair size, `style classic|remastered`, opacity,\n"
-      "                            color <r> <g> <b>|clear, aim <0|1> (F1 HUD)\n"},
+      "crosshair [<25..100>]       aim crosshair size, `style classic|remastered|gamecube`,\n"
+      "                            opacity <0..100>, color <r> <g> <b>|clear, aim <0|1> (F1 HUD)\n"},
     {"uiscale", CmdUiScale,
       "uiscale <50..200>           the F1 window's size in percent, as the Render row does\n"},
     {"vsync", CmdVsync,
@@ -5108,9 +5109,11 @@ const CommandSpec kCommands[] = {
     {"orbit", CmdOrbit,
       "orbit [id]                  lock-on state; with id: orbit position, ValidateOrbitTargetId\n"},
     {"hint", CmdHint,
-      "hint <id> [type] [area n]   an AI hint's type, area, active flag, radius; set type / area (coverage)\n"},
+      "hint <id> [type] [area n] [radius <r>]  an AI hint's type, area, active flag and radius;\n"
+      "                            set type / area / radius (coverage)\n"},
     {"place", CmdPlace,
-      "place <id> <x y z>|player [d]  move an actor to a point, or d (6) units in front of the player\n"},
+      "place <id> <x y z>|player [d] [yaw [pitch [roll]]]  move an actor to a point, or d (6)\n"
+      "                            units in front of the player; x y z form: angles in degrees\n"},
     {"spawn", CmdSpawn,
       "spawn <fourcc> [n] [d <dist>] [ancs <id>|u<id> [char [anim]]] [fsm <id>] [model <id>|u<id>] [inactive] [prop <pid> <v>]  create script objects via their loader\n"
       "                            [rules <id>] knockback RULE (patterned default 393ca543; ffffffff = none)\n"
