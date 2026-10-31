@@ -156,6 +156,24 @@ struct PortStateCodec {
         w.F32(l->mTime);
         w.F32(l->mDelay);
       }
+      // The sub-machine names down the path: a leaf name can exist at several levels.
+      for (size_t i = 0; i + 1 < levels.size(); ++i) {
+        const CState2SubMachine* sub = levels[i]->GetActiveSubMachine();
+        PutStr(w, sub != nullptr ? sub->GetName().data() : "");
+      }
+      // The active node's index in its machine: nodes can share a name (the same state twice
+      // with different transitions), so the name alone can restore the wrong one.
+      int leaf = -1;
+      CGenericFSM2State< CPatterned >* last = levels.back();
+      if (last->mMachine != nullptr && last->GetActiveState() != nullptr) {
+        const rstl::vector< CState2State >& v = last->mMachine->GetStates();
+        for (int i = 0; i < v.size(); ++i) {
+          if (&v[i] == last->GetActiveState()) {
+            leaf = i;
+          }
+        }
+      }
+      w.U32(static_cast< uint32_t >(leaf));
     }
   }
 
@@ -188,10 +206,18 @@ struct PortStateCodec {
     }
     // Per-level clocks of an FSM2 path (absent in states saved before they were added).
     std::vector< float > clocks;
+    std::vector< std::string > subPath;
+    int leafIndex = -1;
     if (kind == 1 && r.ok && r.at < data.size()) {
       const uint32_t n = r.U8();
       for (uint32_t i = 0; i < n * 2 && r.ok; ++i) {
         clocks.push_back(r.F32());
+      }
+      for (uint32_t i = 0; i + 1 < n && r.ok && r.at < data.size(); ++i) {
+        subPath.push_back(r.Bytes());
+      }
+      if (r.ok && r.at < data.size()) {
+        leafIndex = static_cast< int >(r.U32());
       }
     }
     // A machine is set up lazily (first Think); a freshly loaded actor that has not run yet has
@@ -266,12 +292,31 @@ struct PortStateCodec {
     const char* now = fsm->HasState() ? fsm->GetName() : nullptr;
     if (now == nullptr || name != now) {
       const char* path[8] = {};
-      if (fsm->PortSetStateDeep(mgr, *owner, rstl::string_l(name.c_str()), path, 8) < 0) {
+      const char* want[8] = {};
+      int wantCount = 0;
+      for (size_t i = 0; i < subPath.size() && i < 8; ++i) {
+        want[wantCount++] = subPath[i].c_str();
+      }
+      int entered = wantCount > 0 ? fsm->PortSetStateDeep(mgr, *owner, rstl::string_l(name.c_str()), path, 8, want, wantCount) : -1;
+      if (entered < 0) {
+        entered = fsm->PortSetStateDeep(mgr, *owner, rstl::string_l(name.c_str()), path, 8);
+      }
+      if (entered < 0) {
         return Fail("PortSetStateDeep found no path to the name");
       }
     }
     std::vector< CGenericFSM2State< CPatterned >* > levels;
     FsmLevels(fsm, levels);
+    if (leafIndex >= 0 && !levels.empty()) {
+      CGenericFSM2State< CPatterned >* last = levels.back();
+      if (last->mMachine != nullptr && leafIndex < last->mMachine->GetStates().size()) {
+        const CState2State* node = &last->mMachine->GetStates()[leafIndex];
+        if (last->GetActiveState() != node && last->HasState() && std::string(last->GetName()) == node->GetName().data()) {
+          last->ExitActive(mgr, *owner);
+          last->ExecuteState(*node, mgr, *owner, kStateMsg_Activate, 0.f);
+        }
+      }
+    }
     if (!clocks.empty() && clocks.size() == levels.size() * 2) {
       for (size_t i = 0; i < levels.size(); ++i) {
         levels[i]->mTime = clocks[i * 2];
