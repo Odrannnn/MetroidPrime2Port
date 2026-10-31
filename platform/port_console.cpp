@@ -1663,14 +1663,17 @@ void CmdMapTap(CStateManager&, const Args&, std::string& out) {
 }
 
 // pointeraim [on|off|<x> <y>]: MP1's console command. on/off is the F1 Controls row
-// (`MP2_POINTER_AIM`); x, y place the pointer (-1..1 of the half view, x right, y down), which
-// holds only while pointer aim is free. Every form prints the state it ends in.
+// (`MP2_POINTER_AIM`); x, y place the pointer (-1..1 of the half view, x right, y down) and hold
+// it there, without turning the view, until `pointeraim 0 0` (free aim needs pointer aim on and
+// `MP2_MOUSE_AIM=1`). Every form prints the state it ends in.
 void CmdPointerAim(CStateManager&, const Args& args, std::string& out) {
   if (args.size() == 2 && (args[1] == "on" || args[1] == "off")) {
     PortOverlay::SetPointerAim(args[1] == "on");
   } else if (args.size() == 3) {
-    PortMouse::SetPointerAimPosition(static_cast< float >(std::atof(std::string(args[1]).c_str())),
-                                     static_cast< float >(std::atof(std::string(args[2]).c_str())));
+    const float px = static_cast< float >(std::atof(std::string(args[1]).c_str()));
+    const float py = static_cast< float >(std::atof(std::string(args[2]).c_str()));
+    PortMouse::SetPointerAimPosition(px, py);
+    PortMouse::SetPointerAimHold(px != 0.f || py != 0.f);
   } else if (args.size() != 1) {
     Fail("pointeraim [on|off|<x> <y>]   x, y in -1..1 of the half view");
     return;

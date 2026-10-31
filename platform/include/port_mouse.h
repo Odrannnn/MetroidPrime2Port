@@ -337,6 +337,8 @@ bool PointerAimPosition(float& x, float& y);
 // The console's `pointeraim <x> <y>` (MP1's PortDebug::SetPointerAimPosition): moves the pointer
 // there from the centre, clamped to -1..1. A tick that does not leave it free re-centres it.
 void SetPointerAimPosition(float x, float y);
+// The console holds a pointer it placed there (free, the view not turned) until it is placed at 0 0.
+void SetPointerAimHold(bool hold);
 void Synchronize(float x, float y, float z);
 // The console's `aim <yaw_deg> <pitch_deg>`: place the aim outright instead of turning it from
 // travel, which is the only way a run with no stick can aim at a low target. yawDeg is the

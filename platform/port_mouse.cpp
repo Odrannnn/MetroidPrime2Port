@@ -715,8 +715,9 @@ bool PointerAimPosition(float& x, float& y) {
 void SetPointerAimPosition(float x, float y) {
   sPointer.Center();
   sPointer.Move(x, y);
-  sDebugHold = x != 0.f || y != 0.f;
 }
+
+void SetPointerAimHold(bool hold) { sDebugHold = hold; }
 
 void Synchronize(float x, float y, float z) {
   if (Enabled()) {
