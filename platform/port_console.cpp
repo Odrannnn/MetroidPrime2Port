@@ -1215,6 +1215,8 @@ void CmdHintShow(CStateManager&, const Args&, std::string& out) {
 }
 
 // memo <0|1> <text...>: a HUD memo; 1 makes it a hint memo (the framed box with the button ring).
+// `{` and `}` in the text stand for `&` and `;`, so a tag (`{image=SI,1,1,F1FA8D68}`) gets past the
+// `;` that splits console commands.
 // memo pause <strg>: the boxed memo a paused HUDMemo opens (CMessageScreen), as for "Map data acquired".
 void CmdMemo(CStateManager& mgr, const Args& args, std::string& out) {
   if (args.size() == 3 && args[1] == "pause") {
@@ -1249,6 +1251,9 @@ void CmdMemo(CStateManager& mgr, const Args& args, std::string& out) {
       wide += L' ';
     }
     wide.append(args[i].begin(), args[i].end());
+  }
+  for (wchar_t& c : wide) {
+    c = c == L'{' ? L'&' : (c == L'}' ? L';' : c);
   }
   CSamusHud::DisplayHudMemo(rstl::wstring(wide.c_str()),
                             CHUDMemoParms(hint ? 0.f : 5.f, true, false, hint, 1, true));
