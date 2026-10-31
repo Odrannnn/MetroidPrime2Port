@@ -557,7 +557,8 @@ void CSwampBossStage2::UpdateHover(float dt) {
   const CVector3f toTarget = mMoveTarget - GetTranslation();
   const float step = dt * mData.hoverSpeed;
   if (!mMoveRequested) {
-    mMoveSpeed = rstl::max_val(mMoveSpeed - step, 0.f);
+    const float eased = mMoveSpeed - step;
+    mMoveSpeed = eased > 0.f ? eased : 0.f; // retail NaN arm (A8-nan-8)
     if (mMoveSpeed == 0.f) {
       mMoveDir = GetTransform().GetForward();
     }
@@ -568,7 +569,7 @@ void CSwampBossStage2::UpdateHover(float dt) {
     if (distance * 0.125f < 1.f) {
       speedLimit = mData.hoverSpeed * (distance * 0.125f);
     }
-    if (mMoveSpeed <= speedLimit) {
+    if (!(mMoveSpeed > speedLimit)) { // retail NaN arm (A8-nan-8)
       mMoveSpeed += step;
     } else {
       mMoveSpeed -= step;
@@ -1442,12 +1443,14 @@ bool CSwampBossStage2::ShouldBlow(CStateManager& mgr, const CTriggerData&) const
 
 // @ fn_79_A13C
 bool CSwampBossStage2::IsLevel(CStateManager& mgr, const CTriggerData&) const {
-  if (GetBodyController()->GetCurrentStateId() != pas::kAS_Locomotion || mMoveSpeed >= 0.2f) {
+  if (GetBodyController()->GetCurrentStateId() != pas::kAS_Locomotion ||
+      !(mMoveSpeed < 0.2f)) { // retail NaN arm (A8-nan-9)
     return false;
   }
   const CVector3f pos = GetTranslation();
   const CVector3f target = TargetPoint(mgr);
-  if (CMath::AbsF(target.GetZ() - pos.GetZ()) >= 1.f || (target - pos).Magnitude() >= 2.f) {
+  if (!(CMath::AbsF(target.GetZ() - pos.GetZ()) < 1.f) || // retail NaN arm (A8-nan-9)
+      !((target - pos).Magnitude() < 2.f)) {
     return false;
   }
   CVector2f toLevel(mLevelTarget.GetX() - pos.GetX(), mLevelTarget.GetY() - pos.GetY());
@@ -2389,12 +2392,12 @@ void CSwampBossStage2::AddToRenderer(const CStateManager& mgr) const {
   }
   for (int i = 0; i < mGrowthModels.size(); ++i) {
     const rstl::optional_object< CModelData >& model = mGrowthModels[i];
-    if (!model || mGrowthHealth[i] <= 0.f) {
+    if (!model || !(mGrowthHealth[i] > 0.f)) { // retail NaN arm (A8-nan-10)
       continue;
     }
     const CTransform4f xf = GetLctrTransform(mGrowthLocators[i]);
     const float flash = mGrowthFlash[i];
-    if (flash <= 0.f) {
+    if (!(flash > 0.f)) { // retail NaN arm (A8-nan-10)
       model->Render(mgr, xf, GetActorLights(), GetModelFlags());
     } else {
       // rodata: a two-stage colour lerp from black to the damage colour by the flash amount.

@@ -206,7 +206,7 @@ void CSandBoss::RotateHelper1D74(CStateManager& mgr, const CVector3f& target, fl
   const CVector3f toTarget(target.GetX() - here.GetX(), target.GetY() - here.GetY(), 0.f);
   const CVector3f facing = sibling->GetTransform().GetColumn(kDY); // sibling + 0x28/0x38/0x48
   float angle = CVector3f::GetAngleDiff(facing, toTarget);
-  if (angle <= 0.17453292f) {
+  if (!(angle > 0.17453292f)) { // retail NaN arm (A8-nan-1)
     return;
   }
   if (CVector3f::Dot(sibling->GetTransform().GetColumn(kDX), toTarget) > 0.f) { // 0x24/0x34/0x44
@@ -221,7 +221,7 @@ void CSandBoss::RotateHelper1D74(CStateManager& mgr, const CVector3f& target, fl
 // Turns the body toward a world point at the controller's turn rate (only for a positive dt and a
 // point away from this worm).
 void CSandBoss::FaceTowardPoint(float dt, const CVector3f& target) {
-  if (dt <= 0.f) {
+  if (!(dt > 0.f)) { // retail NaN arm (A8-nan-2)
     return;
   }
   const CVector3f toTarget = target - GetTranslation(); // 0x54
@@ -249,7 +249,7 @@ void CSandBoss::RotateHelper2030(CStateManager& mgr, const CVector3f& target, fl
   const CVector3f facing =
       sum.IsMagnitudeSafe() ? sum.AsNormalized() : first->GetTransform().GetColumn(kDX);
   float angle = CVector3f::GetAngleDiff(facing, toTarget);
-  if (angle <= 0.17453292f) {
+  if (!(angle > 0.17453292f)) { // retail NaN arm (A8-nan-3)
     return;
   }
   const float side =

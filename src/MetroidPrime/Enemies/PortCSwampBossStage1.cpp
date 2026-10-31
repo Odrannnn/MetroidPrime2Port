@@ -1051,12 +1051,14 @@ bool CSwampBossStage1::ReadyToTongue(CStateManager& mgr, const CTriggerData&) co
 
 // @ fn_78_6358
 bool CSwampBossStage1::ShouldBeach(CStateManager&, const CTriggerData&) const {
-  return IsMinHealth() || (xb8c_nextAttackTime <= xb1c_clock && CurrentAttack() == 1);
+  return IsMinHealth() || (!(xb8c_nextAttackTime > xb1c_clock) && // retail NaN arm (A8-nan-5)
+                           CurrentAttack() == 1);
 }
 
 // @ fn_78_64D0
 bool CSwampBossStage1::ShouldBob(CStateManager&, const CTriggerData&) const {
-  return GetHealthInfo()->GetHP() > 1.f && xb7c_nextBobTime < xb1c_clock;
+  return !(GetHealthInfo()->GetHP() <= 1.f) && // retail NaN arm (A8-nan-6)
+         xb7c_nextBobTime < xb1c_clock;
 }
 
 // @ fn_78_6458
