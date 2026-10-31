@@ -369,10 +369,11 @@ struct PortStateCodec {
   }
 
   // The TUniqueId members of one body-state command. CBCWallHangCmd::mWpId - the waypoint a wall
-  // hang clings to (CBodyStateCmdMgr.hpp:401-410) - is the only id any command in that header
-  // carries. A room rebuild hands its slot to another object, so from policy 3 the id is written by
-  // identity (PutUid) and read back with GetUid, like the entity fields' references. A new command
-  // with an id needs a line here (and the friend in the header), or its id is a saved slot again.
+  // hang clings to (include/MetroidPrime/BodyState/CBodyStateCmdMgr.hpp:401-414, the member at
+  // :413) - is the only id any command in that header carries. A room rebuild hands its slot to
+  // another object, so from policy 3 the id is written by identity (PutUid) and read back with
+  // GetUid, like the entity fields' references. A new command with an id needs a line here (and
+  // the friend in the header), or its id is a saved slot again.
   static std::vector< TUniqueId* > CmdUids(CBCWallHangCmd& c) { return {&c.mWpId}; }
   template < typename T >
   static std::vector< TUniqueId* > CmdUids(T&) {
