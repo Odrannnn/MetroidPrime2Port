@@ -47,11 +47,13 @@ Info SlotInfo(int slot);
 int SelectedSlot();          // 1..kSlotCount, the slot F5/F9 act on
 void SetSelectedSlot(int slot);
 void SelectNextSlot();
+void SelectPrevSlot();
 
 // Queue a save or load of `slot` (0..kSlotCount); the game thread runs it on its next Tick.
-// A load of the undo slot does not overwrite the undo slot first.
-void RequestSave(int slot);
-void RequestLoad(int slot);
+// A load of the undo slot does not overwrite the undo slot first. `toast` also shows the result
+// on screen (the F5/F9 hotkeys).
+void RequestSave(int slot, bool toast = false);
+void RequestLoad(int slot, bool toast = false);
 
 // Reload the mods folder and rebuild the room: the current state is written to the undo slot and
 // loaded back, and between the old world and the new one every PAK is closed and opened again over

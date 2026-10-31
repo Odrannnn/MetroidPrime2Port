@@ -45,8 +45,15 @@ void DrawSaveStatesTab() {
     sSaveStateHotkeys = hotkeys;
     Changed(true);
   }
-  ItemHelp("Off, the bindings do nothing, so a stray key cannot save over or load a slot. The "
-           "buttons below still work.");
+  {
+    const std::string prevKeys = PortInputRemap::BindingsText(PortInput::Action::PrevStateSlot, " / ");
+    const std::string nextKeys = PortInputRemap::BindingsText(PortInput::Action::NextStateSlot, " / ");
+    std::string slotKeys;
+    if (!prevKeys.empty()) slotKeys += " " + prevKeys + " picks the previous slot.";
+    if (!nextKeys.empty()) slotKeys += " " + nextKeys + " picks the next slot.";
+    ItemHelp(("Off, the bindings do nothing, so a stray key cannot save over or load a slot. The "
+              "buttons below still work." + slotKeys).c_str());
+  }
   bool roomState = sSaveStateRoomState;
   if (ImGui::Checkbox("Keep enemies and room objects###savestate-room-state", &roomState)) {
     sSaveStateRoomState = roomState;

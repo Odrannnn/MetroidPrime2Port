@@ -405,6 +405,8 @@ void BindPortControls(Profile& p) {
   // Save and load the selected save state slot (F1 > Game > Save states picks the slot).
   Bind(p, Action::SaveState, Make(Device::Key, SDL_SCANCODE_F5));
   Bind(p, Action::LoadState, Make(Device::Key, SDL_SCANCODE_F9));
+  Bind(p, Action::PrevStateSlot, Make(Device::Key, SDL_SCANCODE_F4));
+  Bind(p, Action::NextStateSlot, Make(Device::Key, SDL_SCANCODE_F6));
   // Gyro aim's hold / pause / toggle button (F1 > Controls, the gyro Mode row), as in MP1.
   Bind(p, Action::GyroAim, NativeInput(SDL_GAMEPAD_BUTTON_RIGHT_STICK));
   Bind(p, Action::GyroAim, Make(Device::Key, SDL_SCANCODE_LCTRL));
@@ -729,7 +731,7 @@ void RouteDirectActions(const PortInput::Output& out, double nowSec) {
 bool IsPortAction(Action a) {
   return a == Action::PortMenu || a == Action::Screenshot || a == Action::PhotoMode || a == Action::GyroAim ||
          a == Action::ResetAim || a == Action::ToggleTexturePack || a == Action::SaveState ||
-         a == Action::LoadState;
+         a == Action::LoadState || a == Action::NextStateSlot || a == Action::PrevStateSlot;
 }
 
 // Keys pressed since the last PollPortActions, added by an SDL event watch: a short
@@ -1416,8 +1418,16 @@ void PollPortActions() {
   // MP1 also routes the Original toggle here.
   if (out.Pressed(Action::PortMenu)) PortOverlay::Toggle();
   if (PortOverlay::SaveStateHotkeys()) {
-    if (out.Pressed(Action::SaveState)) PortSaveState::RequestSave(PortSaveState::SelectedSlot());
-    if (out.Pressed(Action::LoadState)) PortSaveState::RequestLoad(PortSaveState::SelectedSlot());
+    if (out.Pressed(Action::SaveState)) PortSaveState::RequestSave(PortSaveState::SelectedSlot(), true);
+    if (out.Pressed(Action::LoadState)) PortSaveState::RequestLoad(PortSaveState::SelectedSlot(), true);
+    const bool next = out.Pressed(Action::NextStateSlot);
+    if (next || out.Pressed(Action::PrevStateSlot)) {
+      next ? PortSaveState::SelectNextSlot() : PortSaveState::SelectPrevSlot();
+      const int slot = PortSaveState::SelectedSlot();
+      const PortSaveState::Info info = PortSaveState::SlotInfo(slot);
+      PortDebug::ShowNote("Save state slot " + std::to_string(slot) +
+                          (info.exists ? " (" + info.room + ")" : " (empty)"));
+    }
   }
   // The player's own actions (controls.toml [[custom_action]]): each one runs as
   // its binding is pressed, and the note it returns is the toast.

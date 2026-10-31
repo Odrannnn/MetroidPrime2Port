@@ -184,7 +184,9 @@ enum class ActionKind : uint8_t {
   X(BallUnmorph, Digital, "ball_unmorph", "Unmorph")                                                 \
   X(BeamMenu, Digital, "beam_menu", "Beam menu (hold)")                                            \
   X(VisorMenu, Digital, "visor_menu", "Visor menu (hold)")                                        \
-  X(ToggleTexturePack, Digital, "toggle_texture_pack", "Texture pack") // appended: IDs persist
+  X(ToggleTexturePack, Digital, "toggle_texture_pack", "Texture pack") /* appended: IDs persist */ \
+  X(NextStateSlot, Digital, "next_state_slot", "Next save state slot")                            \
+  X(PrevStateSlot, Digital, "prev_state_slot", "Previous save state slot")
 
 enum class Action : uint16_t {
 #define PORT_INPUT_ACTION_ENUM(id, kind, key, label) id,

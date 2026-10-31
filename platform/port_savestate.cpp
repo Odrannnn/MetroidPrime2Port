@@ -16,6 +16,7 @@
 
 #include <algorithm>
 
+#include "port_debug.h"
 #include "port_mods.h"
 #include "port_overlay.h"
 #include "port_resume_logic.h"
@@ -104,6 +105,8 @@ struct State {
 
 std::atomic< int > sSaveRequest{-1};
 std::atomic< int > sLoadRequest{-1};
+std::atomic_bool sSaveToast{false}; // the request came from a hotkey: toast its result
+std::atomic_bool sLoadToast{false};
 // Mods reload: Tick turns the request into a load of the current state; CMainFlow calls
 // ReloadModsNow once the old world is gone, before the new one starts loading.
 std::atomic< bool > sModReloadRequest{false};
@@ -142,8 +145,14 @@ struct RoomRestore {
 RoomRestore sRoom;
 CGameState* sRetired = nullptr; // the game state a load replaced, deleted once the world restarted
 
+// True while a hotkey save or load runs: its messages also show as a toast.
+bool sToastMessages = false;
+
 void SetMessage(const std::string& message) {
   std::fprintf(stderr, "[savestate] %s\n", message.c_str());
+  if (sToastMessages) {
+    PortDebug::ShowNote(message);
+  }
   std::lock_guard< std::mutex > lock(sMessageMutex);
   sMessage = message;
 }
@@ -1038,14 +1047,18 @@ void SetSelectedSlot(int slot) {
 
 void SelectNextSlot() { sSelected.store(sSelected.load() % kSlotCount + 1); }
 
-void RequestSave(int slot) {
+void SelectPrevSlot() { sSelected.store((sSelected.load() + kSlotCount - 2) % kSlotCount + 1); }
+
+void RequestSave(int slot, bool toast) {
   if (slot >= 0 && slot <= kSlotCount) {
+    sSaveToast.store(toast);
     sSaveRequest.store(slot);
   }
 }
 
-void RequestLoad(int slot) {
+void RequestLoad(int slot, bool toast) {
   if (slot >= 0 && slot <= kSlotCount) {
+    sLoadToast.store(toast);
     sLoadRequest.store(slot);
   }
 }
@@ -1326,11 +1339,15 @@ void Tick(CStateManager& mgr) {
   }
   const int save = sSaveRequest.exchange(-1);
   if (save >= 0) {
+    sToastMessages = sSaveToast.exchange(false);
     DoSave(mgr, save);
+    sToastMessages = false;
   }
   const int load = sLoadRequest.exchange(-1);
   if (load >= 0) {
+    sToastMessages = sLoadToast.exchange(false);
     DoLoad(mgr, load);
+    sToastMessages = false;
   }
 }
 
