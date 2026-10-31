@@ -26,6 +26,7 @@
 #include "MetroidPrime/ScriptObjects/CScriptPickup.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <initializer_list>
@@ -106,11 +107,18 @@ struct PortStateCodec {
     }
   }
 
+  // Why the last GetMachine returned false (GetCodec logs it).
+  static inline const char* sWhy = "";
+  static bool Fail(const char* why) {
+    sWhy = why;
+    return false;
+  }
+
   static bool GetMachine(CStateManager& mgr, CEntity& ent, const PortSchemaField& f, const std::string& data) {
     CPatterned* owner = dynamic_cast< CPatterned* >(&ent);
     TStateMachineStateBase< CPatterned >* m = Machine(ent, f);
     if (owner == nullptr || m == nullptr) {
-      return false;
+      return Fail("no patterned owner or no machine field");
     }
     BlockReader r(data);
     const uint32_t kind = r.U8();
@@ -134,23 +142,32 @@ struct PortStateCodec {
         clocks.push_back(r.F32());
       }
     }
+    // A machine is set up lazily (first Think); a freshly loaded actor that has not run yet has
+    // no definition to enter a state in.
+    // A machine saved without a state never ran (inactive): leave it to start on its own.
+    if (name.empty()) {
+      return true;
+    }
+    if (!m->HasState()) {
+      owner->InitializeStateMachine(mgr);
+    }
     if (!r.ok || kind > 1 || !Ok(time) || !Ok(delay) || !Ok(random) || !Ok(fixedRandom)) {
-      return false;
+      return Fail("payload malformed or a non-finite value");
     }
     for (float c : clocks) {
       if (!Ok(c)) {
-        return false;
+        return Fail("non-finite sub-machine clock");
       }
     }
     if (kind == 0) {
       auto* ts = dynamic_cast< TStateMachineState< CPatterned >* >(m);
       if (ts == nullptr || name.empty()) {
-        return false;
+        return Fail("FSM1 field is not an FSM1 state or the name is empty");
       }
       if (ts->mMachine == nullptr) {
         CStateMachine* sm = owner->GetStateMachine();
         if (sm == nullptr) {
-          return false;
+          return Fail("owner has no CStateMachine");
         }
         ts->Setup(sm);
       }
@@ -165,13 +182,13 @@ struct PortStateCodec {
         }
       }
       if (idx < 0) {
-        return false;
+        return Fail("name not in the state vector");
       }
       if (ts->mState != &v[idx]) {
         ts->SetState(mgr, *owner, idx);
       }
       if (ts->mState != &v[idx]) {
-        return false;
+        return Fail("SetState did not reach the state");
       }
       ts->mTime = time;
       ts->mRandom = random;
@@ -182,13 +199,13 @@ struct PortStateCodec {
     }
     auto* fsm = dynamic_cast< CGenericFSM2State< CPatterned >* >(m);
     if (fsm == nullptr || name.empty()) {
-      return false;
+      return Fail("FSM2 field is not an FSM2 state or the name is empty");
     }
     const char* now = fsm->HasState() ? fsm->GetName() : nullptr;
     if (now == nullptr || name != now) {
       const char* path[8] = {};
       if (fsm->PortSetStateDeep(mgr, *owner, rstl::string_l(name.c_str()), path, 8) < 0) {
-        return false;
+        return Fail("PortSetStateDeep found no path to the name");
       }
     }
     std::vector< CGenericFSM2State< CPatterned >* > levels;
@@ -732,8 +749,20 @@ bool GetCodec(CStateManager& mgr, CEntity& ent, const PortSchemaField& f, const 
     return false;
   }
   switch (f.kind) {
-  case PortSchemaKind::state_machine:
-    return PortStateCodec::GetMachine(mgr, ent, f, data);
+  case PortSchemaKind::state_machine: {
+    PortStateCodec::sWhy = "";
+    if (PortStateCodec::GetMachine(mgr, ent, f, data)) {
+      return true;
+    }
+    PortStateCodec::BlockReader r(data);
+    r.U8();
+    const std::string name = r.Bytes();
+    const PortSchemaClass* cls = PortEntitySchema::For(ent);
+    std::fprintf(stderr, "[savestate] machine not restored: %s e%08x field %s state '%s': %s\n",
+                 cls != nullptr ? cls->name : "?", mgr.GetEditorIdForUniqueId(ent.GetUniqueId()).Value(), f.name,
+                 name.c_str(), PortStateCodec::sWhy);
+    return false;
+  }
   case PortSchemaKind::body_controller:
     return PortStateCodec::GetBody(mgr, ent, f, data);
   case PortSchemaKind::path_search:
