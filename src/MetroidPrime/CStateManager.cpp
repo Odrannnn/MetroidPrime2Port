@@ -2216,8 +2216,9 @@ void CStateManager::CapturePlayerTextures() {
       // gets written; ask for a CPU read-back of the same region first (it has to be issued
       // before the copies, which seal the pass holding the frame's scene draws) and then fill
       // the player's buffers from the previous frame's read-back. See PortScanTarget.
-      PortScanTarget::Request(pickLeft, pickTop, pickWidth, pickHeight);
-      PortScanTarget::SetPick(portPick);
+      if (PortScanTarget::Request(pickLeft, pickTop, pickWidth, pickHeight)) {
+        PortScanTarget::SetPick(portPick);
+      }
 #endif
       gpRender->CopyTextureRegion(mPlayers[i]->GetScanTargetIdTextureData(), 0, textureLeft,
                                   textureTop, textureWidth, textureHeight);
