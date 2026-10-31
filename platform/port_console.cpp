@@ -24,6 +24,7 @@
 #include "port_pointer.h"
 #include "port_save.h"
 #include "port_savestate.h"
+#include "port_statedump.h"
 #include "port_env.h"
 #include "port_overlay_internal.h"
 #include "port_video.h"
@@ -4772,6 +4773,21 @@ void CmdState(CStateManager&, const Args& args, std::string& out) {
          " requested (the log's [savestate] lines say how it went)\n";
 }
 
+// statedump <file>: every live object's state as JSON lines (tools/statecheck.py).
+void CmdStateDump(CStateManager& mgr, const Args& args, std::string& out) {
+  if (args.size() < 2) {
+    Fail("usage: statedump <file>");
+    return;
+  }
+  std::string error;
+  const int count = PortStateDump::Write(mgr, std::string(args[1]), error);
+  if (count < 0) {
+    Fail(error);
+    return;
+  }
+  out += std::to_string(count) + " objects written to " + std::string(args[1]) + "\n";
+}
+
 // reloadmods: read the mods folder again and rebuild the room (the F1 Mods page's button).
 void CmdReloadMods(CStateManager&, const Args&, std::string& out) {
   PortSaveState::RequestModReload();
@@ -4928,6 +4944,8 @@ const CommandSpec kCommands[] = {
       "overlay <page>[/<sub>]|off  open the F1 window on a page (name prefixes: `overlay video/qual`)\n"},
     {"gpuselftest", CmdGpuSelfTest,
       "gpuselftest                 run the GPU self-test next frame; PASS/FAIL lines go to the log\n"},
+    {"statedump", CmdStateDump,
+     "statedump <file>   every live object's state as JSON lines (tools/statecheck.py)\n"},
     {"state", CmdState,
       "state save|load <slot>      the F5/F9 save states (load 0 = undo the last load)\n"},
     {"reloadmods", CmdReloadMods,

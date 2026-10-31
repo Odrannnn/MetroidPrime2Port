@@ -1036,4 +1036,62 @@ void NoteScriptMsg(CStateManager& mgr, uint16_t dest, uint16_t sender, uint32_t 
   }
 }
 
+
+// Read-only views of what the room save keeps, for the statedump console command
+// (platform/port_statedump.cpp, tools/statecheck.py): the same members CaptureObject writes, as
+// JSON members (each starting with a comma) rather than as a block.
+bool IsScriptGeneratedCopy(const CStateManager& mgr, CEntity& ent) { return IsGeneratedCopy(mgr, ent); }
+
+std::string RoomStateJson(CStateManager& mgr, CEntity& ent) {
+  std::string out;
+  char buf[160];
+  auto add = [&](const char* fmt, auto... args) {
+    std::snprintf(buf, sizeof(buf), fmt, args...);
+    out += buf;
+  };
+  if (CScriptTimer* timer = TCastToPtr< CScriptTimer >(&ent)) {
+    add(",\"timer\":%.4f,\"timing\":%d", PortRoomState::TimerTime(*timer), timer->IsTiming() ? 1 : 0);
+  }
+  if (CScriptCounter* counter = TCastToPtr< CScriptCounter >(&ent)) {
+    add(",\"counter\":%d", counter->GetCurrent());
+  }
+  if (CScriptDoor* door = TCastToPtr< CScriptDoor >(&ent)) {
+    add(",\"door_open\":%d,\"door_lock\":%d", door->IsOpen() ? 1 : 0,
+        static_cast< int >(PortRoomState::DoorLock(*door)));
+  }
+  if (CScriptPlatform* plat = TCastToPtr< CScriptPlatform >(&ent)) {
+    add(",\"plat_time\":%.4f,\"plat_delay\":%.4f,\"plat_flags\":%u", PortRoomState::PlatMotionTime(*plat),
+        PortRoomState::PlatMoveDelay(*plat), PortRoomState::PlatFlags(*plat));
+  }
+  if (CScriptActorRotate* rot = TCastToPtr< CScriptActorRotate >(&ent)) {
+    add(",\"rot_time\":%.4f,\"rot_playing\":%d,\"rot_actors\":%d", PortRoomState::RotTime(*rot),
+        PortRoomState::RotPlaying(*rot) ? 1 : 0, static_cast< int >(PortRoomState::RotActors(*rot).size()));
+  }
+  if (CScriptDock* dock = TCastToPtr< CScriptDock >(&ent)) {
+    const CWorld* world = mgr.GetWorld();
+    const int area = dock->GetAreaId().Value();
+    if (area >= 0 && area < world->GetNumAreas() &&
+        dock->GetDockId() < world->GetAreaAlways(TAreaId(area)).GetDockCount()) {
+      const IGameArea::Dock& d = world->GetAreaAlways(TAreaId(area)).GetDock(dock->GetDockId());
+      add(",\"dock_refs\":%d", static_cast< int >(d.GetReferenceCount()));
+      out += ",\"dock_load\":\"";
+      for (int i = 0; i < static_cast< int >(d.GetDockRefs().size()); ++i) {
+        out += d.GetShouldLoadOther(i) ? '1' : '0';
+      }
+      out += '"';
+    }
+  }
+  if (const CScriptStreamedMusic* music = TCastToConstPtr< CScriptStreamedMusic >(&ent)) {
+    add(",\"music\":%d", music->PortPlaying() ? 1 : 0);
+  }
+  if (TCastToPtr< CScriptCamera >(&ent) != nullptr) {
+    const CCameraManager* cameras = mgr.CameraManager(0);
+    const CCinematicCamera* cine = cameras != nullptr ? cameras->GetCinematicCamera() : nullptr;
+    if (cine != nullptr && cameras->IsInCinematicCamera() && cine->GetScriptCameraId() == ent.GetUniqueId()) {
+      add(",\"cine\":%.4f", cine->PortElapsed());
+    }
+  }
+  return out;
+}
+
 } // namespace PortSaveState

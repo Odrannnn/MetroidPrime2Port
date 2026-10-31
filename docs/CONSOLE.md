@@ -31,6 +31,7 @@ hp, hp_max, visor, beam, freecam) for scripts.
 - `overlay <page>[/<sub>]|off` — open the F1 window on a page (name prefixes: `overlay video/qual`)
 - `gpuselftest` — run the GPU self-test next frame; PASS/FAIL lines go to the log
 - `state save|load <slot>` — the F5/F9 save states (load 0 = undo the last load)
+- `statedump <file>` — write every object (uid, class, hp, pos, AI state, room-script state) and the player as JSON lines; `tools/statecheck.py` compares dumps around a save/load round trip
 - `reloadmods` — read the mods folder again and rebuild the room (the F1 Mods page's Reload mods button)
 - `reloadroom` — rebuild the room from the disc, as leaving and coming back does, with Samus kept where she stands (the F1 Cheats page's Reload button)
 - `resume [status|save|load|clear]` — quick resume (savestates/resume.mp2ss): show, snapshot now, load, delete

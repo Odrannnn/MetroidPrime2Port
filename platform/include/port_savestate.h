@@ -5,6 +5,7 @@
 #include <vector>
 
 class CGameArea;
+class CEntity;
 class CStateManager;
 class CWorldLayerState;
 
@@ -178,6 +179,10 @@ void NoteRemoved(CStateManager& mgr, uint16_t uid);
 void NoteScriptMsg(CStateManager& mgr, uint16_t dest, uint16_t sender, uint32_t msg);
 
 void CaptureRoomState(CStateManager& mgr, RoomState& out);
+// Debug views (port_statedump.cpp): a script generator's copy; the room-saved state of a timer,
+// counter, door, platform, rotator, dock, music or cinematic camera as JSON members.
+bool IsScriptGeneratedCopy(const CStateManager& mgr, CEntity& ent);
+std::string RoomStateJson(CStateManager& mgr, CEntity& ent);
 // Applies the saved areas that are ready now and not yet done; returns how many saved areas are
 // still waiting to load.
 int ApplyRoomState(CStateManager& mgr, const RoomState& room, RoomApplyProgress& progress);
