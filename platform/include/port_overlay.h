@@ -103,12 +103,14 @@ enum : unsigned {
 };
 // The kInfAmmo bit of a CPlayerState::EItemType, 0 for an item that is not ammo.
 unsigned InfiniteAmmoKind(int itemType);
-// True when every kind in `kinds` is infinite.
+// True when every kind in `kinds` is infinite, by the cheat or by InfiniteBeamAmmo.
 bool InfiniteAmmo(unsigned kinds);
+// Enhancement (F1 > Enhancements, saved, env `MP2_INFINITE_BEAM_AMMO`): Light and Dark Ammo are
+// infinite, whatever the cheat's bits say. Original experience turns it off.
+bool InfiniteBeamAmmo();
 void SetInfiniteAmmo(unsigned kinds, bool enabled);
-// Gameplay tweaks (F1 > Gameplay, the pause menu's Options > Controller, and one console command
-// each), off by default. Never saved - there is no settings file, and these are preference rather
-// than state, so a restart goes back to the untouched game.
+// Gameplay tweaks (F1 > Enhancements, the pause menu's Options > Controller, and one console command
+// each), off by default and saved in the settings file.
 //
 // Fast Morph (`MP2_FAST_MORPH=1`): the morph and unmorph transitions take kFastMorphDuration
 // seconds instead of the game's one, so rolling is not a second of animation each way

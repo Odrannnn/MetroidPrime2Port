@@ -132,16 +132,6 @@ void DrawControlsOptions() {
            "one rotating.");
   ImGui::EndDisabled();
 
-  ImGui::SeparatorText("Morph ball");
-  ImGui::BeginDisabled(locked);
-  Changed(ImGui::Checkbox("Fast Morph", &sFastMorph));
-  ItemHelp("The morph and unmorph transitions take 0.2 s instead of the game's second.");
-  SameLineAfterHelp();
-  Changed(ImGui::Checkbox("Spring Ball", &sSpringBall));
-  ItemHelp("A small jump in morph ball with C-stick up, as in Metroid Prime Trilogy. Needs the Morph "
-           "Ball Bombs.");
-  ImGui::EndDisabled();
-
   // The game's own option, so it is the same switch as the pause menu's and is
   // saved with the other game options.
   ImGui::SeparatorText("Rumble");

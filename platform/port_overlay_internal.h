@@ -80,6 +80,7 @@ extern bool sCinemaBars;
 extern bool sSecondaryCrosshairs;
 extern bool sDarkVisorFull;
 extern int sDarkVisorStatic;
+extern bool sInfiniteBeamAmmo;
 extern int sHudOpacityEcho;
 extern int sHudOpacityDark;
 extern int sHudOpacityScan;

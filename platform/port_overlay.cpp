@@ -137,6 +137,7 @@ bool sCinemaBars = true;
 bool sSecondaryCrosshairs = true;
 bool sDarkVisorFull = false;
 int sDarkVisorStatic = PortOverlay::kDarkVisorStaticMax;
+bool sInfiniteBeamAmmo = false; // Enhancements; saved, unlike the sInfiniteAmmo cheat
 int sHudOpacityEcho = PortOverlay::kHudOpacityVisor;
 int sHudOpacityDark = PortOverlay::kHudOpacityVisor;
 int sHudOpacityScan = PortOverlay::kHudOpacityVisor;
@@ -994,9 +995,18 @@ unsigned InfiniteAmmoKind(int itemType) {
   }
 }
 
+bool InfiniteBeamAmmo() {
+  ReadEnv();
+  if (OriginalExperience()) {
+    return false;
+  }
+  return EnvBool("MP2_INFINITE_BEAM_AMMO", sInfiniteBeamAmmo);
+}
+
 bool InfiniteAmmo(unsigned kinds) {
   ReadEnv();
-  return kinds != 0 && (sInfiniteAmmo & kinds) == kinds;
+  const unsigned on = sInfiniteAmmo | (InfiniteBeamAmmo() ? kInfAmmoDark | kInfAmmoLight : 0u);
+  return kinds != 0 && (on & kinds) == kinds;
 }
 
 void SetInfiniteAmmo(unsigned kinds, bool enabled) {

@@ -73,25 +73,25 @@ Game page:
 - `original_experience`: Cutscenes > Original experience (default off); env
   `MP2_ORIGINAL_EXPERIENCE`, console `original`. While on, the port's gameplay and cutscene tweaks read
   as retail and their rows are greyed: skippable cutscenes, world name on load, walk speed, hint
-  delay, scan speed, elevator ride, portal transition, rotating rooms, fast morph, spring ball, toggle lock-on, sticky charge, remastered
+  delay, scan speed, elevator ride, portal transition, rotating rooms, fast morph, spring ball, the Enhancements page, toggle lock-on, sticky charge, remastered
   charge, auto-aim (on). Your saved values are kept and return when it is switched off. Mods, input,
   video and audio settings are not affected.
 - `skip_cinematics`: Cutscenes > Skippable cutscenes.
 - `boot_logos`: Cutscenes > Skip splash screens (0 no, 1 with A or Start, 2 always), which sets both keys.
 - `world_name_card`: the same row, for the world name card on load (same values); env `MP2_WORLD_NAME`.
-- `walk_speed`: Cutscenes > Walk speed (50 to 200 percent, default 100 = retail); env
+- `walk_speed`: Enhancements > Pace > Walk speed (50 to 200 percent, default 100 = retail); env
   `MP2_WALK_SPEED`, console `walkspeed`. Scales how fast Samus moves on foot: the top speed,
   acceleration and friction of walking and strafing (on the ground, in the air and in water) and the
   orbit strafe and approach speeds are all multiplied by it, so she reaches k times the retail speed
   in the same time and stops in the same time. Jump height, sideways dashes, turning, the grapple
   and the Morph Ball are unchanged; speed carries into a jump. At 100 movement is exactly retail.
-- `scan_speed`: Cutscenes > Scan speed (50 to 400 percent, default 100 = retail); env
+- `scan_speed`: Enhancements > Pace > Scan speed (50 to 400 percent, default 100 = retail); env
   `MP2_SCAN_SPEED`, console `scanspeed`. Scales how fast a scan fills (CPlayer::UpdateScanningState);
   the visor, scan-point and hint text are unchanged.
-- `elevator_ride`: Cutscenes > Elevator ride (0 original, 1 fast, 2 skip); env `MP2_ELEVATOR_RIDE`
+- `elevator_ride`: Enhancements > Pace > Elevator ride (0 original, 1 fast, 2 skip); env `MP2_ELEVATOR_RIDE`
   (`original|fast|skip`). Fast runs the world-transition ride at double speed; Skip ends it as soon as
   the next world has loaded (the load itself still takes its time). Text transitions are unchanged.
-- `rotating_rooms`: Cutscenes > Rotating rooms (0 original, 1 fast); env `MP2_ROTATING_ROOMS`
+- `rotating_rooms`: Enhancements > Pace > Rotating rooms (0 original, 1 fast); env `MP2_ROTATING_ROOMS`
   (`original|fast`), console `rooms`. Fast runs the energy controller rooms' bomb-slot cutscene (the
   room turning) at the game's own double speed: while a cinematic camera is active and a timed,
   one-shot CScriptActorRotate of 5 s or more plays (any such room, no list), `CStateManager::Update`
@@ -110,7 +110,7 @@ Game page:
   on load only when its record's hash matches the save's bytes. Without the sidecar (or after a
   copy through another tool) the save loads at the clamped 250. Lowering the slider mid-session
   only lowers the cap: amounts above the new cap are clamped the next time ammo is added.
-- `portal_transition`: Cutscenes > Portal transition (0 original, 1 fast, 2 skip); env
+- `portal_transition`: Enhancements > Pace > Portal transition (0 original, 1 fast, 2 skip); env
   `MP2_PORTAL_TRANSITION` (`original|fast|skip`), console `portal`. The ride through a light/dark world
   portal (`CPortalTransition`, run by `CMFGame` kFS_PortalTransition for a dock, or by `CWorldTransManager`
   from a teleporter). Fast runs it at double speed; Skip drops it, so the fade-in follows the load
@@ -189,7 +189,7 @@ Controls > Options:
   prompts; env `MP2_PROMPT_GLYPHS` 0-5, and `MP2_TEXTURE_DEVICE` still wins).
 - `minimap_tap`: Options > Menus > Tap minimap for map (a tap or click on the HUD minimap opens the
   map screen; default on; env `MP2_MINIMAP_TAP`; console `minimap`, `maptap`).
-- `fast_morph`, `spring_ball`: Morph ball > Fast Morph, Spring Ball (one row; C-stick up, the Spring Ball binding on the Remap page, touch swipe up, or a gyro flick).
+- `fast_morph`, `spring_ball`: Enhancements > Morph Ball > Fast Morph, Spring Ball (one row; C-stick up, the Spring Ball binding on the Remap page, touch swipe up, or a gyro flick).
 - `map_invert_x`, `map_invert_y`: Map > Invert map rotate X, Invert map rotate Y (off by
   default; env `MP2_MAP_INVERT_X`, `MP2_MAP_INVERT_Y`). They flip which way the map turns on
   the rotate inputs, left/right and up/down: the game turns the map opposite to the stick,
@@ -301,13 +301,16 @@ Video > Display:
   the cutscene letterbox and its viewport shrink. Original experience keeps them.
 - `secondary_crosshairs` (default on, env `MP2_SECONDARY_CROSSHAIRS`): HUD and view > Secondary
   crosshairs; off hides the next-target reticle (lock-on and the scan box stay).
-- `dark_visor_full` (default off, env `MP2_DARK_VISOR_FULL`): HUD and view > Full-screen Dark
+- `dark_visor_full` (default off, env `MP2_DARK_VISOR_FULL`): Enhancements > Full-screen Dark
   Visor; the Dark Visor's effect covers the whole view (the split-screen path, no lens mask),
   and the HUD's centre gear, backing, spinner and rings are hidden (the boss bar stays). Original
   experience keeps the lens.
-- `dark_visor_static` (0-100, default 100, env `MP2_DARK_VISOR_STATIC`): HUD and view > Dark Visor
+- `dark_visor_static` (0-100, default 100, env `MP2_DARK_VISOR_STATIC`): Enhancements > Dark Visor
   static; how much of the visor's grey static covers the scene. Lower keeps the scene's colours,
   0 leaves only the highlights. Original experience keeps 100.
+- `infinite_beam_ammo` (default off, env `MP2_INFINITE_BEAM_AMMO`): Enhancements > Infinite Light
+  and Dark Ammo; the beams spend no ammo and the HUD shows infinity. Saved, unlike the Infinite
+  cheat. Original experience turns it off.
 - `hud_opacity_echo`, `hud_opacity_dark`, `hud_opacity_scan` (`-1` = the game's Visor Opacity,
   default; else 0-100): HUD and view > Echo/Dark/Scan HUD opacity. Applies to that visor's HUD, its
   visor/beam menu, the radar and the map; the energy readout is part of the HUD frame and has no

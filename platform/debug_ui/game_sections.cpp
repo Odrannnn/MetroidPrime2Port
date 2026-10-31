@@ -145,9 +145,9 @@ static void DrawUnlocksSection() {
 void DrawCutscenesSection() {
   ImGui::SeparatorText("Cutscenes");
   Changed(ImGui::Checkbox("Original experience", &sOriginalExperience));
-  ItemHelp("The game as it shipped: skippable cutscenes, world name, walk speed, hint delay, scan "
-           "speed, elevator ride and the Controls page's charge, lock-on, morph ball and auto-aim "
-           "tweaks all act as retail while this is on. Your values are kept and return when it is "
+  ItemHelp("The game as it shipped: skippable cutscenes, world name, hint delay, the Enhancements "
+           "page and the Controls page's charge, lock-on and auto-aim tweaks all act as retail "
+           "while this is on. Your values are kept and return when it is "
            "off.");
   const bool locked = PortOverlay::OriginalExperience();
   ImGui::BeginDisabled(locked);
@@ -168,52 +168,6 @@ void DrawCutscenesSection() {
            "typed out while a save loads. The logos change from the next launch. The new game's intro "
            "text follows Skippable cutscenes.");
   ImGui::BeginDisabled(locked);
-  int walkSpeed = sWalkSpeed;
-  if (ImGui::SliderInt("Walk speed", &walkSpeed, PortOverlay::kWalkSpeedMin,
-                       PortOverlay::kWalkSpeedMax, "%d%%", ImGuiSliderFlags_AlwaysClamp)) {
-    sWalkSpeed = walkSpeed;
-    Changed(true);
-  }
-  ItemHelp("How fast Samus moves on foot, walking, strafing and circle-strafing, in percent of "
-           "the original speed. Jumps, dashes, turning and the Morph Ball are unchanged.");
-  int scanSpeed = sScanSpeed;
-  if (ImGui::SliderInt("Scan speed", &scanSpeed, PortOverlay::kScanSpeedMin,
-                       PortOverlay::kScanSpeedMax, "%d%%", ImGuiSliderFlags_AlwaysClamp)) {
-    sScanSpeed = scanSpeed;
-    Changed(true);
-  }
-  ItemHelp("How fast a scan fills, in percent of the original speed. 200 takes half the time.");
-  // Elevator and portal share a row: their choices are short.
-  const float rideWidth = ImGui::GetFontSize() * 6.f;
-  int elevatorRide = sElevatorRide;
-  ImGui::SetNextItemWidth(rideWidth);
-  if (ImGui::Combo("Elevator ride", &elevatorRide, "Original\0" "Fast\0" "Skip\0")) {
-    sElevatorRide = std::clamp(elevatorRide, static_cast< int >(PortOverlay::kElevatorRide_Original),
-                               static_cast< int >(PortOverlay::kElevatorRide_Skip));
-    Changed(true);
-  }
-  ItemHelp("The ride between worlds. Fast plays it at double speed; Skip leaves as soon as the next "
-           "world has loaded. Applies from the next ride.");
-  int rotatingRooms = sRotatingRooms;
-  ImGui::SetNextItemWidth(rideWidth);
-  if (ImGui::Combo("Rotating rooms", &rotatingRooms, "Original\0" "Fast\0")) {
-    sRotatingRooms = std::clamp(rotatingRooms, static_cast< int >(PortOverlay::kRotatingRooms_Original),
-                                static_cast< int >(PortOverlay::kRotatingRooms_Fast));
-    Changed(true);
-  }
-  ItemHelp("The energy controller rooms' bomb-slot cutscene, where the room turns. Fast plays it at "
-           "double speed.");
-  SameLineAfterHelp();
-  int portalTransition = sPortalTransition;
-  ImGui::SetNextItemWidth(rideWidth);
-  if (ImGui::Combo("Portal transition", &portalTransition, "Original\0" "Fast\0" "Skip\0")) {
-    sPortalTransition = std::clamp(portalTransition,
-                                   static_cast< int >(PortOverlay::kPortalTransition_Original),
-                                   static_cast< int >(PortOverlay::kPortalTransition_Skip));
-    Changed(true);
-  }
-  ItemHelp("The ride through a light/dark world portal. Fast plays it at double speed; Skip leaves as "
-           "soon as the other world has loaded. Applies from the next portal.");
   int language = sLanguage;
   if (ImGui::Combo("Language", &language,
                    "English\0" "German\0" "French\0" "Spanish\0" "Italian\0" "Dutch\0"
