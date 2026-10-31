@@ -26,6 +26,9 @@ class CParticleGen;
 // 0x304 word is only the trail container's size (60) and is never read; the host's array has no
 // separate size word.
 class CIngExitHostEffect : public CActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CIngExitHostEffect(TUniqueId uid, const CEntityInfo& info, const CTransform4f& xf,
                      const CVector3f& dest, const CVector3f& scale, CAssetId assetA,

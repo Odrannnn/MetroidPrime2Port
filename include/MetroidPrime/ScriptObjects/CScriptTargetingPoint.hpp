@@ -5,6 +5,9 @@
 
 // Wii SEL class name, correlated with the Echoes targeting-point loader and GetLocked.
 class CScriptTargetingPoint : public CActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CScriptTargetingPoint(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                         const CTransform4f& xf);

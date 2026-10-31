@@ -81,6 +81,9 @@ public:
 // Guessed name. The target shares dispatch code across owners; template ownership is unverified.
 template < class T >
 class TStateMachineState : public TStateMachineStateBase< T > {
+#ifdef TARGET_PC
+  friend struct PortStateCodec; // port save state (port_savestate_fields.cpp)
+#endif
 public:
   typedef typename TStateMachineStateBase< T >::StateFunc StateFunc;
   typedef typename TStateMachineStateBase< T >::TriggerFunc TriggerFunc;

@@ -10,6 +10,9 @@
 
 // Guessed class: the acid sac a splinter carries; it pops when shot and then fades away.
 class CSplinterAcidSac : public CActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CSplinterAcidSac(TUniqueId uid, TAreaId area, const rstl::string& name,
                    const CModelData& modelData, int initialAnimation, int popAnimation,

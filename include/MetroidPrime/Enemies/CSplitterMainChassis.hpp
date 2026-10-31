@@ -87,6 +87,9 @@ public:
 // head module (CSplitterCommandModule, guest 0xF70) are later milestones, and every override that
 // belongs to them forwards to CPatterned behind a once-only StandIn log.
 class REL_EXPORT CSplitterMainChassis : public CPatterned {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
 #ifdef TARGET_PC
   // Argument order is the port's own (the REL loader's call at 0x00008580 is

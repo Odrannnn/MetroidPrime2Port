@@ -8,6 +8,9 @@
 
 // Guessed name; script settings and geometry are separate from the runtime camera.
 class CScriptSurfaceCamera : public CActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   // Guessed names established by native consumers; 0x4 makes the offset an angle in degrees.
   enum ESurfaceFlags {

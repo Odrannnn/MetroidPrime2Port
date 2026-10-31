@@ -5,6 +5,9 @@
 #include "MetroidPrime/Cameras/CGameCamera.hpp"
 
 class CInterpolationCamera : public CGameCamera {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   // Guessed names; values and behavior are recovered from the interpolation paths.
   enum EPositionMode {

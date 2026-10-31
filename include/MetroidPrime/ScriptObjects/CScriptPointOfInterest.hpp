@@ -8,6 +8,9 @@ class CScannableParameters;
 // Prime's CScriptPointOfInterest: an invisible scannable point. Echoes replaces Prime's active
 // flag with the editor's look-at flag and fixes the render bounds. Member names are unverified.
 class CScriptPointOfInterest : public CActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CScriptPointOfInterest(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                          const CTransform4f& xf, const CScannableParameters& scanParms, bool lookAt,

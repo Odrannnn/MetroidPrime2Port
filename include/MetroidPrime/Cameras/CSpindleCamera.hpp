@@ -90,6 +90,9 @@ CHECK_SIZEOF(CSpindleCameraParameters, 0x488)
 
 // Guessed name: Echoes separates Prime's CScriptSpindleCamera behavior from its script actor.
 class CSpindleCamera : public CGameCamera {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CSpindleCamera(TUniqueId uid, const CTransform4f& xf, bool active, int index, int controllerIdx);
 

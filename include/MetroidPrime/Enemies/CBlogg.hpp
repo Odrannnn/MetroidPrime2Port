@@ -81,6 +81,9 @@ struct SBloggPhaseData {
 
 // Guessed class: a large swimming enemy that charges, bites and spits the morph ball.
 class CBlogg : public CPatterned {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   // Guessed names; the value written to the state tag by each state function.
   enum EMaterialAction { kMA_Add, kMA_Remove }; // Guessed names

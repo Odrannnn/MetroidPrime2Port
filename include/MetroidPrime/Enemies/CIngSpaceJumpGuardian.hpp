@@ -22,6 +22,9 @@ class CGenDescription;
 // mini portals and taunts. The class name is the original Wii export
 // TypesMatch__21CIngSpaceJumpGuardian.
 class CIngSpaceJumpGuardian : public CPatterned {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CIngSpaceJumpGuardian(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                         const CTransform4f& xf, const CModelData& modelData,

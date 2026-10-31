@@ -8,6 +8,9 @@
 class CPASAnimParmData;
 
 class CScriptDoor : public CPhysicsActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   // Guessed names; Echoes has separate door, shield and lock state machines.
   enum EDoorState {

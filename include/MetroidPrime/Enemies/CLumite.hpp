@@ -21,6 +21,9 @@ class CScriptTeamAiMgr;
 // Guessed class: a creature that hops between surfaces and spits projectiles; it is only
 // visible and targetable while it is inside sunlight.
 class CLumite : public CPatterned {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CLumite(TUniqueId uid, const rstl::string& name, const CEntityInfo& info, const CTransform4f& xf,
           const CModelData& modelData, const CPatternedInfo& patternedInfo, CAssetId stateMachine2,

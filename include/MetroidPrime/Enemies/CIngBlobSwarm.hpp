@@ -11,6 +11,9 @@
 // boids may attack at once; each attacker plays a one-shot animation on one of a few spare models,
 // then keeps flying with the animation of one shared attack model.
 class CIngBlobSwarm : public CSwarmBasics {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CIngBlobSwarm(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                 const CVector3f& boundingBoxExtent, const CTransform4f& xf, const CAnimRes& animRes,

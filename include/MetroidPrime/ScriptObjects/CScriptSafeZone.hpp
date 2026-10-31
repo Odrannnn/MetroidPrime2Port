@@ -32,6 +32,9 @@ CHECK_SIZEOF(CSafeZoneFog, 0x20)
 
 // Scaffold; evidence in Echoes research/CScriptSafeZone-CScriptTriggerEllipsoid-G2ME01.md.
 class CScriptSafeZone : public CScriptTriggerEllipsoid {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
 #ifdef TARGET_PC
   // Host: the console's `var <id> sz.<name> [value]` (coverage fixtures, see CScriptSafeZone.cpp).

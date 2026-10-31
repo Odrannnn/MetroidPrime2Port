@@ -9,6 +9,9 @@
 #include "rstl/vector.hpp"
 
 class CScriptSpiderBallWaypoint : public CScriptWaypoint {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   enum ECheckActiveWaypoint {
     kCAW_Check,

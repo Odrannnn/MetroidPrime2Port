@@ -35,6 +35,9 @@ class CGenDescription;
 class COBBTree;
 
 class CIceImpact : public CEffect {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CIceImpact(const TLockedToken< CGenDescription >& particle, TUniqueId uid, TAreaId aid,
              TUniqueId ownerId, bool active, const rstl::string& name, const CTransform4f& xf,

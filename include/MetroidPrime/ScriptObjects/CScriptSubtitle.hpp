@@ -8,6 +8,9 @@
 
 // Guessed class name.
 class CScriptSubtitle : public CActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CScriptSubtitle(TUniqueId uid, const rstl::string& name, const CEntityInfo& info, int positionX,
                   int positionY, int extentX, int extentY, const CColor& fontColor,

@@ -218,6 +218,19 @@ def fields_differ(field, x, y, a):
     return None if x == y else "differs"
 
 
+def schema_differ(x, y, a):
+    """None when a `fields` entry is equal (numbers within --tol-field, relative above 1)."""
+    if x == y:
+        return None
+    if isinstance(x, list) and isinstance(y, list) and len(x) == len(y):
+        if all(schema_differ(p, q, a) is None for p, q in zip(x, y)):
+            return None
+    elif isinstance(x, (int, float)) and isinstance(y, (int, float)) and not isinstance(x, bool):
+        if abs(x - y) <= a.tol_field * max(1.0, abs(x), abs(y)):
+            return None
+    return "differs"
+
+
 def show(v):
     if isinstance(v, list):
         return "(" + ", ".join(f"{p:.1f}" for p in v) + ")"
@@ -234,6 +247,7 @@ class Report:
         self.drift = collections.Counter()
         self.total = 0
         self.per_class_total = collections.Counter()
+        self.fields = []  # saved schema fields that differ: (class, field, label, text); informational
 
     def add(self, sev, cls, label, kind, text):
         self.rows.append((sev, cls, label, kind, text))
@@ -274,6 +288,13 @@ def compare(da, da1, db, a, with_drift=True):
                         rep.drift[(cls, f)] += 1  # B equals A1: the field just moved a tick
                         continue
                     rep.add("STRICT" if strict else "WARN", cls, label, f, f"{show(vx)} -> {show(vy)} ({d})")
+            fx, fy, fz = x.get("fields") or {}, y.get("fields") or {}, (z or {}).get("fields") or {}
+            for name in sorted(set(fx) | set(fy)):
+                if schema_differ(fx.get(name), fy.get(name), a) is None:
+                    continue
+                if with_drift and z is not None and name in fz and schema_differ(fz[name], fy.get(name), a) is None:
+                    continue  # B equals A1: the field just moved a tick
+                rep.fields.append((cls, name, label, f"{show(fx.get(name))} -> {show(fy.get(name))}"))
     pa, pb, p1 = da["player"], db["player"], da1["player"]
     for strict, fields in ((True, PLAYER_STRICT), (False, PLAYER_LOOSE)):
         for f in fields:
@@ -296,6 +317,13 @@ def print_report(title, rep, a):
         print("tick drift (B equals the dump one tick after the save; ignored): " +
               ", ".join(f"{c}.{f} x{n}" for (c, f), n in sorted(rep.drift.items())))
     classes = sorted({r[1] for r in rep.rows})
+    if rep.fields:
+        print(f"\nschema fields (saved by kTagFields; informational, not in the exit code): {len(rep.fields)} differ")
+        groups = collections.defaultdict(list)
+        for cls, name, label, text in rep.fields:
+            groups[(cls, name)].append((label, text))
+        for (cls, name), items in sorted(groups.items()):
+            print(f"  {cls}.{name} x{len(items)}: {items[0][0]} {items[0][1]}")
     if not classes:
         print("no differences")
         return
@@ -338,6 +366,7 @@ def main():
     ap.add_argument("--tol-pos", type=float, default=0.5)
     ap.add_argument("--tol-vel", type=float, default=0.5)
     ap.add_argument("--tol-hp", type=float, default=0.01)
+    ap.add_argument("--tol-field", type=float, default=0.01, help="schema field difference (relative above 1)")
     ap.add_argument("--tol-time", type=float, default=0.1, help="timer-like difference in seconds")
     ap.add_argument("--detail", type=int, default=8, help="detail lines per class (default 8)")
     ap.add_argument("--all", action="store_true", help="print every detail line")

@@ -11,6 +11,9 @@ class CGenDescription;
 
 // Guessed class name; the native creation label is "DarkBlackHole".
 class CBlackHole : public CWeapon {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   // Guessed names for the two independently observed flag roles.
   enum EFlags {

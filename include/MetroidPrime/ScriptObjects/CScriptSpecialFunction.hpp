@@ -8,6 +8,9 @@
 #include "Kyoto/TAverage.hpp"
 
 class CScriptSpecialFunction : public CActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   // Values up to 0x45 are named after the script-object templates, the native-only
   // 0x1000x values after Prime's equivalents, unless marked.

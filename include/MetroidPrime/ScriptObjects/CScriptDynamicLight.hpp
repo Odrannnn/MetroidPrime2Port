@@ -9,6 +9,9 @@ class CGameSplineDesc;
 
 // Class spelling is corroborated by the Echoes Wii cast export.
 class CScriptDynamicLight : public CGameLight {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   // Reconstructed names; these domains differ from CLight's renderer type values.
   enum ELightKind { kLK_LocalAmbient, kLK_Directional, kLK_Point, kLK_Spot };

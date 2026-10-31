@@ -508,6 +508,9 @@ private:
 CHECK_SIZEOF(CBCLocomotionCmd, 0x1c)
 
 class CBodyStateCmdMgr {
+#ifdef TARGET_PC
+  friend struct PortStateCodec; // port save state (port_savestate_fields.cpp)
+#endif
 public:
   CBodyStateCmdMgr();
   ~CBodyStateCmdMgr();

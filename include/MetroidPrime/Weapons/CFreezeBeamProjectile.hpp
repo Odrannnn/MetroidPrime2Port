@@ -4,6 +4,9 @@
 #include "MetroidPrime/Weapons/CEnergyProjectile.hpp"
 
 class CFreezeBeamProjectile : public CEnergyProjectile {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CFreezeBeamProjectile(const TToken< CWeaponDescription >& description, EWeaponType type,
                         const CTransform4f& xf, EMaterialTypes excludeMaterial,

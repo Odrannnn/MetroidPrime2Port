@@ -89,6 +89,9 @@ RSTL_DECLARE_TRIVIALLY_CONSTRUCTIBLE(TStateMachineFunctionTypes< CPatterned >::T
 } // namespace rstl
 
 class CPatterned : public CAi {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   enum EFlavorType { kFT_Zero, kFT_One };
   enum EMovementType { kMT_Ground, kMT_Flyer };

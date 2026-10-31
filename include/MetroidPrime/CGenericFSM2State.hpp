@@ -8,6 +8,9 @@
 // MP3 Proto name; guessed template form.
 template < class T >
 class CGenericFSM2State : public TStateMachineStateBase< T > {
+#ifdef TARGET_PC
+  friend struct PortStateCodec; // port save state (port_savestate_fields.cpp)
+#endif
 public:
   typedef typename TStateMachineStateBase< T >::StateFunc StateFunc;
   typedef typename TStateMachineStateBase< T >::TriggerFunc TriggerFunc;

@@ -4,6 +4,9 @@
 #include "MetroidPrime/CActor.hpp"
 
 class CScriptAIHint : public CActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   // Guessed domain names; other serialized values remain unidentified.
   enum EHintType {

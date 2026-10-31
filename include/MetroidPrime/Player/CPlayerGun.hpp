@@ -22,6 +22,9 @@ class CInt32POINode;
 
 // Structure-first recovery; see research/CPlayerGun-G2ME01.md for evidence and open questions.
 class CPlayerGun : public CPlayerGunBase {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   enum EChargePhase {
     kCP_NotCharging,

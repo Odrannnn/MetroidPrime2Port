@@ -7,6 +7,9 @@
 #include "Kyoto/SObjectTag.hpp"
 
 class CScriptWorldTeleporter : public CEntity {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   // Elevator transition.
   CScriptWorldTeleporter(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,

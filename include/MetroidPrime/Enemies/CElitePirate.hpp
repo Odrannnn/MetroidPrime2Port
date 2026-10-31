@@ -105,6 +105,9 @@ public:
 // methods that let the actor load, think, stand and render. The state machine (fn_15_C0D0, 0x808),
 // the shields, the shock waves, the rockets and the melee attack are later milestones.
 class REL_EXPORT CElitePirate : public CPatterned {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
 #ifdef TARGET_PC
   // Argument order is the REL loader's call at 0x00000BE0: (uid, name, entityInfo, transform,

@@ -14,6 +14,9 @@ class CGenDescription;
 class CTexture;
 
 class CPlasmaProjectile : public CBeamProjectile {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   enum EExpansionState { kES_Inactive, kES_Attack, kES_Sustain, kES_Release, kES_Done };
 

@@ -6,6 +6,9 @@
 
 // Guessed name; the DTRO loader constructs the oriented-box damageable trigger.
 class CScriptDamageableTriggerOrientated : public CScriptDamageableTrigger {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CScriptDamageableTriggerOrientated(TUniqueId uid, const rstl::string& name,
                                      const CEntityInfo& info, const CVector3f& extents,

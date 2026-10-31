@@ -6,6 +6,9 @@
 class CScriptPathCamera;
 
 class CPathCamera : public CGameCamera {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   // Names from Prime; the Echoes script camera stores this as an int.
   enum EInitialSplinePosition {

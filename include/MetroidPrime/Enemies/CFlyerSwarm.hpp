@@ -8,6 +8,9 @@
 // Guessed name: a swarm of flying boids that follow the waypoint path instead of crawling on
 // surfaces. The class name is corroborated by the Wii TypesMatch export.
 class CFlyerSwarm : public CSwarmBasics {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CFlyerSwarm(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
               const CVector3f& boundingBoxExtent, const CTransform4f& xf, const CAnimRes& animRes,

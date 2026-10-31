@@ -9,6 +9,9 @@ class CElementGen;
 class CGenDescription;
 
 class CBomb : public CWeapon {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CBomb(TToken< CGenDescription > particle1, TToken< CGenDescription > particle2, TUniqueId uid,
         TAreaId areaId, TUniqueId ownerId, const CMaterialList& triggerMaterials, EWeaponType type,

@@ -15,6 +15,9 @@
 class CGenDescription;
 
 class CChozoGhost : public CPatterned {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   enum EBehaveType {
     kBT_Lurk,

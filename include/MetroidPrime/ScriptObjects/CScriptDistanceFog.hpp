@@ -10,6 +10,9 @@
 // Guessed name: Prime's CScriptDistanceFog. In Echoes the thermal and X-ray fades are replaced by a
 // single light target and speed, and the WorldLightFader loader builds the same class.
 class CScriptDistanceFog : public CEntity {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CScriptDistanceFog(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                      ERglFogMode mode, const CColor& color, const CVector2f& range,

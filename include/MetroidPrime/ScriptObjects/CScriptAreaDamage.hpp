@@ -9,6 +9,9 @@
 
 // Guessed class name, based on the ADMG loader and area-wide damage behavior.
 class CScriptAreaDamage : public CEntity {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CScriptAreaDamage(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                     const CDamageInfo& damage, float pulseTime, float graceTime);

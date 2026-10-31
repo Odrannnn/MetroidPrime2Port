@@ -7,6 +7,9 @@ class CElementGen;
 class CGenDescription;
 
 class CPowerBomb : public CWeapon {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   // Guessed names. The native callable's 16-byte payload representation is unresolved.
   struct SCallback {

@@ -17,6 +17,9 @@
 // Prime 1 has the same class. The Echoes version flashes red when damaged, follows its patrol
 // path with a "Pathfind" state and homes in on every player that charges a beam.
 class CAtomicAlpha : public CPatterned {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CAtomicAlpha(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                const CTransform4f& xf, const CModelData& mData, const CActorParameters& actParms,

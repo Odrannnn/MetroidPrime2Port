@@ -21,6 +21,9 @@ class CMaterialList;
 // Echoes layout from the FlyingPirate REL. Names follow Prime's CFlyingPirate where the code
 // corresponds; the generated SLdrFlyingPirate property name is noted otherwise.
 class CFlyingPirate : public CPatterned {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   class CFlyingPirateData {
   public:

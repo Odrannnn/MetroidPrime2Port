@@ -144,6 +144,9 @@ CHECK_SIZEOF(SBlobStrand, 0x38)
 // GameCube binary; which of ParticleSystem/GetParticleSystem is at 0x2544 and which at 0x254C is a
 // guess (identical bodies). The GameCube build has no symbol map.
 class CCollisionTracker : public CEffect {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   static const float skDefaultExtents;
 

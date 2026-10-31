@@ -18,6 +18,9 @@ class CGenDescription;
 // Guessed class: an Ing puddle that crawls along a waypoint path hugging the surfaces it meets,
 // leaving a blob effect behind. It is driven by an FSM2 state machine.
 class CIngPuddle : public CPhysicsActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CIngPuddle(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
              const CTransform4f& xf, const CVector3f& scale, const CActorParameters& actorParams,

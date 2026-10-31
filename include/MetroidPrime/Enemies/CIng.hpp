@@ -244,6 +244,9 @@ public:
 // (fn_29_F2C8: 49 triggers, 29 states, 12 code functions) is registered in full; the form changes,
 // the attacks and the mini-portal/exit-host states are minimal bodies marked [?].
 class REL_EXPORT CIng : public CPatterned {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
 #ifdef TARGET_PC
   // Argument order is the REL loader's call at 0x00000FF8: (uid, name, entityInfo, transform,

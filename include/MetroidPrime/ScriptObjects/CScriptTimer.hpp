@@ -4,6 +4,9 @@
 #include "MetroidPrime/CEntity.hpp"
 
 class CScriptTimer : public CEntity {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CScriptTimer(TUniqueId uid, const rstl::string& name, const CEntityInfo& info, float startTime,
                float maxRandDelay, const bool loop, const bool autoStart);

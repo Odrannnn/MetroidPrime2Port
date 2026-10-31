@@ -14,6 +14,9 @@
 // Guessed class: a statue-like toad that wakes up when hit, retreats from safe zones and returns to
 // its starting spot afterwards.
 class CStoneToad : public CPatterned {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   // Guessed names.
   enum EToadState {

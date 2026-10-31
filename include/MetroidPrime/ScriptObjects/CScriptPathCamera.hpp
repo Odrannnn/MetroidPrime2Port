@@ -6,6 +6,9 @@
 
 // Echoes separates the script settings from the runtime path camera.
 class CScriptPathCamera : public CEntity {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CScriptPathCamera(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                     float distance, float speed, float angularSpeed, float dampenDistance,

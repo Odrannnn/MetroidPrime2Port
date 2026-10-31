@@ -73,6 +73,9 @@ CHECK_SIZEOF(CMetroidData, 0xC8)
 
 // Original class name from the Wii SEL exports (TypesMatch__8CMetroidCFi, TCastToPtr<8CMetroid>).
 class CMetroid : public CPatterned {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CMetroid(TUniqueId uid, const rstl::string& name, const CEntityInfo& info, const CTransform4f& xf,
            const CModelData& mData, const CPatternedInfo& pInfo, const CActorParameters& aParms,

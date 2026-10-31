@@ -25,6 +25,9 @@ class CGenDescription;
 // body written from the retail REL for behaviour; docs/module-analysis/SwampBoss.md maps the
 // functions and members. Members keep their retail offset (xNNN_).
 class CSwampBossStage1 : public CPatterned {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CSwampBossStage1(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                    const CTransform4f& xf, const CModelData& modelData,

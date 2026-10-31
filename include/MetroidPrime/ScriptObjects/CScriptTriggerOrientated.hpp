@@ -6,6 +6,9 @@
 
 // Wii export name; the oriented-box trigger, distinct from CScriptTriggerEllipsoid.
 class CScriptTriggerOrientated : public CScriptTrigger {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CScriptTriggerOrientated(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                            const CVector3f& extents, const CTransform4f& xf,

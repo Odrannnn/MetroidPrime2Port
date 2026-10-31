@@ -16,6 +16,9 @@ class CPlayer;
 // listens to. The loader names it PlayerController; one of eleven behaviours is chosen by the
 // proxy type.
 class CScriptPlayerProxy : public CActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   // Guessed names; the behaviours are inferred from the Think, message and game-event handlers.
   enum EProxyType {

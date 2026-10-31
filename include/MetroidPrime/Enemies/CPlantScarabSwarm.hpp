@@ -12,6 +12,9 @@
 // attacker plays a one-shot animation on one of a few spare models, whose animation drops a
 // bouncy grenade on the player, and is killed once that animation ends.
 class CPlantScarabSwarm : public CSwarmBasics {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CPlantScarabSwarm(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                     const CVector3f& boundingBoxExtent, const CTransform4f& xf,

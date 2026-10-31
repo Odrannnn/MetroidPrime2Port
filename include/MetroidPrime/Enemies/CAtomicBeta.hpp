@@ -20,6 +20,9 @@ class CWeaponDescription;
 // beams from its bomb locators while the player is in range and speeds up while any player is
 // charging a beam.
 class CAtomicBeta : public CPatterned {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CAtomicBeta(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
               const CTransform4f& xf, const CModelData& modelData,

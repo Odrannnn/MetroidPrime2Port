@@ -33,6 +33,9 @@ class CBSLocomotion;
 class CBSTurn;
 
 class CBodyStateInfo {
+#ifdef TARGET_PC
+  friend struct PortStateCodec; // port save state (port_savestate_fields.cpp)
+#endif
 public:
   CBodyStateInfo(CActor& actor, EBodyType type);
   ~CBodyStateInfo();

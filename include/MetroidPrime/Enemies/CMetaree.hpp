@@ -10,6 +10,9 @@
 // Prime 1 has the same class; the Echoes version drops from its perch with a launch impulse
 // and plays a configurable attack sound.
 class CMetaree : public CPatterned {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CMetaree(TUniqueId uid, const rstl::string& name, const CEntityInfo& info, const CTransform4f& xf,
            const CModelData& modelData, const CActorParameters& actorParams,

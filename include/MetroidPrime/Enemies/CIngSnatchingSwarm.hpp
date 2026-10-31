@@ -60,6 +60,9 @@ CHECK_SIZEOF(SIngSnatchingSwarmData, 0x9c)
 // Guessed class: a swarm of Ing that loiters near its portal, then flies along a curved path
 // to a target and snatches it. It is driven by an FSM2 state machine.
 class CIngSnatchingSwarm : public CActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CIngSnatchingSwarm(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                      const CTransform4f& xf, const CVector3f& scale,

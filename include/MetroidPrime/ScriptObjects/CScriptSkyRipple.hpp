@@ -4,6 +4,9 @@
 #include "MetroidPrime/CActor.hpp"
 
 class CScriptSkyRipple : public CActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CScriptSkyRipple(TUniqueId uid, const CEntityInfo& info, const rstl::string& name);
 

@@ -37,6 +37,9 @@ CHECK_SIZEOF(SPuddleSporeData, 0x5c)
 
 // Guessed class: a spore plant that opens to fire a shock wave and doubles as a platform.
 class CPuddleSpore : public CPatterned {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   enum EPuddleState { kPS_Closed, kPS_Open, kPS_Platform }; // Guessed names
 

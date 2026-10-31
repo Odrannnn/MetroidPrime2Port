@@ -25,6 +25,9 @@ private:
 CHECK_SIZEOF(CProjectileTouchResult, 0x38)
 
 class CGameProjectile : public CWeapon {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   enum EStaticGeometryTest {
     kSGT_None = 0,

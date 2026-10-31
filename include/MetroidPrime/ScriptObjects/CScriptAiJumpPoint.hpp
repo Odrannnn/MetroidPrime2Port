@@ -5,6 +5,9 @@
 
 // Original Wii export name, independently correlated with the GameCube AJMP loader.
 class CScriptAiJumpPoint : public CActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CScriptAiJumpPoint(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                      const CTransform4f& xf, float jumpApex, int type);

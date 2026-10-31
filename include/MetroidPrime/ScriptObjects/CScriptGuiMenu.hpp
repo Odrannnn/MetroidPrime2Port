@@ -7,6 +7,9 @@
 #include "MetroidPrime/TGameTypes.hpp"
 
 class CScriptGuiMenu : public CScriptGuiWidget {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CScriptGuiMenu(TUniqueId uid, const rstl::string& name, const CEntityInfo& info, bool wrap,
                  bool vertical, int controller, const rstl::string& label, bool locked,

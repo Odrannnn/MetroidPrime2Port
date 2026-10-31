@@ -7,6 +7,9 @@
 
 // Guessed name, correlated with Prime's ambient-animation actor.
 class CAmbientAI : public CPhysicsActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CAmbientAI(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
              const CTransform4f& xf, const CModelData& model, const CAABox& bounds,

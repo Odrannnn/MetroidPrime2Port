@@ -10,6 +10,9 @@ class CGenDescription;
 class CRayCastResult;
 
 class CBouncingBomb : public CWeapon {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CBouncingBomb(TToken< CGenDescription > particle, TToken< CGenDescription > explosion,
                 TUniqueId uid, TAreaId areaId, TUniqueId ownerId, float fuseTime, float touchRadius,

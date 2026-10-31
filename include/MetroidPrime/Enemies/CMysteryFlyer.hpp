@@ -10,6 +10,9 @@
 
 // Guessed class: a flying enemy that hovers around its patrol path and shoots projectiles.
 class CMysteryFlyer : public CPatterned {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CMysteryFlyer(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                 const CTransform4f& xf, const CModelData& modelData,

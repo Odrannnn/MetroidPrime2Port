@@ -8,6 +8,9 @@
 #include "Kyoto/Math/CTransform4f.hpp"
 
 class CScriptSpawnPoint : public CEntity {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
   CTransform4f m_xf;
   rstl::reserved_vector< int, int(CPlayerState::kIT_Max) > m_amountForItem;
   rstl::reserved_vector< int, int(CPlayerState::kIT_Max) > m_capacityForItem;

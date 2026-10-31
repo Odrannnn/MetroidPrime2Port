@@ -12,6 +12,9 @@ struct SLdrEmperorIngStage2TentacleData;
 // Guessed name: one of the tentacles of the Emperor Ing's second stage. It lies retracted until the
 // player lingers nearby, then lashes out with a collision-actor chain along its joints.
 class CEmperorIngStage2Tentacle : public CPatterned {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CEmperorIngStage2Tentacle(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                             const CTransform4f& xf, const CModelData& modelData,

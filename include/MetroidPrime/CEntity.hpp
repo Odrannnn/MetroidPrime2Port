@@ -11,6 +11,9 @@
 class CStateManager;
 
 class CEntity {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   virtual ~CEntity();
   virtual CEntity* TypesMatch(int typeId) const;

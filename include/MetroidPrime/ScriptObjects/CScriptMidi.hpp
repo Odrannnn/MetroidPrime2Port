@@ -8,6 +8,9 @@
 
 // Guessed name, correlated with Prime's MIDI script object and the Echoes loader.
 class CScriptMidi : public CEntity {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CScriptMidi(TUniqueId id, const CEntityInfo& info, const rstl::string& name, CAssetId song,
               float fadeIn, float fadeOut, int volume);

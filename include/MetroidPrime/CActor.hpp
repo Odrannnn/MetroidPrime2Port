@@ -42,6 +42,9 @@ class CWeaponMode;
 class CInt32POINode;
 
 class CActor : public CEntity {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   enum EFluidState {
     kFS_EnteredFluid,

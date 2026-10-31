@@ -19,6 +19,9 @@
 #include "rstl/single_ptr.hpp"
 
 class CEmperorIngLightSwarm : public CSwarmBasics {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   // fn_18_BD84. The death sound and the second sound come on the stack.
   CEmperorIngLightSwarm(TUniqueId uid, const CEntityInfo& info, const CActorParameters& params,

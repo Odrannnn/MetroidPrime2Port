@@ -8,6 +8,9 @@
 // Guessed class name: the projectile a power bomb guardian Sporb lobs, which stops on impact and
 // then damages everything inside an expanding sphere.
 class CSporbPowerBomb : public CEnergyProjectile {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   // Guessed names; how the projectile came to rest.
   enum EState {

@@ -6,6 +6,9 @@
 
 // Guessed names, based on the CTLH loader and command-filter consumers.
 class CScriptControlHint : public CGameHint {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   enum EDisableFlags {
     kDF_All = 0x1,

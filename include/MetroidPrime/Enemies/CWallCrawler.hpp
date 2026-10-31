@@ -12,6 +12,9 @@ class CScriptWaypoint;
 // Wii SEL class name (WallCrawler REL). Base class of the wall-walking enemies; Prime's CWallWalker
 // is the closest relative. Member names follow Prime where the layout lines up.
 class CWallCrawler : public CPatterned {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   enum EType {
     kT_PillBug = 5,

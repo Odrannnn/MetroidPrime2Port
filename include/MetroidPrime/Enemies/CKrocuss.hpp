@@ -13,6 +13,9 @@ class CDecalDescription;
 // Guessed class: a wall-crawling creature whose wings open and close on a timer. The open wings
 // are the vulnerable side and glow with a point light that fades with the wing position.
 class CKrocuss : public CPatterned {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   enum EWingState {
     kWS_Opening,

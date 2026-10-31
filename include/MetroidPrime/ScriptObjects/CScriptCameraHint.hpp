@@ -5,6 +5,9 @@
 #include "MetroidPrime/Cameras/CCameraOverrideInfo.hpp"
 
 class CScriptCameraHint : public CGameHint {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CScriptCameraHint(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                     const CTransform4f& xf, int priority, float timer,

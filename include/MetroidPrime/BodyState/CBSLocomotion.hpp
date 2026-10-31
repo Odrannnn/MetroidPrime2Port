@@ -43,6 +43,9 @@ protected:
 CHECK_SIZEOF(CBSLocomotion, 0x8)
 
 class CBSBiPedLocomotion : public CBSLocomotion {
+#ifdef TARGET_PC
+  friend struct PortStateCodec; // port save state (port_savestate_fields.cpp)
+#endif
 public:
   explicit CBSBiPedLocomotion(CActor& actor);
 
@@ -72,6 +75,9 @@ protected:
 CHECK_SIZEOF(CBSBiPedLocomotion, 0x410)
 
 class CBSRestrictedLocomotion : public CBSLocomotion {
+#ifdef TARGET_PC
+  friend struct PortStateCodec; // port save state (port_savestate_fields.cpp)
+#endif
 public:
   explicit CBSRestrictedLocomotion(CActor& actor);
 

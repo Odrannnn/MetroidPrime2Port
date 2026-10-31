@@ -16,6 +16,9 @@ class CRayCastResult;
 class CWeaponDescription;
 
 class CScattershotProjectile : public CWeapon {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   // One shot (0x20 bytes, the records at 0x230).
   struct SShot {

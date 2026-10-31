@@ -12,6 +12,9 @@ class CMethodPtrStoreUnknown;
 
 // Guessed name: the Wii CGameHint::EBreakHintType export suggests this common hint base.
 class CGameHint : public CActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   // Guessed enumerator names; EBreakHintType is exported by the Echoes Wii build.
   enum EBreakHintType {

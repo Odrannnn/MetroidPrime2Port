@@ -13,6 +13,9 @@ RSTL_DECLARE_BITWISE_CONSTRUCTION(ActorRotateRecord)
 } // namespace rstl
 
 class CScriptActorRotate : public CEntity {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   // Guessed flag names from constructor, message and Think behavior.
   enum EFlag {

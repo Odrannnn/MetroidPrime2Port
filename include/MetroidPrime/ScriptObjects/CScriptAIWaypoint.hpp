@@ -6,6 +6,9 @@
 // Wii SEL class name; GameCube correspondence is supported by the type-39 casts and loader.
 // Constructor/member spellings and qualifiers are reconstructed.
 class CScriptAIWaypoint : public CScriptWaypoint {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CScriptAIWaypoint(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                     const CTransform4f& xf, float speed, float pause, int flags, int locatorIndex,

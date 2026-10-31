@@ -15,6 +15,9 @@ class CWorldShadow;
 
 // Guessed name. Shared CEntity-derived gun interface, independently constructed by Echoes.
 class CPlayerGunBase : public CEntity {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   enum EGunHolsterState { kGHS_Holstered, kGHS_Drawing, kGHS_Drawn, kGHS_Holstering };
 

@@ -7,6 +7,7 @@
 // a collected pickup or a killed enemy stays gone - and puts the saved state back on the rest.
 
 #include "port_savestate.h"
+#include "port_savestate_block.h"
 
 #include "Kyoto/Math/CTransform4f.hpp"
 #include "Kyoto/Math/CVector3f.hpp"
@@ -119,89 +120,12 @@ enum : uint32_t {
   kTagDock = 12,     // u8 reference count, u8 refs, refs x u8 load-other: a CScriptDock's Dock
   kTagGenerated = 13, // empty: a script generator's copy of a template, made again on load
   kTagMessages = 14,  // u8 n, n x (u32 message, u32 sender editor id): what woke a scripted enemy
+  kTagFields = 15,    // the schema fields of an enemy, pickup or debris (port_savestate_fields.cpp)
 };
 
 // Per-object lines a restore logs, at most; the summary line always follows.
 constexpr int kMaxChangeLines = 24;
 constexpr uint32_t kMaxCount = 1u << 20; // sanity bound for decoded counts
-
-struct BlockWriter {
-  std::string bytes;
-  void U8(uint8_t v) { bytes.push_back(static_cast< char >(v)); }
-  void U32(uint32_t v) {
-    for (int i = 0; i < 4; ++i) {
-      bytes.push_back(static_cast< char >(v >> (8 * i)));
-    }
-  }
-  void F32(float f) {
-    uint32_t v;
-    std::memcpy(&v, &f, 4);
-    U32(v);
-  }
-  void Vec(const CVector3f& v) {
-    F32(v.GetX());
-    F32(v.GetY());
-    F32(v.GetZ());
-  }
-  void Bytes(const std::string& s) {
-    U32(static_cast< uint32_t >(s.size()));
-    bytes.append(s);
-  }
-};
-
-struct BlockReader {
-  const std::string& in;
-  size_t at = 0;
-  bool ok = true;
-  explicit BlockReader(const std::string& s) : in(s) {}
-  uint32_t U8() {
-    if (!ok || at + 1 > in.size()) {
-      ok = false;
-      return 0;
-    }
-    return static_cast< uint8_t >(in[at++]);
-  }
-  uint32_t U32() {
-    if (!ok || at + 4 > in.size()) {
-      ok = false;
-      return 0;
-    }
-    uint32_t v = 0;
-    for (int i = 0; i < 4; ++i) {
-      v |= static_cast< uint32_t >(static_cast< uint8_t >(in[at + i])) << (8 * i);
-    }
-    at += 4;
-    return v;
-  }
-  float F32() {
-    const uint32_t v = U32();
-    float f;
-    std::memcpy(&f, &v, 4);
-    return f;
-  }
-  // A finite vector, or false.
-  bool Vec(CVector3f& out) {
-    const float x = F32();
-    const float y = F32();
-    const float z = F32();
-    if (!ok || !(x == x) || !(y == y) || !(z == z) || x > 1e7f || x < -1e7f || y > 1e7f ||
-        y < -1e7f || z > 1e7f || z < -1e7f) {
-      return false;
-    }
-    out = CVector3f(x, y, z);
-    return true;
-  }
-  std::string Bytes() {
-    const uint32_t len = U32();
-    if (!ok || at + len > in.size()) {
-      ok = false;
-      return std::string();
-    }
-    std::string s = in.substr(at, len);
-    at += len;
-    return s;
-  }
-};
 
 const RoomBlock* FindBlock(const RoomObject& obj, uint32_t tag) {
   for (const RoomBlock& b : obj.blocks) {
@@ -463,6 +387,11 @@ void CaptureObject(CStateManager& mgr, CEntity& ent, RoomObject& obj) {
       obj.blocks.push_back({kTagCinematic, w.bytes});
     }
   }
+  // A block over the 64 KiB a block holds would drop the whole room's objects.
+  std::string fields;
+  if (CaptureEntityFields(mgr, ent, fields) && fields.size() <= 0xffff) {
+    obj.blocks.push_back({kTagFields, std::move(fields)});
+  }
 }
 
 struct ChangeLog {
@@ -511,7 +440,7 @@ int ReplayScriptMsgs(CStateManager& mgr, CEntity& ent, const RoomObject& obj) {
 }
 
 bool ApplyObject(CStateManager& mgr, CEntity& ent, const RoomObject& obj, ChangeLog& log,
-                 bool holdTimers, std::vector< uint32_t >& held) {
+                 bool holdTimers, std::vector< uint32_t >& held, int* fieldsSet = nullptr) {
   bool changed = false;
   if (ent.GetActive() != obj.active) {
     // Through the message, as a relay does: an object's own kSM_Activate sets up what its Think
@@ -521,7 +450,10 @@ bool ApplyObject(CStateManager& mgr, CEntity& ent, const RoomObject& obj, Change
     log.Note(obj.editorId, obj.active ? "activated" : "deactivated");
     changed = true;
   }
-  if (const int replayed = ReplayScriptMsgs(mgr, ent, obj)) {
+  const RoomBlock* fieldsBlock = FindBlock(obj, kTagFields);
+  // The fields hold what the messages woke, so a block covering the enemy needs no replay.
+  const bool fieldsCover = fieldsBlock != nullptr && EntityFieldsCover(ent, fieldsBlock->data);
+  if (const int replayed = fieldsCover ? 0 : ReplayScriptMsgs(mgr, ent, obj)) {
     log.Note(obj.editorId, "script messages replayed");
     (void)replayed;
     changed = true;
@@ -720,6 +652,15 @@ bool ApplyObject(CStateManager& mgr, CEntity& ent, const RoomObject& obj, Change
       }
     }
   }
+  if (fieldsBlock != nullptr) {
+    if (const int set = ApplyEntityFields(mgr, ent, fieldsBlock->data)) {
+      if (fieldsSet != nullptr) {
+        *fieldsSet += set;
+      }
+      log.Note(obj.editorId, "fields restored");
+      changed = true;
+    }
+  }
   return changed;
 }
 
@@ -885,7 +826,7 @@ int ApplyRoomState(CStateManager& mgr, const RoomState& room, RoomApplyProgress&
       ++unmatchedLayers[LayerKey(obj.editorId)];
       continue;
     }
-    if (ApplyObject(mgr, *ent, obj, log, waiting > 0, progress.held)) {
+    if (ApplyObject(mgr, *ent, obj, log, waiting > 0, progress.held, &stats.fields)) {
       ++stats.changed;
     }
     ++stats.applied;
@@ -903,7 +844,7 @@ int ApplyRoomState(CStateManager& mgr, const RoomState& room, RoomApplyProgress&
       continue;
     }
     NoteFor(mgr, made.mUniqueId).generated = true;
-    if (ApplyObject(mgr, *ent, *obj, log, waiting > 0, progress.held)) {
+    if (ApplyObject(mgr, *ent, *obj, log, waiting > 0, progress.held, &stats.fields)) {
       ++stats.changed;
     }
     ++stats.applied;

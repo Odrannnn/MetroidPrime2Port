@@ -13,6 +13,9 @@ class CRandom16;
 class CStateManager;
 
 class CBodyController {
+#ifdef TARGET_PC
+  friend struct PortStateCodec; // port save state (port_savestate_fields.cpp)
+#endif
 public:
   CBodyController(CActor& actor, float turnSpeed, EBodyType bodyType);
   ~CBodyController() {}

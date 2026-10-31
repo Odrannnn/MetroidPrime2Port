@@ -12,6 +12,9 @@ class CTexture;
 
 // Guessed name. A textured HUD marker with visor filtering and horizontal-strip animation.
 class CScriptHUDHint : public CActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   // Guessed names. The native animation state is stopped, advancing or rewinding.
   enum EAnimationState { kAS_Stopped, kAS_Forward, kAS_Backward };

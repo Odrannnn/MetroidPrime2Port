@@ -4,6 +4,9 @@
 #include "MetroidPrime/CEntity.hpp"
 
 class CScriptForgottenObject : public CEntity {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CScriptForgottenObject(TUniqueId uid, const CEntityInfo& info, const rstl::string& name);
 

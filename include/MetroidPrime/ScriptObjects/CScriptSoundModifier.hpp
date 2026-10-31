@@ -6,6 +6,9 @@
 
 // Guessed name; modulates connected sounds using four serialized splines.
 class CScriptSoundModifier : public CEntity {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CScriptSoundModifier(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                        float duration, bool autoReset, bool autoStart, const CMayaSpline& volume,

@@ -4,6 +4,9 @@
 #include "MetroidPrime/CEntity.hpp"
 
 class CScriptActorKeyframe : public CEntity {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CScriptActorKeyframe(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                        int animationId, bool looping, float lifetime, bool passive, uint modeFlags,

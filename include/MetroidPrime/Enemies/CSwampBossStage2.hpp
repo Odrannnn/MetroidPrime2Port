@@ -30,6 +30,9 @@ class CScannableObjectInfo;
 // flyer (head, wing growths) and the dark flyer (ovipositor) alternate through four phases.
 // docs/module-analysis/SwampBoss-stage2.md has the function map and the retail member offsets.
 class CSwampBossStage2 : public CPatterned {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CSwampBossStage2(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                    const CTransform4f& xf, const CModelData& modelData,

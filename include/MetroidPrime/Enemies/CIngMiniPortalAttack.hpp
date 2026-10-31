@@ -60,6 +60,9 @@ private:
 // `owner` id ends up in CActor's nextDrawNode (retail 0x12a). fn_29_114B0 destroys those members in
 // reverse and resets the vtable, which is what the implicit destructor does.
 class CIngMiniPortalAttack : public CActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CIngMiniPortalAttack(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                        const CTransform4f& xf, TUniqueId owner, const CVector3f& scale,

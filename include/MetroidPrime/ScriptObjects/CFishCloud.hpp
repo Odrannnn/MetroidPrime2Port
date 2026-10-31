@@ -20,6 +20,9 @@ class CActorParameters;
 class CGenDescription;
 
 class CFishCloud : public CActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   // Member names follow Prime's CFishCloud; Echoes-only members use guessed names.
   class CModifierSource {
@@ -172,6 +175,9 @@ private:
 CHECK_SIZEOF(CFishCloud, 0x338)
 
 class CFishCloudModifier : public CActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CFishCloudModifier(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                      const CVector3f& pos, bool isRepulsor, bool swirl, float radius,
