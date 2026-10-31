@@ -208,9 +208,11 @@ Without `WORLD` the sweep walks the save's world (Temple Grounds, 63 slots) by `
 `WORLD=<id|agon|torvus|sanctuary|great temple|temple grounds|MLVL name part|all>` sweeps that world:
 `tools/world_areas.py` reads its slot list from the disc (`--list` shows every MLVL), `COUNT`
 defaults to its slot count and each shard boots with `MP2_WORLD="<world>,<first slot's MREA>"`.
-`AREAS=<first>:<count> SHARD=0` re-runs one slice. Temple Grounds' ending (slots 47/50/53/56/58)
-rolls the credits and ends a shard, so slots 48, 49, 54, 55, 57, 59-62 need their own `AREAS=`
-runs, and 58 (`game_end_part5`) stops on its save prompt.
+`AREAS=<first>:<count> SHARD=0` re-runs one slice. Temple Grounds' ending starts at slot 53
+(`game_end_part3`): the game hands over to 56 (`game_end_part4`, the only area with the credits
+script) and the credits end a shard, so 54, 55 and 57-62 need their own `AREAS=` runs
+(`54:2`, `57:1`, `59:4`). `COUNT=53` sweeps slots 0-52, everything before the ending. Slots 47 and 50
+(`game_end_part1/2`) are ordinary walks, no credits; 58 (`game_end_part5`) stops on its save prompt.
 
 Parallel software-Vulkan shards can lose the device; confirm verdicts with lone runs.
 

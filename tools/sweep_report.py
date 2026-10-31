@@ -36,7 +36,8 @@ Verdicts, worst first:
              suitless player that the sweep's `HEAL` cannot keep up with.
     CREDITS  the ending: `[end] the credits are rolling` is printed by the port when
              `CScriptSpecialFunction::AcceptCredits` puts `CCredits` on the window stack, and a
-             played area walks into it (Temple Grounds slot 53 is the ending). The credits scroll with
+             played area walks into it (Temple Grounds: slot 53 starts the ending and hands over to 56,
+             `game_end_part4`, the only area with the credits script). The credits scroll with
              no `CStateManager::Update`, so the harness's stall report that follows is the ending, not
              a wall. It ranks below DIED (a death is a real failure) and above RELOAD/STALL, which it
              is the explanation for; a real crash still wins over it (see `verdict`).
