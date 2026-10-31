@@ -36,6 +36,7 @@
 #include "MetroidPrime/ScriptObjects/CScriptDock.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptDoor.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptPickup.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptActor.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptPlatform.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptStreamedMusic.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptTimer.hpp"
@@ -55,6 +56,10 @@ struct PortRoomState {
   static bool IsFlotsam(const CDarkTrooper& t) { return t.mRagDollHolder.mFlotsam; }
   static CScriptDoor::ELockState DoorLock(const CScriptDoor& d) { return d.mLockState; }
   static void SetDoorUnlocked(CScriptDoor& d, CStateManager& mgr) { d.SetLockState(mgr, CScriptDoor::kLS_Unlocked); }
+  // A scenery actor or platform destroyed before the save already sent its Dead connections (debris,
+  // damage to its neighbours); the rebuilt one has mDead clear and would send them again on its
+  // next Think once the restored hp is <= 0.
+  static void MarkDead(CScriptPlatform& p) { p.mDead = true; }
   static float TimerTime(const CScriptTimer& t) { return t.mTime; }
   static void SetTimer(CScriptTimer& t, float time, bool timing) {
     t.mTime = time;
@@ -504,6 +509,13 @@ bool ApplyObject(CStateManager& mgr, CEntity& ent, const RoomObject& obj, Change
       CHealthInfo* health = actor->HealthInfo();
       if (r.ok && hp == hp && health != nullptr && health->GetHP() != hp) {
         health->SetHP(hp);
+        if (hp <= 0.f) {
+          if (CScriptActor* scripted = TCastToPtr< CScriptActor >(actor)) {
+            scripted->SetDead(true);
+          } else if (CScriptPlatform* plat = TCastToPtr< CScriptPlatform >(actor)) {
+            PortRoomState::MarkDead(*plat);
+          }
+        }
         log.Note(obj.editorId, "health restored");
         changed = true;
       }
