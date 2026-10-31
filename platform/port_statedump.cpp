@@ -155,7 +155,8 @@ std::string ObjectLine(CStateManager& mgr, CEntity& ent) {
   if (CPatterned* patterned = TCastToPtr< CPatterned >(&ent)) {
     TStateMachineStateBase< CPatterned >& machine = patterned->StateMachineState();
     const char* name = machine.HasState() ? machine.GetName() : nullptr;
-    line += Fmt(",\"ai\":\"%s\",\"ai_time\":%.4f", Esc(name).c_str(), machine.GetTime());
+    line += Fmt(",\"ai\":\"%s\",\"ai_time\":%.4f,\"alive\":%d", Esc(name).c_str(), machine.GetTime(),
+                patterned->GetAlive() ? 1 : 0);
     if (const CBodyController* body = patterned->GetBodyController()) {
       line += Fmt(",\"body\":%d,\"loco\":%d,\"anim\":%d", static_cast< int >(body->GetCurrentStateId()),
                   static_cast< int >(body->GetLocomotionType()), body->GetCurrentAnimId());
