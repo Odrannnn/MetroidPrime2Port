@@ -749,7 +749,11 @@ void CDarkTrooper::PreRenderAllViewports(CStateManager& mgr) {
 // @ fn_12_2D98
 void CDarkTrooper::ThinkRagDoll(float dt, CStateManager& mgr) {
   if (mRagDollHolder.mRagDoll.get()) {
+#ifdef TARGET_PC
+    float waterTop = -0x1.fffffep+126f; // retail .rodata+0xAC 0xFEFFFFFF (A8-9)
+#else
     float waterTop = -FLT_MAX;
+#endif
     if (InFluidId() != kInvalidUniqueId) {
       CScriptWater* water = TCastToPtr< CScriptWater >(mgr.ObjectById(InFluidId()));
       if (water && water->GetActive()) {
