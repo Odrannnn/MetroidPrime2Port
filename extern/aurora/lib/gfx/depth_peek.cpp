@@ -81,9 +81,10 @@ struct PendingMap {
 bool g_enabled = false;
 std::array<Slot, SlotCount> g_slots;
 size_t g_nextSlot = 0;
-wgpu::BindGroupLayout g_bindGroupLayout;
-wgpu::RenderPipeline g_fallbackPipeline;
-wgpu::ComputePipeline g_pipeline;
+// [1] reads a multisampled depth target (sample 0, as the GX depth copies do).
+std::array<wgpu::BindGroupLayout, 2> g_bindGroupLayout;
+std::array<wgpu::RenderPipeline, 2> g_fallbackPipeline;
+std::array<wgpu::ComputePipeline, 2> g_pipeline;
 bool g_snapshotRequested = false;
 Clock::time_point g_nextSnapshotTime;
 LatestSnapshot g_latest;
@@ -157,18 +158,23 @@ fn fs_main(@builtin(position) pos: vec4f) -> @location(0) u32 {
 }
 )"sv;
 
-std::string build_shader_source(bool render) {
+std::string build_shader_source(bool render, bool multisampled) {
   std::string source;
   source.reserve(ShaderPreamble.size() + ShaderShared.size() + ComputeMain.size());
   source += ShaderPreamble;
+  if (multisampled) {
+    // textureLoad's last argument is the sample index instead of the mip level: 0 either way.
+    constexpr std::string_view single = "texture_depth_2d"sv;
+    source.replace(source.find(single), single.size(), "texture_depth_multisampled_2d");
+  }
   source += gx::UseReversedZ ? ReversedZBody : ForwardZBody;
   source += ShaderShared;
   source += render ? RenderMain : ComputeMain;
   return source;
 }
 
-wgpu::ShaderModule create_module(bool render, const char* label) {
-  const auto shaderSource = build_shader_source(render);
+wgpu::ShaderModule create_module(bool render, bool multisampled, const char* label) {
+  const auto shaderSource = build_shader_source(render, multisampled);
   const wgpu::ShaderSourceWGSL wgslSource{wgpu::ShaderSourceWGSL::Init{
       .code = shaderSource.c_str(),
   }};
@@ -178,8 +184,8 @@ wgpu::ShaderModule create_module(bool render, const char* label) {
   };
   return g_device.CreateShaderModule(&moduleDescriptor);
 }
-wgpu::ComputePipeline create_pipeline(const wgpu::BindGroupLayout& bindGroupLayout, const char* label) {
-  const auto module = create_module(false, label);
+wgpu::ComputePipeline create_pipeline(const wgpu::BindGroupLayout& bindGroupLayout, bool multisampled, const char* label) {
+  const auto module = create_module(false, multisampled, label);
 
   const wgpu::PipelineLayoutDescriptor layoutDescriptor{
       .bindGroupLayoutCount = 1,
@@ -197,8 +203,9 @@ wgpu::ComputePipeline create_pipeline(const wgpu::BindGroupLayout& bindGroupLayo
   };
   return g_device.CreateComputePipeline(&pipelineDescriptor);
 }
-wgpu::RenderPipeline create_fallback_pipeline(const wgpu::BindGroupLayout& bindGroupLayout, const char* label) {
-  const auto module = create_module(true, label);
+wgpu::RenderPipeline create_fallback_pipeline(const wgpu::BindGroupLayout& bindGroupLayout, bool multisampled,
+                                                const char* label) {
+  const auto module = create_module(true, multisampled, label);
   const wgpu::PipelineLayoutDescriptor layoutDescriptor{
       .bindGroupLayoutCount = 1,
       .bindGroupLayouts = &bindGroupLayout,
@@ -224,10 +231,10 @@ wgpu::RenderPipeline create_fallback_pipeline(const wgpu::BindGroupLayout& bindG
   return g_device.CreateRenderPipeline(&pipelineDescriptor);
 }
 
-wgpu::BindGroupLayout create_bind_group_layout(const char* label) {
+wgpu::BindGroupLayout create_bind_group_layout(bool multisampled, const char* label) {
   if (g_noCompute) {
     // No storage buffer: the snapshot is the pass's colour attachment.
-    constexpr std::array entries{
+    const std::array entries{
         wgpu::BindGroupLayoutEntry{
             .binding = 0,
             .visibility = wgpu::ShaderStage::Fragment,
@@ -235,6 +242,7 @@ wgpu::BindGroupLayout create_bind_group_layout(const char* label) {
                 wgpu::TextureBindingLayout{
                     .sampleType = wgpu::TextureSampleType::Depth,
                     .viewDimension = wgpu::TextureViewDimension::e2D,
+                    .multisampled = multisampled,
                 },
         },
         wgpu::BindGroupLayoutEntry{
@@ -253,7 +261,7 @@ wgpu::BindGroupLayout create_bind_group_layout(const char* label) {
     };
     return g_device.CreateBindGroupLayout(&descriptor);
   }
-  constexpr std::array entries{
+  const std::array entries{
       wgpu::BindGroupLayoutEntry{
           .binding = 0,
           .visibility = wgpu::ShaderStage::Compute,
@@ -261,6 +269,7 @@ wgpu::BindGroupLayout create_bind_group_layout(const char* label) {
               wgpu::TextureBindingLayout{
                   .sampleType = wgpu::TextureSampleType::Depth,
                   .viewDimension = wgpu::TextureViewDimension::e2D,
+                  .multisampled = multisampled,
               },
       },
       wgpu::BindGroupLayoutEntry{
@@ -442,11 +451,15 @@ void initialize() {
   if (!webgpu::g_hasCoreFeatures) {
     return;
   }
-  g_bindGroupLayout = create_bind_group_layout("Depth Peek Bind Group Layout");
-  if (g_noCompute) {
-    g_fallbackPipeline = create_fallback_pipeline(g_bindGroupLayout, "Depth Peek Fallback Pipeline");
-  } else {
-    g_pipeline = create_pipeline(g_bindGroupLayout, "Depth Peek Pipeline");
+  for (size_t ms = 0; ms < g_bindGroupLayout.size(); ++ms) {
+    const bool multisampled = ms != 0;
+    g_bindGroupLayout[ms] = create_bind_group_layout(multisampled, "Depth Peek Bind Group Layout");
+    if (g_noCompute) {
+      g_fallbackPipeline[ms] =
+          create_fallback_pipeline(g_bindGroupLayout[ms], multisampled, "Depth Peek Fallback Pipeline");
+    } else {
+      g_pipeline[ms] = create_pipeline(g_bindGroupLayout[ms], multisampled, "Depth Peek Pipeline");
+    }
   }
   g_enabled = true;
 }
@@ -524,15 +537,7 @@ void encode_frame_snapshot(const wgpu::CommandEncoder& cmd, const wgpu::TextureV
   if (!depthView || dstSize.x == 0 || dstSize.y == 0 || sourceSize.width == 0 || sourceSize.height == 0) {
     return;
   }
-  if (msaaSamples > 1) {
-    // No multisampled snapshot pipeline: GXPeekZ keeps its last value rather than ending the game.
-    static bool warned = false;
-    if (!warned) {
-      warned = true;
-      Log.warn("Depth Peek from a {}x multisampled EFB is not supported; skipped", msaaSamples);
-    }
-    return;
-  }
+  const size_t msIdx = msaaSamples > 1 ? 1 : 0;
 
   const Params params = make_params(sourceSize, dstSize);
   wgpu::Texture targetTexture;
@@ -579,7 +584,7 @@ void encode_frame_snapshot(const wgpu::CommandEncoder& cmd, const wgpu::TextureV
   };
   const wgpu::BindGroupDescriptor bindGroupDescriptor{
       .label = "Depth Peek Bind Group",
-      .layout = g_bindGroupLayout,
+      .layout = g_bindGroupLayout[msIdx],
       .entryCount = g_noCompute ? 2u : bindGroupEntries.size(),
       .entries = bindGroupEntries.data(),
   };
@@ -600,7 +605,7 @@ void encode_frame_snapshot(const wgpu::CommandEncoder& cmd, const wgpu::TextureV
         .timestampWrites = webgpu::gpu_prof::pass_writes("Depth peek"),
     };
     const auto pass = cmd.BeginRenderPass(&passDescriptor);
-    pass.SetPipeline(g_fallbackPipeline);
+    pass.SetPipeline(g_fallbackPipeline[msIdx]);
     pass.SetBindGroup(0, bindGroup);
     pass.Draw(3);
     pass.End();
@@ -621,7 +626,7 @@ void encode_frame_snapshot(const wgpu::CommandEncoder& cmd, const wgpu::TextureV
       .timestampWrites = webgpu::gpu_prof::pass_writes("Depth peek"),
   };
   const auto pass = cmd.BeginComputePass(&passDescriptor);
-  pass.SetPipeline(g_pipeline);
+  pass.SetPipeline(g_pipeline[msIdx]);
   pass.SetBindGroup(0, bindGroup);
   pass.DispatchWorkgroups((dstSize.x + WorkgroupSizeX - 1) / WorkgroupSizeX,
                           (dstSize.y + WorkgroupSizeY - 1) / WorkgroupSizeY);

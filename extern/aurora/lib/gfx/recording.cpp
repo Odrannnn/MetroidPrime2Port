@@ -1583,9 +1583,6 @@ void split_pass_for_depth_snapshot() {
     return;
   }
   auto& prevPass = current_render_passes()[g_recorder.currentRenderPass];
-  if (prevPass.msaaSamples > 1) {
-    return; // depth_peek reads single-sampled depth only
-  }
   perf::pass_break(AURORA_PERF_BREAK_DEPTH_SNAPSHOT);
   prevPass.forceDepthSnapshot = true;
   prevPass.discardable = !prevPass.has_consumer() && !prevPass.has_content();
