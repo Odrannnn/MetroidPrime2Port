@@ -2038,7 +2038,10 @@ void CCompoundTargetReticle::DrawCrosshairs(const CMatrix3f& rotation,
       color = CColor(rgb[0], rgb[1], rgb[2], color.GetAlpha());
     }
     const float opacity = static_cast< float >(PortOverlay::CrosshairOpacity()) / 100.f;
-    color = CColor(color.GetRed(), color.GetGreen(), color.GetBlue(), opacity);
+    // Retail's tweak alpha, faded by the draw scale as retail's Additive flags do; the option
+    // scales it (100% = retail). Remastered builds its own colour below.
+    color = CColor(color.GetRed(), color.GetGreen(), color.GetBlue(),
+                   color.GetAlpha() * opacity * mCrosshairsDrawScale);
   }
   if (PortOverlay::CrosshairStyle() == PortOverlay::kCrosshairStyle_Remastered) {
     const CCameraManager* camMgr = mgr.GetCameraManager(mPlayerIndex);

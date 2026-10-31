@@ -238,15 +238,14 @@ CVector3f CPhysicsActor::GetMoveToORImpulseWR(const CVector3f& trans, float d) c
 
 CVector3f CPhysicsActor::GetRotateToORAngularMomentumWR(const CQuaternion& q, float d) const {
 #ifdef TARGET_PC
-  // Port: q and -q are the same rotation. A near-identity delta can arrive with a
-  // scalar near -1 (large dt); taken as is, its vector part normalizes from ~zero
-  // and acos can see a value past -1, both giving NaN. Take the short way round.
-  const float sign = q.GetScalar() < 0.f ? -1.f : 1.f;
-  const float scalar = rstl::min_val(sign * q.GetScalar(), 1.f);
-  if (scalar > 0.99999976f || !q.GetVector().CanBeNormalized()) {
+  // Port: retail's formula, taken the long way round for a negative scalar as retail does. A
+  // near-identity delta with a scalar near -1 has a vector part that normalizes from ~zero and an
+  // acos input past -1, both NaN on host; that case gives no momentum.
+  if (q.GetScalar() > 0.99999976f || !q.GetVector().CanBeNormalized()) {
     return CVector3f::Zero();
   } else {
-    const CQuaternion rotated(scalar, GetTransform().Rotate(sign * q.GetVector()));
+    const float scalar = rstl::max_val(q.GetScalar(), -1.f);
+    const CQuaternion rotated(scalar, GetTransform().Rotate(q.GetVector()));
     const double ac = acos(scalar);
     return (rotated.GetVector().AsNormalized() * ((2.f * static_cast< float >(ac)) * (1.f / d))) *
            mInertiaTensor;
