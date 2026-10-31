@@ -935,8 +935,14 @@ void CPlayerGun::MissileClosing(CStateManager& mgr, int message, float dt) {
     PlayAnim(mgr, NWeaponTypes::kGAT_FromMissile, false);
     break;
   case kSM_Update:
+#ifdef TARGET_PC
+    // Retail 0x801C7154 compares against lbl_8041D110 = double 0.8.
+    if (mCurrentBeam->GetSolidModelData().GetAnimationData()->GetAnimTimeRemaining(
+            rstl::string("Whole Body")) < 0.8) {
+#else
     if (mCurrentBeam->GetSolidModelData().GetAnimationData()->GetAnimTimeRemaining(
             rstl::string("Whole Body")) < 0.001) {
+#endif
       mMissileCloseAnimDone = true;
     }
     break;

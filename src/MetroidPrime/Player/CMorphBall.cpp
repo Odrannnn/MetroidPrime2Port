@@ -2603,7 +2603,12 @@ void CMorphBall::UpdateEffects(float dt, CStateManager& mgr) {
       mBoostEffectGen->SetTranslation(ballPos);
 
       if (slowBoostEffect) {
+#ifdef TARGET_PC
+        // Retail 0x800C9F24 compares against lbl_8041B468 = double 0.5833333134651184.
+        rate = mBoostEffectGen->GetCurrentTime() < 0.5833333134651184 ? 4.f : 2.f;
+#else
         rate = mBoostEffectGen->GetCurrentTime() < 1.7708333f ? 4.f : 2.f;
+#endif
       }
       mBoostEffectGen->Update(dt * rate);
 
