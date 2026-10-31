@@ -220,7 +220,8 @@ def is_dynamic(o):
 def keyed(objs):
     """{key: [obj...]} with each list in uid order; the key is (mrea, eid, class, generated)."""
     out = collections.defaultdict(list)
-    for o in sorted(objs, key=lambda o: o["uid"]):
+    # copies of one template pair by their copy index when the dump has it (a uid is a reusable slot)
+    for o in sorted(objs, key=lambda o: (o.get("copy", 0), o["uid"])):
         eid = "-" if is_dynamic(o) else o["eid"]
         out[(o["mrea"], eid, o["class"], bool(o.get("generated")))].append(o)
     return out

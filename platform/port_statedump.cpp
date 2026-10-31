@@ -19,6 +19,7 @@
 #include <cstdio>
 #include <cmath>
 #include <cstdlib>
+#include <map>
 #include <set>
 #include <string>
 #include <typeinfo>
@@ -128,7 +129,7 @@ std::string SchemaFields(CStateManager& mgr, CEntity& ent) {
   return ",\"fields\":{" + out + "},\"fields_other\":{" + other + "}";
 }
 
-std::string ObjectLine(CStateManager& mgr, CEntity& ent) {
+std::string ObjectLine(CStateManager& mgr, CEntity& ent, int copy) {
   const int area = ent.GetCurrentAreaId().Value();
   uint32_t mrea = 0;
   const CWorld* world = mgr.GetWorld();
@@ -140,6 +141,9 @@ std::string ObjectLine(CStateManager& mgr, CEntity& ent) {
                          ent.GetUniqueId().Value(), ent.GetEditorId().Value(), area, mrea,
                          Esc(ClassName(ent).c_str()).c_str(), ent.GetActive() ? 1 : 0,
                          PortSaveState::IsScriptGeneratedCopy(mgr, ent) ? 1 : 0);
+  if (copy >= 0) {
+    line += Fmt(",\"copy\":%d", copy);
+  }
   if (CActor* actor = TCastToPtr< CActor >(&ent)) {
     if (const CHealthInfo* health = actor->GetHealthInfo()) {
       line += Fmt(",\"hp\":%.4f,\"kbres\":%.4f", health->GetHP(), health->GetKnockBackResistance());
@@ -183,13 +187,16 @@ int Write(CStateManager& mgr, const std::string& path, std::string& error) {
   }
   std::string text = PlayerLine(mgr);
   int count = 0;
+  std::map< uint32_t, int > copies;
   const CObjectList& list = mgr.GetObjectListById(kOL_All);
   for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
     CEntity* ent = const_cast< CEntity* >(list[i]);
     if (ent == nullptr) {
       continue;
     }
-    text += ObjectLine(mgr, *ent);
+    // a generated copy's place among its template's copies in list order, as the room state numbers it
+    const int copy = PortSaveState::IsScriptGeneratedCopy(mgr, *ent) ? copies[ent->GetEditorId().Value()]++ : -1;
+    text += ObjectLine(mgr, *ent, copy);
     ++count;
   }
   FILE* f = std::fopen(path.c_str(), "wb");

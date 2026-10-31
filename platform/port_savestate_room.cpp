@@ -471,6 +471,9 @@ bool ApplyObject(CStateManager& mgr, CEntity& ent, const RoomObject& obj, Change
     (void)replayed;
     changed = true;
   }
+  // The messages above are queued; their handlers (an Activate restarts a patterned enemy's
+  // machine) must have run before the saved fields go in, or they overwrite them.
+  mgr.DispatchScriptMessages();
   if (CActor* actor = TCastToPtr< CActor >(&ent)) {
     if (const RoomBlock* b = FindBlock(obj, kTagHealth)) {
       BlockReader r(b->data);
@@ -873,12 +876,13 @@ int ApplyRoomState(CStateManager& mgr, const RoomState& room, RoomApplyProgress&
   // templates in the generated-object buffer, so each is made again the way the generator does
   // and given the copy's saved state (ApplyObject sends the Activate the generator sent).
   int generatedCopies = 0;
-  // Per template: the saved copies in their saved index, made again, then the made ones sorted by
-  // uid take the states in that order - the order the generator makes them in is not the saved one.
+  // Per template: the saved copies in their saved index, made again, then the made ones, in the
+  // object list's order as capture walked it, take the states in that order.
   std::map< uint32_t, std::vector< const RoomObject* > > byTemplate;
   for (const RoomObject* obj : copies) {
     byTemplate[obj->editorId].push_back(obj);
   }
+  std::vector< std::pair< TUniqueId, const RoomObject* > > pairs;
   for (auto& group : byTemplate) {
     std::vector< const RoomObject* >& saved = group.second;
     std::stable_sort(saved.begin(), saved.end(), [](const RoomObject* a, const RoomObject* b) {
@@ -894,12 +898,42 @@ int ApplyRoomState(CStateManager& mgr, const RoomState& room, RoomApplyProgress&
         ++stats.unmatched;
       }
     }
-    std::sort(made.begin(), made.end(),
-              [](const TUniqueId& a, const TUniqueId& b) { return a.Value() < b.Value(); });
+    // Capture numbered the copies in list order; so are the made ones (a uid is a slot index that
+    // can be reused, not the order they were made in).
+    std::set< uint32_t > madeUids;
+    for (const TUniqueId& id : made) {
+      madeUids.insert(id.Value());
+    }
+    made.clear();
+    ForEachObject(mgr, [&](CEntity& e) {
+      if (madeUids.count(e.GetUniqueId().Value()) != 0) {
+        made.push_back(e.GetUniqueId());
+      }
+    });
     for (size_t i = 0; i < made.size(); ++i) {
-      CEntity* ent = mgr.ObjectById(made[i]);
-      NoteFor(mgr, made[i]).generated = true;
-      if (ApplyObject(mgr, *ent, *saved[i], log, waiting > 0, progress.held, &stats.fields)) {
+      if (CEntity* ent = mgr.ObjectById(made[i])) {
+        NoteFor(mgr, made[i]).generated = true;
+        // Awake as the generator left it, so the first Think below sets up what the saved fields
+        // are applied to (a patterned enemy's state machine exists only after it).
+        if (saved[i]->active) {
+          mgr.SendScriptMsg(ent, kInvalidUniqueId, kSM_Activate);
+        }
+        pairs.push_back({made[i], saved[i]});
+      }
+    }
+  }
+  if (!pairs.empty()) {
+    mgr.DispatchScriptMessages();
+    // The copies' first Think, one frame long (the fields then overwrite what it moved).
+    mgr.ThinkNewObjects(1.f / 60.f);
+    for (const auto& pr : pairs) {
+      CEntity* ent = mgr.ObjectById(pr.first);
+      if (ent == nullptr) {
+        ++stats.unmatched;
+        continue;
+      }
+      const RoomObject* obj = pr.second;
+      if (ApplyObject(mgr, *ent, *obj, log, waiting > 0, progress.held, &stats.fields)) {
         ++stats.changed;
       }
       ++stats.applied;
