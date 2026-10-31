@@ -636,6 +636,7 @@ void salCtrlDsp(s16* dest) {
       if (vp->state != 0) {
         u32 voiceIdx = (u32)(vp - dspVoice);
         u8 mixStart = 0;
+        int newVoice = 0;
 
         /* New voice initialization (mirrors salBuildCommandList state==1 path) */
         if (vp->state == 1) {
@@ -692,6 +693,10 @@ void salCtrlDsp(s16* dest) {
 #endif
 
           mixStart = vp->singleOffset;
+          /* A stolen slot keeps the old voice's deferred break bit (hwInitSamplePlayback/
+           * salActivateVoice); retail's new-voice path (hw_dspctrl.c block_186) ignores
+           * changed[mix_start] & 0x20 and only s > mix_start honours it. */
+          newVoice = vp->startupBreak == 0;
 
           if (vp->smp_info.compType == 1) {
             u32 offset = (vp->smp_info.offset + 0xD) / 14;
@@ -744,7 +749,7 @@ void salCtrlDsp(s16* dest) {
           int finished = 0;
 
           for (u8 subframe = mixStart; subframe < SAL_SUBFRAMES; ++subframe) {
-            if ((vp->changed[subframe] & 0x20) != 0) {
+            if ((vp->changed[subframe] & 0x20) != 0 && !(newVoice && subframe == mixStart)) {
               adsrStartRelease(&vp->adsr, 10);
               vp->postBreak = 1;
             } else if (vp->postBreak == 0) {
