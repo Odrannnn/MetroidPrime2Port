@@ -648,7 +648,7 @@ endif()
 
 if(AURORA_SDL3_TARGET)
     add_library(mp_port_audio OBJECT platform/ai_dma.cpp platform/port_controls.cpp
-        platform/port_save.cpp platform/port_save_convert.cpp platform/port_save_trilogy.cpp platform/port_save_trilogy_payload.cpp platform/port_savestate.cpp platform/port_beam_ammo.cpp platform/port_savestate_room.cpp platform/port_statedump.cpp platform/port_savestate_format.cpp platform/port_randomizer.cpp platform/port_rando_gen.cpp platform/port_rando_models.cpp platform/port_rando_world.cpp platform/port_rando_logic.cpp platform/port_logfile.cpp platform/port_breadcrumb.cpp
+        platform/port_save.cpp platform/port_save_convert.cpp platform/port_save_trilogy.cpp platform/port_save_trilogy_payload.cpp platform/port_savestate.cpp platform/port_beam_ammo.cpp platform/port_savestate_room.cpp platform/port_savestate_fields.cpp platform/port_entity_schema.cpp platform/port_statedump.cpp platform/port_savestate_format.cpp platform/port_randomizer.cpp platform/port_rando_gen.cpp platform/port_rando_models.cpp platform/port_rando_world.cpp platform/port_rando_logic.cpp platform/port_logfile.cpp platform/port_breadcrumb.cpp
         platform/port_crash.cpp platform/port_watchdog.cpp platform/port_memory_log.cpp platform/port_storage_report.cpp
         platform/port_pointer.cpp platform/port_pointer_menu.cpp
         platform/port_events.cpp platform/port_livesplit.cpp platform/port_harness.cpp platform/port_mouse.cpp
@@ -692,6 +692,11 @@ if(AURORA_SDL3_TARGET)
     endif()
     if(IOS OR (MP_TOUCH_OVERLAY_DESKTOP AND NOT ANDROID))
         target_compile_definitions(mp_port_audio PRIVATE PORT_TOUCH_OVERLAY)
+    endif()
+    # The entity schema table holds thousands of accessor lambdas, each its own COMDAT
+    # section on COFF: past the 65k sections an object holds without /bigobj.
+    if(MSVC)
+        set_source_files_properties(platform/port_entity_schema.cpp PROPERTIES COMPILE_OPTIONS /bigobj)
     endif()
     mp_signed_char(mp_port_audio)
     mp_websocket_tls(mp_port_audio)
@@ -758,6 +763,23 @@ if(AURORA_SDL3_TARGET)
     set_tests_properties(port_console_docs PROPERTIES TIMEOUT 15 LABELS port)
     # Every settings.cfg key reads back as written (platform/debug_ui/settings.cpp, kSettingKeys); the game
     # binary checks itself and exits before starting.
+    # The generated entity field schema (tools/gen_entity_schema.py): it compiles the
+    # accessors against every entity header, as mp_port_audio does.
+    add_executable(port_entity_schema_tests tests/port_entity_schema.cpp platform/port_entity_schema.cpp)
+    target_include_directories(port_entity_schema_tests PRIVATE platform/include include
+        extern/aurora/include extern/musyx-port/include)
+    target_compile_definitions(port_entity_schema_tests PRIVATE TARGET_PC AURORA MUSY_TARGET=MUSY_TARGET_PC)
+    mp_signed_char(port_entity_schema_tests)
+    if(MSVC)
+        target_compile_options(port_entity_schema_tests PRIVATE /bigobj)
+    endif()
+    add_test(NAME port_entity_schema_tests COMMAND port_entity_schema_tests)
+    set_tests_properties(port_entity_schema_tests PROPERTIES TIMEOUT 30 LABELS port)
+    # The committed entity schema against the headers; skips (77) without clang-19.
+    add_test(NAME port_entity_schema_current
+        COMMAND ${Python3_EXECUTABLE} -I ${CMAKE_CURRENT_SOURCE_DIR}/tools/gen_entity_schema.py --check)
+    set_tests_properties(port_entity_schema_current PROPERTIES TIMEOUT 300 LABELS port
+        SKIP_RETURN_CODE 77)
     add_test(NAME port_settings_roundtrip COMMAND metroid_prime2_port --settings-selftest)
     set_tests_properties(port_settings_roundtrip PROPERTIES TIMEOUT 30 LABELS port
         ENVIRONMENT "MP2_USER_PATH=${CMAKE_CURRENT_BINARY_DIR}/settings-selftest/")

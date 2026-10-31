@@ -246,6 +246,9 @@ struct CDarkSamusMeleeContact {
 };
 
 class REL_EXPORT CDarkSamus : public CPatterned {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
 #ifdef TARGET_PC
   // Argument order is the REL loader's call at 0x0000DD84 (fn_10_CF44): (uid, name, entity info,

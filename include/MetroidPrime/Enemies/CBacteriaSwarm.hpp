@@ -27,6 +27,9 @@ class CStaticRes;
 // pursue the player, shifting their color between the two states. Unlike CSwarmBasics it is a
 // plain actor with its own boid type; the boids are rendered as particles of a shared generator.
 class CBacteriaSwarm : public CActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   class CBoid {
     friend class CBacteriaSwarm;

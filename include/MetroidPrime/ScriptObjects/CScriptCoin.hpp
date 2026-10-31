@@ -14,6 +14,9 @@ class CElementGen;
 
 // Guessed class: a bouncing, fading pickup spawned like debris (ScriptCoin REL).
 class CScriptCoin : public CPhysicsActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   enum EOrientationType { // Guessed names
     kOT_NotOriented,

@@ -8,6 +8,9 @@
 
 // Guessed class: the head of a Sporb, driven by commands from its CSporbBase.
 class CSporbTop : public CPatterned {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   // Guessed names; values the base stores to select the head's next behavior.
   enum EState {

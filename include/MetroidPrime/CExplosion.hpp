@@ -9,6 +9,9 @@ class CGenDescription;
 class CElectricDescription;
 
 class CExplosion : public CEffect {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CExplosion(const TLockedToken< CGenDescription >& particle, TUniqueId uid,
              const CEntityInfo& info, const rstl::string& name, const CTransform4f& xf, uint flags,

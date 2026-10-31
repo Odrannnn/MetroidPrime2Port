@@ -21,6 +21,9 @@ class CAnimRes;
 // Original class name from the Wii SEL exports. The class lives in the SnakeWeedSwarm REL; the DOL
 // only proves the CActor base through its TypesMatch parent, so the layout is left opaque.
 class CSnakeWeedSwarm : public CActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
 #ifdef TARGET_PC
   // The REL's CSnakeWeedSwarm (module 71), ported from MP1's CSnakeWeedSwarm - see

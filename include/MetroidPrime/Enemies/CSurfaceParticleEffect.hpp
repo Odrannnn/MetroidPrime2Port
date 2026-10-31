@@ -25,6 +25,9 @@ class CStateManager;
 // Guessed class: a particle effect whose particles are snapped onto nearby collision surfaces.
 // It is registered by the GeomBlobV2 REL (module 25) through SSurfaceParticleEffect_FuncPtrs.
 class CSurfaceParticleEffect : public CEffect {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CSurfaceParticleEffect(const TLockedToken< CGenDescription >& desc, TUniqueId uid, TAreaId area,
                          bool active, const rstl::string& name, const CTransform4f& xf,

@@ -10,6 +10,9 @@
 // Echoes layout recovered from the EyeBall REL constructor (0x8B0 bytes). Names follow Prime's
 // CEyeBall where the member exists there.
 class CEyeBall : public CPatterned {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CEyeBall(TUniqueId uid, const rstl::string& name, const CEntityInfo& info, const CTransform4f& xf,
            const CModelData& mData, const CPatternedInfo& pInfo, const CActorParameters& actParams,

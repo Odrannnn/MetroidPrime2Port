@@ -8,6 +8,9 @@
 // Severed tail of a Grenchler; it is thrown off, bounces and fades out.
 // @ fn_27_14F00 (implicit dtor, objdiff 99.6%: vtable symbol name only)
 class CGrenchlerTail : public CPhysicsActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CGrenchlerTail(TUniqueId uid, TAreaId areaId, const CModelData& modelData, int animId,
                  const CTransform4f& xf, bool isSmall);

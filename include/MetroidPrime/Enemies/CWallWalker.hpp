@@ -56,6 +56,9 @@ CHECK_SIZEOF(CWallWalkerData, 0x1c0)
 
 // Wii SEL class name (TypesMatch__11CWallWalkerCFi). The legged, grenade-dropping wall walker.
 class CWallWalker : public CWallCrawler {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   enum EPatrolState { kPS_Patrol, kPS_StartGenerate, kPS_Generate }; // Guessed names.
 

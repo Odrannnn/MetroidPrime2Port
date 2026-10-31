@@ -7,6 +7,9 @@
 #include "Kyoto/Text/CStringTable.hpp"
 
 class CScriptTextPane : public CActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CScriptTextPane(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                   const CTransform4f& xf, const CVector3f& pivotOffset, float width, float height,

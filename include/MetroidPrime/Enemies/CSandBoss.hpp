@@ -32,6 +32,9 @@ class CSkinnedModel;
 // fn_55_2D40) and destroyed by fn_55_108E4 / fn_55_10C18. The subclass adds one 16-byte member:
 // the plane its ray check clips to (retail 0x6A8: three normal floats, then a constant).
 class SandBossChargeBeam : public CPlasmaProjectile {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   SandBossChargeBeam(const TToken< CWeaponDescription >& description, const CBeamInfo& beamInfo,
                      TUniqueId uid, TAreaId areaId, TUniqueId owner,
@@ -72,6 +75,9 @@ struct SSandBossChargeBeamEntry {
 // overrides, collision/armour and the FSM tables; PortCSandBossStates.cpp holds the triggers,
 // states and code functions; PortCSandBossAttacks.cpp the attack helpers and the charge beam.
 class REL_EXPORT CSandBoss : public CPatterned {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
 #ifdef TARGET_PC
   // Argument order is the REL loader's (fn_55_178): (uid, name, info, xf, model, actParms, pInfo,

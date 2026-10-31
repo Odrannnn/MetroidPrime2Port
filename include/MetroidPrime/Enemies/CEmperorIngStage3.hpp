@@ -58,6 +58,9 @@ struct SEmperorIngPortal {
 // outgrow retail, so the class is allocated with sizeof, not with 0xED0.
 #ifdef TARGET_PC
 class REL_EXPORT CEmperorIngStage3 : public CPatterned {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   // Argument order is the REL loader's call at 0x0000C620 (fn_18_C380 -> fn_18_9A8C): uid,
   // editor-property name, entity info, transform, model, actor parameters, patterned info, then

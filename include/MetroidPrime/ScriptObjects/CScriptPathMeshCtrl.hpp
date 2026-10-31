@@ -6,6 +6,9 @@
 
 // Guessed class name, based on the PMCT loader and obstruction-count consumers.
 class CScriptPathMeshCtrl : public CActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CScriptPathMeshCtrl(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                       const CTransform4f& xf, int initialCount, bool useObstruction0);

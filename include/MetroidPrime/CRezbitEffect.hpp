@@ -37,6 +37,9 @@ CHECK_SIZEOF(CRezbitEffectOptions, 0x18)
 
 // Guessed actor name, supported by the effect's native label and player consumers.
 class CRezbitEffect : public CActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CRezbitEffect(TUniqueId uid, const CEntityInfo& info, const CRezbitEffectOptions& options);
 

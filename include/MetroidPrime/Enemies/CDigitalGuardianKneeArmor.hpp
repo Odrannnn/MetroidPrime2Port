@@ -18,6 +18,9 @@
 struct SEchoParameters;
 
 class CDigitalGuardianKneeArmor : public CActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   // fn_14_D4D0. The retail's argument order: the owner id, the vulnerable flag, the actor
   // parameters, the echo parameters and the sound come on the stack after the material list.

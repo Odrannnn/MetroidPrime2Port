@@ -25,6 +25,9 @@ class CRandom16;
 // Guessed names throughout this dependency scaffold. Native AFSM labels establish
 // the component roles; these are not the AI controller's command or PAS domains.
 class CPlayerBodyController : public CEntity {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   // Guessed player PAS domain: the same numeric values denote different AI states.
   enum EPlayerAnimationState {

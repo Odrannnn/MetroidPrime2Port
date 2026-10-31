@@ -26,6 +26,9 @@
 #include "rstl/vector.hpp"
 
 class CBoostBallGuardianBall : public CPhysicsActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   // The DOL's type tag for this class (TypesMatch.cpp's "148", parent CPhysicsActor); the
   // guardian's BoostAttack casts its child with it (fn_800979F0 = TryCast(entity, 0x94)).

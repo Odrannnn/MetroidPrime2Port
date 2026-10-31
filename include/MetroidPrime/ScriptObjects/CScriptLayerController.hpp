@@ -8,6 +8,9 @@ class CWorldLayerState;
 
 // Guessed name: controls persistent and dynamically loaded script layers.
 class CScriptLayerController : public CEntity {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CScriptLayerController(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                          uint areaSaveId, int layer, bool isDynamic);

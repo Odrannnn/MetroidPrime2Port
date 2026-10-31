@@ -5,6 +5,9 @@
 
 // Guessed name; the runtime camera uses the "Fixed Camera" label.
 class CFixedCamera : public CGameCamera {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CFixedCamera(const TUniqueId& uid, const CTransform4f& xf, int index, int controllerIdx);
 

@@ -12,6 +12,9 @@
 
 class CModel;
 class CScriptAreaProperties : public CEntity {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 private:
   bool m_hasSkybox : 1;
   bool m_isDarkWorld : 1;

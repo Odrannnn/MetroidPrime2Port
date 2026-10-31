@@ -9,6 +9,9 @@
 #include "Kyoto/Graphics/CColor.hpp"
 
 class CGunTurretTop : public CPatterned {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   // Guessed names; the gun head of a pirate/GF gun turret, powered by its CGunTurretBase.
   enum EState {

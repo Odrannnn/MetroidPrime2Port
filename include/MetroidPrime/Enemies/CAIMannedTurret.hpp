@@ -21,6 +21,9 @@
 // Guessed class: a turret that tracks the player and fires at him. The turret and the rider that
 // manns it are separate actors that this object finds through its script connections.
 class CAIMannedTurret : public CAi {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CAIMannedTurret(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                   const CTransform4f& xf, const CModelData& modelData,

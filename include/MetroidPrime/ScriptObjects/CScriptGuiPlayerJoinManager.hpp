@@ -6,6 +6,9 @@
 #include "rstl/reserved_vector.hpp"
 
 class CScriptGuiPlayerJoinManager : public CEntity {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   // Guessed names for the per-controller join states.
   enum EJoinState {

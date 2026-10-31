@@ -22,6 +22,9 @@ class CSkinnedModel;
 // REL class, and the same class drives the Parasite, Brizgee (ice zoomer path) and Crystallite
 // loaders.
 class CParasite : public CWallCrawler {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   // Guessed names. Values of CWallCrawler::EType handled by this class; Prime's CWallWalker::EType
   // has the first four.

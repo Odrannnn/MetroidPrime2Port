@@ -47,6 +47,9 @@ private:
 CHECK_SIZEOF(CElectricBeamInfo, 0x20)
 
 class CElectricBeamProjectile : public CBeamProjectile {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CElectricBeamProjectile(const TToken< CWeaponDescription >& description, EWeaponType type,
                           const CElectricBeamInfo& beamInfo, const CTransform4f& xf,

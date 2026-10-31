@@ -44,6 +44,9 @@ class CEmperorIngStage1;
 // warp portal actor that the boss's warp attack puts in the world (fn_16_1720). The retail's
 // object is 0x300 bytes; the members below carry the guest offsets of its own fields.
 class CEmperorIngStage1WarpPortal : public CPhysicsActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CEmperorIngStage1WarpPortal(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                               const CTransform4f& xf, const CModelData& modelData,
@@ -118,6 +121,9 @@ struct CEmperorIngStage1JointVector {
 };
 
 class REL_EXPORT CEmperorIngStage1 : public CPatterned {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   // Argument order is the REL loader's call at 0x0000A51C (fn_16_A2A0 -> fn_16_900C): uid,
   // editor-property name, entity info, transform, model, actor parameters, patterned info, then

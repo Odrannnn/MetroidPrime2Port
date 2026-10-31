@@ -6,6 +6,9 @@
 #include "MetroidPrime/CEntity.hpp"
 
 class CScriptColorModulate : public CEntity {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   enum EBlendMode { kBM_Alpha, kBM_Additive, kBM_Additive2, kBM_Opaque, kBM_OpaqueAdd };
   enum EFadeState { kFS_AtoB, kFS_BtoA };

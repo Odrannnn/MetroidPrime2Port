@@ -8,6 +8,9 @@
 #include "rstl/optional_object.hpp"
 
 class CScriptStreamedMusic : public CEntity {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CScriptStreamedMusic(TUniqueId id, const CEntityInfo& info, const rstl::string& name,
                        const rstl::string& fileName, bool noStopOnDeactivate, float fadeIn,

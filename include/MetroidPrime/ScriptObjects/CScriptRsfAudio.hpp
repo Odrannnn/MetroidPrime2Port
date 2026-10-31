@@ -10,6 +10,9 @@
 
 // Guessed names throughout; the class name follows the RSFA loader and SLdrRsfAudio.
 class CScriptRsfAudio : public CEntity {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CScriptRsfAudio(TUniqueId uid, const CEntityInfo& info, const rstl::string& name,
                   const rstl::string& fileName, int loopStart, int loopEnd, float fadeInTime,

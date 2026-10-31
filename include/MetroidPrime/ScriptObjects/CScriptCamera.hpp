@@ -6,6 +6,9 @@
 
 // Echoes stores cinematic settings in this actor, separately from CCinematicCamera.
 class CScriptCamera : public CActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   // Guessed names. Other flag bits are not yet identified.
   enum EFlags {

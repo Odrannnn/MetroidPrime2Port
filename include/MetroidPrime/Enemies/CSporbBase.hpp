@@ -24,6 +24,9 @@ class CWeaponDescription;
 // Guessed class: the body of a Sporb, which grabs the morph ball with a tendril and can also act
 // as a power bomb guardian.
 class CSporbBase : public CPatterned {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   // Guessed names; the behavior the body is currently running.
   enum EState {

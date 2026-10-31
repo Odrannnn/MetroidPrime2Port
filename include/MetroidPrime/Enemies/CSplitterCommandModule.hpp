@@ -95,6 +95,9 @@ public:
 // actor are later milestones, and every override that belongs to them forwards to CPatterned
 // behind a once-only StandIn log.
 class REL_EXPORT CSplitterCommandModule : public CPatterned {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   // Argument order is the port's own (the REL loader's call is
   // (uid, editor properties, entity info, transform, model, actor parameters, patterned info)

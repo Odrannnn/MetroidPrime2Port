@@ -9,6 +9,9 @@
 
 // Guessed name: drives the state manager's dark world cloud overlay.
 class CScriptFogOverlay : public CActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   // Guessed names: the script message that last started a fade.
   enum EFadeCommand { kFC_None, kFC_FadeUp, kFC_FadeDown, kFC_SnapLow, kFC_SnapHigh };

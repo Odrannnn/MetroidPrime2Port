@@ -9,6 +9,9 @@
 // Original class name from the Wii SEL exports (TypesMatch__7CRipperCFi). Prime 1 has the same
 // class; the Echoes version has no controlled platform and checks every player's grapple.
 class CRipper : public CPatterned {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CRipper(TUniqueId uid, const rstl::string& name, EFlavorType flavor, const CEntityInfo& info,
           const CTransform4f& xf, const CModelData& modelData, const CPatternedInfo& patternedInfo,

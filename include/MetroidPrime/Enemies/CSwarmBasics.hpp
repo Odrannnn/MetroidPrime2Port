@@ -33,6 +33,9 @@ class CSwarmSkinnedModelState;
 } // namespace SwarmRenderHelpers
 
 class CSwarmBasics : public CActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   class CBoid {
     friend class CSwarmBasics;

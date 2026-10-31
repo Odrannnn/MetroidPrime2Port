@@ -21,6 +21,9 @@
 class CElementGen;
 
 class CDigitalGuardianEchoTarget : public CActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   // The states at 0x708: 0 retracted, 1 extended, 2 retracting, 3 extending, 4 destroyed.
   enum EState {

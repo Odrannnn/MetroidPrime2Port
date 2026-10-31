@@ -18,6 +18,9 @@ class CGenDescription;
 class CGunTurretTop;
 
 class CGunTurretBase : public CPatterned {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   // Guessed names; the pole/base half of a pirate/GF gun turret.
   enum EState {

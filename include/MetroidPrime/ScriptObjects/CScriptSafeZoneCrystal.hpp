@@ -28,6 +28,9 @@ CHECK_SIZEOF(SSafeZoneCrystalModels, 0x130)
 
 // Guessed names throughout; the class name follows the SAFC loader and SLdrSafeZoneCrystal.
 class CScriptSafeZoneCrystal : public CActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   enum EState {
     kS_Collapsed,

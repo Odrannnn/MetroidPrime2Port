@@ -12,6 +12,9 @@ class CElementGen;
 class CGenDescription;
 
 class CDamageEffect : public CActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CDamageEffect(const TToken< CGenDescription >& effect, TUniqueId uid, TAreaId areaId, bool active,
                 TUniqueId owner, const CTransform4f& xf, const CDamageInfo& damage,

@@ -24,6 +24,9 @@ class CSplinterAcidSac;
 // Guessed class: a spider-like Ing creature that climbs cables, grabs the morph ball with its
 // acid sac and pounces; the mega variant spits projectiles.
 class CSplinter : public CPatterned {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   // Guessed name; aligns the splinter to the walls and ceilings it crawls over.
   // @ fn_74_AF50 (implicit dtor, gdb splin3)

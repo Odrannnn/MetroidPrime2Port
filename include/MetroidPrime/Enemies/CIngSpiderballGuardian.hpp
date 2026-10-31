@@ -10,6 +10,9 @@
 
 // Guessed class: the Spiderball Guardian boss, a rolling ball that follows waypoint paths.
 class CIngSpiderballGuardian : public CPatterned {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   // Guessed names; the rolling behaviour state.
   enum EGuardianState {

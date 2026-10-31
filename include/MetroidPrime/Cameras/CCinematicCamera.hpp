@@ -4,6 +4,9 @@
 #include "MetroidPrime/Cameras/CGameCamera.hpp"
 
 class CCinematicCamera : public CGameCamera {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CCinematicCamera(TUniqueId uid, const CTransform4f& xf, bool active, float fov, float nearZ,
                    float farZ, float aspect, int index, int controllerIdx);

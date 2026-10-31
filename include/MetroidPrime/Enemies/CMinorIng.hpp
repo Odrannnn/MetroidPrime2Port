@@ -148,6 +148,9 @@ struct CMinorIngData {
 // The REL's CMinorIng (module 44). It derives from CPatterned directly, not from CIng [proven:
 // its ctor fn_44_9D58 calls the CPatterned constructor with EPatternedAI 0x4b].
 class REL_EXPORT CMinorIng : public CPatterned {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
 #ifdef TARGET_PC
   CMinorIng(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,

@@ -11,6 +11,9 @@
 // at once; each attacker plays a one-shot dive animation on one of a few spare models, then keeps
 // flying with the animation of one shared attack model.
 class CMetareeSwarm : public CSwarmBasics {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CMetareeSwarm(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                 const CVector3f& boundingBoxExtent, const CTransform4f& xf, const CAnimRes& animRes,

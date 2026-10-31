@@ -31,6 +31,9 @@ class CScriptAIHint;
 // Guessed class: the Dark Commando, a cloaking Ing trooper that melees, launches EMP grenades,
 // fires a charge beam that leaves a mold on the player's visor and shadow-dashes between hints.
 class CDarkCommando : public CPatterned {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CDarkCommando(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                 const CTransform4f& xf, const CModelData& modelData,
@@ -164,6 +167,9 @@ CHECK_SIZEOF(CDarkCommando, 0xcb8)
 
 // Guessed class: the charge beam shot, which leaves a mold on the player's visor.
 class CDarkCommandoChargeBeam : public CEnergyProjectile {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CDarkCommandoChargeBeam(
       const TToken< CWeaponDescription >& description, const CTransform4f& xf,
@@ -192,6 +198,9 @@ CHECK_SIZEOF(CDarkCommandoChargeBeam, 0x5a8)
 
 // Guessed class: the EMP grenade, which jams the player's visor after it explodes.
 class CDarkCommandoGrenade : public CBouncyGrenade {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CDarkCommandoGrenade(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                        const CTransform4f& xf, const CModelData& modelData,
@@ -211,6 +220,9 @@ CHECK_SIZEOF(CDarkCommandoGrenade, 0x3e8)
 
 // Guessed class: the shadow decoy left behind when the Dark Commando cloaks.
 class CShadowDecoy : public CActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CShadowDecoy(TUniqueId uid, const CEntityInfo& info, TUniqueId owner, const CTransform4f& xf,
                const CAABox& bounds, CAssetId effect, const CDamageVulnerability& vulnerability,

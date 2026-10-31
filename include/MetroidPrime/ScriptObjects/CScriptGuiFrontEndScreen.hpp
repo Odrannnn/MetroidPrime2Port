@@ -18,6 +18,9 @@ class CScriptWorldTeleporter;
 
 // Guessed name. The ScriptGui REL's front-end screen: save slots, options and multiplayer setup.
 class CScriptGuiFrontEndScreen : public CScriptGuiScreen {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   // Guessed names.
   struct SPlayerSetup {

@@ -13,6 +13,9 @@
 // Guessed class: a wall-crawling bug that patrols a waypoint path, rolls up when hurt and falls
 // when it loses its footing.
 class CPillBug : public CWallCrawler {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   enum EMode { kM_Crawl, kM_Wander, kM_Injured }; // Guessed names
 

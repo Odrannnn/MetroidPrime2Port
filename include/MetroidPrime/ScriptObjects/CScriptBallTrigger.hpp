@@ -5,6 +5,9 @@
 
 // Guessed name; Prime's ball trigger adapted to Echoes's oriented-trigger hierarchy.
 class CScriptBallTrigger : public CScriptTriggerOrientated {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CScriptBallTrigger(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                      const CTransform4f& xf, const CVector3f& scale, const CDamageInfo& damage,

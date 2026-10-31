@@ -10,6 +10,9 @@
 
 // Guessed class: a wall-crawling enemy that warps in and out of sight.
 class CKralee : public CWallCrawler {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   enum EWarpState { kWS_Visible, kWS_Invisible, kWS_WarpIn, kWS_WarpOut }; // Guessed names
 

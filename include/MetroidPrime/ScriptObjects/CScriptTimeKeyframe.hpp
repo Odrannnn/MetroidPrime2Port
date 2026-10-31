@@ -5,6 +5,9 @@
 
 // Class name from the Corruption prototype's (G2MEAB) CScriptTimeKeyframe.cpp asserts.
 class CScriptTimeKeyframe : public CEntity {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CScriptTimeKeyframe(TUniqueId uid, const rstl::string& name, const CEntityInfo& info, float time);
 

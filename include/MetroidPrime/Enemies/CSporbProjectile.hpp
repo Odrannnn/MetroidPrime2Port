@@ -8,6 +8,9 @@
 
 // Guessed class: the glob a Sporb spits out, which flies on its own and lets the morph ball escape.
 class CSporbProjectile : public CPatterned {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   // Guessed names; values the owning Sporb stores to select the glob's next behavior.
   enum EState {

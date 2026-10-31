@@ -13,6 +13,9 @@
 // waypoints, the other segments trail the one in front, and when killed a segment breaks apart,
 // bounces around and explodes.
 class COctapedeSegment : public CWallCrawler {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   enum ESegmentState {
     kSegS_None = -1,    // Guessed name

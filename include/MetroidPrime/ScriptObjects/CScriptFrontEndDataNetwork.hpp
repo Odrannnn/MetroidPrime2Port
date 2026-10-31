@@ -59,6 +59,9 @@ struct SDataNetworkNode {
 CHECK_SIZEOF(SDataNetworkNode, 0x6c)
 
 class CScriptFrontEndDataNetwork : public CActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   // Guessed names.
   enum ETransitionState {

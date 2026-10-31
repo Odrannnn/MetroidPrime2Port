@@ -16,6 +16,9 @@ class CCollisionActorManager;
 class CModelData;
 
 class CDarkSamusBoostBall : public CPhysicsActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   // fn_10_3FD8 (silhouette false) and fn_10_3BC4 (silhouette true, with the fade and the colour).
   CDarkSamusBoostBall(TUniqueId uid, TAreaId area, const CTransform4f& xf, const CModelData& model,

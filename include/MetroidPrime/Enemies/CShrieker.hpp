@@ -68,6 +68,9 @@ CHECK_SIZEOF(CShriekerData, 0xdc)
 
 // Guessed class: a burrowed enemy that rises from the ground to shriek, fire and bite.
 class CShrieker : public CPatterned {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
 #ifdef TARGET_PC
   // Host: the console's `var <id> shr.<name> [value]` (coverage fixtures, see CShrieker.cpp).

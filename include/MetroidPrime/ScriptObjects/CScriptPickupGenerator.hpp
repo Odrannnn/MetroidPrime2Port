@@ -43,6 +43,9 @@ private:
 CHECK_SIZEOF(CPickupGeneratorRuleEvaluator, 0x250)
 
 class CScriptPickupGenerator : public CEntity {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CScriptPickupGenerator(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                          const CVector3f& offset, CAssetId rules, bool offsetIsLocalSpace);

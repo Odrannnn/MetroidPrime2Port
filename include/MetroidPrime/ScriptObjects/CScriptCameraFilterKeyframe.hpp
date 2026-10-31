@@ -8,6 +8,9 @@
 #include "Kyoto/Graphics/CColor.hpp"
 
 class CScriptCameraFilterKeyframe : public CEntity {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CScriptCameraFilterKeyframe(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                               CCameraFilterPass::EFilterType type,

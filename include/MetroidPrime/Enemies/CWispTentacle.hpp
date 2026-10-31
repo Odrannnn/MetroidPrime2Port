@@ -18,6 +18,9 @@ class CCollisionActorManager;
 // Guessed class: a tentacle that rises out of a portal, hurts the player on contact and drags a
 // space pirate into the portal.
 class CWispTentacle : public CPatterned {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CWispTentacle(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                 const CTransform4f& xf, const CModelData& modelData,

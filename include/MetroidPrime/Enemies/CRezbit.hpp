@@ -21,6 +21,9 @@ class CSkinnedModel;
 
 // Guessed class: a flying virus-infected enemy that can de-rez, raise shields and fire lasers.
 class CRezbit : public CPatterned {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CRezbit(TUniqueId uid, const rstl::string& name, const CEntityInfo& info, const CTransform4f& xf,
           const CModelData& modelData, const CActorParameters& actorParams,

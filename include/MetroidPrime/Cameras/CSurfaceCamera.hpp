@@ -6,6 +6,9 @@
 
 // Guessed name; the runtime camera uses the "Surface Camera" label.
 class CSurfaceCamera : public CGameCamera {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CSurfaceCamera(TUniqueId uid, const CTransform4f& xf, bool active, int index, int controllerIdx);
 

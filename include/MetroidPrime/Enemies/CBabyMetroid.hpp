@@ -10,6 +10,9 @@ class CGenDescription;
 
 // Original class name from the Wii SEL exports (TypesMatch__12CBabyMetroidCFi).
 class CBabyMetroid : public CMetroid {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CBabyMetroid(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                const CTransform4f& xf, const CModelData& mData, const CPatternedInfo& pInfo,

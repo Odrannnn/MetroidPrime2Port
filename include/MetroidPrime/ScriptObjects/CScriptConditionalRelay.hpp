@@ -37,6 +37,9 @@ CHECK_SIZEOF(CConditionalRelayQuery, 0x14)
 
 // Guessed class and private method names; the selected native allocation is 0x80.
 class CScriptConditionalRelay : public CEntity {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CScriptConditionalRelay(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                           uint playerMask,

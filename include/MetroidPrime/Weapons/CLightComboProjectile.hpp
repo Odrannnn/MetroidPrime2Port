@@ -10,6 +10,9 @@
 
 // Guessed name
 class CLightComboProjectile : public CEnergyProjectile {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CLightComboProjectile(const TToken< CWeaponDescription >& description, EWeaponType type,
                         const CTransform4f& xf, EMaterialTypes material, const CDamageInfo& damage,

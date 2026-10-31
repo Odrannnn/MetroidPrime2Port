@@ -7,6 +7,9 @@
 
 // Original Wii export name, correlated with the GameCube DTRG loader and runtime.
 class CScriptDamageableTrigger : public CActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   // Prime-correlated names; the target tests the enabled value against one.
   enum ECanOrbit { kCO_NoOrbit, kCO_Orbit };

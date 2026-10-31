@@ -52,6 +52,9 @@ enum EPlayerMovementState {
 };
 
 class CPlayer : public CPhysicsActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   bool IsInSafeZone() const { return mInSafeZone; }
   enum ESurfaceRestraints {

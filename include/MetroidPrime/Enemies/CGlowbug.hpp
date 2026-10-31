@@ -10,6 +10,9 @@
 
 // Guessed class: a glowing bug that patrols, telegraphs and then attacks with an electric beam.
 class CGlowbug : public CPatterned {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CGlowbug(TUniqueId uid, const rstl::string& name, const CEntityInfo& info, const CTransform4f& xf,
            const CModelData& modelData, const CPatternedInfo& patternedInfo,

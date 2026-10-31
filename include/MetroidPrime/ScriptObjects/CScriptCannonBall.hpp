@@ -5,6 +5,9 @@
 #include "rstl/reserved_vector.hpp"
 
 class CScriptCannonBall : public CActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   struct TrackedShot {
     TrackedShot(TUniqueId, bool);

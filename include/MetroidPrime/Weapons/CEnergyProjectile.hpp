@@ -7,6 +7,9 @@
 #include "rstl/pair.hpp"
 
 class CEnergyProjectile : public CGameProjectile {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CEnergyProjectile(bool active, const TToken< CWeaponDescription >& description, EWeaponType type,
                     const CTransform4f& xf, EMaterialTypes excludeMaterial,

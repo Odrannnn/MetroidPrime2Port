@@ -223,6 +223,9 @@ struct CBoostBallGuardianData {
 // mini portals and the second class (a CPhysicsActor spawned by fn_30_3478) are not written yet,
 // and every override that belongs to them forwards to CPatterned behind a once-only StandIn log.
 class REL_EXPORT CIngBoostBallGuardian : public CPatterned {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
 #ifdef TARGET_PC
   // Argument order is the REL loader's call at 0x0000051C (fn_30_130): uid, editor-property name,

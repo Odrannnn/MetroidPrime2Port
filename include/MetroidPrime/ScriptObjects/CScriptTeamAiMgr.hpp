@@ -8,6 +8,9 @@ class CActor;
 class CAi;
 
 class CScriptTeamAiMgr : public CEntity {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   enum EAttackType { kAT_Melee, kAT_Projectile };
   // Action values are supplied by callers; their individual meanings remain unresolved.

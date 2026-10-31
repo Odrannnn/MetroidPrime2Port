@@ -9,6 +9,9 @@
 class CParticleGen;
 
 class CScriptEffect : public CActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   // Original enum type from Wii; enumerator names are guessed. The two special
   // queues' positions in the renderer are not yet recovered.

@@ -6,6 +6,9 @@
 
 // Guessed name, correlated with Prime's ripple script object.
 class CScriptRipple : public CEntity {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CScriptRipple(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                 const CVector3f& center, float energy);

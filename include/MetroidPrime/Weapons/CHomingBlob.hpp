@@ -13,6 +13,9 @@ class CGenDescription;
 
 // Guessed class and private names; the target creates a light named HomingBlobLight.
 class CHomingBlob : public CWeapon {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   enum EModeFlags {
     kMF_FollowPlayerArea = 2,

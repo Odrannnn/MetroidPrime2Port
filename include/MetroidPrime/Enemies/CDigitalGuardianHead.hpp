@@ -29,6 +29,9 @@ class CGenDescription;
 class CInputStream;
 
 class REL_EXPORT CDigitalGuardianHead : public CPatterned {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
 #ifdef TARGET_PC
   // fn_14_18264. The argument order is the port's own (the loader's call passes the editor

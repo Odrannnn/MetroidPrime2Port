@@ -5,6 +5,9 @@
 #include "MetroidPrime/CActor.hpp"
 
 class CGameLight : public CActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CGameLight(TUniqueId uid, TAreaId areaId, bool active, const rstl::string& name,
              const CTransform4f& xf, TUniqueId parentId, const CLight& light, uint sourceId,

@@ -4,6 +4,11 @@
 #include <string>
 #include <vector>
 
+struct PortSchemaClass;
+struct PortSchemaField;
+class CEntity;
+class CStateManager;
+
 class CGameArea;
 class CEntity;
 class CStateManager;
@@ -185,6 +190,10 @@ void CaptureRoomState(CStateManager& mgr, RoomState& out);
 // Debug views (port_statedump.cpp): a script generator's copy; the room-saved state of a timer,
 // counter, door, platform, rotator, dock, music or cinematic camera as JSON members.
 bool IsScriptGeneratedCopy(const CStateManager& mgr, CEntity& ent);
+// Entity fields (port_savestate_fields.cpp): for statedump, whether `ent` gets a kTagFields block,
+// and whether the block keeps a schema field.
+bool EntityFieldsSaved(const CStateManager& mgr, CEntity& ent);
+bool SchemaFieldSaved(const PortSchemaClass& cls, const PortSchemaField& f);
 std::string RoomStateJson(CStateManager& mgr, CEntity& ent);
 // Applies the saved areas once all of them are ready (or, with `force`, those that are ready now);
 // returns how many saved areas are still waiting to load.

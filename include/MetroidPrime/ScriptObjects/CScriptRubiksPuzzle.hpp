@@ -22,6 +22,9 @@ class CTransform4f;
 // The player presses one of four buttons to turn a two by two block of pieces a quarter turn.
 // The puzzle is solved when every row holds the pieces that belong to it.
 class CScriptRubiksPuzzle : public CEntity {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CScriptRubiksPuzzle(TUniqueId uid, const CEntityInfo& info, const rstl::string& name,
                       const SLdrRubiksPuzzleData& data);

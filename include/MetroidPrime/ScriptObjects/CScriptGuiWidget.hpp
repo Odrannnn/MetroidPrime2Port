@@ -10,6 +10,9 @@
 class CFinalInput;
 
 class CScriptGuiWidget : public CEntity {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   // Guessed names. Event 0/1 follow A/B presses, 2/3 follow Open/Close messages.
   enum EWidgetEvent {

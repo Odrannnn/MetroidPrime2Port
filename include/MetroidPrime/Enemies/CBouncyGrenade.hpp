@@ -76,6 +76,9 @@ public:
 CHECK_SIZEOF(CBouncyGrenadeData, 0x50)
 
 class CBouncyGrenade : public CPhysicsActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CBouncyGrenade(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                  const CTransform4f& xf, const CModelData& mData, const CActorParameters& actParams,

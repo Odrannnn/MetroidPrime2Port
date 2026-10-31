@@ -5,6 +5,9 @@
 
 // Echoes Wii exports name this class CScriptRepulsor; Prime calls its counterpart CRepulsor.
 class CScriptRepulsor : public CActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   // Guessed names; the cylindrical test ignores the vertical displacement.
   enum EShape { kS_Invalid = -1, kS_Sphere, kS_Cylinder };

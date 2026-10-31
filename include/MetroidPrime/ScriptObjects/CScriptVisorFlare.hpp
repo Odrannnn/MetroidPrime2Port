@@ -5,6 +5,9 @@
 #include "MetroidPrime/CVisorFlare.hpp"
 
 class CScriptVisorFlare : public CActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CScriptVisorFlare(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                     const CVector3f& pos, CVisorFlare::EBlendMode blendMode, bool distanceScaled,

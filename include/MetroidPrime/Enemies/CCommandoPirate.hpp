@@ -217,6 +217,9 @@ struct CCommandoPirateData {
 // melee, the E-grenade, the shield and the burst fire are milestone 2 and forward, and every
 // override that belongs to them forwards to CPatterned behind a once-only StandIn log.
 class REL_EXPORT CCommandoPirate : public CPatterned {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
 #ifdef TARGET_PC
   // Argument order is the REL loader's call at 0x00000964 (fn_9_168): uid, editor-property name,

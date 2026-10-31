@@ -4,6 +4,9 @@
 #include "MetroidPrime/CGameHint.hpp"
 
 class CScriptPlayerHint : public CGameHint {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CScriptPlayerHint(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                     const CTransform4f& xf, int priority, float timer, uint overrideFlags,

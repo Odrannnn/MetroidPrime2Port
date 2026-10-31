@@ -19,6 +19,9 @@ class CFinalInput;
 // Partial layout of the REL player turret object, covering only the fields the DOL reads
 // directly. Guessed class and member names; the gaps are unidentified.
 class CScriptPlayerTurret : public CActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   // CEntity
   ~CScriptPlayerTurret() override;

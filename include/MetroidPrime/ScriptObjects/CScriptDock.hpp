@@ -6,6 +6,9 @@
 class CPlane;
 
 class CScriptDock : public CPhysicsActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CScriptDock(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
               const CVector3f& position, const CVector3f& extent, int dock, TAreaId area,

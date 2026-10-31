@@ -80,6 +80,9 @@ CHECK_SIZEOF(CMediumIngData, 0x300)
 
 // Guessed class: a tentacle that the Medium Ing extends towards its target.
 class CMediumIngTentacle : public CActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CMediumIngTentacle(TUniqueId uid, TAreaId areaId, const rstl::string& name,
                      const CModelData& modelData, const CMediumIngData& data);
@@ -127,6 +130,9 @@ CHECK_SIZEOF(CMediumIngTentacle, 0x330)
 
 // Guessed class: an Ing that turns to mist to cross the arena and attacks with tentacles.
 class CMediumIng : public CPatterned {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CMediumIng(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
              const CTransform4f& xf, const CModelData& modelData,

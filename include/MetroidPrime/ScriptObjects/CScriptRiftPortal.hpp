@@ -11,6 +11,9 @@
 // Guessed class: a rift portal that draws a swirling background, an incandescent glow and a line
 // effect around its main model, and that pulls in or destroys projectiles that come close.
 class CScriptRiftPortal : public CActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CScriptRiftPortal(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                     const CModelData& model, const CModelData& backgroundModel,

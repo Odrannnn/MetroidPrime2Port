@@ -38,6 +38,9 @@ class CWeaponDescription;
 
 // Guessed class: a tailed, bipedal-water enemy (also used as a grapple guardian).
 class CGrenchler : public CPatterned {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
 #ifdef TARGET_PC
   // The console's `var <id> gren.<field> [value]` (end of CGrenchler.cpp): the guardian's scan

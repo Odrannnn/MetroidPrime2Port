@@ -6,6 +6,9 @@
 
 // Original Wii export name and signature, independently correlated with the GameCube GRAP loader.
 class CScriptGrapplePoint : public CActor {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CScriptGrapplePoint(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,
                       const CTransform4f& xf, const CGrappleParameters& parameters);
