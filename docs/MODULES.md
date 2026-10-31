@@ -1,16 +1,17 @@
 # REL module manifest (Echoes)
 
 Bookkeeping for the 86 REL modules in `config/G2ME01/rels/`. A REL's class name is not always the
-in-game enemy (`ElitePirate` is the **Ingsmasher**), and 14 modules have no body at all, so keep these
-three files current:
+in-game enemy (`ElitePirate` is the **Ingsmasher**), and a module can have no body at all (the 2
+`entry-stub` ones load and do nothing), so keep these three files current:
 
 - `docs/modules.tsv` - one row per module, written by `python3 tools/rel_manifest.py`.
 - `docs/module_spawns.tsv` - every (module, world, area, layer) the module is listed for (full list).
 - `docs/progress.tsv` - dated coverage counts, appended by `python3 tools/port_progress.py --record`.
 
 `rel_manifest.py` reads the user's own disc (`MP2_DISC`, else the ISO path in `tools/echoes_disc.py`);
-without one the name/spawn columns are `?`. A run takes ~15 s. `tools/echoes_disc.py` is the minimal
-ISO/PAK/MLVL/MREA/SCLY/SCAN/STRG reader behind it (pure Python, LZO included).
+without one the name/spawn columns are `?`. A run takes a few seconds (~5 s with the disc cached).
+`tools/echoes_disc.py` is the minimal ISO/PAK/MLVL/MREA/SCLY/STRG reader behind it (pure Python, LZO
+included); `rel_manifest.py` itself scans the MREA objects' properties for SCAN ids.
 
 ## Columns of `modules.tsv`
 
@@ -20,10 +21,10 @@ ISO/PAK/MLVL/MREA/SCLY/SCAN/STRG reader behind it (pure Python, LZO included).
 | `id` | module id from the REL header; it is the `N` in `fn_N_<off>` symbols and in markers |
 | `text_bytes`, `functions` | sum of sizes / count of `type:function` symbols in the module's `symbols.txt` |
 | `status` | `upstream`: real decomp source is built. `port-body`: only `Port*.cpp` sources (in `tools/modules_port.txt`) with real code. `entry-stub`: `PortModuleStubs.cpp` only - loads, does nothing. Read from `files.cmake` |
-| `source` | the module's source files from `files.cmake` (`MP_MODULE_<M>_SOURCES`) |
+| `source` | the module's source files from `files.cmake` (`MP_MODULE_<Module>_SOURCES`, the module's name) |
 | `script_types` | FourCCs of the script objects the module loads (`ScriptLoader.cpp`). `*` = no object of that type exists on the disc, so the mapping is by name only |
 | `in_game_name` | scan title (first line of the STRG a SCAN refers to) of objects of that type, up to 3, most frequent first; only `Category: Name` scans count. `?` = none provable (no scannable object, or the type is not an enemy) |
-| `areas`, `spawns` | areas whose MLVL entry lists the module for some layer; first 5 shown, `[L3,5]` = layers other than 0 (layer 0 only has no tag), `(+N more)` |
+| `areas`, `spawns` | how many areas have an MLVL entry that lists the module for some layer, and which: `world/area`, `[L3,5]` = layers other than 0 (layer 0 alone has no tag); first 5 shown, then `(+N more)` |
 
 ### How the data is derived (no guessing)
 
