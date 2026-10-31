@@ -25,7 +25,10 @@ namespace PortScanTarget {
 // framebuffer coordinates, the same ones `CCubeRenderer::CopyTextureRegion` is given. Called once
 // per scan capture, before the copies, so the request lands in the pass that holds the frame's
 // scene draws.
-void Request(int left, int top, int width, int height);
+// Returns false when the read-back was not issued this frame (disabled, or throttled: it is
+// asked for every MP2_SCAN_PEEK_EVERY-th call, default 2). SetPick must then be skipped too, so the
+// pick keeps matching the data in the buffers.
+bool Request(int left, int top, int width, int height);
 
 // Where the last request sat, for the code that reads the buffers back (CPlayer::FindScanTargetId):
 // the region's top-left corner is `regionLeft/regionTop` logical pixels from the viewport's centre

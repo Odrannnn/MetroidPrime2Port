@@ -49,21 +49,35 @@ bool DebugScan() {
 
 } // namespace
 
-void Request(int left, int top, int width, int height) {
+bool Request(int left, int top, int width, int height) {
   // MP2_SCAN_PEEK=0 turns the read-back off, which is the A/B for a crash inside it: the scan
   // visor then behaves exactly as it did before this port work (no target can be selected).
   static const bool enabled = std::getenv("MP2_SCAN_PEEK") == nullptr ||
                               std::strcmp(std::getenv("MP2_SCAN_PEEK"), "0") != 0;
   if (!enabled || width <= 0 || height <= 0) {
-    return;
+    return false;
   }
   if (static_cast<uint32_t>(width) * static_cast<uint32_t>(height) > kMaxPixels) {
-    return;
+    return false;
   }
+  // Throttle (issue #33): each peek costs the render thread a snapshot pass and a read-back, and
+  // the visor needs no fresh ids every frame. Every Nth call is issued; the region's size always
+  // issues one (FillBuffers resamples with it), as does the first. MP2_SCAN_PEEK_EVERY=1 is the A/B.
+  static const int every = [] {
+    const char* env = std::getenv("MP2_SCAN_PEEK_EVERY");
+    const int value = env != nullptr ? std::atoi(env) : 2;
+    return value < 1 ? 1 : value > 4 ? 4 : value;
+  }();
+  static int sSinceIssued = 0;
+  if (sRequestWidth == width && sRequestHeight == height && ++sSinceIssued < every) {
+    return false;
+  }
+  sSinceIssued = 0;
   sRequestWidth = width;
   sRequestHeight = height;
   GXRequestScanPeek(left, top, static_cast<uint32_t>(width), static_cast<uint32_t>(height), sStaging.id,
                     sStaging.depthHigh, sStaging.depthLow, &sStaging.sequence);
+  return true;
 }
 
 void SetPick(const Pick& pick) { sPick = pick; }
