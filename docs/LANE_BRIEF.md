@@ -121,9 +121,11 @@ no run reaches (`tools/cov/force.sh`): coverage says which arm is missing, not h
 
 ## Gates (one line each in the report)
 
-Build `$T/ninja -C build-port-link metroid_prime2_port` 0 FAILED; `python3 tools/gen_files_cmake.py
+`$T` is the review-tools bin dir (`T=$PWD/../MetroidPrimePort/build/review-tools/bin`, AGENTS.md
+"Commands"). Build `$T/ninja -C build-port-link metroid_prime2_port` 0 FAILED; `python3 tools/gen_files_cmake.py
 --check` rc 0; `tools/review_decomp_diff.sh <base>` output (every MARK/ASM line explained); the run:
-area, frames, `[port] caught` / `reach-stub` count 0; upstream-file edits: TARGET_PC strip-diff clean
+area, frames, `port: crashed:` (`[port] caught` is Android's crash-buffer line) / `reach-stub` count 0;
+upstream-file edits: TARGET_PC strip-diff clean
 and `python3 configure.py && $T/ninja` "87 files OK".
 
 Test only what materially changed (user, 2026-10-24): run the gates and runs that touch the code
