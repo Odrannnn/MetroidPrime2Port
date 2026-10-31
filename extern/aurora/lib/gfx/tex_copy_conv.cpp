@@ -338,6 +338,10 @@ static wgpu::BindGroupLayout g_bindGroupLayout;
 static wgpu::BindGroupLayout g_depthBindGroupLayout;
 static wgpu::BindGroupLayout g_depthBindGroupLayoutMS;
 static absl::flat_hash_map<GXTexFmt, wgpu::RenderPipeline> g_depthPipelinesMS; // Core devices only
+// Port: index/mask copies (A8/R8/G8/B8) of a multisampled colour EFB read sample 0 of the original
+// attachment, never the averaged resolve (an average of two palette ids is another id). Core only.
+static wgpu::BindGroupLayout g_indexBindGroupLayoutMS;
+static absl::flat_hash_map<GXTexFmt, wgpu::RenderPipeline> g_indexPipelinesMS;
 static wgpu::Sampler g_nearestSampler;
 static wgpu::Sampler g_linearSampler;
 static absl::flat_hash_map<GXTexFmt, wgpu::RenderPipeline> g_pipelines;
@@ -468,6 +472,12 @@ static wgpu::RenderPipeline create_pipeline(const ConvPipeline& conv, const std:
 }
 
 bool needs_conversion(const GXTexFmt fmt) { return g_pipelines.contains(fmt); }
+
+bool index_copy_format(const GXTexFmt fmt) noexcept {
+  return fmt == GX_CTF_A8 || fmt == GX_CTF_R8 || fmt == GX_CTF_G8 || fmt == GX_CTF_B8;
+}
+
+bool index_copy_ms_supported(const GXTexFmt fmt) noexcept { return g_indexPipelinesMS.contains(fmt); }
 
 static constexpr std::string_view HdrCopyPreamble = R"(
 @group(0) @binding(3) var<uniform> hdr_copy_tone: array<vec4f, 3>;
@@ -656,6 +666,35 @@ void initialize() {
   }
   // Skip depth copies in compatibility mode
   if (webgpu::g_hasCoreFeatures) {
+    {
+      // Port: the same shaders on a multisampled colour source, sample 0 (textureLoad).
+      auto msEntries = bindGroupLayoutEntries;
+      msEntries[1].texture.sampleType = wgpu::TextureSampleType::UnfilterableFloat;
+      msEntries[1].texture.multisampled = true;
+      const wgpu::BindGroupLayoutDescriptor msDescriptor{
+          .label = "TexCopyConv Index MS Bind Group Layout",
+          .entryCount = msEntries.size(),
+          .entries = msEntries.data(),
+      };
+      g_indexBindGroupLayoutMS = g_device.CreateBindGroupLayout(&msDescriptor);
+      std::string preamble{ShaderPreamble};
+      const auto replace = [&](std::string_view from, std::string_view to) {
+        const auto at = preamble.find(from);
+        if (at == std::string::npos) {
+          Log.fatal("index MS preamble: '{}' not found", from);
+        }
+        preamble.replace(at, from.size(), to);
+      };
+      replace("texture_2d<f32>", "texture_multisampled_2d<f32>");
+      replace("textureSample(src, src_samp, uv)",
+              "textureLoad(src, clamp(vec2i(uv * vec2f(textureDimensions(src))), vec2i(0), "
+              "vec2i(textureDimensions(src)) - vec2i(1)), 0)");
+      for (const auto& conv : ConvPipelines) {
+        if (index_copy_format(conv.fmt)) {
+          g_indexPipelinesMS[conv.fmt] = create_pipeline(conv, preamble, g_indexBindGroupLayoutMS);
+        }
+      }
+    }
     for (const auto& conv : DepthConvPipelines) {
       g_pipelines[conv.fmt] = create_pipeline(conv, DepthShaderPreamble, g_depthBindGroupLayout);
       if (conv.outputFormat != to_wgpu(conv.fmt)) {
@@ -704,6 +743,8 @@ void shutdown() {
   g_depthBindGroupLayout = {};
   g_depthBindGroupLayoutMS = {};
   g_depthPipelinesMS.clear();
+  g_indexPipelinesMS.clear();
+  g_indexBindGroupLayoutMS = {};
   g_nearestSampler = {};
   g_linearSampler = {};
   g_depthSnapshotBindGroupLayout = {};
@@ -789,7 +830,7 @@ static void execute(const wgpu::CommandEncoder& cmd, const ConvRequest& req, con
         },
     };
     const wgpu::BindGroupDescriptor bindGroupDescriptor{
-        .layout = g_bindGroupLayout,
+        .layout = req.srcSamples > 1 ? g_indexBindGroupLayoutMS : g_bindGroupLayout,
         .entryCount = bindGroupEntries.size(),
         .entries = bindGroupEntries.data(),
     };
@@ -825,7 +866,9 @@ void run(const wgpu::CommandEncoder& cmd, const ConvRequest& req) {
     return;
   }
   // A format with no pipeline leaves the destination as it was, rather than ending the game.
-  const auto& pipelines = req.srcSamples > 1 ? g_depthPipelinesMS : g_pipelines;
+  const auto& pipelines = req.srcSamples <= 1 ? g_pipelines
+                          : gx::is_depth_format(req.fmt) ? g_depthPipelinesMS
+                                                         : g_indexPipelinesMS;
   const auto it = pipelines.find(req.fmt);
   if (it == pipelines.end()) {
     warn_missing_pipeline(req.srcSamples > 1 ? "multisampled conversion" : "conversion", req.fmt);
