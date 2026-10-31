@@ -20,6 +20,8 @@ Sequence (all with the game held, so ticks are exact; `statedump` runs between t
 A field that differs between A and B is STRICT only if B also differs from A1: a value B shares with A1
 is one that just moves each tick (a timer, a position), not a save-state gap. --post-wait N also dumps
 C N ticks after B and prints C against A, uncounted (for a restore that hands over late).
+A lazily rebuilt reference (the Digital Guardian's collision actors, built by its first Think) shows in B as
+`cls:X -> none` and is back in C: use --post-wait ~30 to tell it from a lost one.
 
 Objects are matched by (area MREA, editor id, class, generated); objects with no editor id (effects,
 projectiles: not saved by design) match by class only and differ as warnings. Missing or extra objects
@@ -222,13 +224,29 @@ def read_dump(path, timeout=30.0, stable=0.5):
         time.sleep(0.05)
 
 
+def step_ticks(con, n, timeout=120):
+    """`step n` and wait until the game has run them: `step` only queues the ticks, and a
+    `statedump` sent right after it reads the world before they ran."""
+    def frame():
+        return int(con.cmd("frame")[1].split()[-1])
+    goal = frame() + n
+    while n > 0:
+        con.cmd(f"step {min(600, n)}")
+        n -= 600
+    deadline = time.time() + timeout
+    while frame() < goal:
+        if time.time() > deadline:
+            raise RuntimeError(f"step: frame {goal} not reached in {timeout}s")
+        time.sleep(0.02)
+
+
 def roundtrip(con, game, tag, outdir, a):
     """Run the A / A1 / B (and with --post-wait, C) sequence on the current world. Returns the dump paths."""
     paths = {k: str(Path(outdir).resolve() / f"{tag}-{k}.jsonl") for k in ("A", "A1", "B", "C")}
     con.cmd("hold 1")
     con.cmd(f"statedump {paths['A']}")
     con.cmd(f"state save {a.slot}")
-    con.cmd("step 1")
+    step_ticks(con, 1)
     con.cmd(f"statedump {paths['A1']}")
     n = game.restores()
     # `hold` stops the game on the tick the room state is restored: releasing the hold and re-taking it
@@ -242,7 +260,7 @@ def roundtrip(con, game, tag, outdir, a):
         time.sleep(0.05)
     con.cmd(f"statedump {paths['B']}")
     if a.post_wait:
-        con.cmd(f"step {a.post_wait}")
+        step_ticks(con, a.post_wait)
         con.cmd(f"statedump {paths['C']}")
     return paths, None
 
@@ -505,8 +523,7 @@ def main():
             if a.wait:
                 # settle: the room's script start-up, spawns and the first AI states run unheld
                 con.cmd("hold 1")
-                for _ in range(0, a.wait, 600):
-                    con.cmd(f"step {min(600, a.wait)}")
+                step_ticks(con, a.wait)
             tag = f"{i + 1:02d}-" + re.sub(r"\W+", "_", title)[:32]
             paths, err = roundtrip(con, game, tag, a.out, a)
             if err:
