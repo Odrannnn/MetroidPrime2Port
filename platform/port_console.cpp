@@ -2010,7 +2010,7 @@ void CmdCrosshair(CStateManager&, const Args& args, std::string& out) {
     } else {
       const int percent = ArgToInt(args[1], -1);
       if (percent < PortOverlay::kCrosshairSizeMin || percent > PortOverlay::kCrosshairSizeMax) {
-        Fail("usage: crosshair [<25..100> | style classic|remastered | opacity <0..100> | color "
+        Fail("usage: crosshair [<25..100> | style classic|remastered|gamecube | opacity <0..100> | color "
              "<r> <g> <b> | color clear | aim <0|1>]");
         return;
       }
