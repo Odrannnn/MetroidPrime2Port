@@ -741,8 +741,9 @@ void discard_dead_stores(RenderPass& pass, bool colorDead, bool depthDead) {
   auto& color = pass.colorAttachments[SceneColorAttachmentIndex];
   // Without a resolve target the attachment itself is what copies and presentation read.
   // Scan peeks read the original MSAA samples, not the averaged resolve target.
-  // Port: an index/mask copy (A8/R8/G8/B8) reads sample 0 of the original attachment too.
-  const bool indexCopy = pass.resolveTarget && tex_copy_conv::index_copy_format(pass.resolveFormat);
+  // Port: an index/mask copy (A8/R8/G8/B8) reads sample 0 of the original attachment too, where a
+  // multisampled pipeline exists (Core); a compat device reads the resolve, so the store stays dead.
+  const bool indexCopy = pass.resolveTarget && tex_copy_conv::index_copy_ms_supported(pass.resolveFormat);
   if (colorDead && pass.colorAttachmentCount > 0 && color.resolveView && !pass.scanPeek.has_value() && !indexCopy) {
     color.storeOp = wgpu::StoreOp::Discard;
   }
