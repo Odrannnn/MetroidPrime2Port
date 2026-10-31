@@ -232,6 +232,9 @@ CFishCloud::CFishCloud(TUniqueId uid, const rstl::string& name, const CEntityInf
   mPartitionPitch = (aabb.GetMaxPoint() - aabb.GetMinPoint()) * (1.f / 7.f);
   mOoPartitionPitch = CVector3f(1.f / mPartitionPitch.GetX(), 1.f / mPartitionPitch.GetY(),
                                 1.f / mPartitionPitch.GetZ());
+#ifdef TARGET_PC
+  mThinkCounter = 0; // A8-11: uninitialised in retail too
+#endif
 }
 
 // @ fn_20_53B0
