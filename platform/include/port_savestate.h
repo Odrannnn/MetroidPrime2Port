@@ -167,6 +167,7 @@ struct RoomApplyStats {
   int unmatched = 0; // saved objects not in the rebuilt area
   int otherLayer = 0; // live objects of a layer the state has none of, left alone
   int skipped = 0;   // areas left alone: another area asset at the index
+  int fields = 0;    // schema fields restored (kTagFields)
 };
 
 // A restore in progress: areas already applied, and areas seen loaded on an earlier tick (an
@@ -194,6 +195,12 @@ bool IsScriptGeneratedCopy(const CStateManager& mgr, CEntity& ent);
 // and whether the block keeps a schema field.
 bool EntityFieldsSaved(const CStateManager& mgr, CEntity& ent);
 bool SchemaFieldSaved(const PortSchemaClass& cls, const PortSchemaField& f);
+// Captures `ent`'s schema fields into a kTagFields block (false: not an entity that gets one);
+// applies one, returning the fields set; whether it covers every class of `ent` (the script
+// messages that woke the enemy need no replay then).
+bool CaptureEntityFields(const CStateManager& mgr, CEntity& ent, std::string& out);
+int ApplyEntityFields(CStateManager& mgr, CEntity& ent, const std::string& data);
+bool EntityFieldsCover(CEntity& ent, const std::string& data);
 std::string RoomStateJson(CStateManager& mgr, CEntity& ent);
 // Applies the saved areas once all of them are ready (or, with `force`, those that are ready now);
 // returns how many saved areas are still waiting to load.

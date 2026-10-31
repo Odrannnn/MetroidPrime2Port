@@ -47,6 +47,9 @@ class IMetaTrans;
 class CSpatialPrimitive; // Guessed name: CSPP resource, inherited Ghidra annotation.
 
 class CAnimData {
+#ifdef TARGET_PC
+  friend struct PortStateCodec; // port save state (port_savestate_fields.cpp)
+#endif
 public:
   enum EAnimDir {
     kAD_Forward,
