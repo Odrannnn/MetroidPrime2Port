@@ -301,7 +301,10 @@ void render(wgpu::CommandEncoder& cmd, FramePacket& frame, RenderPass& passInfo,
       .colorAttachmentCount = passInfo.colorAttachmentCount,
       .colorAttachments = attachments.data(),
       .depthStencilAttachment = depthStencilAttachmentPtr,
-      .timestampWrites = webgpu::gpu_prof::pass_writes(passIndex == 0 ? "EFB pass (first)" : "EFB pass (later)"),
+      // Port: a skipped pass must not take a profiler zone (its timestamps would never be written).
+      .timestampWrites = emptyLoadPass ? nullptr
+                                       : webgpu::gpu_prof::pass_writes(passIndex == 0 ? "EFB pass (first)"
+                                                                                      : "EFB pass (later)"),
   };
 
   if (!emptyLoadPass) {
