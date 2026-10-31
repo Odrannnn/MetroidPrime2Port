@@ -4,13 +4,15 @@
 //
 // Each folder in <user path>/mods (or MP2_MODS) is a mod, applied in name order, so
 // a later mod wins over an earlier one. Inside a mod:
-//  - a file at a disc path (Metroid1.pak, Audio/frigate.dsp, Video/attract0.thp)
-//    replaces that disc file;
+//  - a file at a disc path (Metroid5.pak, Audio/SplinterHive-132.dsp,
+//    Video/openPartOne.thp; case-insensitive) replaces that disc file, and a
+//    `.thp` the disc lacks is added instead (the game opens movies by name);
 //  - a file named <8 hex digits>.<4 letters> (1A2B3C4D.TXTR), anywhere in the
 //    mod, replaces that resource in every PAK that holds it. The PAK is served
 //    as a virtual file: its table patched to point past the original data, where
 //    the loose file is appended.
-// Mods are read at startup only: the game caches PAK tables when it boots.
+// Mods are read at startup, and again by Reload() (F1 > Mods > Reload mods, which
+// reopens every PAK and rebuilds the room): the game caches PAK tables when it boots.
 
 #include <cstddef>
 #include <cstdint>

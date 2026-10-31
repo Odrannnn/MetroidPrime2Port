@@ -26,7 +26,7 @@
 //
 // PortMods serves the textures under every mod, from a cache in the user folder
 // (generated/suit-colours/<suit>/). The mods load at startup, so changing a
-// colour takes a restart, or the Apply now button's mod reload.
+// colour takes a restart, or the Apply suit colours button's mod reload.
 
 #include "port_mods.h"
 
