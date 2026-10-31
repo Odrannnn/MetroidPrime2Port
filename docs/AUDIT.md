@@ -158,7 +158,7 @@ Scripts: `tools/audit/` (see its README).
 | A8-25 | Weather | src/MetroidPrime/CRainSplashGenerator.cpp:21,83 | omitted | low | GetNextBestPt/GeneratePoints/GeneratePoint were stubbed on PC (no rain splashes on skinned models, retail 0x80182184, 0x801825CC); stubs removed, host GetSkinnedPosition/Normal already byte-swap | fixed |
 | A8-26 | Cinematics | src/MetroidPrime/CMFGame.cpp:710 | port-feature | info | START skip asks for a confirming press even with SkipCinematics off (retail skips on the first START, 0x8001F98C). Deliberate shared confirm rule | open (intentional) |
 | A8-27 | HUD | src/MetroidPrime/CTargetReticles.cpp:2041 | wrong-logic | low | Classic/GameCube crosshair replaced the tweak alpha with the opacity option and dropped the draw-scale fade (retail 0x800AE414..438). Now tweak alpha * opacity * draw scale | fixed |
-| A8-28 | HUD | platform/port_overlay.cpp:142 | port-feature | info | Crosshair style defaults to Remastered (port feature on by default; retail look is Classic). Decision for the user | open (decision) |
+| A8-28 | HUD | platform/port_overlay.cpp:142 | port-feature | info | Crosshair style defaults to Remastered (port feature on by default; retail look is Classic). User decision 2026-10-31: keep Remastered as default | won't fix (decision) |
 
 ## Sweep log
 
