@@ -4,7 +4,8 @@ Things that took real effort to find out. AGENTS.md keeps a one-line index; the 
 
 
 - **`tools/link_check.sh` can report "nothing to relink; re-reading the existing link result" even
-  after a source changed** (its freshness check reads a stale `build-port-link/build.log`). The
+  after a source changed** (when ninja has nothing to do it keeps the previous `build-port-link/build.log`
+  and re-derives the counts from it, so a tree someone built by hand keeps the old numbers). The
   runnable binary is `build-port-link/metroid_prime2_port` - the *full* build (`MP_SDK_HEADERS_ONLY=OFF`;
   build-port is the same sources with `MP_SDK_HEADERS_ONLY=ON`, which builds every target against
   Aurora's headers but pulls in no Aurora and links no executable, `CMakeLists.txt:599-602` -
@@ -31,7 +32,7 @@ Things that took real effort to find out. AGENTS.md keeps a one-line index; the 
   TARGET_PC (`CAnimSource` did not, and an integer divide by zero ended a run). When a sweep sees a
   stream of these after a world change, the question to answer is *which pak family* is missing.
 - **A save load comes up with ~1008 of the 1024 object ids allocated** and only settles near ~350 a
-  few hundred frames later (`CStateManager.cpp:5389` has the same numbers; `MP2_DEBUG_IDS=1` prints
+  few hundred frames later (`CStateManager.cpp:5420` has the same numbers; `MP2_DEBUG_IDS=1` prints
   the count every 300 frames). A warp that lands in that window can exhaust the pool; `PortWarpSettle`
   waits for 256 free and drops the areas around the player, which is what frees them (the first
   threshold, 512, was tuned for the boot spike and blocked ordinary hops - 499 of 526 waits in one
@@ -61,9 +62,10 @@ Things that took real effort to find out. AGENTS.md keeps a one-line index; the 
 - Host objects outgrow retail sizes: hard-coded `Alloc(0x20)` etc. need `sizeof` under TARGET_PC.
 - `src/MetroidPrime/PortGlobals.cpp`, `PortBoot.cpp`, `PortReachStubs.cpp` are old-tree files
   not built; mine them for values only. So is `platform/debug_ui.cpp`: it is in no CMake target
-  (`CMakeLists.txt`'s `mp_platform` comment says why), so editing it changes nothing and a setting
-  added there will not link. The live F1 overlay is two pieces: `platform/debug_ui/*.cpp` is the
-  window and its pages (`CMakeLists.txt:661-664`, built into `mp_port_audio`, :689), and
+  (`CMakeLists.txt:690` says why: the F1 overlay is built in `mp_port_audio` instead), so editing it
+  changes nothing and a setting added there will not link. The live F1 overlay is two pieces:
+  `platform/debug_ui/*.cpp` is the window and its pages (`CMakeLists.txt:661-666`, built into
+  `mp_port_audio`, :650), and
   `platform/port_overlay.cpp` holds the `PortOverlayState` knobs and the game-facing API behind them;
   it keeps no settings file at all (every knob is an `MP2_*` env var). `tools/boot_probe.sh` is the
   build that enables `MP_BOOT_STUBS=ON` itself (`:78-82`), so `PortReachStubs.cpp` is linked there and
@@ -78,10 +80,13 @@ Things that took real effort to find out. AGENTS.md keeps a one-line index; the 
   the payload, and reject generations other than 0/1 before using their XOR as a slot index.
   In the import inspector (`platform/port_save.cpp`), the newer of the two copies is
   the one with the greater slot *timestamp*, not generation: the generations alternate 0/1.
-- **Saving at a save station pauses the run, and a paused game runs no console command.**
+- **Saving at a save station pauses the run, and a paused game runs no update.**
   `MP2_INPUT="STATION@100,A@220+3,..."` gets into the save screen and its next A writes the card
   (that is how the card-backup hook was verified), but from then on the port logs
-  `[harness] no game update` and `MP2_CONSOLE` goes silent until the process is restarted.
+  `[harness] no game update` and `MP2_FRAMES` never arrives. The console still answers while paused
+  (since `d82b8002b` `CMFGame`'s timer tick serves it whenever the state manager's update is
+  skipped - pause, portal transition, cinematic skip; `PortConsole::IdleTick`, `CMFGame.cpp:194,204`),
+  so it is a command that needs an update, not the console, that has to wait for a restart.
 - **A model's position/normal arrays are disc data in memory**: the GPU's guest array path swaps
   them, so anything that skins or measures them on the *CPU* has to byte-swap each component first
   (`SwarmRenderHelpers.cpp`, `CSkinnedModel::GetSkinnedPosition`). Read raw they are NaNs and values
@@ -125,9 +130,12 @@ Things that took real effort to find out. AGENTS.md keeps a one-line index; the 
   paused, and `A` leaves it in a save screen.
 - `MP_PORT_FRAMES` is only read by the unbuilt `PortBoot.cpp`: the current loop never exits, so
   `timeout` ends boots (exit 124/137 = still running, not a crash). The fault handler prints
-  `[port] caught` + backtrace on real crashes, **and on an external `kill -SEGV`** (`main.cpp`
-  installs it for SIGSEGV/BUS/ILL/FPE and re-raises with the default handler, so the exit code still
-  says "died on signal 11"). That makes it the way to sample a *hung* process without ptrace on this
+  `port: crashed: <signal>` + stack and breadcrumbs on real crashes, **and on an external
+  `kill -SEGV`** (`platform/main.cpp:1174` installs `PortCrash::Install`, `platform/port_crash.cpp`,
+  for SEGV/BUS/ILL/FPE/ABRT/TRAP, and re-raises with the handler that was there before, so the exit
+  code still says "died on signal 11"; Android's crash buffer also gets `[port] caught signal N`,
+  `platform/main.cpp:1046`, which is the line `tools/sweep_report.py` and `mpsoak.py` grep for).
+  That makes it the way to sample a *hung* process without ptrace on this
   machine (`/proc/sys/kernel/yama/ptrace_scope` is 1, so `gdb -p` is refused - launch the run under
   gdb and SIGINT it instead, `tools/gdb_interrupt.py`): SIGSEGV the stuck run, and the backtrace lands
   in its log, which is how the two update stalls in the Temple Grounds sweep were placed in
@@ -178,7 +186,8 @@ Things that took real effort to find out. AGENTS.md keeps a one-line index; the 
   Windows rejects); with the old name Aurora's cachePath was null and the first run crashed in the
   Dawn cache's `fs_path_from_string` (win-startup-crash, CI 40572636384).
 - **Dawn is MP1's fork, not encounter/dawn.** `extern/aurora/cmake/AuroraDependencyVersions.cmake`
-  pins `Odrannnn/dawn` branch `mpp`, release `v20261026.185535` (`fef22023`), with a sha256 per
+  pins `Odrannnn/dawn` branch `mpp`, release `v20261029.114630` (`118436b3`, bumped from
+  `v20261026.185535`/`fef22023`), with a sha256 per
   prebuilt; `AuroraDawnProvider.cmake` builds it with `DAWN_ENABLE_DESKTOP_GL` on Windows. Both files
   are MP1's verbatim - copy them from MP1 on the next bump rather than editing here. An existing build
   dir migrates the cached old version on reconfigure. `gpu.cpp` keeps Dawn's blob cache off for GL on
@@ -190,7 +199,7 @@ Things that took real effort to find out. AGENTS.md keeps a one-line index; the 
   The fallbacks are vendored-Aurora additions from MP1 (frame.cpp/encoding.cpp/shader.cpp fetch
   textures, volfog.cpp/depth_peek.cpp render passes, `g_vertexFetchTexture`/`g_noCompute` in
   resources.hpp): keep them on a re-vendor.
-- **Full list of vendored-Aurora additions** (keep all on re-vendor; last re-vendor: MP1 174975c2c, three-way on base 11e96d280, branch `sync/aur1`): 32 MiB uniform buffer, uniform dedup (compares the previous bytes in `frame.uniforms` or MP1's `spillUniforms`; `MP2_GX_STORAGE_LOG`), efb_copy and scan_peek shutdowns outside the lock, dstAlpha alpha-only second draw in `push_gx_draw` (only a fallback now: MP1's `dst_alpha_mode`/dual-source handles `GXSetDstAlpha`, the extra draw runs when that gives None and the alpha-only config gives Replace, i.e. no dual-source or `AURORA_DUAL_SOURCE=0`), `GXSnapshotDepth`/`GXPeekZRegion` (flare occlusion) (also under MSAA: depth_peek.cpp has a `texture_depth_multisampled_2d` pipeline pair reading sample 0, and `split_pass_for_depth_snapshot` no longer skips MSAA passes; before, flares at MSAA>1 fell back to the EFB-copy test, #35), `GXRequestScanPeekEx` flags (`GX_SCAN_PEEK_DEPTH_ONLY` no alpha warning, `GX_SCAN_PEEK_IF_RENDERED` no forced full frame; Splitter beam), `aurora/perf.h` counters (`MP2_PERF_COUNTERS=1`), `AURORA_PRESENT_EVERY`, `AURORA_RENDER_EVERY` (fifo copy-destination table; ops recorded in a skipped frame wait in `g_deferredOps` and are flushed in order once the frame is rendered or at `enqueue_frame_ops`), copy-texture cache `kSizesPerDest = 4` (MP1 has 16; tablet OOM in the scan visor), Dawn `ImplicitDeviceSynchronization` (`AURORA_IMPLICIT_SYNC=0` = off; without it GPU ring resets; MP1's unconditional block removed), retired-surface reuse, `kGciFolderSerial` (constant GCI-folder serial; MP1 hashes the path, which would orphan saves), SDK `GXAdjustForOverscan` arithmetic, no blit for depth `GXCopyTex` (encoding.cpp `isDepth`), scaled A8/R8/G8/B8 `GXCopyTex` copies sample Nearest (encoding.cpp `is_index_copy_format`; index/mask values must not be averaged), and under MSAA>1 those index copies read sample 0 of the multisampled colour attachment (`tex_copy_conv.cpp` `g_indexPipelinesMS`/`index_copy_ms_supported`, `encoding.cpp` `indexMs`, `recording.cpp` `discard_dead_stores` keeps that colour store; Core devices only, a compat device keeps the averaged resolve; fixes the scan palette `bad=` at 4x), `AURORA_HEADLESS` (Null device, no surface, no frame rendered, read-backs dropped, screenshots refused, no host input scan; aurora.cpp, gpu.cpp, fifo, recording.cpp, input.cpp; RUNNING.md "Headless runs"), `copy_tex`/`copy_probe_face` return without a render pass (GXFrameBuffer.cpp; a declined frame's EFB copy read the null frame packet: Android resume SIGSEGV at 0x20; `CMain::RsMain` also skips the scene when `CGraphics::PortSceneOpen()` is false, as MP1's does). Now MP1-native (don't re-add): `PADSetPortOverride`/`PADGetRawState`, partial `GXCopyTex` clear, real `GXSetDstAlpha`. MP1's `MP_*` env vars in aurora are renamed `MP2_*` (`MP2_LOG_TEX_INVALID`, `MP2_LOG_COPY_TEX`, `MP2_PASS_LOG`, `MP2_DAWN_ENABLE/DISABLE`, `MP2_GPU_POWER`, `MP2_STORAGE_CLAMP`, `MP2_RESIZE_WAIT`, `MP2_ACTOR_SHADOW_DEBUG`); redo the rename on every re-vendor. Gx test stubs (`tests/gx_test_stubs.cpp`) carry stubs for MP2's renderer hooks. `aurora_dvd_set_root(dir, dol)` (dvd.cpp/dvd.hpp/fst.cpp, ported from MP1 575f54d28; Trilogy `MP2/` root + `rs5mp2_p.dol`, docs/TRILOGY.md) must survive a re-vendor.
+- **Full list of vendored-Aurora additions** (keep all on re-vendor; last re-vendor: MP1 174975c2c, three-way on base 11e96d280, branch `sync/aur1`): 32 MiB uniform buffer, uniform dedup (compares the previous bytes in `frame.uniforms` or MP1's `spillUniforms`; `MP2_GX_STORAGE_LOG`), efb_copy and scan_peek shutdowns outside the lock, dstAlpha alpha-only second draw in `push_gx_draw` (only a fallback now: MP1's `dst_alpha_mode`/dual-source handles `GXSetDstAlpha`, the extra draw runs when that gives None and the alpha-only config gives Replace, i.e. no dual-source or `AURORA_DUAL_SOURCE=0`), `GXSnapshotDepth`/`GXPeekZRegion` (flare occlusion) (also under MSAA: depth_peek.cpp has a `texture_depth_multisampled_2d` pipeline pair reading sample 0, and `split_pass_for_depth_snapshot` no longer skips MSAA passes; before, flares at MSAA>1 fell back to the EFB-copy test, #35), `GXRequestScanPeekEx` flags (`GX_SCAN_PEEK_DEPTH_ONLY` no alpha warning, `GX_SCAN_PEEK_IF_RENDERED` no forced full frame; Splitter beam), `aurora/perf.h` counters (`MP2_PERF_COUNTERS=1`), `AURORA_PRESENT_EVERY`, `AURORA_RENDER_EVERY` (fifo copy-destination table; ops recorded in a skipped frame wait in `g_deferredOps` and are flushed in order once the frame is rendered or at `enqueue_frame_ops`), copy-texture cache `kSizesPerDest = 4` (MP1 has 16; tablet OOM in the scan visor), Dawn `ImplicitDeviceSynchronization` (`AURORA_IMPLICIT_SYNC=0` = off; without it GPU ring resets; MP1's unconditional block removed), retired-surface reuse, `kGciFolderSerial` (constant GCI-folder serial; MP1 hashes the path, which would orphan saves), SDK `GXAdjustForOverscan` arithmetic, no blit for depth `GXCopyTex` (encoding.cpp `isDepth`), scaled A8/R8/G8/B8 `GXCopyTex` copies sample Nearest (encoding.cpp `is_index_copy_format`; index/mask values must not be averaged), and under MSAA>1 those index copies read sample 0 of the multisampled colour attachment (`tex_copy_conv.cpp` `g_indexPipelinesMS`/`index_copy_ms_supported`, `encoding.cpp` `indexMs`, `recording.cpp` `discard_dead_stores` keeps that colour store; Core devices only, a compat device keeps the averaged resolve; fixes the scan palette `bad=` at 4x), `AURORA_HEADLESS` (Null device, no surface, no frame rendered, read-backs dropped, screenshots refused, no host input scan; aurora.cpp, gpu.cpp, fifo, recording.cpp, input.cpp; RUNNING.md "Headless runs"), `copy_tex`/`copy_probe_face` return without a render pass (GXFrameBuffer.cpp; a declined frame's EFB copy read the null frame packet: Android resume SIGSEGV at 0x20; `CMain::RsMain` also skips the scene when `CGraphics::PortSceneOpen()` is false, as MP1's does). Now MP1-native (don't re-add): `PADSetPortOverride`/`PADGetRawState`, partial `GXCopyTex` clear, real `GXSetDstAlpha`. MP1's `MP_*` env vars in aurora are renamed `MP2_*` (`MP2_LOG_TEX_INVALID`, `MP2_LOG_COPY_TEX`, `MP2_PASS_LOG`, `MP2_DAWN_ENABLE/DISABLE`, `MP2_GPU_POWER`, `MP2_STORAGE_CLAMP`, `MP2_RESIZE_WAIT`, `MP2_ACTOR_SHADOW_DEBUG`); redo the rename on every re-vendor. Gx test stubs (`extern/aurora/tests/gx_test_stubs.cpp`) carry stubs for MP2's renderer hooks. `aurora_dvd_set_root(dir, dol)` (dvd.cpp/dvd.hpp/fst.cpp, ported from MP1 575f54d28; Trilogy `MP2/` root + `rs5mp2_p.dol`, docs/TRILOGY.md) must survive a re-vendor.
 - **Empty-pass elision (`encoding.cpp` `render`, issue #33).** A single-sampled continuation pass with no draws that loads (never clears) its colour/depth is not begun: its copy reads the attachment the pass before stored. The scan visor's full-screen A8 copy made one such pass per frame (a full-target load and store on a tiler). Keep on a re-vendor.
 - **World-shadow copy as a continuation clear (`recording.cpp` `resolve_pass_into`, issue #33).** A clearing copy of a rect (the 103x103 shadow copy) after a pass that only cleared the whole target and drew inside that rect leaves the target uniformly cleared, so it is treated as a full-target clear: the continuation clears with its load ops instead of loading what the pass stored (no full-target store, load or depth store per combat frame). Needs an EFB without alpha (RGB8_Z24) or `clearAlpha`; the pass must have only scissored draws inside the rect. Keep on a re-vendor.
 - **Scan peek is throttled (`PortScanTarget::Request`, issue #33).** Every `MP2_SCAN_PEEK_EVERY`-th (default 2, `1` = every frame) call issues the read-back; a skipped call must skip `SetPick` too (the pick has to match the data in the buffers), a new region size always issues. The Splitter beam's `GX_SCAN_PEEK_IF_RENDERED` peek is separate and not throttled. The A8 id-strip `CopyTextureRegion` stays: it is the pass boundary that freezes the id draws for the peek (without it the gun/fog draws of the same pass would land in the ids).
