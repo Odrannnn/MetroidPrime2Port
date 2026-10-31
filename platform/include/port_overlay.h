@@ -424,7 +424,7 @@ bool SecondaryCrosshairs();
 // Full-screen Dark Visor (`dark_visor_full`, env `MP2_DARK_VISOR_FULL`): the visor reveals and
 // highlights over the whole view, as the game's own split-screen does, instead of the lens
 // (FRME_DarkVisorMask) inside the tweak frame. Off by default; Original experience keeps the lens.
-// Read by CStateManager::DrawDarkVisor.
+// Read by CStateManager::DrawDarkVisor; CSamusHud hides the centre gear, spinner and rings.
 bool DarkVisorFullScreen();
 // Dark Visor static (`dark_visor_static`, env `MP2_DARK_VISOR_STATIC`), in percent: how much of
 // the grey static image covers the scene; below 100 the scene's own colours show through, 0 keeps

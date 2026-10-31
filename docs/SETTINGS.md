@@ -302,8 +302,9 @@ Video > Display:
 - `secondary_crosshairs` (default on, env `MP2_SECONDARY_CROSSHAIRS`): HUD and view > Secondary
   crosshairs; off hides the next-target reticle (lock-on and the scan box stay).
 - `dark_visor_full` (default off, env `MP2_DARK_VISOR_FULL`): HUD and view > Full-screen Dark
-  Visor; the Dark Visor's effect covers the whole view (the split-screen path, no lens mask).
-  Original experience keeps the lens.
+  Visor; the Dark Visor's effect covers the whole view (the split-screen path, no lens mask),
+  and the HUD's centre gear, backing, spinner and rings are hidden (the boss bar stays). Original
+  experience keeps the lens.
 - `dark_visor_static` (0-100, default 100, env `MP2_DARK_VISOR_STATIC`): HUD and view > Dark Visor
   static; how much of the visor's grey static covers the scene. Lower keeps the scene's colours,
   0 leaves only the highlights. Original experience keeps 100.

@@ -597,7 +597,13 @@ void CSamusHud::UpdateHudWidgetColors() {
   for (uint i = 0; i < 4; ++i) {
     CGuiWidget* widget = mLoadedHudFrame->FindWidget(sDarkVisorWidgets[i]);
     if (widget != nullptr) {
+#ifdef TARGET_PC
+      // Port: the full-screen Dark Visor option hides the centre rings (not the boss bar).
+      widget->SetVisibility(darkVisor && (i == 3 || !PortOverlay::DarkVisorFullScreen()),
+                            kTM_Children);
+#else
       widget->SetVisibility(darkVisor, kTM_Children);
+#endif
       widget->SetColor(decorative);
     }
   }
@@ -2497,6 +2503,14 @@ void CSamusHud::Update(float dt, const CStateManager& mgr, uint helmetVisibility
     const bool lens = visor == CPlayerState::kPV_Dark && !PortOverlay::DarkVisorFullScreen();
     mDarkVisor->SetIsVisible(lens);
     mDarkVisorBacking->SetIsVisible(lens);
+    // Spinner, holder and ring (not the boss bar) follow the option live.
+    const bool rings = mNextState == kHS_Dark && !PortOverlay::DarkVisorFullScreen();
+    for (uint i = 0; i < 3; ++i) {
+      CGuiWidget* widget = mLoadedHudFrame->FindWidget(sDarkVisorWidgets[i]);
+      if (widget != nullptr && widget->GetIsVisible() != rings) {
+        widget->SetVisibility(rings, kTM_Children);
+      }
+    }
 #else
     mDarkVisor->SetIsVisible(visor == CPlayerState::kPV_Dark);
     mDarkVisorBacking->SetIsVisible(visor == CPlayerState::kPV_Dark);
