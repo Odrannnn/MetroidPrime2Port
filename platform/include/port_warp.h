@@ -55,15 +55,23 @@ int TakeDimensionResult();
 // Activate a layer of the current area. A module whose actors live in a layer other than 0 - every
 // one of ElitePirate's five areas, for instance - only appears once that layer runs, so this is what
 // makes such a module verifiable from the `MP2_INPUT` token `LAYER<layer>`.
+// Layer requests are queued instead of replacing each other, so `layer 2; layer 14` in one tick both
+// run: one is served at a time, the next when the game has finished streaming the one before.
 void Layer(int layer);
 // Mark a layer of the current area inactive in the world's layer state, as a script's layer
 // controller does: the live objects stay until the area loads again (the overlay's Reload).
+// Queued like `Layer`.
 void LayerOff(int layer);
 // Reads MP2_WORLD / MP2_TELEPORT once; called from the platform event loop.
 void ApplyEnvOnce();
-// Whether a request is waiting. The game checks this before it is ready to act (no world yet, or
-// the front end), so that `Consume` does not take a request it would then have to drop.
+// Whether a request is waiting - a warp in the slot, or a queued layer whose turn it is. The game
+// checks this before it is ready to act (no world yet, or the front end), so that `Consume` does not
+// take a request it would then have to drop.
 bool Pending();
+// Whether a layer request handed out by `Consume` is still being streamed in by the game
+// (CStateManager::PortLayerTick finishes it over frames). Set from PortWarpTick every update: while
+// it is set, the next queued layer waits, so two `layer` commands in one tick are not merged.
+void SetLayerBusy(bool busy);
 // Whether the waiting request is the one `MP2_WORLD`/`MP2_TELEPORT` queued at start-up. The game
 // holds that one until gameplay, because a warp served while the save's world is still loading
 // leaves the destination's scripted camera filters applying their flash for the rest of the run;

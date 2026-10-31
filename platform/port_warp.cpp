@@ -72,6 +72,38 @@ void Queue(const SRequest& request) {
   }
   sRequest = request;
 }
+
+// Layer requests are queued, not replaced: `layer 2; layer 14` in one tick (a console line, an
+// `MP2_INPUT` LAYER token) used to keep only the last one, so a module whose actors live in the
+// first layer never appeared. The game serves them one at a time, because PortWarpToLayer streams
+// a layer in over frames and finishes it in CStateManager::PortLayerTick: the next one is handed
+// out only once the previous has finished (SetLayerBusy, from PortWarpTick).
+constexpr int kMaxQueuedLayers = 8;
+SRequest sLayers[kMaxQueuedLayers];
+int sLayerFirst = 0;
+int sLayerCount = 0;
+bool sLayerBusy = false;
+
+void QueueLayer(const SRequest& request) {
+  if (sLayerCount == kMaxQueuedLayers) {
+    std::fprintf(stderr, "[layer] the layer queue is full (%d); dropping layer %d\n",
+                 kMaxQueuedLayers, request.delta);
+    return;
+  }
+  sLayers[(sLayerFirst + sLayerCount) % kMaxQueuedLayers] = request;
+  ++sLayerCount;
+}
+
+// The oldest queued layer, or false when none is waiting.
+bool TakeLayer(SRequest& out) {
+  if (sLayerCount == 0) {
+    return false;
+  }
+  out = sLayers[sLayerFirst];
+  sLayerFirst = (sLayerFirst + 1) % kMaxQueuedLayers;
+  --sLayerCount;
+  return true;
+}
 } // namespace
 
 void Area(const char* area) {
@@ -156,13 +188,13 @@ void Layer(int layer) {
   SRequest request;
   request.kind = EKind::kLayer;
   request.delta = layer;
-  Queue(request);
+  QueueLayer(request);
 }
 void LayerOff(int layer) {
   SRequest request;
   request.kind = EKind::kLayerOff;
   request.delta = layer;
-  Queue(request);
+  QueueLayer(request);
 }
 
 void ApplyEnvOnce() {
@@ -191,7 +223,11 @@ void ApplyEnvOnce() {
   }
 }
 
-bool Pending() { return sRequest.kind != EKind::kNone; }
+bool Pending() {
+  // A queued layer counts as pending - `settled` and the save state read this - but only while the
+  // one before it has finished, since until then there is nothing to hand out.
+  return sRequest.kind != EKind::kNone || (sLayerCount > 0 && !sLayerBusy);
+}
 
 bool PendingIsBoot() { return sBootPending && sRequest.kind != EKind::kNone; }
 
@@ -205,7 +241,8 @@ bool PeekBoot(SRequest& out) {
 
 bool Consume(SRequest& out) {
   if (sRequest.kind == EKind::kNone) {
-    return false;
+    // No warp in the slot: the oldest queued layer goes, unless the last one is still streaming.
+    return !sLayerBusy && TakeLayer(out);
   }
   out = sRequest;
   sRequest = SRequest();
@@ -221,6 +258,13 @@ bool Consume(SRequest& out) {
   return true;
 }
 
-void Clear() { sRequest = SRequest(); }
+void Clear() {
+  sRequest = SRequest();
+  // Everything waiting goes, the queued layers included.
+  sLayerFirst = 0;
+  sLayerCount = 0;
+}
+
+void SetLayerBusy(bool busy) { sLayerBusy = busy; }
 
 } // namespace PortWarp
