@@ -238,6 +238,9 @@ struct CDarkSamusDive {
 // fn_10_EA08 resets; the damage, the "PART" token and the rest of the record stay out until a
 // reader (fn_10_12DD0, fn_10_13998, fn_10_13AB4, fn_10_1AE08) is ported.
 struct CDarkSamusMeleeContact {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
   CDarkSamusMeleeContact() : mHitUid(kInvalidUniqueId), mHit(0) {}
   void Reset(); // fn_10_EA08
 

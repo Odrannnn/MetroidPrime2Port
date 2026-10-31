@@ -9,6 +9,9 @@ class CPatterned;
 class CStateManager;
 
 class CPathFindNavigation {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CPathFindNavigation();
   void PathFind(CStateManager& mgr, EStateMsg msg, float dt, CPatterned& actor);

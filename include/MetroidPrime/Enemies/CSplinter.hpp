@@ -86,6 +86,9 @@ public:
 
   // Guessed names; the acid sac carried below the cable and the morph ball it grabbed.
   struct SSacData {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
     SSacData(int a, int b, int c, int d, bool e, bool f);
     ~SSacData();
 

@@ -12,6 +12,9 @@ class CStateManager;
 // Port-only: the DOL's CVisualKnowledge (0x801F55F0..0x801F59D0; upstream has no source). An
 // owner's line of sight to a target, re-tested by a world ray at random intervals.
 class CVisualKnowledge {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   // 0x801F5888.
   CVisualKnowledge(TUniqueId owner, CSegId locator, float minInterval, float randomInterval);

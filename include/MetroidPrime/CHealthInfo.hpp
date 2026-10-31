@@ -7,6 +7,9 @@
 #include "MetroidPrime/Weapons/WeaponTypes.hpp"
 
 class CHealthInfo {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CHealthInfo(float hp, float resist);
 

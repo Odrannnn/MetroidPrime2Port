@@ -10,6 +10,9 @@ class CStateManager;
 
 // Wii SEL class name; remaining helper/member spellings and qualifiers are reconstructed.
 class CWaypointNavigation {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CWaypointNavigation();
   void Update(float dt);

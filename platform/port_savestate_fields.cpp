@@ -594,23 +594,6 @@ struct PortStateCodec {
 };
 
 
-// CSplinter::SSacData's layout (private there), for the two ids in it that name objects the
-// splinter made when the room was rebuilt: the saved bytes must not overwrite them.
-struct PortSplinterSacLayout {
-  TUniqueId mGrabbedId;
-  float a;
-  CVector3f b;
-  float c;
-  CVector3f d;
-  bool e1 : 1;
-  bool e2 : 1;
-  bool e3 : 1;
-  int f[4];
-  TUniqueId mSacId;
-  CVector3f g;
-  float h;
-};
-
 namespace PortSaveState {
 namespace {
 
@@ -703,10 +686,58 @@ bool SavedField(const PortSchemaClass& cls, const PortSchemaField& f) {
   return true;
 }
 
-constexpr uint32_t kFieldPolicy = 1;
+constexpr uint32_t kFieldPolicy = 2; // POD references are stable identities, not saved slot IDs.
 constexpr uint32_t kUidNone = 0xFFFFFFFFu;
 constexpr uint32_t kUidDynamic = 0xFFFFFFFEu;
 constexpr uint32_t kUidPlayer = 0xFFFFFFFDu;
+constexpr uint32_t kUidSelf = 0xFFFFFFFCu;
+
+uint32_t PutUid(const CStateManager& mgr, const CEntity& owner, TUniqueId uid) {
+  if (uid == kInvalidUniqueId) {
+    return kUidNone;
+  }
+  if (uid == owner.GetUniqueId()) {
+    return kUidSelf; // Also works for generated copies without a unique editor id.
+  }
+  CEntity* target = const_cast< CStateManager& >(mgr).ObjectById(uid);
+  const TEditorId eid = mgr.GetEditorIdForUniqueId(uid);
+  if (target != nullptr && target == mgr.Player(0)) {
+    return kUidPlayer;
+  }
+  if (target != nullptr && eid.Value() != kInvalidEditorId.Value() && !IsScriptGeneratedCopy(mgr, *target)) {
+    return eid.Value();
+  }
+  return kUidDynamic;
+}
+
+TUniqueId GetUid(CStateManager& mgr, CEntity& owner, uint32_t id, TUniqueId live) {
+  if (id == kUidSelf) {
+    return owner.GetUniqueId();
+  }
+  if (id == kUidPlayer) {
+    return mgr.Player(0) != nullptr ? mgr.Player(0)->GetUniqueId() : kInvalidUniqueId;
+  }
+  if (id == kUidNone) {
+    return kInvalidUniqueId;
+  }
+  if (id == kUidDynamic) {
+    // Unsaved effects/collision actors belong to the rebuilt object. Keep only its live
+    // reference, never the saved slot (which may now be a completely different class).
+    return mgr.ObjectById(live) != nullptr ? live : kInvalidUniqueId;
+  }
+  const TUniqueId uid = mgr.GetIdForScript(TEditorId(id));
+  return mgr.ObjectById(uid) != nullptr ? uid : kInvalidUniqueId;
+}
+
+std::vector< TUniqueId* > PodUids(CEntity& ent, const PortSchemaField& f) {
+  std::vector< TUniqueId* > refs;
+  if (f.uidAt != nullptr) {
+    for (unsigned i = 0; TUniqueId* ref = f.uidAt(ent, i); ++i) {
+      refs.push_back(ref);
+    }
+  }
+  return refs;
+}
 
 bool IsCodec(PortSchemaKind kind) {
   return kind == PortSchemaKind::state_machine || kind == PortSchemaKind::body_controller ||
@@ -824,29 +855,26 @@ void PutField(const CStateManager& mgr, CEntity& ent, const PortSchemaField& f, 
     return;
   case PortSchemaKind::uid: {
     const TUniqueId uid = *static_cast< const TUniqueId* >(f.addr(ent));
-    uint32_t id = kUidNone;
-    if (uid != kInvalidUniqueId) {
-      // A script generator's copy carries its template's editor id: not a name for it.
-      CEntity* target = const_cast< CStateManager& >(mgr).ObjectById(uid);
-      const TEditorId eid = mgr.GetEditorIdForUniqueId(uid);
-      if (target != nullptr && target == mgr.Player(0)) {
-        id = kUidPlayer;
-      } else if (target != nullptr && eid.Value() != kInvalidEditorId.Value() &&
-                 !IsScriptGeneratedCopy(mgr, *target)) {
-        id = eid.Value();
-      } else {
-        id = kUidDynamic;
-      }
-    }
-    w.U32(id);
+    w.U32(PutUid(mgr, ent, uid));
     return;
   }
-  default:
+  default: {
     // float, math and pod: the bytes, after their size (a pod's differs between compilers
     // when its padding does; a reader skips one it cannot take).
-    w.U32(f.size);
-    w.bytes.append(static_cast< const char* >(f.addr(ent)), f.size);
+    const auto refs = PodUids(ent, f);
+    w.U32(f.size + static_cast< uint32_t >(refs.size()) * 4);
+    const char* src = static_cast< const char* >(f.addr(ent));
+    std::string bytes(src, f.size);
+    for (const TUniqueId* ref : refs) {
+      const size_t off = reinterpret_cast< const char* >(ref) - src;
+      std::memcpy(bytes.data() + off, &kInvalidUniqueId, sizeof(TUniqueId));
+    }
+    w.bytes += bytes;
+    for (const TUniqueId* ref : refs) {
+      w.U32(PutUid(mgr, ent, *ref));
+    }
     return;
+  }
   }
 }
 
@@ -875,7 +903,8 @@ void SkipField(const PortSchemaField& f, BlockReader& r) {
 
 // Returns whether the field was set; false with r.ok still true is a field skipped.
 // Only a field of the given pass is set (FieldPass); the rest are read past.
-bool GetField(CStateManager& mgr, CEntity& ent, const PortSchemaField& f, BlockReader& r, int pass) {
+bool GetField(CStateManager& mgr, CEntity& ent, const PortSchemaField& f, BlockReader& r, int pass,
+              uint32_t policy) {
   if (FieldPass(f.kind) != pass) {
     SkipField(f, r);
     return false;
@@ -906,22 +935,11 @@ bool GetField(CStateManager& mgr, CEntity& ent, const PortSchemaField& f, BlockR
   }
   case PortSchemaKind::uid: {
     const uint32_t id = r.U32();
-    if (!r.ok || id == kUidDynamic) {
+    if (!r.ok) {
       return false;
     }
-    TUniqueId uid = kInvalidUniqueId;
-    if (id == kUidPlayer) {
-      if (mgr.Player(0) == nullptr) {
-        return false;
-      }
-      uid = mgr.Player(0)->GetUniqueId();
-    } else if (id != kUidNone) {
-      uid = mgr.GetIdForScript(TEditorId(id));
-      if (uid == kInvalidUniqueId) {
-        return false;
-      }
-    }
-    *static_cast< TUniqueId* >(f.addr(ent)) = uid;
+    auto* dst = static_cast< TUniqueId* >(f.addr(ent));
+    *dst = GetUid(mgr, ent, id, *dst);
     return true;
   }
   default: {
@@ -932,12 +950,14 @@ bool GetField(CStateManager& mgr, CEntity& ent, const PortSchemaField& f, BlockR
     }
     const size_t from = r.at;
     r.at += size;
-    if (size != f.size) {
+    const auto refs = PodUids(ent, f);
+    const uint32_t refBytes = policy >= 2 ? static_cast< uint32_t >(refs.size()) * 4 : 0;
+    if (size != f.size + refBytes) {
       return false;
     }
-    std::vector< unsigned char > buf(r.in.begin() + from, r.in.begin() + from + size);
+    std::vector< unsigned char > buf(r.in.begin() + from, r.in.begin() + from + f.size);
     // A vector or transform that went NaN or huge is not put back.
-    for (uint32_t i = 0; f.kind == PortSchemaKind::math && i + 4 <= size; i += 4) {
+    for (uint32_t i = 0; f.kind == PortSchemaKind::math && i + 4 <= f.size; i += 4) {
       float v;
       std::memcpy(&v, buf.data() + i, 4);
       if (!(v == v) || v > 1e9f || v < -1e9f) {
@@ -945,16 +965,16 @@ bool GetField(CStateManager& mgr, CEntity& ent, const PortSchemaField& f, BlockR
       }
     }
     void* dst = f.addr(ent);
-    if (f.kind == PortSchemaKind::pod && std::strcmp(f.name, "mSac") == 0 && size == sizeof(PortSplinterSacLayout)) {
-      auto* live = static_cast< PortSplinterSacLayout* >(dst);
-      const TUniqueId grabbed = live->mGrabbedId;
-      const TUniqueId sac = live->mSacId;
-      std::memcpy(dst, buf.data(), size);
-      live->mGrabbedId = grabbed;
-      live->mSacId = sac;
-      return true;
+    const std::string refData = r.in.substr(from + f.size, refBytes);
+    BlockReader ids(refData);
+    for (TUniqueId* ref : refs) {
+      // Policy 1 wrote raw POD IDs; retain the rebuilt reference rather than trusting
+      // those bytes. Policy 2 names saved targets by identity, just like top-level IDs.
+      const TUniqueId uid = GetUid(mgr, ent, policy >= 2 ? ids.U32() : kUidDynamic, *ref);
+      const size_t off = reinterpret_cast< char* >(ref) - static_cast< char* >(dst);
+      std::memcpy(buf.data() + off, &uid, sizeof(uid));
     }
-    std::memcpy(dst, buf.data(), size);
+    std::memcpy(dst, buf.data(), f.size);
     return true;
   }
   }
@@ -962,7 +982,7 @@ bool GetField(CStateManager& mgr, CEntity& ent, const PortSchemaField& f, BlockR
 
 // One pass over the classes of a kTagFields block (GetField's `pass`).
 int ApplyClasses(CStateManager& mgr, CEntity& ent, const std::vector< const PortSchemaClass* >& chain,
-                 int classes, BlockReader& r, int pass) {
+                 int classes, BlockReader& r, int pass, uint32_t policy) {
   int set = 0;
   const TUniqueId uid = ent.GetUniqueId();
   for (int c = 0; c < classes && r.ok; ++c) {
@@ -983,7 +1003,7 @@ int ApplyClasses(CStateManager& mgr, CEntity& ent, const std::vector< const Port
       const std::string body = r.in.substr(r.at, len);
       BlockReader br(body);
       for (int i = 0; i < cls->fieldCount && br.ok && mgr.ObjectById(uid) == &ent; ++i) {
-        if (SavedField(*cls, cls->fields[i]) && GetField(mgr, ent, cls->fields[i], br, pass)) {
+        if (SavedField(*cls, cls->fields[i]) && GetField(mgr, ent, cls->fields[i], br, pass, policy)) {
           ++set;
         }
       }
@@ -1034,7 +1054,8 @@ int ApplyEntityFields(CStateManager& mgr, CEntity& ent, const std::string& data)
     return 0;
   }
   BlockReader r(data);
-  if (r.U32() != kFieldPolicy || !r.ok) {
+  const uint32_t policy = r.U32();
+  if ((policy != 1 && policy != kFieldPolicy) || !r.ok) {
     return 0;
   }
   const std::vector< const PortSchemaClass* > chain = Chain(ent);
@@ -1051,7 +1072,7 @@ int ApplyEntityFields(CStateManager& mgr, CEntity& ent, const std::string& data)
     if (i >= 2 && mgr.ObjectById(ent.GetUniqueId()) != &ent) {
       break;
     }
-    const int n = ApplyClasses(mgr, ent, chain, classes, r, passes[i]);
+    const int n = ApplyClasses(mgr, ent, chain, classes, r, passes[i], policy);
     if (i > 0) {
       set += n;
     }
@@ -1064,7 +1085,8 @@ bool EntityFieldsCover(CEntity& ent, const std::string& data) {
     return false;
   }
   BlockReader r(data);
-  if (r.U32() != kFieldPolicy || !r.ok) {
+  const uint32_t policy = r.U32();
+  if ((policy != 1 && policy != kFieldPolicy) || !r.ok) {
     return false;
   }
   const std::vector< const PortSchemaClass* > chain = Chain(ent);
