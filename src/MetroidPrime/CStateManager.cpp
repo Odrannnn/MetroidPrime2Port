@@ -4749,6 +4749,11 @@ void CStateManager::PortWarpTick() {
     return;
   }
 
+  // A layer is streamed in over frames (PortLayerTick, further down): tell the queue whether the
+  // last one is still running, so a second `layer` command in the same tick waits its turn instead
+  // of being merged into the first (PortWarp::Layer queues them).
+  PortWarp::SetLayerBusy(mPortLayerArea != kInvalidAreaId);
+
   // One line per world, so a sweep can see which area slots are real (a slot with an invalid MREA
   // is not an area the game can travel to) and so a test can wait for the game world without
   // needing a pending request: "the front end's world, then mine".
