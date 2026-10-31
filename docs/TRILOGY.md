@@ -35,7 +35,8 @@ Missing paks read as empty bytes (guarded), so the absent ones don't fail the mo
 - **First failure, normal front end**: SIGSEGV in `CScriptGuiFrontEndScreen::CollectWidgets`
   (`src/MetroidPrime/ScriptObjects/CScriptGuiScreen.cpp:146`, log `/tmp/opencode/tri_boot.log:252`): Trilogy's
   `FrontEnd.pak` (139 resources, 1/5 of the GC size) drops the multiplayer menu connections the GC front-end layout expects, so an
-  `invertIds[i]` index runs out of range. Needs a guard (or a Trilogy-specific front end) in a later milestone.
+  `invertIds[i]` index runs out of range. Needs a guard (or a Trilogy-specific front end) in a later milestone
+  (superseded: the `TARGET_PC` guards in "Front end on Trilogy data" and "Multiplayer and used save slot" below).
 - `PortReadDolResource` (`platform/disc.cpp`, fixed DOL addresses) has no callers in the tree today; if one is added,
   Trilogy's `rs5mp2_p.dol` is a different binary and needs its own address table. DOL-embedded data is otherwise
   unverified (the port compiles all code natively).
@@ -79,8 +80,8 @@ missing MAXR/ZERO message (inference refuted; no SetToZero workaround needed). A
 removed. Split-screen 2-player deathmatch: `/tmp/opencode/trilogy/shots/mp2p_deathmatch.png`.
 Real crash found by the trace: Trilogy FRME v5 text panes carry 9 more bytes (2 ints + 1 bool, behaviour unknown)
 after `scaleToViewport`; `CGuiTextPane::Create` skips them for `version >= 5` (TARGET_PC).
-TARGET_PC guards: `CScriptGuiScreen.cpp` `StartMultiplayerGame`/`UpdateUnlocks` (null switches/menus/teleporters,
-`[mp] start:` stderr line), `CWorldLayerState::GetLayerCount` (arena worlds have no SAVW layer table).
+TARGET_PC guards: `CScriptGuiScreen.cpp` `StartMultiplayerGame`/`UpdateUnlocks` (null switches/menus/teleporters;
+the `[mp] start:` stderr line was dropped in `d90bd61c3`), `CWorldLayerState::GetLayerCount` (arena worlds have no SAVW layer table).
 GC USA 2-player start was not reproduced through the GC front-end wheel (stick-direction selection, would not
 reach Multiplayer in 5 attempts); GC FRME is v4 so the text-pane change does not touch it.
 
@@ -220,7 +221,10 @@ global cancellation epoch. A held/revoked finger cannot commit or reopen on re-e
 consumed until lifted, and a fresh down is needed. Cancelled native fingers released by the Java
 view are not forwarded to SDL as a new look/map gesture. Already-applied selections are not undone.
 
-The current MP2 checkout has **no desktop C++ touch-overlay/wheel renderer** (the donor has one).
+The current MP2 checkout has **no desktop C++ touch-overlay/wheel renderer** (obsolete? it has one now:
+`platform/debug_ui/touch_overlay.cpp`, drawn for iOS and the `MP_TOUCH_OVERLAY_DESKTOP` build since
+`0c6d1988d` 2026-10-27, and it calls the entries below itself - `PortRadial::BeginTouch`/`MoveTouch`/
+`EndTouch`/`CancelTouch`).
 This slice exposes the same C++ mailbox entry points for a future mirror and tests them with the
 desktop console, rather than importing a new UI or inventing layouts:
 
@@ -257,6 +261,6 @@ empty save shows no extra panel text; that was not compared against hardware.
 
 ## Wii prompt glyphs in strings (2026-10-28)
 
-Trilogy's `Strings.pak` draws prompts with Wii-remote TXTRs that have no GC id, so the RS5 skip could not fall back to GC art (Z / + / - / A / 2 showed the remote's glyphs). `CTextParser::GetImage` (`TARGET_PC` + `IsTrilogy`, as MP1 6545eb9c9) maps them to the GC prompt for the same action, with the crop the GC disc's copy of that string uses (diff of every Echoes STRG's `&image=` tags, matched by string id/index), so `port_prompts` then re-icons them: 574CDE37 (A) -> D523DE3B (A, .70/.68); 71AA55E3 (2, jump) -> 53B7AC95 (B, .70/.68); 60ACB985 (Z: lock-on, scan, hack, grapple, Spider Ball) -> 967A3516 (L, 1/1; Spider Ball strings want R, D89B9F7C, and stay L); B5F3DA09 (+) -> ADCBEDAE (C-stick, .6/.85); E2F4B915 (-) -> B4EDE4B6 (D-pad, .6/.85). Not mapped: the nunchuk stick animation (617D3700...), 7A8BD23B/FC1FA095/37437330 and a few menu icons. The Wii-pointer *wording* ("Move cursor into the top zone...", "point up") is separate string-set text and is unchanged. Shot: `/tmp/opencode/wiitext/shot_trilogy_memo_Z_after.png`.
+Trilogy's `Strings.pak` draws prompts with Wii-remote TXTRs that have no GC id, so the RS5 skip could not fall back to GC art (Z / + / - / A / 2 showed the remote's glyphs). `CTextParser::GetImage` (`TARGET_PC` + `IsTrilogy`, as MP1 6545eb9c9) maps them to the GC prompt for the same action, with the crop the GC disc's copy of that string uses (diff of every Echoes STRG's `&image=` tags, matched by string id/index), so `port_prompts` then re-icons them: 574CDE37 (A) -> D523DE3B (A, .70/.68); 71AA55E3 (2, jump) -> 53B7AC95 (B, .70/.68); 60ACB985 (Z: lock-on, scan, hack, grapple, Spider Ball) -> 967A3516 (L, 1/1; the Spider Ball strings now map to R instead - see issue #39 below, which supersedes their "stay L"); B5F3DA09 (+) -> ADCBEDAE (C-stick, .6/.85); E2F4B915 (-) -> B4EDE4B6 (D-pad, .6/.85). Not mapped: the nunchuk stick animation (617D3700...), 7A8BD23B/FC1FA095/37437330 and a few menu icons. The Wii-pointer *wording* ("Move cursor into the top zone...", "point up") is separate string-set text and is unchanged. Shot: `/tmp/opencode/wiitext/shot_trilogy_memo_Z_after.png`.
 
 Issue #39 (2026-10-31, reworked for languages/revisions): four Wii ids mean a different GC button by string, and no match uses English text any more. `CTextParser::PortFindWiiPrompt` decides by tag *shape*, which every Trilogy language shares (a multi-language STRG has the same indices per language): `SI,..,F1FA8D68` at crop .6875 ("Press X for Logbook", ~30 strings) is **Start**; `SI,..,3AA65ECD` at .6875 (map legend Z) is **Z**; a bare `4475EAD6` is the map Key, **Y**; a string made only of a bare `83A73184` (Dark/Light World toggle; the pause Exit string keeps Start) is **X**; an `SA,..,B4EDE4B6,13AD51E9` whose text is just a short word (<12 non-space chars, one line: `PortIsZoomText`, item-inspection "Zoom" in all 6 languages) is **X**, any other 13AD51E9 SA tag (Missile / Power Bomb prompts, which G2ME01 draws with Y) is **Y**. `60ACB985` (Wii Z) is lock-on L, but in the 6 Spider Ball strings and `13AD51E9` as a single-image Visor-select D-pad are marked by STRG id + index in `PortMarkTrilogyPrompts` (`CStringTable.cpp`, called from `FStringTableFactory`; it renames the id inside the string to `60ACB986`/`13AD51EA`, same length, and `kPortWiiPrompts` maps those to R / D-pad down). The old Z/Y art overrides in `port_prompts.cpp` are gone. Checked offline over every STRG of G2ME01, G2MP01 and R3ME01 (all 6 languages); R3MP01 is not available locally (its extra languages share the shapes; marks are by index, so a different index there would need a new row in `kMarks`). On screen (gamecube + xbox, ENGL and FREN/GERM/SPAN Missile strings, via console `memo`, which takes `{`/`}` for `&`/`;`): Key Y, Zoom X, Missile Y, Logbook Start, world toggle X, Spider Ball R, Visor D-pad, lock-on L/LT; G2ME01 unchanged. Not in the audit's reach: FREN/GERM/SPAN/ITAL on the USA disc use GC-style art (no mapping needed); (-)/(+) are a static D-pad / C-stick where GC animates the direction; JAPN-only ids 59CDE390->C6059D2F, AB564502, EDC423FE (no GC counterpart) and the nunchuk stick animation 617D3700 stay unmapped; on the xbox device the map Z glyph is blank (no Z on that pad).
