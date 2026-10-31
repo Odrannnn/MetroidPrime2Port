@@ -682,7 +682,10 @@ std::string SettingsText() {
   std::ostringstream file;
   file << "# Metroid Prime 2 native port settings: <user>/settings.cfg. Written by the F1 "
           "overlay.\n";
-  file << "# Environment variables (MP2_<KEY>) override these for a single run.\n";
+  file << "# Most keys read an MP2_<KEY> environment variable, which overrides this file for one "
+          "run;\n";
+  file << "# the file-only keys (mouse_dpi, texture_pack, ...) read none (docs/SETTINGS.md names "
+          "them).\n";
   for (const SettingKey& entry : kSettingKeys) {
     if (entry.write == nullptr) {
       continue;
