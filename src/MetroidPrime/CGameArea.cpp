@@ -2417,6 +2417,12 @@ void CGameArea::UnloadLayerDynamic(CStateManager& mgr, const TLayerId layer) {
   }
 
   const int layerIdx = layer.Value();
+#ifdef TARGET_PC
+  // PORT: a save state's pending room restore keeps the layers whose objects it still has to apply.
+  if (PortSaveState::LayerHeld(mSelfIdx.Value(), layerIdx)) {
+    return;
+  }
+#endif
   const ELayerPhase phase = mLayerPhases[layerIdx];
   bool cleared = false;
   switch (phase) {

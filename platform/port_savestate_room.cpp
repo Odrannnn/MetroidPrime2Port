@@ -1047,6 +1047,7 @@ struct SpawnOverride {
   uint32_t world = 0;
   int area = 0;
   uint64_t spawn = 0;
+  uint64_t saved = 0; // layers the state has an object of
   uint64_t live = 0;
   uint64_t applied = 0;
   bool swapped = false;
@@ -1085,13 +1086,27 @@ void NoteAreaSpawnBegin(CWorldLayerState& layers, int area) {
       // state from a fresh game) would spawn its objects again, and the restore activates those the
       // saved room had that the stream lacked (TickRoom) anyway. What goes is the layers the live
       // stream switched on after the saved room was built.
-      o.applied = o.spawn & o.live;
+      // A spawn layer the stream has off but the state still has objects of (a layer the room
+      // switched off after it ran, such as a boss intro) is rebuilt too, or those objects are gone.
+      o.applied = (o.spawn & o.live) | (o.spawn & o.saved);
       SetLayerMask(layers, area, o.applied);
       o.swapped = true;
       o.layers = &layers;
       return;
     }
   }
+}
+
+bool LayerHeld(int area, int layer) {
+  // Until the restore ends the rebuilt room's scripts run on their own (a boss intro's timer
+  // unloads its cinematic layer within a few frames), and an unloaded layer takes the saved
+  // objects with it before they are applied.
+  for (const SpawnOverride& o : sOverrides) {
+    if (o.area == area && o.swapped && layer >= 0 && layer < 64 && ((o.saved >> layer) & 1) != 0) {
+      return true;
+    }
+  }
+  return false;
 }
 
 void NoteAreaSpawnEnd(CWorldLayerState& layers, int area) {
@@ -1113,7 +1128,15 @@ void ArmSpawnLayers(const RoomState& room, uint32_t worldId) {
   sOverrides.clear();
   for (const RoomArea& ra : room.areas) {
     if (ra.hasSpawn) {
-      sOverrides.push_back({worldId, ra.area, ra.spawnLayers, 0, 0, false, nullptr});
+      uint64_t saved = 0;
+      for (const RoomObject& obj : room.objects) {
+        const uint32_t layer = TEditorId(obj.editorId).LayerNum();
+        if (TEditorId(obj.editorId).AreaNum() == ra.area && layer < 64 &&
+            FindBlock(obj, kTagGenerated) == nullptr) {
+          saved |= uint64_t(1) << layer;
+        }
+      }
+      sOverrides.push_back({worldId, ra.area, ra.spawnLayers, saved, 0, 0, false, nullptr});
     }
   }
 }

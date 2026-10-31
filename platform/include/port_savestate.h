@@ -218,6 +218,8 @@ int ApplyRoomState(CStateManager& mgr, const RoomState& room, RoomApplyProgress&
 // whatever is still armed.
 void NoteAreaSpawnBegin(CWorldLayerState& layers, int area);
 void NoteAreaSpawnEnd(CWorldLayerState& layers, int area);
+// True while a room restore is pending and the saved room has objects of this layer: its unload waits.
+bool LayerHeld(int area, int layer);
 void ArmSpawnLayers(const RoomState& room, uint32_t worldId);
 void DisarmSpawnLayers();
 // CStateManager::AreaLoaded: true while a pending room restore is going to apply this area, whose
