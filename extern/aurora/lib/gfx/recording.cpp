@@ -1170,6 +1170,32 @@ PipelineRef pipeline_ref(const clear::PipelineConfig& config) {
   return find_pipeline(ShaderType::Clear, config, [=] { return create_pipeline(config); });
 }
 
+// Port: whether every draw of the pass is scissored inside the rect (a CustomDraw, or a draw before
+// the pass sets its scissor, is not known to be). The rest of the target still holds the pass's own clear.
+bool pass_draws_inside(const RenderPass& pass, int32_t left, int32_t top, int32_t right, int32_t bottom) {
+  bool hasScissor = false;
+  ClipRect scissor{};
+  for (const auto& cmd : pass.commands) {
+    switch (cmd.type) {
+    case CommandType::SetScissor:
+      scissor = cmd.data.setScissor;
+      hasScissor = true;
+      break;
+    case CommandType::Draw:
+      if (!hasScissor || scissor.x < left || scissor.y < top || scissor.x + scissor.width > right ||
+          scissor.y + scissor.height > bottom) {
+        return false;
+      }
+      break;
+    case CommandType::CustomDraw:
+      return false;
+    default:
+      break;
+    }
+  }
+  return true;
+}
+
 void resolve_pass_into(TextureHandle texture, ClipRect rect, bool clearColor, bool clearAlpha, bool clearDepth,
                        Vec4<float> clearColorValue, float clearDepthValue, GXTexFmt resolveFormat,
                        int probeFace, bool resolveMips, const ResolveHdr* hdr, bool opaqueAlpha) {
@@ -1219,7 +1245,23 @@ void resolve_pass_into(TextureHandle texture, ClipRect rect, bool clearColor, bo
   const auto right = std::clamp<int32_t>(rect.x + rect.width, left, targetWidth);
   const auto bottom = std::clamp<int32_t>(rect.y + rect.height, top, targetHeight);
   const ClipRect clearRect{.x = left, .y = top, .width = right - left, .height = bottom - top};
-  const bool fullTarget = left == 0 && top == 0 && right == targetWidth && bottom == targetHeight;
+  bool fullTarget = left == 0 && top == 0 && right == targetWidth && bottom == targetHeight;
+  // Port: a pass that only drew inside the copied rect, on a target it had cleared to the very values
+  // this copy clears, leaves the whole target uniformly cleared once the rect clears. The continuation
+  // then clears it with its load ops, instead of loading what the pass stored (a tiler's full-target
+  // store, load and depth store; the shadow copy of every combat-visor frame, issue #33).
+  if (!fullTarget && clearColor && (clearAlpha || !gx::efb_has_alpha(gx::g_gxState.pixelFmt)) && clearDepth && !scene_hdr_pass_active() &&
+      prevPass.colorAttachmentCount == 1 && !prevPass.hasStencil && prevPass.hasDepth &&
+      !prevPass.paletteConvs.size() && prevPass.depthLoadOp == wgpu::LoadOp::Undefined && prevPass.clearDepth &&
+      prevPass.clearDepthValue == clearDepthValue) {
+    const auto& prevColor = prevPass.colorAttachments[SceneColorAttachmentIndex];
+    if (prevColor.clear && prevColor.loadOp == wgpu::LoadOp::Undefined &&
+        prevColor.clearValue.x() == clearColorValue.x() && prevColor.clearValue.y() == clearColorValue.y() &&
+        prevColor.clearValue.z() == clearColorValue.z() && prevColor.clearValue.w() == clearColorValue.w() &&
+        pass_draws_inside(prevPass, left, top, right, bottom)) {
+      fullTarget = true;
+    }
+  }
   // The continuation's load op clears whatever the copy clears.
   discard_dead_stores(prevPass, clearColor && clearAlpha && fullTarget, clearDepth && fullTarget);
   enqueue_pass(current_frame_packet(), g_recorder.currentRenderPass);
