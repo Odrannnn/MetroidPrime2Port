@@ -6,7 +6,8 @@
 
 The first --area is the run's MP2_TELEPORT (tools/run_gameplay.sh), the others `warp`. Without --area
 the room the run is in is checked. --setup 'cmd' (repeatable) runs unheld in each room first (`wait N` = N game updates;
-ids are uids or `e<editor id>`, a bare editor id is not a uid and the command fails). The player is held
+ids are uids or `e<editor id>`, a bare editor id is not a uid and the command fails). One --setup may chain
+commands with `;` (`'send e0 A; send e1 B'`): they run in one tick and each is checked. The player is held
 safe by default: each room runs `god 1` and `nodarkair 1` before --setup, so an enemy hit or a dark-aether
 drain is not a strict player hp diff; --unsafe-player leaves the player as the room found it.
 
@@ -83,25 +84,35 @@ class Console:
         self.buf = b""
 
     def cmd(self, command, check=True):
-        """Run one command; returns (ok, text). Raises on failure when `check`."""
+        """Run one command line; returns (ok, text). Raises on failure when `check`.
+
+        `a; b; c` is one line the console runs in one tick but answers once per `;` segment
+        (platform/port_console.cpp RunCommands), so it waits for that many `=> ok`/`=> err:` replies:
+        ok is true when all were ok, text is every reply body in order."""
         self.sock.sendall((command.rstrip("\r\n") + "\n").encode())
-        while True:
+        replies = command.rstrip("\r\n").count(";") + 1
+        texts, ok_all = [], True
+        while replies:
             lines = self.buf.split(b"\n")
             for i, line in enumerate(lines):
                 if line.startswith((b"=> ok", b"=> err:")):
-                    text = b"\n".join(lines[:i]).decode(errors="replace")
+                    texts.append(b"\n".join(lines[:i]).decode(errors="replace"))
                     self.buf = b"\n".join(lines[i + 1:])
                     ok = line.startswith(b"=> ok")
                     if check and not ok:
                         raise RuntimeError(f"command '{command}' failed: {line.decode(errors='replace')}")
-                    return ok, text
-            try:
-                chunk = self.sock.recv(65536)
-            except TimeoutError:
-                raise RuntimeError(f"no reply to '{command}' in {self.timeout}s")
-            if not chunk:
-                raise RuntimeError("the game closed the connection (crashed? see its log)")
-            self.buf += chunk
+                    ok_all = ok_all and ok
+                    replies -= 1
+                    break
+            else:
+                try:
+                    chunk = self.sock.recv(65536)
+                except TimeoutError:
+                    raise RuntimeError(f"no reply to '{command}' in {self.timeout}s")
+                if not chunk:
+                    raise RuntimeError("the game closed the connection (crashed? see its log)")
+                self.buf += chunk
+        return ok_all, "\n".join(t for t in texts if t)
 
 
 def wait_settled(con, stable=3, limit=300.0):
@@ -518,7 +529,7 @@ def main():
                         time.sleep(0.5)
                 else:
                     con.cmd(c)
-                    if c.split()[:1] in (["layer"], ["send"]):
+                    if any(seg.split()[:1] in (["layer"], ["send"]) for seg in c.split(";")):
                         wait_settled(con)
             if a.wait:
                 # settle: the room's script start-up, spawns and the first AI states run unheld
