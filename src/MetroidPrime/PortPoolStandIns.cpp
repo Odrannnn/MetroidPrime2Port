@@ -440,52 +440,11 @@ const SEntry kEntries[] = {
     //     HINT MAPU DUMB`), the same table `TXTR` and `PART` come from. So `SObjectTag('DUMB',…)`
     //     is retail's own answer for this name, not a stand-in invented to fill a gap.
     //
-    // **What a caller can observe that is wrong, said plainly: two things, and the second is
-    // why this row is not the fix.** The tag is now resolvable, so `fn_802FCEEC`'s
-    // `lwz r4,4(r4)` - the fault - no longer reads through a null `SObjectTag*`. Measured after
-    // the row landed, the boot moved exactly one frame and the new fault is
-    // `CPakFile::SResInfo::GetSize()` from `fn_802FC63C+0x3b`, i.e. `CResLoader::x68_curRes` is
-    // still null because `fn_802FCDE8`'s three-list search found nothing. Two independent reasons,
-    // and the second is the one that survives fixing the first:
-    //
-    //  (1) **The port has no `CPakFile` in those lists, and the reason is not the one recorded
-    //      here before 2026-09-27.** An earlier version of this comment blamed the *Dolphin* FST
-    //      gate: `src/Dolphin/dvd/{dvd,dvdfs,fstload}.c` are **not in `files.cmake` at all**
-    //      (deliberately - see `files.cmake:758-764`), and the port links **`aurora::dvd`**.
-    //      Proved on the linked binary rather than inferred: `addr2line -f -C` resolves
-    //      `DVDInit` to Aurora's empty `dvd.cpp:717`, and `nm` finds **neither `__fstLoad` nor
-    //      `__DVDFSInit` in the binary at all.** So there is no FST gate to get past - the FST is
-    //      read, from the real ISO, by `nod_partition_iterate_fst`, and `CDvdFile::FileExists`
-    //      answers from it correctly. **7 of the 8 paks resolve, all sizes cross-checked against
-    //      `tools/extract_disc_file.py`, and `x48_pakLoadingList: 0 -> 7`.** `Strings.pak` is
-    //      genuinely absent from the disc, so retail's own gate fails there, honestly.
-    //
-    //      **The real wall is that nothing ever calls `CResLoader::AsyncIdlePakLoading`.**
-    //      `AddPaksAndFactories` block 7 (0x80007418-0x800074BC) is unwritten and
-    //      `CResFactory::AsyncIdle` is still a reach stub, so the 7 admitted paks sit in
-    //      `x48_pakLoadingList` while `fn_802FCDE8` walks `x0_`/`x18_`/`x30_` - three empty lists.
-    //  (2) **This row's id is unreachable even once (1) is fixed, and that is a property of the
-    //      `0xF0000000` range itself.** `kStandInIdBase` exists so that *stand-in* ids cannot
-    //      collide with each other, and for the pool that is exactly right: the registry is the
-    //      only producer, so `TagsEqual` decides. But `fn_802FCDE8` asks a *real* pak
-    //      (`CPakFile::GetResInfo(id)`), and no resource in `Metroid Prime 2.pak` has id
-    //      `0xF000000A` - the real ids are the pak's own sequential rows. So a `DUMB_SnowForces`
-    //      tag built from this range is **un-satisfiable by design**: it stops the null deref and
-    //      can never be completed. The honest id for this one is the real `CAssetId`, and the only
-    //      source for it is the resource table of the pak that holds `DUMB_SnowForces` - the same
-    //      disc data (1) is about. It is deliberately left in the reserved range rather than
-    //      guessed at, because a plausible-looking fabricated id that *did* match some other
-    //      resource's row would load that resource's bytes into the snow-force table, and that is
-    //      worse than the crash this row replaced.
-    //
-    // And what a caller observes once (1) and (2) are both done, if nothing else is: the 512
-    // `ReadFloat()` calls do not happen, `lbl_803DABE0` stays zeroed, and **every snow particle
-    // gets a zero force vector** - no wind, no gust, straight-down fall. The table is 0x800 bytes
-    // of floats (`256 * 2 * sizeof(float)`, matching `lbl_803DABE0`'s declared `size:0x800`) and
-    // it is a lookup from a direction index to a force pair, which is why zero is a
-    // *plausible-looking* and therefore the most dangerous possible wrong answer. A pak with the
-    // real bytes behind `DUMB_SnowForces` is the only thing that makes this true, and that is the
-    // loader's missing half, not a registry row.
+    // **Status (A8-24):** the paks now load, so `CResLoader::GetResourceIdByName` answers with the
+    // real tag and `CEnvFxManager::Initialize` (TARGET_PC arm) reads the 256 big-endian float pairs
+    // from the disc as retail does. This row is only the fallback `CResFactory::GetResourceIdByName`
+    // returns when no pak holds the name; its id (`0xF000000A`) matches no pak row, so
+    // `LoadNewResourceSync` would hand back a stream of zeros and the table stays zero.
     { "DUMB_SnowForces", SObjectTag('DUMB', kStandInIdBase + 10), kSIK_Stream },
 };
 
