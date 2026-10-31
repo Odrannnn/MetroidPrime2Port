@@ -83,6 +83,9 @@ PortMouse::PointerAim sPointer;
 bool sLockFree = false;
 bool sPointerEnabled = false;
 bool sPointerFree = false;
+// The console's `pointeraim <x> <y>` holds the pointer there (free, the view not turned) until
+// `pointeraim 0 0`, so a harness can aim it without a mouse.
+bool sDebugHold = false;
 float sPointerBox = 0.7f;
 float sPointerTurnRate = PortMouse::kPi;
 
@@ -575,7 +578,8 @@ bool UpdateAim(bool active, bool locked, float x, float y, float z, float dt, bo
     sLockFree = lockFree;
   }
   // A held pointer stays where the lock found it, and neither moves nor turns the view.
-  const bool pointerHeld = active && locked && !lockFree && pointerHold && sPointerEnabled && !touchIdle;
+  const bool pointerHeld = (active && locked && !lockFree && pointerHold && sPointerEnabled && !touchIdle) ||
+                           (sDebugHold && sPointerEnabled && !lockFree && !touchIdle);
   if (sPointerEnabled || lockFree) {
     // MP1's pointer path: the travel moves the pointer, not the view. A lock (or anything that
     // stops free look) re-centres it (except under lock-on free aim), so lock-on, scan and grapple
@@ -584,7 +588,7 @@ bool UpdateAim(bool active, bool locked, float x, float y, float z, float dt, bo
     // aim (MP1 4b8117d16).
     // A lock leaves the view nothing to turn, so the stick moves the pointer too.
     const bool stickTurns = sGyroDrivesAim && !lockFree;
-    const bool moves = owns || lockFree;
+    const bool moves = (owns || lockFree) && !(sDebugHold && !lockFree);
     if (moves) {
       float sx = 0.f, sy = 0.f;
       PointerAimScale(sx, sy);
@@ -602,7 +606,7 @@ bool UpdateAim(bool active, bool locked, float x, float y, float z, float dt, bo
     const float cameraY = sCameraFrameY + (stickTurns ? sStickFrameY : 0.f);
     const bool applied = sAim.Update(active, held, x, y, z, owns ? cameraX : 0.f, owns ? cameraY : 0.f,
                                      sSensitivity, sInvertX, sInvertY);
-    if (applied && owns) {
+    if (applied && owns && !sDebugHold) {
       float dyaw = 0.f, dpitch = 0.f;
       PortMouse::PointerAim::TurnAt(sPointer.x, sPointer.y, sPointerBox, sPointerTurnRate, dt,
                                     dyaw, dpitch);
@@ -711,6 +715,7 @@ bool PointerAimPosition(float& x, float& y) {
 void SetPointerAimPosition(float x, float y) {
   sPointer.Center();
   sPointer.Move(x, y);
+  sDebugHold = x != 0.f || y != 0.f;
 }
 
 void Synchronize(float x, float y, float z) {
