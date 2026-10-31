@@ -1,14 +1,16 @@
 # Mods folder
 
-Ported from MP1's first mods slice (MP1 `05cbf722a`): loose-file and PAK overrides plus a Mods list in
-F1 > Game. Suit colours and the HD texture pack were added later (sections below); downloads are not part of it.
+Ported from MP1's first mods slice (MP1 `05cbf722a`): loose-file and PAK overrides plus a Mods list on
+F1's Mods page. Suit colours and the HD texture pack were added later (sections below); downloads are
+not part of it.
 
 `mods` in the user path (`MP2_USER_PATH`, created on first start; `MP2_MODS` points elsewhere) holds one
 folder per mod, applied in name order so a later name wins; folders starting with `.` are skipped.
 Inside a mod:
 
 - a file at a disc path (`Metroid5.pak`, `Audio/...`, `Video/...`; case-insensitive) replaces that disc
-  file. Only existing disc files can be replaced; others are reported and ignored.
+  file. Only existing disc files can be replaced; a `.thp` the disc lacks is added instead (the game
+  opens movies by name); anything else is reported and ignored.
 - a file named `<8 hex digits>.<TYPE>` (`1A2B3C4D.TXTR`, `0552A456.STRG`), anywhere in the mod, replaces
   that resource, uncompressed, in every PAK holding it. The PAK is served as a virtual file whose table
   points past the original data, where the loose file is appended (32-byte aligned).
@@ -16,10 +18,12 @@ Inside a mod:
 
 `platform/port_mods.cpp` (scan, plan, register with Aurora's DVD overlays) runs from `main.cpp` right
 after the disc mounts; `platform/port_mods_pak.cpp` is the unit-tested PAK table / virtual file / reader
-half (`tests/port_mods.cpp`, ctest `port_mods_tests`). PAK format is shared with Prime 1 (version
+half (`tests/port_mods.cpp`, ctest `port_mods_tests`), and `platform/include/port_mods_disc.h` lists the
+disc's PAKs (`tests/port_mods_disc.cpp`, `port_mods_disc_tests`). PAK format is shared with Prime 1 (version
 0x00030005, 20-byte table entries), so the parser is unchanged. Log lines start with `mods:` on stderr.
-F1 > Game > Mods lists the mods with a switch each (`mods_disabled`) and the problems found; changes
-apply on Reload mods or a restart. An absent or empty folder registers no overlay at all.
+F1 > Mods lists the mods with a switch each (`mods_disabled`), the Load mods switch (`mods`) and the
+problems found; changes apply on Reload mods or a restart. An absent or empty folder registers no overlay
+at all.
 
 ## Suit colours
 
@@ -39,15 +43,17 @@ coloured enough that they need no main slot). A saved `suit_colour_light=RRGGBB`
 `-,RRGGBB` is main only. Limits: the Samus body model in cutscenes and some pause screen meshes
 were not located, so they keep original colours; the first-person arm cannon is not the suit and
 stays as is. The pause menu's Inventory Varia Suit model (LogBook.pak sheets) is recoloured too.
-Changes show after a restart or the Apply now button (`reloadmods`), also with the pause menu
+Changes show after a restart or the Apply suit colours button (`reloadmods`), also with the pause menu
 open: `CMFGame` services the reload while paused and `CPauseScreen::PortReloadScanModels` reloads
 the open Inventory model (the room follows when unpaused).
 
 ## Reload, folder, texture pack (MP1 sync 21)
 
-F1 > Mods (the Game page's Mods section) has Reload mods, Open mods folder (desktop) and the texture pack
-(HD set name, replacement count, Reload texture pack; Android: Choose texture pack folder... copies
-the pick to `<user>/user_textures.new`, which `PortTextures` swaps in). Console: `reloadmods`.
+F1 > Mods has Reload mods and Open mods folder (desktop), then the Textures section: the built-in HD set's
+name, the replacement count, the Use the texture pack switch (`texture_pack`), Reload texture pack and
+Import texture pack .zip... (desktop). Android: Choose texture pack folder... copies the pick to
+`<user>/user_textures.new`, which `PortTextures` swaps in (Remove texture pack deletes it). Console:
+`reloadmods`.
 
 Reload is a savestate-style world restart: `PortSaveState::RequestModReload` writes the current state
 to the undo slot and loads it back; `CMainFlow` (`kCFS_Game`) calls `ReloadModsNow` after the old world
