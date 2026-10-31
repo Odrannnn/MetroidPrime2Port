@@ -28,40 +28,12 @@ std::string Where(const PortSaveState::Info& info) {
 void DrawSaveStatesTab() {
   ImGui::TextDisabled("Save anywhere and load back to the same spot.");
   ItemHelp("A state holds what a memory card save does, plus where Samus stands and whether she's "
-           "in morph ball. Loading rebuilds the room, as a card load does, so enemies and doors "
-           "start over. Loading first writes the undo state.");
+           "in morph ball, and the loaded rooms' enemies, doors and objects. Loading first writes "
+           "the undo state.");
   if (PortSaveState::Folder().empty()) {
     ImGui::TextDisabled("No user folder, so save states are off.");
     return;
   }
-  const std::string saveKeys = PortInputRemap::BindingsText(PortInput::Action::SaveState, " / ");
-  const std::string loadKeys = PortInputRemap::BindingsText(PortInput::Action::LoadState, " / ");
-  bool hotkeys = sSaveStateHotkeys;
-  const std::string hotkeysLabel = (saveKeys.empty() ? std::string("Save state binding") : saveKeys) +
-                                   " saves, " +
-                                   (loadKeys.empty() ? std::string("Load state binding") : loadKeys) +
-                                   " loads the selected slot###savestate-hotkeys";
-  if (ImGui::Checkbox(hotkeysLabel.c_str(), &hotkeys)) {
-    sSaveStateHotkeys = hotkeys;
-    Changed(true);
-  }
-  {
-    const std::string prevKeys = PortInputRemap::BindingsText(PortInput::Action::PrevStateSlot, " / ");
-    const std::string nextKeys = PortInputRemap::BindingsText(PortInput::Action::NextStateSlot, " / ");
-    std::string slotKeys;
-    if (!prevKeys.empty()) slotKeys += " " + prevKeys + " picks the previous slot.";
-    if (!nextKeys.empty()) slotKeys += " " + nextKeys + " picks the next slot.";
-    ItemHelp(("Off, the bindings do nothing, so a stray key cannot save over or load a slot. The "
-              "buttons below still work." + slotKeys).c_str());
-  }
-  bool roomState = sSaveStateRoomState;
-  if (ImGui::Checkbox("Keep enemies and room objects###savestate-room-state", &roomState)) {
-    sSaveStateRoomState = roomState;
-    Changed(true);
-  }
-  ItemHelp("Save states and quick resume also store the loaded rooms' enemies, doors and objects, "
-           "so a killed enemy stays dead. Off, the room starts over as after a memory card load. "
-           "Applies to states saved from now on.");
 
   const int selected = PortSaveState::SelectedSlot();
   if (ImGui::BeginTable("##savestates", 4, ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {

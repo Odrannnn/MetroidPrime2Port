@@ -59,8 +59,6 @@ extern "C" void AIPortSetOutputGain(float gain);
 namespace PortOverlayState {
 
 bool sSkipCinematics = false;
-int sBootLogos = PortOverlay::kScreen_Skippable;
-int sWorldNameCard = PortOverlay::kScreen_Skippable;
 // `MP2_LOG_FILE`: whether stdout and stderr also go to a file (F1 > Testing, console `logfile`).
 // PortLogFile::Start reads it before Aurora comes up, so the row only reports the state the next
 // launch will take.
@@ -98,8 +96,6 @@ bool sSpringBall = false;
 bool sSpringFlick = false;
 float sSpringFlickRate = PortOverlay::kSpringFlickRateDefault;
 bool sQuickResume = true;
-bool sSaveStateHotkeys = true;
-bool sSaveStateRoomState = true;
 bool sLockOnToggle = false;
 bool sStickyCharge = false;
 bool sAutoAim = true;
@@ -731,29 +727,16 @@ static int EnvScreenMode(const char* name, int value) {
   return EnvIntIn(name, value, kScreen_Show, kScreen_Off);
 }
 
+// The boot logos and the world name card end on A or Start; Original experience shows them as
+// retail. No setting: only the env overrides (the harness) pick another mode.
 int BootLogos() {
   ReadEnv();
-  return EnvScreenMode("MP2_BOOT_LOGOS", sBootLogos);
-}
-
-void SetBootLogos(int mode) {
-  ReadEnv();
-  sBootLogos = std::clamp(mode, kScreen_Show, kScreen_Off);
-  Persist();
+  return EnvScreenMode("MP2_BOOT_LOGOS", OriginalExperience() ? kScreen_Show : kScreen_Skippable);
 }
 
 int WorldNameCard() {
   ReadEnv();
-  if (OriginalExperience()) {
-    return kScreen_Show;
-  }
-  return EnvScreenMode("MP2_WORLD_NAME", sWorldNameCard);
-}
-
-void SetWorldNameCard(int mode) {
-  ReadEnv();
-  sWorldNameCard = std::clamp(mode, kScreen_Show, kScreen_Off);
-  Persist();
+  return EnvScreenMode("MP2_WORLD_NAME", OriginalExperience() ? kScreen_Show : kScreen_Skippable);
 }
 
 bool HideHelmet() {
@@ -1131,14 +1114,16 @@ bool QuickResume() {
   return EnvBool("MP2_QUICK_RESUME", sQuickResume);
 }
 
+// No settings: the bindings always work (unbind them in Controls > Remap) and states keep the
+// room; the env overrides stay for the harness.
 bool SaveStateHotkeys() {
   ReadEnv();
-  return EnvBool("MP2_SAVESTATE_HOTKEYS", sSaveStateHotkeys);
+  return EnvBool("MP2_SAVESTATE_HOTKEYS", true);
 }
 
 bool SaveStateRoomState() {
   ReadEnv();
-  return EnvBool("MP2_SAVESTATE_ROOM_STATE", sSaveStateRoomState);
+  return EnvBool("MP2_SAVESTATE_ROOM_STATE", true);
 }
 
 void SetQuickResume(bool enabled) {

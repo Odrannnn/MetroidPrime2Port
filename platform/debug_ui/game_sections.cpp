@@ -14,7 +14,6 @@
 #include "port_freecam.h"
 #include "port_photo.h"
 #include "port_input_remap_ui.h"
-#include "port_livesplit.h"
 #include "port_mods.h"
 #include "port_logfile.h"
 #include "port_overlay.h"
@@ -83,8 +82,6 @@ void DrawGameSection() {
     sVisible = false;
   }
   ImGui::EndDisabled();
-  ItemHelp("Leaves the game for the title screen, as the pause menu's Quit does. Progress since the "
-           "last save station is lost.");
   ImGui::SameLine();
   if (ImGui::Button("Exit game")) {
     ImGui::OpenPopup("Exit game?");
@@ -117,49 +114,18 @@ static void DrawUnlocksSection() {
   if (ImGui::Checkbox("Hard mode", &hardMode)) {
     PortOverlay::SetUnlockHardMode(hardMode);
   }
-  ImGui::SetItemTooltip("Offered when starting a file, as after finishing the game.");
   ImGui::SameLine();
   bool galleries = sUnlockGalleries;
   if (ImGui::Checkbox("Image galleries", &galleries)) {
     PortOverlay::SetUnlockGalleries(galleries);
   }
-  ImGui::SetItemTooltip("All of them.");
-  bool stackBeams = sStackBeams;
-  if (ImGui::Checkbox("Stack beams", &stackBeams)) {
-    PortOverlay::SetStackBeams(stackBeams);
-  }
-  ImGui::SetItemTooltip("Each shot also fires the other beams you own, at no extra ammo cost.");
-  ImGui::BeginDisabled(!sStackBeams);
-  bool skipDark = sStackBeamsSkipDark;
-  if (ImGui::Checkbox("Leave out Dark Beam", &skipDark)) {
-    PortOverlay::SetStackBeamsSkipDark(skipDark);
-  }
-  ImGui::SetItemTooltip("Stacked shots skip the Dark Beam unless it's the one in hand, so they "
-                        "don't drain light beacons and crystals.");
   ImGui::EndDisabled();
-  ImGui::EndDisabled();
-  ImGui::TextDisabled("What finishing the game unlocks. Not written into the save.");
-  ItemHelp("Turning an option off locks it again.");
 }
 
 void DrawCutscenesSection() {
   ImGui::SeparatorText("Cutscenes");
   Changed(ImGui::Checkbox("Original experience", &sOriginalExperience));
-  ItemHelp("The game as it shipped: the world name, the Enhancements page and the Controls page's "
-           "charge, lock-on and auto-aim tweaks all act as retail while this is on. Your values "
-           "are kept and return when it is off.");
   const bool locked = PortOverlay::OriginalExperience();
-  // One row for the boot logos (read by CSplashScreen at launch) and the world name card (read by
-  // CMFGameLoader at the next load); the keys stay separate. Original experience shows the card.
-  int splash = sBootLogos;
-  if (ImGui::Combo("Skip splash screens", &splash, "No\0" "With A or Start\0" "Always\0")) {
-    sBootLogos = std::clamp(splash, PortOverlay::kScreen_Show, PortOverlay::kScreen_Off);
-    sWorldNameCard = sBootLogos;
-    Changed(true);
-  }
-  ItemHelp("The health warning and the Nintendo, Retro and Dolby logos at launch, and the world's name "
-           "typed out while a save loads. The logos change from the next launch. The new game's intro "
-           "text follows Enhancements > Skippable cutscenes.");
   ImGui::BeginDisabled(locked);
   int language = sLanguage;
   if (ImGui::Combo("Language", &language,
@@ -168,9 +134,6 @@ void DrawCutscenesSection() {
     sLanguage = std::clamp(language, 0, static_cast< int >(PortOverlay::kLanguageMax));
     Changed(true);
   }
-  ItemHelp("The language of the game's text, changed while the game runs (a screen that is already open "
-           "keeps its text until it is reopened). A PAL disc carries English, French, German, Spanish, "
-           "Italian and Japanese; a language the disc lacks shows English.");
   ImGui::EndDisabled();
   DrawUnlocksSection();
 }
@@ -222,17 +185,11 @@ void DrawGameAudio() {
                     ? static_cast< int >(gpGameState->GameOptions().GetMusicVolume())
                     : 0,
                 PortOverlay::MusicBoost(), true);
-  ImGui::SetItemTooltip("Up to 100 percent the game's own Music volume; above it the game stays at "
-                        "its maximum and the port boosts the music. That is louder than retail, and "
-                        "very high values can clip.");
   GameVolumeRow("Sound effects volume",
                 gpGameState != nullptr
                     ? static_cast< int >(gpGameState->GameOptions().GetSfxVolume())
                     : 0,
                 PortOverlay::SfxBoost(), false);
-  ImGui::SetItemTooltip("Up to 100 percent the game's own Sound effects volume; above it the game "
-                        "stays at its maximum and the port boosts every voice, and the movie audio. "
-                        "That is louder than retail, and very high values can clip.");
   // Sound mode: Mono / Stereo / Dolby Surround
   int soundMode = gpGameState != nullptr ? static_cast< int >(gpGameState->GameOptions().GetSurroundMode())
                                          : CAudioSys::kSM_Stereo;
@@ -242,56 +199,11 @@ void DrawGameAudio() {
     gpGameState->GameOptions().SetSurroundMode(static_cast< CAudioSys::ESurroundModes >(soundMode), true);
   }
   ImGui::EndDisabled();
-  ImGui::SetItemTooltip("The game's own options: the next save writes them, as the pause menu's do.");
 }
 
 void DrawSpeedrunSection() {
   ImGui::SeparatorText("Speedrun");
   Changed(ImGui::Checkbox("On-screen in-game time", &sIgtTimer));
-  ItemHelp("The save file's play time in the bottom-right corner while a game runs. It stops in "
-           "cutscenes, menus and loads.");
-  bool liveSplit = PortLiveSplit::Enabled();
-  if (ImGui::Checkbox("LiveSplit", &liveSplit)) {
-    PortLiveSplit::SetEnabled(liveSplit);
-    Changed(true);
-  }
-  ItemHelp("In LiveSplit: right-click, Control > Start TCP Server (port 16834), and compare "
-           "against Game Time. A new file starts the timer; it splits on the final blow.");
-  SameLineAfterHelp();
-  switch (PortLiveSplit::Status()) {
-  case PortLiveSplit::kStatus_Off:
-    ImGui::TextDisabled("off");
-    break;
-  case PortLiveSplit::kStatus_Connecting:
-    ImGui::TextUnformatted("connecting...");
-    break;
-  case PortLiveSplit::kStatus_Connected:
-    ImGui::TextColored(ThemeGoodColor(), "connected");
-    break;
-  case PortLiveSplit::kStatus_Failed:
-    ImGui::TextColored(ThemeBadColor(), "%s", PortLiveSplit::LastError().c_str());
-    break;
-  }
-  // Applied when the field loses focus; until then the text is left alone.
-  static char address[128];
-  static bool editingAddress = false;
-  if (!editingAddress) {
-    std::snprintf(address, sizeof(address), "%s", PortLiveSplit::Address().c_str());
-  }
-  ImGui::SetNextItemWidth(ImGui::GetFontSize() * 14.f);
-  ImGui::InputText("Server (host:port)", address, sizeof(address));
-  editingAddress = ImGui::IsItemActive();
-  if (ImGui::IsItemDeactivatedAfterEdit()) {
-    PortLiveSplit::SetAddress(address);
-    Changed(true);
-  }
-  ImGui::SameLine();
-  bool splitUpgrades = PortLiveSplit::SplitUpgrades();
-  if (ImGui::Checkbox("Split on upgrades", &splitUpgrades)) {
-    PortLiveSplit::SetSplitUpgrades(splitUpgrades);
-    Changed(true);
-  }
-  ImGui::SetItemTooltip("Also splits on each new suit, beam, visor, ball part, key or other upgrade.");
 }
 
 // The texture pack import's progress: set from the Java copy thread on Android, from the zip
@@ -503,7 +415,7 @@ void DrawOverlaySection() {
     sUiTheme = theme;
     Changed(true);
   }
-  ItemHelp("The overlay's look. Auto is the Metroid Prime pause-screen style; Plain is stock Dear "
+  ItemHelp("The overlay's look. Auto is the Echoes style; Plain is stock Dear "
            "ImGui.");
   // Multiplies the display's own scale (UpdateUiScale); the product is clamped to 1..4, so on a
   // desktop at scale 1 only values above 100% make the window larger.

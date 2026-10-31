@@ -75,15 +75,14 @@ const int kScreen_Skippable = 1;
 const int kScreen_Off = 2;
 // The health warning and the Nintendo, Retro and Dolby logos at launch (CSplashScreen,
 // `MP2_BOOT_LOGOS=show|skip|off`): Skippable ends the current one with its 0.5 s fade on A or
-// Start; Off goes straight from the progressive check to the front end.
+// Start (the default; Original experience shows them); Off goes straight from the progressive
+// check to the front end.
 int BootLogos();
-void SetBootLogos(int mode);
 // The world-name card while a game loads (CMFGameLoader/CWorldTransManager,
 // `MP2_WORLD_NAME=show|skip|off`): Skippable types it out at once on A or Start, so it fades as
 // soon as the load is done; Off loads behind the plain black transition. The first boot's intro
 // text follows SkipCinematics (A or Start, seen or not), else the game's rule (Start once seen).
 int WorldNameCard();
-void SetWorldNameCard(int mode);
 // Cheat (`MP2_GODMODE=1`, F1 > Cheats): the player takes no damage, so a hazard cannot end a
 // test run in the lose-game screen (CStateManager::ApplyLocalDamage). Never saved.
 bool GodMode();

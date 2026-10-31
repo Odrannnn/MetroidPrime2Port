@@ -140,7 +140,7 @@ int ResolveTheme() {
   if (sUiTheme != kThemeAuto) {
     return sUiTheme;
   }
-  return kThemePrime;
+  return kThemeEchoes;
 }
 
 // Only colours, borders and rounding; paddings and sizes stay ApplyTouchStyle's.

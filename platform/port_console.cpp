@@ -1719,7 +1719,7 @@ void CmdCardBackup(CStateManager&, const Args& args, std::string& out) {
                  : "card backup before writes: off (MP2_CARD_BACKUP)\n";
 }
 
-// livesplit <0|1> | addr <host:port> | send <command> | status: the F1 Game > Speedrun rows
+// livesplit <0|1> | addr <host:port> | send <command> | status: the LiveSplit settings (no F1 rows)
 // (`MP2_LIVESPLIT`, `MP2_LIVESPLIT_ADDR`) - the LiveSplit Server client.
 void CmdLiveSplit(CStateManager&, const Args& args, std::string& out) {
   const std::string action = args.size() > 1 ? std::string(args[1]) : "status";

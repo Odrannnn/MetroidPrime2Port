@@ -14,8 +14,6 @@
 namespace PortOverlayState {
 
 extern bool sSkipCinematics;
-extern int sBootLogos;
-extern int sWorldNameCard;
 extern bool sLogFile;
 extern bool sFastMorph;
 extern bool sPointerMenus;
@@ -47,8 +45,6 @@ extern bool sSpringBall;
 extern bool sSpringFlick;
 extern float sSpringFlickRate;
 extern bool sQuickResume;
-extern bool sSaveStateHotkeys;
-extern bool sSaveStateRoomState;
 extern bool sLockOnToggle;
 extern bool sStickyCharge;
 extern bool sRapidCharge;

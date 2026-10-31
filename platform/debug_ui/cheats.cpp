@@ -205,6 +205,22 @@ void DrawCheatsSection() {
   }
   ImGui::EndDisabled();
   ItemHelp("Colour-locked doors open to any of the four beams. Missile locks stay.");
+  ImGui::BeginDisabled(PortOverlay::OriginalExperience());
+  bool stackBeams = sStackBeams;
+  if (ImGui::Checkbox("Stack beams", &stackBeams)) {
+    PortOverlay::SetStackBeams(stackBeams);
+  }
+  ImGui::SetItemTooltip("Each shot also fires the other beams you own, at no extra ammo cost.");
+  ImGui::SameLine();
+  ImGui::BeginDisabled(!sStackBeams);
+  bool skipDark = sStackBeamsSkipDark;
+  if (ImGui::Checkbox("Leave out Dark Beam", &skipDark)) {
+    PortOverlay::SetStackBeamsSkipDark(skipDark);
+  }
+  ImGui::SetItemTooltip("Stacked shots skip the Dark Beam unless it's the one in hand, so they "
+                        "don't drain light beacons and crystals.");
+  ImGui::EndDisabled();
+  ImGui::EndDisabled();
 
   CPlayerState* ps = gpGameState != nullptr ? gpGameState->GetPlayerState().GetPtr() : nullptr;
   // The front end has its own player state and its own Samus; the page is about the game's.

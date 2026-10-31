@@ -61,12 +61,10 @@ Save states page:
 - `quick_resume`: Save states > Quick resume (default on); env `MP2_QUICK_RESUME`. On quitting during
   play (and as the game keeps safe points, see Resume below) `savestates/resume.mp2ss` is written; the
   next launch asks "Resume where you left off?". Console: `resume [status|save|load|clear]`.
-- `savestate_hotkeys`: Save states > the "<keys> saves, <keys> loads the selected slot" checkbox
-  (default on); env `MP2_SAVESTATE_HOTKEYS`. Off, the Save state / Load state bindings do nothing;
-  the tab's buttons and the console `state` command still work.
-- `savestate_room_state`: Save states > Keep enemies and room objects (default on); env
-  `MP2_SAVESTATE_ROOM_STATE`. Off, states and quick resume store no room objects and a load rebuilds
-  the room as a card load does. A state saved with it on loads its objects only while it is on.
+- Save state bindings and room objects: no settings. The Save state / Load state bindings always
+  work (unbind them in Controls > Remap); env `MP2_SAVESTATE_HOTKEYS=0` turns them off. States and
+  quick resume store the loaded rooms' objects; env `MP2_SAVESTATE_ROOM_STATE=0` stores none, and a
+  load then rebuilds the room as a card load does.
 
 Game page:
 
@@ -77,8 +75,8 @@ Game page:
   charge, auto-aim (on). Your saved values are kept and return when it is switched off. Mods, input,
   video and audio settings are not affected.
 - `skip_cinematics`: Enhancements > Pace > Skippable cutscenes.
-- `boot_logos`: Cutscenes > Skip splash screens (0 no, 1 with A or Start, 2 always), which sets both keys.
-- `world_name_card`: the same row, for the world name card on load (same values); env `MP2_WORLD_NAME`.
+- Boot logos and the world name card on load: no setting; they end on A or Start (shown as retail
+  under Original experience). Env `MP2_BOOT_LOGOS`, `MP2_WORLD_NAME` (`show`, `skip`, `off`).
 - `walk_speed`: Enhancements > Pace > Walk speed (50 to 200 percent, default 100 = retail); env
   `MP2_WALK_SPEED`, console `walkspeed`. Scales how fast Samus moves on foot: the top speed,
   acceleration and friction of walking and strafing (on the ground, in the air and in water) and the
@@ -88,10 +86,10 @@ Game page:
 - `scan_speed`: Enhancements > Pace > Scan speed (50 to 400 percent, default 100 = retail); env
   `MP2_SCAN_SPEED`, console `scanspeed`. Scales how fast a scan fills (CPlayer::UpdateScanningState);
   the visor, scan-point and hint text are unchanged.
-- `elevator_ride`: Enhancements > Pace > Elevator ride (0 original, 1 fast, 2 skip); env `MP2_ELEVATOR_RIDE`
+- `elevator_ride`: Enhancements > Pace > Elevator ride cutscene (0 original, 1 fast, 2 skip); env `MP2_ELEVATOR_RIDE`
   (`original|fast|skip`). Fast runs the world-transition ride at double speed; Skip ends it as soon as
   the next world has loaded (the load itself still takes its time). Text transitions are unchanged.
-- `rotating_rooms`: Enhancements > Pace > Rotating rooms (0 original, 1 fast); env `MP2_ROTATING_ROOMS`
+- `rotating_rooms`: Enhancements > Pace > Energy controller access cutscene (0 original, 1 fast); env `MP2_ROTATING_ROOMS`
   (`original|fast`), console `rooms`. Fast runs the energy controller rooms' bomb-slot cutscene (the
   room turning) at the game's own double speed: while a cinematic camera is active and a timed,
   one-shot CScriptActorRotate of 5 s or more plays (any such room, no list), `CStateManager::Update`
@@ -129,20 +127,20 @@ Game page:
   loaded save. Needs the in-game hint system on. Show current hint (Cutscenes button; console
   `hintshow`) shows the hint the game would show next: a hint already on screen comes back,
   otherwise the waiting hint due soonest shows now.
-- `unlock_hard_mode`, `unlock_galleries`, `stack_beams`: Unlocks > Hard mode (offered when
-  starting a file, as after finishing the game), Image galleries (all of them), Stack beams (each
-  shot also fires the other beams you own, at no extra ammo cost); env `MP2_UNLOCK_HARD_MODE`,
+- `unlock_hard_mode`, `unlock_galleries`, `stack_beams`: Game > Unlocks > Hard mode (offered when
+  starting a file, as after finishing the game), Image galleries (all of them); Debug > Cheats >
+  Stack beams (each shot also fires the other beams you own, at no extra ammo cost); env `MP2_UNLOCK_HARD_MODE`,
   `MP2_UNLOCK_GALLERIES`, `MP2_STACK_BEAMS`. Not written into the save, and Original experience
   greys them.
 - `unlock_beam_doors`: Debug > Cheats > Unlock beam doors; env `MP2_UNLOCK_BEAM_DOORS`.
   Colour-locked doors (the door's own vulnerability, or a damageable-trigger lock) open to any of
   the four beams; missile locks stay. Saved, not written into the save file; Original experience
   greys it.
-- `stack_beams_skip_dark`: Unlocks > Leave out Dark Beam (#27): stacked shots skip the Dark Beam
+- `stack_beams_skip_dark`: Debug > Cheats > Leave out Dark Beam (#27): stacked shots skip the Dark Beam
   unless it is in hand, so they don't drain light beacons and crystals; env
   `MP2_STACK_BEAMS_SKIP_DARK`.
-- `livesplit`, `livesplit_address`, `livesplit_split_upgrades`: Speedrun > LiveSplit, Server
-  (host:port), Split on upgrades; the address's env is `MP2_LIVESPLIT_ADDR`.
+- `livesplit`, `livesplit_address`, `livesplit_split_upgrades`: no F1 rows (settings.cfg or
+  console `livesplit <0|1> | addr <host:port>`); the address's env is `MP2_LIVESPLIT_ADDR`.
 - `mods`, `mods_disabled`: Mods > Load mods and one checkbox per mod folder (`mods_disabled` holds
   the turned-off folder names, `/`-separated); take effect on restart. Folder: `<user>/mods`, or
   `MP2_MODS`. See docs/MODS.md.
@@ -405,7 +403,7 @@ Video > Compatibility (read once, when the GPU starts: a change applies after a 
 System and Debug:
 
 - `overlay_windowed`, `ui_theme`, `ui_scale`: System > Overlay > Overlay as a floating window
-  (desktop), Menu theme (`auto`, `prime`, `plain`, `echoes`), UI scale.
+  (desktop), Menu theme (`auto` = Echoes, `prime`, `plain`, `echoes`), UI scale.
 - `texture_pack`: Game > Textures > Use the texture pack (off keeps the folder but shows the game's own
   textures); the Texture pack binding (F7, Controls > Remap > Port) flips it in game.
 - `emulator_folder`, `share_emulator_card`, `mirror_trilogy_save` (desktop only): System > Memory

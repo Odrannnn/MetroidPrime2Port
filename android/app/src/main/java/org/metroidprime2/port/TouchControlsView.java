@@ -753,8 +753,9 @@ final class TouchControlsView extends View {
         // hears about, so keep checking; otherwise the controls stayed invisible
         // until the next touch happened to redraw them.
         if (nativeDebugOverlayVisible() && !editing) {
-            // MP2: only MENU stays, so the window can be closed again.
-            drawMenuOnly(canvas, getWidth(), getHeight());
+            // MP2: nothing draws over the window (it has its own Close button); every tap goes
+            // to SDL.
+            menuDrawn.setEmpty();
             postInvalidateDelayed(150);
             return;
         }
@@ -838,26 +839,6 @@ final class TouchControlsView extends View {
         for (PillButton pill : pills) {
             if (isMenuPill(pill)) {
                 drawPillButton(canvas, pill, width, height);
-            }
-        }
-    }
-
-    // MP2: MENU alone, over the open F1 window. Sets what drawPillButton reads, as a
-    // normal draw would, and keeps the rect a tap is tested against.
-    private void drawMenuOnly(Canvas canvas, float width, float height) {
-        final boolean classic = nativeTouchClassic();
-        twin = !classic && nativeTouchTwinStick();
-        pills = twin ? TWIN_PILLS : GAMECUBE_PILLS;
-        colored = false;
-        labels = true;
-        sideMargin = dp(nativeTouchSideMarginDp());
-        stickInset = dp(nativeTouchStickInsetDp());
-        buttonInset = dp(nativeTouchButtonInsetDp());
-        syncLayout();
-        for (PillButton pill : pills) {
-            if (cornerSlot(pill) == 1) {
-                drawPillButton(canvas, pill, width, height);
-                pillRect(pill, width, height, menuDrawn);
             }
         }
     }
@@ -1354,7 +1335,7 @@ final class TouchControlsView extends View {
     private boolean scrolling;
     private float scrollLastY;
 
-    // Touches while the F1 window is open: MENU stays live so the window can be closed, a
+    // Touches while the F1 window is open: nothing of ours is drawn over it, a
     // two-finger drag scrolls, and everything else is handed to SDL, whose touch-to-mouse path is
     // what the ImGui window reads. Forwarding through SDL rather than injecting ImGui events here
     // is also what makes the coordinates right: sendToSdl normalises them against the surface.
