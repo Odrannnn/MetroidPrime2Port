@@ -39,6 +39,8 @@ compile_commands.json
 # Native port build dirs
 build-*/
 build-boot-probe/
+# tools/new_worktree.sh and tools/lane_slot.sh build logs
+/build-port-link.*.log
 
 # The CI composite action lives under a build-* directory name.
 !/.github/actions/build-and-test/
