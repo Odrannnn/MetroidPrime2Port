@@ -759,6 +759,14 @@ CIOWin::EMessageReturn CMFGame::OnMessage(const CArchitectureMessage& message,
     }
     break;
   case kAM_QuitGameplay:
+#ifdef TARGET_PC
+    // A held step can load a save state before the console client's subsequent `hold 0`
+    // arrives. Once this window is removed there is nobody to service that command, and
+    // holding the architecture's timer ticks also prevents MainFlow from restarting it.
+    // A simulation hold belongs to the outgoing game, not its loader or the main flow;
+    // `state load ... hold` will take a new hold when the room restore finishes.
+    PortOverlay::SetTickHold(false);
+#endif
     RecordMultiplayerResults();
     CFrameDelayedKiller::StallAndFlushAllAllocations();
     return kMR_RemoveIOWin;
