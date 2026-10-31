@@ -440,9 +440,18 @@ void CEnvFxManager::AsyncLoadResources(CStateManager& mgr) {
 
 #ifdef TARGET_PC
 void CEnvFxManager::Initialize() {
-  // TODO: Read the 256 pairs of floats from DUMB_SnowForces. The host's stand-in stream for that
-  // resource has no snow-force bytes, so running the real body below would read garbage; see the
-  // "DUMB_SnowForces" section of src/MetroidPrime/PortPoolStandIns.cpp.
+  // Retail body (0x80166880) over the real pak bytes. A missing resource leaves g_SnowForces zero.
+  const SObjectTag* tag = gpResourceFactory->GetResourceIdByName("DUMB_SnowForces");
+  if (tag == nullptr) {
+    return;
+  }
+  rstl::auto_ptr< CInputStream > stream(
+      gpResourceFactory->GetResLoader().LoadNewResourceSync(*tag, nullptr));
+  for (int i = 0; i < 256; ++i) {
+    for (int j = 0; j < 2; ++j) {
+      g_SnowForces[i][j] = stream->ReadFloat();
+    }
+  }
 }
 #else
 void CEnvFxManager::Initialize() {
