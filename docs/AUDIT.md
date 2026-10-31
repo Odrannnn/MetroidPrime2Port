@@ -148,7 +148,8 @@ tiers a-c over the unlinked/matching upstream units, and the Review 5 per-module
 row above is the result; the log only records which functions each slice covered.
 
 Sweep A8 (behaviour audit 2, 2026-10-31, in progress): lane reports in `/tmp/opencode/reports/audit-a8-*.md`;
-covered so far: reached stubs (clean), Grenchler parts 1-2, Sporb parts 1-2, FlyingPirate (clean), ScriptSafeZone
+covered so far: reached stubs (clean), Grenchler parts 1-3 (part 3 clean), Sporb parts 1-2, the 90 port-folded
+constants (none diverge; fn_78_2E38 may round 1 ulp differently), FlyingPirate (clean), ScriptSafeZone
 (clean), the 50 NaN-flagged comparisons (A8-3..7), commits since 2026-10-29 (gate list; the 9 that reach
 gameplay at defaults restore retail behaviour or are port features by design: quick resume, input mapping).
 
