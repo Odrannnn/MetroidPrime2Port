@@ -9,6 +9,7 @@
 #include "port_savestate.h"
 #include "port_savestate_block.h"
 #include "port_entity_schema.h"
+#include <cmath>
 
 #include "Kyoto/Math/CTransform4f.hpp"
 #include "Kyoto/Math/CVector3f.hpp"
@@ -27,6 +28,7 @@
 #include "MetroidPrime/Cameras/CCinematicCamera.hpp"
 #include "MetroidPrime/Enemies/CDarkTrooper.hpp"
 #include "MetroidPrime/Enemies/CPatterned.hpp"
+#include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptCamera.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptActorRotate.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptCounter.hpp"
@@ -123,6 +125,7 @@ enum : uint32_t {
   kTagMessages = 14,  // u8 n, n x (u32 message, u32 sender editor id): what woke a scripted enemy
   kTagFields = 15,    // the schema fields of an enemy, pickup or debris (port_savestate_fields.cpp)
   kTagRng = 16,       // u32 seed of the state manager's CRandom16: room-wide, on the first object
+  kTagPlayer = 17,    // 4 x f32 dark-air clocks of the player (CPlayer::PortGetDarkAir): room-wide, first object
 };
 
 // Per-object lines a restore logs, at most; the summary line always follows.
@@ -463,8 +466,15 @@ int ReplayScriptMsgs(CStateManager& mgr, CEntity& ent, const RoomObject& obj) {
   return replayed;
 }
 
+// The saved fields of objects whose messages ran: applied once every object has had its own, so
+// no object's Activate (which can reset a helper actor's timers) lands after another's fields.
+struct DeferredFields {
+  TUniqueId uid;
+  const RoomObject* obj;
+};
+
 bool ApplyObject(CStateManager& mgr, CEntity& ent, const RoomObject& obj, ChangeLog& log,
-                 bool holdTimers, std::vector< uint32_t >& held, int* fieldsSet = nullptr) {
+                 bool holdTimers, std::vector< uint32_t >& held, std::vector< DeferredFields >& later) {
   bool changed = false;
   if (ent.GetActive() != obj.active) {
     // Through the message, as a relay does: an object's own kSM_Activate sets up what its Think
@@ -680,13 +690,7 @@ bool ApplyObject(CStateManager& mgr, CEntity& ent, const RoomObject& obj, Change
     }
   }
   if (fieldsBlock != nullptr) {
-    if (const int set = ApplyEntityFields(mgr, ent, fieldsBlock->data)) {
-      if (fieldsSet != nullptr) {
-        *fieldsSet += set;
-      }
-      log.Note(obj.editorId, "fields restored");
-      changed = true;
-    }
+    later.push_back({ent.GetUniqueId(), &obj});
   }
   return changed;
 }
@@ -743,6 +747,15 @@ void CaptureRoomState(CStateManager& mgr, RoomState& out) {
     BlockWriter w;
     w.U32(static_cast< uint32_t >(mgr.Random()->GetSeed()));
     out.objects.front().blocks.push_back({kTagRng, w.bytes});
+    if (CPlayer* player = mgr.GetPlayer(0)) {
+      float v[4];
+      player->PortGetDarkAir(v);
+      BlockWriter pw;
+      for (float f : v) {
+        pw.F32(f);
+      }
+      out.objects.front().blocks.push_back({kTagPlayer, pw.bytes});
+    }
   }
   size_t copies = 0;
   for (const RoomObject& obj : out.objects) {
@@ -863,6 +876,7 @@ int ApplyRoomState(CStateManager& mgr, const RoomState& room, RoomApplyProgress&
     mgr.DispatchScriptMessages();
     mgr.ClearGraveyard();
   }
+  std::vector< DeferredFields > later;
   std::vector< const RoomObject* > copies;
   for (const RoomObject& obj : room.objects) {
     if (now.count(TEditorId(obj.editorId).AreaNum()) == 0) {
@@ -878,7 +892,7 @@ int ApplyRoomState(CStateManager& mgr, const RoomState& room, RoomApplyProgress&
       ++unmatchedLayers[LayerKey(obj.editorId)];
       continue;
     }
-    if (ApplyObject(mgr, *ent, obj, log, waiting > 0, progress.held, &stats.fields)) {
+    if (ApplyObject(mgr, *ent, obj, log, waiting > 0, progress.held, later)) {
       ++stats.changed;
     }
     ++stats.applied;
@@ -944,11 +958,25 @@ int ApplyRoomState(CStateManager& mgr, const RoomState& room, RoomApplyProgress&
         continue;
       }
       const RoomObject* obj = pr.second;
-      if (ApplyObject(mgr, *ent, *obj, log, waiting > 0, progress.held, &stats.fields)) {
+      if (ApplyObject(mgr, *ent, *obj, log, waiting > 0, progress.held, later)) {
         ++stats.changed;
       }
       ++stats.applied;
       ++generatedCopies;
+    }
+  }
+  // Every object's own messages have run: the saved fields go in.
+  mgr.DispatchScriptMessages();
+  for (const DeferredFields& d : later) {
+    CEntity* ent = mgr.ObjectById(d.uid);
+    const RoomBlock* fieldsBlock = ent != nullptr ? FindBlock(*d.obj, kTagFields) : nullptr;
+    if (fieldsBlock == nullptr) {
+      continue;
+    }
+    if (const int set = ApplyEntityFields(mgr, *ent, fieldsBlock->data)) {
+      stats.fields += set;
+      log.Note(d.obj->editorId, "fields restored");
+      ++stats.changed;
     }
   }
   if (generatedCopies != 0) {
@@ -975,6 +1003,21 @@ int ApplyRoomState(CStateManager& mgr, const RoomState& room, RoomApplyProgress&
       const uint32_t seed = r.U32();
       if (r.ok) {
         mgr.Random()->SetSeed(seed);
+      }
+      break;
+    }
+  }
+  for (const RoomObject& obj : room.objects) {
+    if (const RoomBlock* b = FindBlock(obj, kTagPlayer)) {
+      BlockReader r(b->data);
+      float v[4];
+      for (float& f : v) {
+        f = r.F32();
+      }
+      CPlayer* player = mgr.GetPlayer(0);
+      if (r.ok && player != nullptr && std::isfinite(v[0]) && std::isfinite(v[1]) &&
+          std::isfinite(v[2]) && std::isfinite(v[3])) {
+        player->PortSetDarkAir(v);
       }
       break;
     }

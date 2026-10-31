@@ -454,6 +454,21 @@ public:
   float
   GetDarkWorldDamageExposureFraction() const; // Guessed name; normalized grace-period exposure.
   float GetDarkAetherDamage() const;
+#ifdef TARGET_PC
+  // Port save states: the dark-air exposure clock, damage level and flash clock (the player is respawned on load).
+  void PortGetDarkAir(float out[4]) const {
+    out[0] = mDarkWorldDamageExposureTime;
+    out[1] = mDarkAetherDamage;
+    out[2] = mDarkAetherDamageFlashTime;
+    out[3] = mDarkAetherDamageLoopSfxTimer;
+  }
+  void PortSetDarkAir(const float in[4]) {
+    mDarkWorldDamageExposureTime = in[0];
+    mDarkAetherDamage = in[1];
+    mDarkAetherDamageFlashTime = in[2];
+    mDarkAetherDamageLoopSfxTimer = in[3];
+  }
+#endif
   CElementGen* GetUnderwaterParticles() const { return mUnderwaterParticles.get(); }
   CElementGen* GetDarkAetherParticles() const { return mDarkAetherParticles.get(); }
   CColor GetDarkAetherDamageColor(const CStateManager& mgr, int view) const;
