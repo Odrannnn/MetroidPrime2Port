@@ -23,6 +23,7 @@
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/CWorld.hpp"
 #include "MetroidPrime/Cameras/CCinematicCamera.hpp"
+#include "MetroidPrime/Enemies/CDarkTrooper.hpp"
 #include "MetroidPrime/Enemies/CPatterned.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptCamera.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptActorRotate.hpp"
@@ -45,6 +46,9 @@
 // Friend of CScriptTimer, CScriptCounter and CScriptDoor (their TARGET_PC blocks): their state is
 // private.
 struct PortRoomState {
+  // A flotsam Dark Trooper is a corpse by design (AreaLoaded clears mAlive, HP -1): the reload
+  // rebuilds it, so it is not a kill the state should remember.
+  static bool IsFlotsam(const CDarkTrooper& t) { return t.mRagDollHolder.mFlotsam; }
   static CScriptDoor::ELockState DoorLock(const CScriptDoor& d) { return d.mLockState; }
   static float TimerTime(const CScriptTimer& t) { return t.mTime; }
   static void SetTimer(CScriptTimer& t, float time, bool timing) {
@@ -329,6 +333,11 @@ bool IsScripted(const CEntity& ent) { return ent.GetEditorId().value != kInvalid
 // A dead enemy is gone for the room even while its corpse still runs.
 bool IsGone(CEntity& ent) {
   const CPatterned* patterned = TCastToPtr< CPatterned >(&ent);
+  if (const CDarkTrooper* trooper = dynamic_cast< const CDarkTrooper* >(&ent)) { // REL class: no TCastTo
+    if (PortRoomState::IsFlotsam(*trooper)) {
+      return false;
+    }
+  }
   return patterned != nullptr && !patterned->GetAlive();
 }
 

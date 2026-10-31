@@ -94,6 +94,9 @@ public:
   virtual void SmallShotAttack(CStateManager& mgr, EStateMsg msg, float dt);
 
 private:
+#ifdef TARGET_PC
+  friend struct PortRoomState; // save states' room state (platform/port_savestate_room.cpp)
+#endif
   // Guessed name: the projectile fired by a ranged attack.
   class CAttackProjectile {
   public:
