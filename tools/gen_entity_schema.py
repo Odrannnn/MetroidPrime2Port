@@ -531,7 +531,7 @@ def emit_doc(res):
     o += ["", "## `other`: types without a codec yet (by field count)", ""]
     for t, n in unknown.most_common():
         o.append(f"- {n} `{t}`")
-    o += ["", "## `pod`: trivially copyable, pointer-free structs and arrays", "",
+    o += ["", "## `pod`: pointer-free structs and arrays, copied as bytes", "",
           "Scalar bytes are copied; embedded `TUniqueId` members have generated accessors and are",
           "saved by stable identity, never restored as raw runtime IDs. This includes line-of-sight",
           "and visual trackers, waypoint/path navigation, health damage owners, sac/zone targets,",

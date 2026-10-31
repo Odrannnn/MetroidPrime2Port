@@ -125,7 +125,7 @@ Written by `tools/gen_entity_schema.py`; do not edit. The table itself is
 - 1 `CSplitterMainChassisData`
 - 1 `CMissileRepeller`
 
-## `pod`: trivially copyable, pointer-free structs and arrays
+## `pod`: pointer-free structs and arrays, copied as bytes
 
 Scalar bytes are copied; embedded `TUniqueId` members have generated accessors and are
 saved by stable identity, never restored as raw runtime IDs. This includes line-of-sight
