@@ -2079,7 +2079,6 @@ void CSwampBossStage1::RenderTongue(const CStateManager& mgr) const {
     xf.SetTranslation(xc0c_tonguePos + look * local);
     const float a = CMath::Clamp(0.f, 1.f - (1.f - u) * (1.f - u), 1.f);
     CColor col = CColor::Lerp(cA, cB, a);
-    // TODO(uncertain): the alpha byte is taken as a * 255.
     col.SetAlpha(a);
     if (u < 0.4f) {
       const float k = 1.f - u / 0.4f;
