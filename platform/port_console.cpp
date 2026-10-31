@@ -4754,19 +4754,23 @@ void CmdOverlay(CStateManager&, const Args& args, std::string& out) {
   out += args[1] == "off" ? std::string("overlay closed\n") : "overlay open on " + std::string(args[1]) + "\n";
 }
 
-// state save|load <slot>: the F5/F9 save states (slot 0 is the undo slot, load only).
+// state save|load <slot> [hold]: the F5/F9 save states (slot 0 is the undo slot, load only). `hold`
+// stops the simulation on the tick the load's room state is restored.
 void CmdState(CStateManager&, const Args& args, std::string& out) {
   const int slot = args.size() < 3 ? -1 : ArgToInt(args[2], -1);
   const bool save = args.size() >= 2 && args[1] == "save";
   const bool load = args.size() >= 2 && args[1] == "load";
   if ((!save && !load) || slot < (save ? 1 : PortSaveState::kUndoSlot) ||
       slot > PortSaveState::kSlotCount) {
-    Fail("usage: state save <1..8> | state load <0..8>");
+    Fail("usage: state save <1..8> | state load <0..8> [hold]");
     return;
   }
   if (save) {
     PortSaveState::RequestSave(slot);
   } else {
+    if (args.size() > 3 && args[3] == "hold") {
+      PortSaveState::HoldAfterLoad();
+    }
     PortSaveState::RequestLoad(slot);
   }
   out += std::string(save ? "save" : "load") + " of slot " + std::to_string(slot) +

@@ -55,6 +55,9 @@ void SelectPrevSlot();
 // on screen (the F5/F9 hotkeys).
 void RequestSave(int slot, bool toast = false);
 void RequestLoad(int slot, bool toast = false);
+// The next load holds the simulation (PortOverlay::SetTickHold) on the tick its room state is
+// restored, so a harness can read the world exactly as restored (tools/statecheck.py).
+void HoldAfterLoad();
 
 // Reload the mods folder and rebuild the room: the current state is written to the undo slot and
 // loaded back, and between the old world and the new one every PAK is closed and opened again over
@@ -183,9 +186,10 @@ void CaptureRoomState(CStateManager& mgr, RoomState& out);
 // counter, door, platform, rotator, dock, music or cinematic camera as JSON members.
 bool IsScriptGeneratedCopy(const CStateManager& mgr, CEntity& ent);
 std::string RoomStateJson(CStateManager& mgr, CEntity& ent);
-// Applies the saved areas that are ready now and not yet done; returns how many saved areas are
-// still waiting to load.
-int ApplyRoomState(CStateManager& mgr, const RoomState& room, RoomApplyProgress& progress);
+// Applies the saved areas once all of them are ready (or, with `force`, those that are ready now);
+// returns how many saved areas are still waiting to load.
+int ApplyRoomState(CStateManager& mgr, const RoomState& room, RoomApplyProgress& progress,
+                   bool force = false);
 
 // Spawn layers, game thread. CGameArea::VerifyTokenList calls NoteAreaSpawn{Begin,End} around
 // listing the layers an area spawns: Begin swaps in the recorded bits of an armed area, End puts

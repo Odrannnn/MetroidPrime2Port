@@ -783,7 +783,8 @@ static void StartHeldTimers(CStateManager& mgr, RoomApplyProgress& progress) {
   progress.held.clear();
 }
 
-int ApplyRoomState(CStateManager& mgr, const RoomState& room, RoomApplyProgress& progress) {
+int ApplyRoomState(CStateManager& mgr, const RoomState& room, RoomApplyProgress& progress,
+                   bool force) {
   const CWorld* world = mgr.World();
   if (world == nullptr) {
     return static_cast< int >(room.areas.size());
@@ -825,7 +826,10 @@ int ApplyRoomState(CStateManager& mgr, const RoomState& room, RoomApplyProgress&
   if (waiting == 0) {
     StartHeldTimers(mgr, progress);
   }
-  if (now.empty()) {
+  // One pass for every area, once all are back: an area applied while another still loads would run
+  // on from its saved clocks (platforms, rotations, AI timers) for the whole wait. `force` is the
+  // give-up pass, which restores the areas that did come back.
+  if (now.empty() || (waiting != 0 && !force)) {
     return waiting;
   }
 

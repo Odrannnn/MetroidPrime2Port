@@ -179,8 +179,8 @@ Ids may be `e<editor id>` (unique ids are reused across layer loads); `covdump` 
 `tools/statecheck.py --userdir <dir with the card> --area 5 --area 12 [--headless] [--post-wait N]`
 starts `run_gameplay.sh` with a console, and per room (first area = TELEPORT, later ones `warp`)
 does: `hold 1`, `statedump A`, `state save`, `step 1`, `statedump A1` (natural one-tick drift),
-`state load`, release the hold until the log shows `[savestate] room state restored` (a load only
-advances while the game runs), re-hold, `statedump B`. A diff A→B is STRICT only if B also differs
+`state load N hold` + `hold 0` (a load only advances while the game runs; `hold` makes the game hold
+itself on the tick `[savestate] room state restored` shows, so nothing runs past it), `statedump B`. A diff A→B is STRICT only if B also differs
 from A1 (so tick drift is filtered); the rest are warnings. `--post-wait N` also steps N ticks and
 dumps C. Dumps land in `--out` (`<n>-area_<a>-A.jsonl`); `--detail`/`--all` list more. An empty
 card runs as a new game (`MP2_NEW_GAME=1`). Use a copy of the card: the run saves slot 8 and loads it.

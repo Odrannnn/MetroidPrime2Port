@@ -143,6 +143,7 @@ struct RoomRestore {
   size_t nextLayer = 0;
 };
 RoomRestore sRoom;
+std::atomic< bool > sHoldAfterRestore{false};
 CGameState* sRetired = nullptr; // the game state a load replaced, deleted once the world restarted
 
 // True while a hotkey save or load runs: its messages also show as a toast.
@@ -1001,9 +1002,8 @@ void TickRoom(CStateManager& mgr) {
     std::fprintf(stderr, "[savestate] room: giving up after %d frames, the last %d with nothing "
                          "changing\n",
                  sRoom.waited, sRoom.idle);
-    if (waiting < 0) {
-      waiting = ApplyRoomState(mgr, sRoom.state, sRoom.progress); // the layers never settled
-    }
+    // the layers never settled, or an area never came back: restore the areas that are ready
+    waiting = ApplyRoomState(mgr, sRoom.state, sRoom.progress, true);
   }
   sRoom.active = false;
   DisarmSpawnLayers();
@@ -1014,6 +1014,9 @@ void TickRoom(CStateManager& mgr) {
              std::to_string(st.removed) + " removed, " + std::to_string(st.unmatched) +
              " unmatched, " + std::to_string(st.otherLayer) + " on other layers" +
              (waiting > 0 ? ", " + std::to_string(waiting) + " areas never loaded" : ""));
+  if (sHoldAfterRestore.exchange(false)) {
+    PortOverlay::SetTickHold(true);
+  }
 }
 
 } // namespace
@@ -1068,6 +1071,8 @@ void RequestLoad(int slot, bool toast) {
     sLoadRequest.store(slot);
   }
 }
+
+void HoldAfterLoad() { sHoldAfterRestore.store(true); }
 
 std::string LastMessage() {
   std::lock_guard< std::mutex > lock(sMessageMutex);

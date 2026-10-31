@@ -12,8 +12,8 @@ Sequence (all with the game held, so ticks are exact; `statedump` runs between t
   2. `statedump A`: the world exactly as the save will see it. PortSaveState::Tick runs at the start of
      CStateManager::Update, so the `state save` queued now is taken by the first stepped tick;
   3. `state save N`, `step 1`, `statedump A1` (the same world one tick later: the natural drift);
-  4. `state load N`, then `step 1` until the log shows `[savestate] room state restored` (or `room:
-     giving up`), and `statedump B` at once.
+  4. `state load N hold` + `hold 0`: the game holds itself on the tick the log shows `[savestate] room
+     state restored` (or `room: giving up`), and `statedump B` follows.
 A field that differs between A and B is STRICT only if B also differs from A1: a value B shares with A1
 is one that just moves each tick (a timer, a position), not a save-state gap. --post-wait N also dumps
 C N ticks after B and prints C against A, uncounted (for a restore that hands over late).
@@ -164,16 +164,15 @@ def roundtrip(con, game, tag, outdir, a):
     con.cmd("step 1")
     con.cmd(f"statedump {paths['A1']}")
     n = game.restores()
-    con.cmd(f"state load {a.slot}")
-    # the load (world restart, then room restore) only advances while the game runs: release the hold and
-    # re-take it as soon as the restore line shows
+    # `hold` stops the game on the tick the room state is restored: releasing the hold and re-taking it
+    # on seeing the log line let the world free-run past the restore (timers read seconds too far)
+    con.cmd(f"state load {a.slot} hold")
     con.cmd("hold 0")
     deadline = time.time() + 120
     while game.restores() <= n:
         if time.time() > deadline:
             return paths, "no room-state restore line within 120s of the load"
         time.sleep(0.05)
-    con.cmd("hold 1")
     con.cmd(f"statedump {paths['B']}")
     if a.post_wait:
         con.cmd(f"step {a.post_wait}")
