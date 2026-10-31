@@ -145,6 +145,10 @@ Scripts: `tools/audit/` (see its README).
 | A8-12 | Lumite | CLumite.cpp:826 | eval-order | low | RandomVector builds CVector3f(Range,Range,Range); retail draws z,y,x. Same class as A8-10: clang assigns draws to other axes (shot jitter only) | open |
 | A8-13 | RNG eval order (class) | CParasite.cpp:~831, CIngSnatchingSwarm.cpp:393,522, CWorldTransManager.cpp:363, CEmitterElement.cpp:46,85 | eval-order | low | Same class as A8-10/A8-12 (report audit-a8-evalorder.md): retail draws right to left (z,y,x); GCC matches, clang builds (Android/Apple) differ. Particle spawn directions, Parasite/Ing swarm paths, transition shake | open |
 | A8-14 | Tweak globals | platform/main.cpp:1572-1582 | stale-comment | info | Comment says real CreateGlobals is called by nothing; src/MetroidPrime/main.cpp:558-559 runs LoadTweaks + CreateTweakGlobals, which overwrites gpTweakPlayerA/B (Tweaks.cpp:133), leaking the zeroed stand-ins. No behaviour change seen | fixed (comment corrected) |
+| A8-15 | Player gun | src/MetroidPrime/Player/CPlayerGun.cpp:2454 | wrong-cond | low | Combo-cost option (48829d0d2) made the pre-check `missiles < comboCost`; retail checks `missiles < 1`, so with 1-4 missiles a combo played the empty sfx and set mMissileExitTimer where retail returns silently. Now retail check unless the option cost is 0 | fixed |
+| A8-16 | Player | src/MetroidPrime/Player/CPlayer.cpp:3805 | gated-call | info | ScanVisor ReInitializePowerUp gated on IsMultiplayer(); retail unconditional. Dead in single player | open |
+| A8-17 | Morph ball | src/MetroidPrime/Player/CMorphBall.cpp:1408 | missing-render | low | PC-only Render skips screw-attack/boost/spider-magnet/death-ball effects, death draw, rain splash, dark-aether tint, tire tilt. Rendering only | open |
+| A8-18 | HUD | src/MetroidPrime/HUD/CHudVisorBeamMenu.cpp:168 | hard-coded | info | GetVisorHudAlpha(0) hard-codes player 0; retail-identical in single player | open |
 
 ## Sweep log
 
@@ -154,7 +158,7 @@ tiers a-c over the unlinked/matching upstream units, and the Review 5 per-module
 row above is the result; the log only records which functions each slice covered.
 
 Sweep A8 (behaviour audit 2, 2026-10-31, in progress): lane reports in `/tmp/opencode/reports/audit-a8-*.md`;
-covered so far: reached stubs (clean), Grenchler parts 1-3 (part 3 clean), Sporb parts 1-4 (clean), DarkTrooper (A8-9), FishCloud (A8-10, A8-11; random-scale pow 1 ulp, wontfix), Lumite (A8-12), DestructibleBarrier (clean; Think clamps differ only on NaN), Tryclops (clean; cos vs cosf precision only), small Port* files (A8-14), GeomBlobV2 (clean; AddSegment reserves after the aligned-extend branch, allocation timing only), the 90 port-folded
+covered so far: reached stubs (clean), Grenchler parts 1-3 (part 3 clean), Sporb parts 1-4 (clean), DarkTrooper (A8-9), FishCloud (A8-10, A8-11; random-scale pow 1 ulp, wontfix), Lumite (A8-12), DestructibleBarrier (clean; Think clamps differ only on NaN), Tryclops (clean; cos vs cosf precision only), small Port* files (A8-14), PC arms in Player/Weapons/Cameras/HUD (A8-15..18; CPlayerVisor and Cameras by strip-diff only), GeomBlobV2 (clean; AddSegment reserves after the aligned-extend branch, allocation timing only), the 90 port-folded
 constants (none diverge; fn_78_2E38 may round 1 ulp differently), FlyingPirate (clean), ScriptSafeZone
 (clean), the 50 NaN-flagged comparisons (A8-3..7), commits since 2026-10-29 (gate list; the 9 that reach
 gameplay at defaults restore retail behaviour or are port features by design: quick resume, input mapping).
