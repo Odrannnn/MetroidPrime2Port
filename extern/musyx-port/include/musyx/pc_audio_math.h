@@ -35,7 +35,9 @@ static inline int16_t musyxPcAdpcmSample(const uint8_t* block, unsigned sample,
 }
 
 static inline uint32_t musyxPcLoopEnd(uint32_t length, uint32_t loop, uint32_t loopLength) {
-  return loopLength != 0 && loop < length && loopLength <= length - loop ? loop + loopLength : length;
+  // Some samples (smp 428, Dark Agon Temple) have loop + loopLength one past length: the DSP's inclusive
+  // end address (hw_dspctrl.c, loop + loopLength - 1) is the last sample. Keep looping, over the samples we have.
+  return loopLength != 0 && loop < length && loopLength <= length - loop + 1 ? (loop + loopLength < length ? loop + loopLength : length) : length;
 }
 
 static inline int musyxPcStreamedAdpcm(uint8_t compression) {

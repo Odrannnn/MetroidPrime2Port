@@ -21,6 +21,8 @@ typedef struct PortMusyxVoice {
   int32_t rms;
   uint16_t volL;
   uint16_t volR;
+  uint32_t srcPos;
+  uint32_t loopLength;
 } PortMusyxVoice;
 #pragma pack(pop)
 

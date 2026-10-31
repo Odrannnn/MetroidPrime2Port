@@ -1182,6 +1182,13 @@ void CmdSfx(CStateManager&, const Args&, std::string& out) {
          std::to_string(live[1]) + "," + std::to_string(live[2]) + "," + std::to_string(live[3]) +
          "] poolFree=" + std::to_string(poolFree[0]) + "/" + std::to_string(poolFree[1]) +
          " musyxVoices=" + std::to_string(voiceCount) + "\n";
+  for (int i = 0; i < voiceCount; ++i) {
+    const PortMusyxVoice& v = voices[i];
+    out += "  voice smp=" + std::to_string(v.smpId) + " looped=" + std::to_string(v.looped) +
+           " len=" + std::to_string(v.length) + " loopLen=" + std::to_string(v.loopLength) +
+           " pos=" + std::to_string(v.srcPos) + " rms=" + std::to_string(v.rms) +
+           " vol=" + std::to_string(v.volL) + "/" + std::to_string(v.volR) + "\n";
+  }
 }
 
 // credits [1|2]: end the game into the credits (CGMSinglePlayer::EndGame's kRM_Credits1/2 route).
