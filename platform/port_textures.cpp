@@ -379,6 +379,14 @@ const char* UserRoot() { return sUser.root.c_str(); }
 
 size_t UserPackCount() { return sUser.loaded ? sUser.group.registrations.size() : 0; }
 
+UserPackUsage UserPackMatches() {
+  if (!sUser.loaded) {
+    return {};
+  }
+  const aurora::texture::ReplacementUsage usage = aurora::texture::replacement_usage(sUser.group.registrations);
+  return {usage.matched, usage.failed};
+}
+
 const char* DeviceName() { return sDevice.c_str(); }
 
 const char* PadDeviceName() { return DeviceDirForType(PADGetControllerType(PAD_CHAN0)); }

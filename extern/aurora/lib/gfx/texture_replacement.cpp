@@ -165,6 +165,8 @@ std::mutex s_registryMutex;
 absl::flat_hash_map<ReplacementKey, std::vector<ReplacementEntry>, ReplacementKeyHash> s_entriesByKey;
 absl::flat_hash_map<ReplacementKey, SelectedCache, ReplacementKeyHash> s_cacheByKey;
 absl::flat_hash_set<uint64_t> s_failedIds;
+// Registrations the game has looked up at least once (replacement_usage).
+absl::flat_hash_set<uint64_t> s_matchedIds;
 absl::flat_hash_set<TextureSourceKey, SourceKeyHash> s_reportedMisses;
 std::list<ReplacementKey> s_replacementLru;
 uint64_t s_replacementCacheBytes = 0;
@@ -1239,6 +1241,8 @@ find_replacement_for_key_locked(const ReplacementKey& key) noexcept {
     return gfx::texture_replacement::ReplacementResult{.handle = cache->second.handle, .id = entry->id};
   }
 
+  // A cache hit was looked up before, so only the miss path records the match.
+  s_matchedIds.insert(entry->id);
   erase_cache_locked(key);
   if constexpr (gx::texture::AsyncTextureReplacements) {
     // Raw entry data is borrowed, so they must take the synchronous path.
@@ -1418,6 +1422,7 @@ bool unregister_replacement_locked(const ReplacementRegistration& registration,
     --s_sourceEntryCount;
   }
   s_failedIds.erase(registration.id);
+  s_matchedIds.erase(registration.id);
   erase_cache_locked(registration.key);
   entries.erase(entry);
   if (entries.empty()) {
@@ -1436,6 +1441,7 @@ void clear_replacement_runtime_state_locked(std::vector<std::shared_ptr<VirtualR
   s_entriesByKey.clear();
   s_cacheByKey.clear();
   s_failedIds.clear();
+  s_matchedIds.clear();
   s_reportedMisses.clear();
   s_replacementLru.clear();
   s_replacementCacheBytes = 0;
@@ -1665,6 +1671,7 @@ void unregister_replacements(const ReplacementKey& key) {
         cancel_virtual_entry_locked(entry, waitStates);
         cancel_queued_jobs(entry.id);
         s_failedIds.erase(entry.id);
+        s_matchedIds.erase(entry.id);
       }
       erase_cache_locked(key);
       s_entriesByKey.erase(it);
@@ -1675,6 +1682,20 @@ void unregister_replacements(const ReplacementKey& key) {
   if (removed) {
     wait_for_virtual_reads(waitStates);
   }
+}
+
+ReplacementUsage replacement_usage(std::span<const ReplacementRegistration> registrations) {
+  ReplacementUsage usage;
+  std::lock_guard lk(s_registryMutex);
+  for (const auto& registration : registrations) {
+    if (s_matchedIds.contains(registration.id)) {
+      ++usage.matched;
+      if (s_failedIds.contains(registration.id)) {
+        ++usage.failed;
+      }
+    }
+  }
+  return usage;
 }
 
 void clear_replacements() {

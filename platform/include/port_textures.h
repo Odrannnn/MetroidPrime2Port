@@ -50,6 +50,14 @@ const char* UserRoot();
 // Replacements the user pack registered for the current device.
 size_t UserPackCount();
 
+// Of those, how many a texture the game loaded since the pack was (re)loaded asked for, and how
+// many of the matched ones failed to load. Few matches means the pack was made for another disc.
+struct UserPackUsage {
+  size_t matched = 0;
+  size_t failed = 0;
+};
+UserPackUsage UserPackMatches();
+
 // Name of the current device folder (never null).
 const char* DeviceName();
 

@@ -50,7 +50,8 @@ the open Inventory model (the room follows when unpaused).
 ## Reload, folder, texture pack (MP1 sync 21)
 
 F1 > Mods has Reload mods and Open mods folder (desktop), then the Textures section: the built-in HD set's
-name, the replacement count, the Use the texture pack switch (`texture_pack`), Reload texture pack and
+name, how many of the pack's textures the game has used so far (and how many failed to load), a note naming the disc's game code and the pack folder that fits it (G2M, or
+R3M on Trilogy), the Use the texture pack switch (`texture_pack`), Reload texture pack and
 Import texture pack .zip... (desktop). Android: Choose texture pack folder... copies the pick to
 `<user>/user_textures.new`, which `PortTextures` swaps in (Remove texture pack deletes it). Console:
 `reloadmods`.

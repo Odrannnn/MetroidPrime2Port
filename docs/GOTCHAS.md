@@ -249,6 +249,10 @@ game ignores SIGPIPE, the copier ignores SIGTERM/SIGHUP, and Aurora logs through
   matches the `userData` `CTexture` sets with `GXInitTexObjUserData` (re-set in `Load`). A re-vendor must
   keep the key overload. The hint memo's button blinks on purpose (game behaviour): screenshot several
   frames. `kKeys` (texel hashes) still serves the few prompt textures without an asset id.
+- **`replacement_usage(registrations)` is a vendored-Aurora addition** (same files): `s_matchedIds` records
+  each registration a cache-missing lookup selected (erased with the registration, cleared with the runtime
+  state); F1 > Mods shows the user pack's matched/failed counts from it (`PortTextures::UserPackMatches`).
+  A pack's file count says nothing: a Trilogy (R3M) pack loads in full on a GameCube disc and matches nothing.
 - **Save files were purged from public history on 2026-10-28** (`tests/data/01-G2ME-MetroidPrime2.gci`,
   `tests/fixtures/trilogy/*.bin`): `port`, `ios`, `portable`, `portable-ci` and `winparity` were rewritten with
   filter-branch (upstream commits excluded) and force-pushed; old `origin/port` 3ad668104 is now d4a0e1681.

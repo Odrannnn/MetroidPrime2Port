@@ -108,6 +108,15 @@ void unregister_replacements(const ReplacementGroup& group);
 void unregister_replacements(const ReplacementKey& key);
 void clear_replacements();
 
+/// How many of `registrations` the game has looked up since they were registered (a texture it
+/// loaded had their key), and how many of those failed to load (unreadable file, or a format the
+/// GPU cannot sample, such as BC7 without BC support).
+struct ReplacementUsage {
+  size_t matched = 0;
+  size_t failed = 0;
+};
+ReplacementUsage replacement_usage(std::span<const ReplacementRegistration> registrations);
+
 ReplacementGroup load_replacement_directory(const std::filesystem::path& root, ReplacementOptions options = {});
 void reload_replacement_directory(const std::filesystem::path& root, ReplacementGroup& group,
                                   ReplacementOptions options = {});

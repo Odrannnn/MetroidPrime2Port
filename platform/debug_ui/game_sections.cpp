@@ -11,6 +11,7 @@
 #include "port_debug.h"
 #include "port_disc_verify.h"
 #include "port_discord.h"
+#include "port_entry.h"
 #include "port_freecam.h"
 #include "port_photo.h"
 #include "port_input_remap_ui.h"
@@ -345,7 +346,7 @@ void DrawTexturesSection() {
   ImGui::SeparatorText("Textures");
   ImGui::Text("HD texture set: %s", PortTextures::DeviceName());
   ImGui::SetItemTooltip("Follows the input last used (xbox, playstation, switch,\n"
-                        "gamecube, standard, keyboard); set MP_TEXTURE_DEVICE to override.");
+                        "gamecube, standard, keyboard); set MP2_TEXTURE_DEVICE to override.");
   const char* root = PortTextures::UserRoot();
   if (root[0] == '\0') {
     ImGui::TextUnformatted("No user texture folder.");
@@ -365,10 +366,22 @@ void DrawTexturesSection() {
   if (!enabled) {
     ImGui::TextUnformatted("Texture pack off.");
   } else if (count > 0) {
-    ImGui::Text("%zu replacements loaded, over the built-in set.", count);
+    // Registered files say nothing about the disc: a pack dumped from another version loads in
+    // full and matches almost nothing, so the count that matters is the matched one.
+    const PortTextures::UserPackUsage usage = PortTextures::UserPackMatches();
+    ImGui::Text("%zu of %zu textures in the pack used so far.", usage.matched, count);
+    ImGui::SetItemTooltip("Counted as the game loads textures, so it grows as you play.\n"
+                          "A pack for all three games only ever matches this game's part.");
+    if (usage.failed > 0) {
+      ImGui::Text("%zu of them could not be loaded (see the log).", usage.failed);
+    }
   } else {
     ImGui::TextUnformatted("No texture pack loaded.");
   }
+  const bool trilogy = port::entry::IsTrilogy(port::entry::CurrentDiscVersion());
+  ImGui::TextWrapped("Your disc is %s. A pack only works on the disc version it was made from: "
+                     "Dolphin packs for this game are in a %s folder.",
+                     port::entry::CurrentGameCode(), trilogy ? "R3M" : "G2M");
 #if defined(__ANDROID__)
   const std::string status = TexturePackStatus();
   if (!status.empty()) {
