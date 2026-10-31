@@ -23,6 +23,7 @@
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/CWorld.hpp"
 #include "MetroidPrime/Cameras/CCinematicCamera.hpp"
+#include "MetroidPrime/Enemies/CDarkTrooper.hpp"
 #include "MetroidPrime/Enemies/CPatterned.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptCamera.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptActorRotate.hpp"
@@ -45,6 +46,9 @@
 // Friend of CScriptTimer, CScriptCounter and CScriptDoor (their TARGET_PC blocks): their state is
 // private.
 struct PortRoomState {
+  // A flotsam Dark Trooper is a corpse by design (AreaLoaded clears mAlive, HP -1): the reload
+  // rebuilds it, so it is not a kill the state should remember.
+  static bool IsFlotsam(const CDarkTrooper& t) { return t.mRagDollHolder.mFlotsam; }
   static CScriptDoor::ELockState DoorLock(const CScriptDoor& d) { return d.mLockState; }
   static float TimerTime(const CScriptTimer& t) { return t.mTime; }
   static void SetTimer(CScriptTimer& t, float time, bool timing) {
@@ -329,6 +333,11 @@ bool IsScripted(const CEntity& ent) { return ent.GetEditorId().value != kInvalid
 // A dead enemy is gone for the room even while its corpse still runs.
 bool IsGone(CEntity& ent) {
   const CPatterned* patterned = TCastToPtr< CPatterned >(&ent);
+  if (const CDarkTrooper* trooper = dynamic_cast< const CDarkTrooper* >(&ent)) { // REL class: no TCastTo
+    if (PortRoomState::IsFlotsam(*trooper)) {
+      return false;
+    }
+  }
   return patterned != nullptr && !patterned->GetAlive();
 }
 
@@ -774,7 +783,8 @@ static void StartHeldTimers(CStateManager& mgr, RoomApplyProgress& progress) {
   progress.held.clear();
 }
 
-int ApplyRoomState(CStateManager& mgr, const RoomState& room, RoomApplyProgress& progress) {
+int ApplyRoomState(CStateManager& mgr, const RoomState& room, RoomApplyProgress& progress,
+                   bool force) {
   const CWorld* world = mgr.World();
   if (world == nullptr) {
     return static_cast< int >(room.areas.size());
@@ -816,7 +826,10 @@ int ApplyRoomState(CStateManager& mgr, const RoomState& room, RoomApplyProgress&
   if (waiting == 0) {
     StartHeldTimers(mgr, progress);
   }
-  if (now.empty()) {
+  // One pass for every area, once all are back: an area applied while another still loads would run
+  // on from its saved clocks (platforms, rotations, AI timers) for the whole wait. `force` is the
+  // give-up pass, which restores the areas that did come back.
+  if (now.empty() || (waiting != 0 && !force)) {
     return waiting;
   }
 
