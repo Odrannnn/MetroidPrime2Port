@@ -6,7 +6,9 @@
 
 The first --area is the run's MP2_TELEPORT (tools/run_gameplay.sh), the others `warp`. Without --area
 the room the run is in is checked. --setup 'cmd' (repeatable) runs unheld in each room first (`wait N` = N game updates;
-ids are uids or `e<editor id>`, a bare editor id is not a uid and the command fails).
+ids are uids or `e<editor id>`, a bare editor id is not a uid and the command fails). The player is held
+safe by default: each room runs `god 1` and `nodarkair 1` before --setup, so an enemy hit or a dark-aether
+drain is not a strict player hp diff; --unsafe-player leaves the player as the room found it.
 
 Sequence (all with the game held, so ticks are exact; `statedump` runs between ticks, also while held):
   1. setup commands run unheld, then `hold 1`;
@@ -441,6 +443,9 @@ def main():
     ap.add_argument("--setup", action="append", default=[], metavar="CMD",
                     help="console command run unheld in each room before the round trip (repeatable); "
                     "`wait N` lets the game run N more updates (the game must be running, not held)")
+    ap.add_argument("--unsafe-player", action="store_true",
+                    help="leave the player unsafe: skip the `god 1`/`nodarkair 1` each room runs first, so a "
+                    "dark-aether drain or an enemy hit shows up as a strict player hp diff")
     ap.add_argument("--out", default="statecheck-out", help="directory for the JSONL dumps (default %(default)s)")
     ap.add_argument("--log", default="/tmp/opencode/statecheck.log", help="the run's stderr log (the restore is read from it)")
     ap.add_argument("--build", help="build dir for run_gameplay.sh (default build-port-link)")
@@ -480,6 +485,11 @@ def main():
                 n = game.count("[warp] arrival check")
                 con.cmd(f"warp {area}")
                 game.wait_for("[warp] arrival check", n)
+            if not a.unsafe_player:
+                # the player must not take damage between A and B: a dark-aether drain or an enemy hit
+                # would show up as a strict player hp diff, not a save-state gap
+                for c in ("god 1", "nodarkair 1"):
+                    con.cmd(c)
             for c in a.setup:
                 m = re.fullmatch(r"wait\s+(\d+)", c.strip())
                 if m:
