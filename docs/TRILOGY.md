@@ -221,12 +221,8 @@ global cancellation epoch. A held/revoked finger cannot commit or reopen on re-e
 consumed until lifted, and a fresh down is needed. Cancelled native fingers released by the Java
 view are not forwarded to SDL as a new look/map gesture. Already-applied selections are not undone.
 
-The current MP2 checkout has **no desktop C++ touch-overlay/wheel renderer** (obsolete? it has one now:
-`platform/debug_ui/touch_overlay.cpp`, drawn for iOS and the `MP_TOUCH_OVERLAY_DESKTOP` build since
-`0c6d1988d` 2026-10-27, and it calls the entries below itself - `PortRadial::BeginTouch`/`MoveTouch`/
-`EndTouch`/`CancelTouch`).
-This slice exposes the same C++ mailbox entry points for a future mirror and tests them with the
-desktop console, rather than importing a new UI or inventing layouts:
+The C++ touch overlay (`platform/debug_ui/touch_overlay.cpp`, iOS and the `MP_TOUCH_OVERLAY_DESKTOP`
+build, since `0c6d1988d`) calls these entry points itself; the desktop console reaches them too:
 
 * `radial touch begin beam|visor <owner>` returns a session token (0 = legacy fallback, -1 = busy).
 * `radial touch move|end <owner> <x> <y>` uses that synthetic session and normalized drag vector.
