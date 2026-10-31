@@ -1576,8 +1576,9 @@ int main(int argc, char** argv) {
     // allocates real 4-byte cells over a zeroed `SLdrTweakPlayer`, which makes the
     // five `CTweakPlayer` accessors answer 0.0f; it carries no tweak data, because
     // the data lives in `Standard.NTWK` inside a pak and the paks are boot-path
-    // step 13. `STweaks_FuncPtrs::CreateGlobals` is the retail route and it is
-    // assigned by `TweaksInit` and called by nothing. See
+    // step 13. The real globals come later: the game's `main` runs `LoadTweaks` and
+    // `CreateTweakGlobals` once `Standard.NTWK` is read (src/MetroidPrime/main.cpp),
+    // which overwrites both pointers and leaks the zeroed stand-ins. See
     // src/MetroidPrime/PortTweakGlobals.cpp and docs/research/tweak_globals.md.
     port::tweaks::CreateStandInTweakPlayers();
 

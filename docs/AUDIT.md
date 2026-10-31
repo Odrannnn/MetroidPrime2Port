@@ -144,7 +144,7 @@ Scripts: `tools/audit/` (see its README).
 | A8-11 | FishCloud | CFishCloud.hpp:130 | uninit | low | mThinkCounter (+0x188) never initialised in retail ctor either (0x5990-0x59CC); Think increments it (0x31C4). Host heap isn't zeroed: UB on host, retail value unknown; init 0 under TARGET_PC | fixed e5144299d |
 | A8-12 | Lumite | CLumite.cpp:826 | eval-order | low | RandomVector builds CVector3f(Range,Range,Range); retail draws z,y,x. Same class as A8-10: clang assigns draws to other axes (shot jitter only) | open |
 | A8-13 | RNG eval order (class) | CParasite.cpp:~831, CIngSnatchingSwarm.cpp:393,522, CWorldTransManager.cpp:363, CEmitterElement.cpp:46,85 | eval-order | low | Same class as A8-10/A8-12 (report audit-a8-evalorder.md): retail draws right to left (z,y,x); GCC matches, clang builds (Android/Apple) differ. Particle spawn directions, Parasite/Ing swarm paths, transition shake | open |
-| A8-14 | Tweak globals | platform/main.cpp:1572-1582 | stale-comment | info | Comment says real CreateGlobals is called by nothing; src/MetroidPrime/main.cpp:558-559 runs LoadTweaks + CreateTweakGlobals, which overwrites gpTweakPlayerA/B (Tweaks.cpp:133), leaking the zeroed stand-ins. No behaviour change seen | open |
+| A8-14 | Tweak globals | platform/main.cpp:1572-1582 | stale-comment | info | Comment says real CreateGlobals is called by nothing; src/MetroidPrime/main.cpp:558-559 runs LoadTweaks + CreateTweakGlobals, which overwrites gpTweakPlayerA/B (Tweaks.cpp:133), leaking the zeroed stand-ins. No behaviour change seen | fixed (comment corrected) |
 
 ## Sweep log
 
