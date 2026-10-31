@@ -307,7 +307,7 @@ def show(v):
     if v is None:
         return "(none)"
     if isinstance(v, list):
-        return "(" + ", ".join(f"{p:.1f}" for p in v) + ")"
+        return "(" + ", ".join("none" if p is None else f"{p:.1f}" for p in v) + ")"
     if isinstance(v, float):
         return f"{v:.2f}"
     if isinstance(v, str) and len(v) > 40:
