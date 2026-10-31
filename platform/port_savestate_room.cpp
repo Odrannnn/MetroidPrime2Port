@@ -121,6 +121,7 @@ enum : uint32_t {
   kTagGenerated = 13, // empty: a script generator's copy of a template, made again on load
   kTagMessages = 14,  // u8 n, n x (u32 message, u32 sender editor id): what woke a scripted enemy
   kTagFields = 15,    // the schema fields of an enemy, pickup or debris (port_savestate_fields.cpp)
+  kTagRng = 16,       // u32 seed of the state manager's CRandom16: room-wide, on the first object
 };
 
 // Per-object lines a restore logs, at most; the summary line always follows.
@@ -403,6 +404,18 @@ struct ChangeLog {
   }
 };
 
+// The index a generated copy was saved with (0 for a state made before copies carried one: the
+// stable sort then keeps their saved order).
+uint32_t CopyIndex(const RoomObject& obj) {
+  const RoomBlock* b = FindBlock(obj, kTagGenerated);
+  if (b == nullptr || b->data.size() < 4) {
+    return 0;
+  }
+  BlockReader r(b->data);
+  const uint32_t i = r.U32();
+  return r.ok ? i : 0;
+}
+
 // Returns whether a visible part of the object's state (active flag, health, door) differed.
 // `holdTimers`: a running timer is restored stopped and listed in `held` (RoomApplyProgress), to be
 // started once the last saved area has loaded - a timer firing early would message objects of an
@@ -458,6 +471,9 @@ bool ApplyObject(CStateManager& mgr, CEntity& ent, const RoomObject& obj, Change
     (void)replayed;
     changed = true;
   }
+  // The messages above are queued; their handlers (an Activate restarts a patterned enemy's
+  // machine) must have run before the saved fields go in, or they overwrite them.
+  mgr.DispatchScriptMessages();
   if (CActor* actor = TCastToPtr< CActor >(&ent)) {
     if (const RoomBlock* b = FindBlock(obj, kTagHealth)) {
       BlockReader r(b->data);
@@ -690,6 +706,7 @@ void CaptureRoomState(CStateManager& mgr, RoomState& out) {
       out.areas.push_back(ra);
     }
   }
+  std::map< uint32_t, uint32_t > copyIndex;
   ForEachObject(mgr, [&](CEntity& ent) {
     if (!IsScripted(ent) || areas.count(ent.GetEditorId().AreaNum()) == 0 || IsGone(ent)) {
       return;
@@ -701,10 +718,21 @@ void CaptureRoomState(CStateManager& mgr, RoomState& out) {
     RoomObject obj;
     CaptureObject(mgr, ent, obj);
     if (generated) {
-      obj.blocks.push_back({kTagGenerated, std::string()});
+      // The copy's place among the copies of its template (uid order, as the list runs): a restore
+      // makes them again in any order and gives each the state of its own index.
+      BlockWriter w;
+      w.U32(copyIndex[ent.GetEditorId().Value()]++);
+      obj.blocks.push_back({kTagGenerated, w.bytes});
     }
     out.objects.push_back(std::move(obj));
   });
+  if (!out.objects.empty()) {
+    // The state manager's generator: AI choices (hover heights, step directions, attack gaps) draw
+    // from it, so a restore that left it elsewhere would pick other ones.
+    BlockWriter w;
+    w.U32(static_cast< uint32_t >(mgr.Random()->GetSeed()));
+    out.objects.front().blocks.push_back({kTagRng, w.bytes});
+  }
   size_t copies = 0;
   for (const RoomObject& obj : out.objects) {
     copies += FindBlock(obj, kTagGenerated) != nullptr ? 1 : 0;
@@ -712,6 +740,8 @@ void CaptureRoomState(CStateManager& mgr, RoomState& out) {
   std::fprintf(stderr, "[savestate] room: captured %zu objects (%zu generated copies) in %zu areas\n",
                out.objects.size(), copies, out.areas.size());
 }
+
+static bool sSkipUpdate = false;
 
 // The running timers ApplyObject restored stopped, started once the last saved area is in.
 static void StartHeldTimers(CStateManager& mgr, RoomApplyProgress& progress) {
@@ -722,6 +752,12 @@ static void StartHeldTimers(CStateManager& mgr, RoomApplyProgress& progress) {
     }
   }
   progress.held.clear();
+}
+
+bool ConsumeSkipUpdate() {
+  const bool skip = sSkipUpdate;
+  sSkipUpdate = false;
+  return skip;
 }
 
 int ApplyRoomState(CStateManager& mgr, const RoomState& room, RoomApplyProgress& progress,
@@ -811,6 +847,11 @@ int ApplyRoomState(CStateManager& mgr, const RoomState& room, RoomApplyProgress&
     mgr.DeleteObjectRequest(d.first);
     ++stats.removed;
   }
+  if (!doomed.empty()) {
+    // The ids of what is gone are free again before the copies are made, as they are after an update.
+    mgr.DispatchScriptMessages();
+    mgr.ClearGraveyard();
+  }
   std::vector< const RoomObject* > copies;
   for (const RoomObject& obj : room.objects) {
     if (now.count(TEditorId(obj.editorId).AreaNum()) == 0) {
@@ -835,20 +876,69 @@ int ApplyRoomState(CStateManager& mgr, const RoomState& room, RoomApplyProgress&
   // templates in the generated-object buffer, so each is made again the way the generator does
   // and given the copy's saved state (ApplyObject sends the Activate the generator sent).
   int generatedCopies = 0;
+  // Per template: the saved copies in their saved index, made again, then the made ones, in the
+  // object list's order as capture walked it, take the states in that order.
+  std::map< uint32_t, std::vector< const RoomObject* > > byTemplate;
   for (const RoomObject* obj : copies) {
-    const CScriptObjectLoaderHelper::SGeneratedObject made =
-        mgr.ScriptObjectLoaderHelper().GenerateScriptObject(TEditorId(obj->editorId), mgr);
-    CEntity* ent = made.mUniqueId != kInvalidUniqueId ? mgr.ObjectById(made.mUniqueId) : nullptr;
-    if (ent == nullptr) {
-      ++stats.unmatched;
-      continue;
+    byTemplate[obj->editorId].push_back(obj);
+  }
+  std::vector< std::pair< TUniqueId, const RoomObject* > > pairs;
+  for (auto& group : byTemplate) {
+    std::vector< const RoomObject* >& saved = group.second;
+    std::stable_sort(saved.begin(), saved.end(), [](const RoomObject* a, const RoomObject* b) {
+      return CopyIndex(*a) < CopyIndex(*b);
+    });
+    std::vector< TUniqueId > made;
+    for (size_t i = 0; i < saved.size(); ++i) {
+      const CScriptObjectLoaderHelper::SGeneratedObject m =
+          mgr.ScriptObjectLoaderHelper().GenerateScriptObject(TEditorId(group.first), mgr);
+      if (m.mUniqueId != kInvalidUniqueId && mgr.ObjectById(m.mUniqueId) != nullptr) {
+        made.push_back(m.mUniqueId);
+      } else {
+        ++stats.unmatched;
+      }
     }
-    NoteFor(mgr, made.mUniqueId).generated = true;
-    if (ApplyObject(mgr, *ent, *obj, log, waiting > 0, progress.held, &stats.fields)) {
-      ++stats.changed;
+    // Capture numbered the copies in list order; so are the made ones (a uid is a slot index that
+    // can be reused, not the order they were made in).
+    std::set< uint32_t > madeUids;
+    for (const TUniqueId& id : made) {
+      madeUids.insert(id.Value());
     }
-    ++stats.applied;
-    ++generatedCopies;
+    made.clear();
+    ForEachObject(mgr, [&](CEntity& e) {
+      if (madeUids.count(e.GetUniqueId().Value()) != 0) {
+        made.push_back(e.GetUniqueId());
+      }
+    });
+    for (size_t i = 0; i < made.size(); ++i) {
+      if (CEntity* ent = mgr.ObjectById(made[i])) {
+        NoteFor(mgr, made[i]).generated = true;
+        // Awake as the generator left it, so the first Think below sets up what the saved fields
+        // are applied to (a patterned enemy's state machine exists only after it).
+        if (saved[i]->active) {
+          mgr.SendScriptMsg(ent, kInvalidUniqueId, kSM_Activate);
+        }
+        pairs.push_back({made[i], saved[i]});
+      }
+    }
+  }
+  if (!pairs.empty()) {
+    mgr.DispatchScriptMessages();
+    // The copies' first Think, one frame long (the fields then overwrite what it moved).
+    mgr.ThinkNewObjects(1.f / 60.f);
+    for (const auto& pr : pairs) {
+      CEntity* ent = mgr.ObjectById(pr.first);
+      if (ent == nullptr) {
+        ++stats.unmatched;
+        continue;
+      }
+      const RoomObject* obj = pr.second;
+      if (ApplyObject(mgr, *ent, *obj, log, waiting > 0, progress.held, &stats.fields)) {
+        ++stats.changed;
+      }
+      ++stats.applied;
+      ++generatedCopies;
+    }
   }
   if (generatedCopies != 0) {
     std::fprintf(stderr, "[savestate] room: %d generated copies made again\n", generatedCopies);
@@ -868,6 +958,19 @@ int ApplyRoomState(CStateManager& mgr, const RoomState& room, RoomApplyProgress&
                  "object)\n",
                  l.first >> 8, l.first & 0xff, l.second);
   }
+  for (const RoomObject& obj : room.objects) {
+    if (const RoomBlock* b = FindBlock(obj, kTagRng)) {
+      BlockReader r(b->data);
+      const uint32_t seed = r.U32();
+      if (r.ok) {
+        mgr.Random()->SetSeed(seed);
+      }
+      break;
+    }
+  }
+  // The rest of this update would run the restored room one step on (timers, AI clocks, random
+  // picks): the hook in CStateManager::Update drops it, so the room is exactly as saved.
+  sSkipUpdate = true;
   for (int area : now) {
     progress.done.push_back(area);
     std::fprintf(stderr, "[savestate] room: area %d restored\n", area);

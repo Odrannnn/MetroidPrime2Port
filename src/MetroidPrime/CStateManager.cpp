@@ -4314,6 +4314,13 @@ void CStateManager::Update(float inputDt, CArchitectureQueue& queue) {
   // A warp request from the platform (env, hotkey or MP2_INPUT token) is served here, once
   // the world exists; a world reload ends the update early through QuitGame.
   PortWarpTick();
+  if (PortSaveState::ConsumeSkipUpdate()) {
+    // a room state was just applied: the world does not advance this update; only the new objects
+    // get their first Think and the dead are freed
+    ThinkNewObjects(dt);
+    ClearGraveyard();
+    return;
+  }
   PortWarpSettle();
   PortLayerTick();
   PortPlaceArrivalTick();

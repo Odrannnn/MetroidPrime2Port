@@ -188,6 +188,9 @@ void NoteRemoved(CStateManager& mgr, uint16_t uid);
 void NoteScriptMsg(CStateManager& mgr, uint16_t dest, uint16_t sender, uint32_t msg);
 
 void CaptureRoomState(CStateManager& mgr, RoomState& out);
+// True once after a room restore applied its areas: CStateManager::Update then ends before the
+// world update, so the restored room does not run a step before anyone sees it.
+bool ConsumeSkipUpdate();
 // Debug views (port_statedump.cpp): a script generator's copy; the room-saved state of a timer,
 // counter, door, platform, rotator, dock, music or cinematic camera as JSON members.
 bool IsScriptGeneratedCopy(const CStateManager& mgr, CEntity& ent);
