@@ -827,8 +827,16 @@ CVector3f CLumite::RandomVector(CStateManager& mgr, float scale) {
   if (!mgr.IsRandomAvailable()) {
     return CVector3f::Zero();
   }
+#ifdef TARGET_PC
+  // retail draw order z,y,x (A8-12)
+  const float vecZ = mgr.Random()->Range(-scale, scale);
+  const float vecY = mgr.Random()->Range(-scale, scale);
+  const float vecX = mgr.Random()->Range(-scale, scale);
+  return CVector3f(vecX, vecY, vecZ);
+#else
   return CVector3f(mgr.Random()->Range(-scale, scale), mgr.Random()->Range(-scale, scale),
                    mgr.Random()->Range(-scale, scale));
+#endif
 }
 
 // @ fn_39_44B4
