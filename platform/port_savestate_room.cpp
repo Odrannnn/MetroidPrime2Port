@@ -8,6 +8,7 @@
 
 #include "port_savestate.h"
 #include "port_savestate_block.h"
+#include "port_entity_schema.h"
 
 #include "Kyoto/Math/CTransform4f.hpp"
 #include "Kyoto/Math/CVector3f.hpp"
@@ -239,16 +240,26 @@ bool JournalsScriptMsg(uint32_t msg) {
   }
 }
 
-// A script generator's copy carries its template's editor id. Enemy copies, pickups and debris
-// are saved as copies; others (sound, maze walls) are left to their generators.
+// A script generator's copy carries its template's editor id.
 bool IsGeneratedCopy(const CStateManager& mgr, const CEntity& ent) {
   const Noted* n = FindNoted(mgr, ent.GetUniqueId());
   return n != nullptr && n->generated;
 }
 
+// Whether a generated copy is saved and made again on load. Every actor with an entity schema is
+// (enemies, pickups, debris, swarms: it holds state the template does not), except transient
+// generator output: a sound or an effect starts again with the event that made it, and a
+// generated sound/effect copy saved and rebuilt would play twice.
 bool SavesCopy(CEntity& ent) {
-  return TCastToPtr< CPatterned >(&ent) != nullptr || TCastToPtr< CScriptPickup >(&ent) != nullptr ||
-         TCastToPtr< CScriptDebris >(&ent) != nullptr;
+  if (TCastToPtr< CPatterned >(&ent) != nullptr || TCastToPtr< CScriptPickup >(&ent) != nullptr ||
+      TCastToPtr< CScriptDebris >(&ent) != nullptr) {
+    return true;
+  }
+  const PortSchemaClass* cls = PortEntitySchema::For(ent);
+  if (cls == nullptr || cls->base[0] == '\0' || TCastToPtr< CActor >(&ent) == nullptr) {
+    return false; // no schema of its own (the CEntity fallback) or not an actor
+  }
+  return std::strcmp(cls->name, "CScriptEffect") != 0 && std::strcmp(cls->name, "CScriptSound") != 0;
 }
 
 TUniqueId RawId(uint16_t value) { return TUniqueId(value); }
