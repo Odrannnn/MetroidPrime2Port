@@ -139,6 +139,7 @@ Scripts: `tools/audit/` (see its README).
 | A8-6 | rstl/CMath inlines | include/rstl/math.hpp:14 (max_val) | nan-arm | info | retail inline `max_val(x,0)` is `fcmpo 0,x; bge -> 0` (NaN -> 0, SwampBossStage1 RetractTongue asm 8379-8380); host `(a<b)?b:a` gives NaN -> x. Shared header, no realistic NaN source | wontfix (class note; changing the shared helper affects every caller) |
 | A8-7 | SpacePirate | PortCSpacePirate.cpp:1449 (PreRender fn_72_38E4) | missing-check | info | retail sets draw flag 0x8000 when \|portal-plane d\| > 0 (asm 4171-4174); port omits it, the plane is never set in the port | not-a-bug (unreachable) |
 | A8-8 | ScriptDebris/Coin | CScriptDebris.cpp:483, CScriptCoin.cpp:344 (84acb682e) | convention | info | GRNT fix (retail `subis 0x4752; cmplwi 0x4e54`, CScriptDebris.s:312-313) edits upstream code outside a TARGET_PC block; both units NonMatching (configure.py:484, :1912), matching build unaffected; an upstream decomp bug | not-a-bug (upstreamable) |
+| A8-9 | DarkTrooper | CDarkTrooper.cpp:752 | constant | low | ThinkRagDoll no-water sentinel: retail .rodata+0xAC = 0xFEFFFFFF (-1.7014117e38, fn_12_2D98 0x2DD8), port `-FLT_MAX` (0xFF7FFFFF); both below any world coordinate, no gameplay impact shown | open |
 
 ## Sweep log
 
@@ -148,7 +149,7 @@ tiers a-c over the unlinked/matching upstream units, and the Review 5 per-module
 row above is the result; the log only records which functions each slice covered.
 
 Sweep A8 (behaviour audit 2, 2026-10-31, in progress): lane reports in `/tmp/opencode/reports/audit-a8-*.md`;
-covered so far: reached stubs (clean), Grenchler parts 1-3 (part 3 clean), Sporb parts 1-2, the 90 port-folded
+covered so far: reached stubs (clean), Grenchler parts 1-3 (part 3 clean), Sporb parts 1-2, DarkTrooper (A8-9), Lumite part 1 (clean), the 90 port-folded
 constants (none diverge; fn_78_2E38 may round 1 ulp differently), FlyingPirate (clean), ScriptSafeZone
 (clean), the 50 NaN-flagged comparisons (A8-3..7), commits since 2026-10-29 (gate list; the 9 that reach
 gameplay at defaults restore retail behaviour or are port features by design: quick resume, input mapping).
