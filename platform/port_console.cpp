@@ -1824,7 +1824,7 @@ void CmdSettings(CStateManager&, const Args& args, std::string& out) {
       out += key + "=" + value;
       const std::string env = PortOverlaySettings::EnvName(key);
       if (const char* set = port::EnvString(env.c_str())) {
-        out += "  (env " + env + "=" + set + " wins)";
+        out += "  (env " + env + "=" + set + ", where the key reads one, wins)";
       }
       out += "\n";
     }
