@@ -34,6 +34,11 @@
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/Player/CPlayerBodyController.hpp"
 #include "MetroidPrime/Player/CPlayerState.hpp"
+#ifdef TARGET_PC
+#include "Kyoto/Animation/CSkinnedModel.hpp"
+#include "MetaRender/CCubeRenderer.hpp"
+#include "MetroidPrime/CActorModelParticles.hpp"
+#endif
 #include "MetroidPrime/SFX/CliffsideRoll.h"
 #include "MetroidPrime/SFX/MothTempleRoll.h"
 #include "MetroidPrime/SFX/SamusFootsteps.h"
@@ -1407,39 +1412,226 @@ void CMorphBall::ResetMorphBallTransitionFlash() {
 
 #ifdef TARGET_PC
 // Port: behaviour from retail Render__10CMorphBallCFRC13CStateManagerPC12CActorLights
-// (800C406C). Skipped: Screw Attack / boost / spider magnet / death-ball particle effects,
-// disintegrate/ashy death draw, rain splash, dark aether damage tint, tire-mode tilt.
+// (800C406C). The rain splash hooks the generator's point function (800C428C) and draws it at
+// 800C45B0; the visor reset at 800C457C is gpRender vtable slot 0x12c = DisableDestinationAlpha.
+// The Screw Attack jump flashes are drawn by CPlayer::Render, not here.
 void CMorphBall::Render(const CStateManager& mgr, const CActorLights* lights) const {
-  const CTransform4f ballXf = GetBallToWorld();
+  static const uchar skTrailColorA[3][3] = {{112, 212, 255}, {255, 128, 51}, {255, 255, 204}};
+  static const uchar skTrailColorB[3][3] = {{255, 230, 0}, {255, 230, 0}, {255, 230, 0}};
+  static const uchar skJaggyTrailColor[3][3] = {{255, 204, 0}, {255, 204, 0}, {255, 204, 0}};
+  static const CColor skInnerGlowColor(static_cast< uchar >(0xff), static_cast< uchar >(0xff),
+                                       static_cast< uchar >(0xff), static_cast< uchar >(0xff));
 
-  // Retail copies the player's actor draw flags (0xfc..0x108) and swaps the shader set.
-  const CModelFlags baseFlags = mPlayer.GetModelFlags();
-  const CModelFlags ballFlags(baseFlags, true, static_cast< int >(mBallModelShader));
+  CTransform4f ballXf = GetBallToWorld();
+  if (mTireMode) {
+    // 800C4108: tire mode leans the ball about the look direction.
+    const CQuaternion tilt =
+        CQuaternion::AxisAngle(CUnitVector3f(ballXf.TransposeRotate(mPlayer.GetLookDir())),
+                               CRelAngle::FromRadians(mBallTiltAngle));
+    ballXf = ballXf * tilt.BuildTransform4f();
+  }
+
+  // 800C41AC: dark aether tint, else the damage flash (type 1/2, shader 0, depth bits 3).
+  const bool deathStalled = mPlayer.GetDeathTime() > 0.f; // retail player+0x12a4
+  CModelFlags flags = mPlayer.GetModelFlags();
+  const CColor darkTint = mPlayer.GetDarkAetherDamageColor(mgr, 1);
+  if (!(darkTint == CColor::Black())) {
+    flags = CModelFlags(CModelFlags::kT_Two, 0,
+                        static_cast< CModelFlags::EFlags >(CModelFlags::kF_DepthCompare |
+                                                           CModelFlags::kF_DepthUpdate),
+                        darkTint);
+  } else if (mDamageEffect > 0.f) {
+    const float inv = 1.f - mDamageEffect;
+    flags = CModelFlags(CModelFlags::kT_One, 0,
+                        static_cast< CModelFlags::EFlags >(CModelFlags::kF_DepthCompare |
+                                                           CModelFlags::kF_DepthUpdate),
+                        CColor(1.f, inv, inv, 1.f));
+  }
+
+  // 800C42B0: death fade blends the ball; a fully faded ball stops writing depth.
+  const float deathAlpha = mPlayer.GetDeathAlpha();
+  if (!(fabsf(1.f - deathAlpha) < 1.0e-5f)) {
+    flags = CModelFlags(CModelFlags::kT_Blend, 0,
+                        static_cast< CModelFlags::EFlags >(CModelFlags::kF_DepthCompare |
+                                                           CModelFlags::kF_DepthUpdate),
+                        CColor(1.f, 1.f, 1.f, deathAlpha));
+    if (fabsf(deathAlpha) < 1.0e-5f) {
+      flags.SetFlags(CModelFlags::kF_DepthCompare);
+    }
+  }
+  flags.SetMatSetIdx(static_cast< uchar >(mBallModelShader));
+  // 800C4388: in the dark visor pass, another player's ball does not touch depth.
+  if (mgr.GetRenderVisorMode() == CStateManager::kRVM_Dark &&
+      mgr.GetCurrentRenderPlayer()->GetUniqueId() != mPlayer.GetUniqueId()) {
+    flags.SetFlags(static_cast< CModelFlags::EFlags >(flags.GetOtherFlags() & ~3u));
+  }
 
   const rstl::pair< bool, CColor > hacked = mPlayer.GetHackedEffectColor();
+  CPlayerKnockBackMgr& knockBack = mPlayer.GetKnockBackManager();
+  const bool burnDeath = knockBack.IsBurnDeath();
+  const bool unlit = 1.f == mBoostLightFactor;
+  const bool pointGen = mPlayer.GetPointGeneratorParticles();
 
-  const bool shadow = lights != nullptr && lights->HasShadowLight() && mWorldShadow.get() != nullptr;
+  const bool shadow = !unlit && lights != nullptr && lights->HasShadowLight() &&
+                      mWorldShadow.get() != nullptr;
   if (shadow) {
     mWorldShadow->EnableModelProjectedShadow(ballXf, lights->GetShadowLightArrayIndex(), 1.f);
   }
-  if (mPlayer.GetDeathAlpha() > 0.f && mBallModel.get() != nullptr) {
+  // 800C428C: lwz r3,0xe54(r31) cmplwi/beq; lbz r0,0x48(r3); extrwi. r0,r0,1,25 = mRaining (0x40)
+  if (mRainSplashGen.get() != nullptr && mRainSplashGen->IsRaining()) {
+    CSkinnedModel::SetPointGeneratorFunc(mRainSplashGen.get(), &CMorphBall::PointGenerator);
+  }
+  if (pointGen) {
+    mgr.SetupParticleHook(mPlayer);
+  }
+
+  if (mBallModel.get() != nullptr) {
     if (hacked.first) {
-      mBallModel->RenderNoise(mgr, ballXf, hacked.second, true);
+      // 800C4454: the noise draw takes a fresh ball transform, without the tire tilt.
+      mBallModel->RenderNoise(mgr, GetBallToWorld(), hacked.second, true);
+    } else if (burnDeath) {
+      // 800C44A0: ashy disintegrate draw, tinted by the knock-back state.
+      if (const CTexture* texture = mgr.GetActorModelParticles()->GetAshyTexture(mPlayer)) {
+        const float burnAlpha = knockBack.GetBurnDeathAlpha();
+        const CColor color = knockBack.IsImploding() ? skBallRenderColorB.WithAlphaOf(burnAlpha)
+                             : knockBack.IsLaggedBurnDeath() ? skBallRenderColorA
+                                                             : CColor::Black();
+        mBallModel->DisintegrateDraw(mgr, ballXf, *texture, color, burnAlpha);
+      }
+    } else if (unlit) {
+      mBallModel->Render(mgr, ballXf, nullptr, flags);
     } else {
-      mBallModel->Render(mgr, ballXf, lights, ballFlags);
+      mBallModel->Render(mgr, ballXf, lights, flags);
     }
   }
-  if (shadow) {
+  if (pointGen) {
+    CSkinnedModel::ClearPointGeneratorFunc();
+    mgr.GetActorModelParticles()->Render(mgr, mPlayer);
+  }
+  if (mWorldShadow.get() != nullptr) {
     mWorldShadow->DisableModelProjectedShadow();
   }
-
-  if (mPlayer.GetDeathAlpha() > 0.f && !hacked.first &&
-      mPlayer.GetPlayerState()->HasPowerUp(CPlayerState::kIT_SpiderBall) &&
-      mSpiderBallGlassModel.get() != nullptr) {
-    const CModelFlags glassFlags(baseFlags, true, static_cast< int >(mSpiderBallGlassModelShader));
-    mSpiderBallGlassModel->Render(mgr, ballXf, mActorLights.get(), glassFlags);
+  // 800C457C-800C45AC: GetActiveVisor (cmpwi r3,4 bge; cmpwi r3,2 bge) = kPV_Scan(2)/kPV_Dark(3),
+  // then gpRender->vtbl[0x12c] = DisableDestinationAlpha
+  const CPlayerState::EPlayerVisor activeVisor = mPlayer.GetPlayerState()->GetActiveVisor(mgr);
+  if (activeVisor >= CPlayerState::kPV_Scan && activeVisor < CPlayerState::kPV_Dark + 1) {
+    gpRender->DisableDestinationAlpha();
+  }
+  // 800C45B0: Draw(CTransform4f::Translate(ballXf translation))
+  if (mRainSplashGen.get() != nullptr && mRainSplashGen->IsRaining()) {
+    CSkinnedModel::ClearPointGeneratorFunc();
+    mRainSplashGen->Draw(CTransform4f::Translate(ballXf.GetTranslation()));
   }
 
+  const float speed = mPlayer.GetVelocityWR().Magnitude();
+
+  if (!hacked.first) {
+    if (mDamageEffect > 0.25f) {
+      RenderDamageEffects(mgr, ballXf);
+    } else if (mBoostOverLightFactor > 0.f && !deathStalled) {
+      // 800C46B0: ghost images along the recent ball path while boosting.
+      int count = static_cast< int >(speed * 0.5f);
+      if (count > 5) {
+        count = 5;
+      }
+      for (int i = 0; i < count; ++i) {
+        const rstl::optional_object< CVector3f > pos = mBallPositionAverage.GetEntry(i);
+        const rstl::optional_object< CQuaternion > orient = mBallOrientationAverage.GetEntry(i);
+        if (!pos.valid() || !orient.valid() || mLowPolyBallModel.get() == nullptr) {
+          continue;
+        }
+        const CTransform4f xf = CTransform4f::Translate(*pos) * orient->BuildTransform4f();
+        const float a = 0.2f * (1.f - static_cast< float >(i) / 5.f) * mBoostOverLightFactor;
+        mLowPolyBallModel->Render(
+            mgr, xf, nullptr,
+            CModelFlags(CModelFlags::kT_Additive, static_cast< uchar >(mLowPolyBallModelShader),
+                        CModelFlags::kF_DepthCompare, CColor(1.f, 1.f, 1.f, a)));
+      }
+    }
+  }
+
+  // 800C47B0: boost trails (not while invisible or burning).
+  const CPlayerState* playerState = mPlayer.GetPlayerState();
+  if (!burnDeath && playerState->GetItemAmount(CPlayerState::kIT_Invisibility) == 0) {
+    const float t = (mTireFactor / mMaxTireFactor) * deathAlpha;
+    if (!(fabsf(t) < 0.01f)) {
+      const uchar fadeAlpha = CCast::ToUint8(255.f * t);
+      const uint idx = mBallGlowColorIdx;
+      float boost = 0.f;
+      if (mBoostDrainTime > 0.f) {
+        boost = (speed - 25.f) / 15.f;
+        boost = boost < 0.f ? 0.f : (boost > 1.f ? 1.f : boost);
+      }
+      const CColor colA(skTrailColorA[idx][0], skTrailColorA[idx][1], skTrailColorA[idx][2],
+                        fadeAlpha);
+      const CColor colB(skTrailColorB[idx][0], skTrailColorB[idx][1], skTrailColorB[idx][2],
+                        fadeAlpha);
+      const CColor trail = CColor::Lerp(colA, colB, boost);
+      CParticleSwoosh* const tails[4] = {mSlowBlueTailSwooshGen.get(), mSlowBlueTailSwooshGen2.get(),
+                                         mSlowBlueTailSwoosh2Gen.get(),
+                                         mSlowBlueTailSwoosh2Gen2.get()};
+      for (int i = 0; i < 4; ++i) {
+        if (tails[i] != nullptr) {
+          tails[i]->SetModulationColor(trail);
+          tails[i]->Render();
+        }
+      }
+      // 800C49A8: both the jaggy trail and the side swooshes need the fade timer > 0.
+      if (mBoostTrailFadeTimer > 0.f) {
+        float fade = mBoostTrailFadeTimer / 0.25f;
+        fade = fade > 1.f ? 1.f : fade;
+        float jaggy = (speed - 25.f) / 15.f;
+        jaggy = jaggy < 0.f ? 0.f : (jaggy > 1.f ? 1.f : jaggy);
+        jaggy = jaggy > fade ? fade : jaggy;
+        const float jaggyAlpha = jaggy * deathAlpha;
+        if (mJaggyTrailGen.get() != nullptr) {
+          mJaggyTrailGen->SetModulationColor(CColor(skJaggyTrailColor[idx][0],
+                                                    skJaggyTrailColor[idx][1],
+                                                    skJaggyTrailColor[idx][2],
+                                                    CCast::ToUint8(255.f * jaggyAlpha)));
+          mJaggyTrailGen->Render();
+        }
+        // 800C4AE4-4B60: side swooshes use the lerped trail colour with the jaggy alpha byte.
+        if (playerState->HasPowerUp(CPlayerState::kIT_BoostBall) && !mgr.IsMultiplayer() &&
+            mLoadedModelId % 3 == 1) {
+          const CColor sideColor = trail.WithAlphaOf(jaggyAlpha);
+          CParticleSwoosh* const sides[2] = {mSideSwooshGen.get(), mSideSwooshGen2.get()};
+          for (int i = 0; i < 2; ++i) {
+            if (sides[i] != nullptr) {
+              sides[i]->SetModulationColor(sideColor);
+              sides[i]->Render();
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // 800C4B64: the spider ball glass, lit by the spider light unless it is fully blended in.
+  if (!burnDeath && !hacked.first && playerState->HasPowerUp(CPlayerState::kIT_SpiderBall) &&
+      mSpiderBallGlassModel.get() != nullptr) {
+    CModelFlags glassFlags = flags;
+    glassFlags.SetMatSetIdx(static_cast< uchar >(mSpiderBallGlassModelShader));
+    const float glassLight = mBoostLightFactor > mSpiderLightFactor ? mBoostLightFactor
+                                                                    : mSpiderLightFactor;
+    if (glassLight != 1.f) {
+      const bool glassShadow =
+          lights != nullptr && lights->HasShadowLight() && mWorldShadow.get() != nullptr;
+      if (glassShadow) {
+        mWorldShadow->EnableModelProjectedShadow(ballXf, lights->GetShadowLightArrayIndex(), 1.f);
+      }
+      mSpiderBallGlassModel->Render(mgr, ballXf, mActorLights.get(), glassFlags);
+      if (glassShadow) {
+        mWorldShadow->DisableModelProjectedShadow();
+      }
+    } else {
+      mSpiderBallGlassModel->Render(mgr, ballXf, nullptr, glassFlags);
+    }
+  }
+
+  if (mWallSparkGen.get() != nullptr) {
+    mWallSparkGen->Render();
+  }
   {
     // Wakes are emitted at world points (contacts, the ball's last tick position), so they
     // blend themselves and must not ride the player's shift.
@@ -1451,12 +1643,10 @@ void CMorphBall::Render(const CStateManager& mgr, const CActorLights* lights) co
     }
   }
 
-  // The energy sphere inside the ball (retail 800C4C98): drawn white-modulated, with its first two
-  // spawned systems, only while the ball is fully opaque and not hacked.
-  if (!hacked.first && baseFlags.GetColor().GetAlphau8() == 0xff &&
+  // 800C4C8C: the energy sphere inside the ball, white-modulated with its first two spawned
+  // systems, only while the ball is fully opaque.
+  if (!burnDeath && !hacked.first && flags.GetColor().GetAlphau8() == 0xff &&
       mBallInnerGlowGen.get() != nullptr) {
-    static const CColor skInnerGlowColor(static_cast< uchar >(0xff), static_cast< uchar >(0xff),
-                                         static_cast< uchar >(0xff), static_cast< uchar >(0xff));
     CElementGen* glow = mBallInnerGlowGen.get();
     glow->SetModulationColor(skInnerGlowColor);
     for (int i = 0; i < 2 && i < glow->GetNumSpawnedParticleSystems(); ++i) {
@@ -1465,11 +1655,34 @@ void CMorphBall::Render(const CStateManager& mgr, const CActorLights* lights) co
     glow->Render();
   }
 
-  if (mDamageEffect > 0.f && !hacked.first) {
-    RenderDamageEffects(mgr, ballXf);
+  // 800C4D84-4D98: gated on the model flags colour alpha byte * (1/255) > 0, and not burn death.
+  if (!burnDeath && flags.GetColor().GetAlphau8() * (1.f / 255.f) > 0.f) {
+    if (mSpiderBallMagnetGen.get() != nullptr) {
+      mSpiderBallMagnetGen->Render();
+    }
+    // 800C4DB0-4DE0: the boost glow draws only while its modulation colour word is nonzero.
+    if (mBoostBallGlowGen.get() != nullptr &&
+        !(mBoostBallGlowGen->GetModulationColor() == CColor(0.f, 0.f, 0.f, 0.f))) {
+      mBoostBallGlowGen->Render();
+    }
+    if (mBoostEffectGen.get() != nullptr) {
+      mBoostEffectGen->Render();
+    }
+    if (CElementGen* shell = mDeathBallOuterShellGen.get()) {
+      if (shell->GetNumSpawnedParticleSystems() > 0) {
+        const CGameCamera* camera =
+            mgr.GetCameraManager(mPlayer.GetPlayerIndex())->GetCurrentCamera(mgr, true);
+        const CTransform4f lookAt = CTransform4f::LookAt(
+            ballXf.GetTranslation(), camera->GetTransform().GetTranslation(), CUnitVector3f::Up());
+        shell->SpawnedParticleSystem(0)->SetOrientation(lookAt.GetRotation());
+      }
+      shell->Render();
+    }
+    if (mDeathBallSpikesGen.get() != nullptr) {
+      mDeathBallSpikesGen->Render();
+    }
+    RenderMorphBallTransitionFlash(mgr);
   }
-
-  RenderMorphBallTransitionFlash(mgr);
 
   if (mPlayer.GetFrozenState() && mFrozenBallModel.get() != nullptr) {
     mFrozenBallModel->Render(mgr, CTransform4f(CMatrix3f::Identity(), ballXf.GetTranslation()),
