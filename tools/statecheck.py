@@ -92,6 +92,32 @@ class Console:
             self.buf += chunk
 
 
+def wait_settled(con, stable=3, limit=300.0):
+    """After a `layer`/`send` setup command: poll the game (unheld, so it ticks) until its warp/layer
+    request is served and the free object-id count stayed the same over `stable` polls a few frames
+    apart. Replaces a fixed real-time sleep; a game without the `settled` verb is slept on as before."""
+    ok, text = con.cmd("settled", check=False)
+    if not ok:
+        time.sleep(float(os.environ.get("LAYER_SLEEP", "25")))
+        return
+    deadline = time.time() + limit
+    last, same, frame = None, 0, -1
+    while time.time() < deadline:
+        m = re.search(r"busy (\d) free_ids (\d+) frame (\d+)", text)
+        if m and m.group(1) == "0":
+            key = int(m.group(2))
+            same = same + 1 if key == last and int(m.group(3)) > frame else 0
+            last = key
+        else:
+            same, last = 0, None
+        if same >= stable:
+            return
+        frame = int(m.group(3)) if m else 0
+        time.sleep(0.5)
+        ok, text = con.cmd("settled", check=False)
+    raise RuntimeError(f"setup did not settle in {limit}s: {text.strip()}")
+
+
 class Game:
     """A run started through tools/run_gameplay.sh, or one already up."""
 
@@ -445,6 +471,8 @@ def main():
                 game.wait_for("[warp] arrival check", n)
             for c in a.setup:
                 con.cmd(c)
+                if c.split()[:1] in (["layer"], ["send"]):
+                    wait_settled(con)
             if a.wait:
                 # settle: the room's script start-up, spawns and the first AI states run unheld
                 con.cmd("hold 1")

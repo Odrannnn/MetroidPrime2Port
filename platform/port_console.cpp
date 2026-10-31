@@ -905,6 +905,16 @@ void CmdLayer(CStateManager&, const Args& args, std::string&) {
   PortWarp::Layer(ArgToInt(args[1], 0));
 }
 
+// settled: whether a warp or layer request is still being served, and how many object ids are
+// taken. tools/statecheck.py polls it after a `layer` setup command instead of sleeping.
+void CmdSettled(CStateManager& mgr, const Args&, std::string& out) {
+  const bool busy = PortWarp::Pending() || mgr.PortLayerRequestPending();
+  char line[96];
+  std::snprintf(line, sizeof line, "busy %d free_ids %d frame %u\n", busy ? 1 : 0,
+                mgr.PortFreeObjectIds(), static_cast< unsigned >(mgr.GetUpdateFrameIdx()));
+  out += line;
+}
+
 // world <world> [area]: the MP1 console's `warp <world>`, under its own verb because this tree's
 // `warp` is the area warp the sweeps and the docs use. Both texts are a name or a hex asset id and
 // are resolved where the resource names live (PortWarpToWorld), so nothing here needs a table.
@@ -4940,6 +4950,8 @@ const CommandSpec kCommands[] = {
       "                            sunburst, sonicboom, supermissile; kb = knockback power)\n"},
     {"layer", CmdLayer,
       "layer <n>                   activate a layer of the current area\n"},
+    {"settled", CmdSettled,
+      "settled                     busy 0|1 (a warp/layer request in flight), free_ids, frame\n"},
     {"god", CmdGod,
       "god <0|1>                   god mode (the F1 cheat)\n"},
     {"nodarkair", CmdNoDarkAether,
