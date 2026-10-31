@@ -5,8 +5,10 @@ Things that took real effort to find out. AGENTS.md keeps a one-line index; the 
 
 - **`tools/link_check.sh` can report "nothing to relink; re-reading the existing link result" even
   after a source changed** (its freshness check reads a stale `build-port-link/build.log`). The
-  runnable binary is `build-port-link/metroid_prime2_port` - the *full* build (build-port is
-  `MP_SDK_HEADERS_ONLY=ON` and does not compile `platform/`), so build it directly:
+  runnable binary is `build-port-link/metroid_prime2_port` - the *full* build (`MP_SDK_HEADERS_ONLY=OFF`;
+  build-port is the same sources with `MP_SDK_HEADERS_ONLY=ON`, which builds every target against
+  Aurora's headers but pulls in no Aurora and links no executable, `CMakeLists.txt:599-602` -
+  `platform/` compiles there too, `mp_platform` is a target in both), so build it directly:
   `$T/ninja -C build-port-link -k 0 metroid_prime2_port`. Check the binary's mtime against your
   sources before trusting a run.
 - **Do not launch a tool a lane is editing.** A subagent mid-write in `tools/` breaks a run you start
@@ -28,11 +30,12 @@ Things that took real effort to find out. AGENTS.md keeps a one-line index; the 
   source's frame count comes out 0, and anything that divides by a parsed count must guard it under
   TARGET_PC (`CAnimSource` did not, and an integer divide by zero ended a run). When a sweep sees a
   stream of these after a world change, the question to answer is *which pak family* is missing.
-- **A save load comes up with ~1008 of the 1024 object ids allocated** and only settles near ~390 a
-  few hundred frames later (`MP2_DEBUG_IDS=1` prints the count every 300 frames). A warp that lands
-  in that window can exhaust the pool; `PortWarpSettle` waits for 256 free and drops the areas
-  around the player, which is what frees them (the first threshold, 512, was tuned for the boot
-  spike and blocked ordinary hops - 499 of 526 waits in one run were for an unreachable area).
+- **A save load comes up with ~1008 of the 1024 object ids allocated** and only settles near ~350 a
+  few hundred frames later (`CStateManager.cpp:5389` has the same numbers; `MP2_DEBUG_IDS=1` prints
+  the count every 300 frames). A warp that lands in that window can exhaust the pool; `PortWarpSettle`
+  waits for 256 free and drops the areas around the player, which is what frees them (the first
+  threshold, 512, was tuned for the boot spike and blocked ordinary hops - 499 of 526 waits in one
+  run were for an unreachable area).
 - **The console's heap is zeroed and the host's is not**, and audio code depends on it: MusyX's
   `DSPvoice` array is `salMalloc`'d and `studio` is written only by `salActivateVoice`, but the
   synth's zero-offset pass calls `hwSetVolume` for a voice that has never sounded, so an
@@ -59,8 +62,12 @@ Things that took real effort to find out. AGENTS.md keeps a one-line index; the 
 - `src/MetroidPrime/PortGlobals.cpp`, `PortBoot.cpp`, `PortReachStubs.cpp` are old-tree files
   not built; mine them for values only. So is `platform/debug_ui.cpp`: it is in no CMake target
   (`CMakeLists.txt`'s `mp_platform` comment says why), so editing it changes nothing and a setting
-  added there will not link - the live F1 overlay is `platform/port_overlay.cpp`, and it keeps no
-  settings file at all (every knob is an `MP2_*` env var). `tools/boot_probe.sh` still references PortReachStubs (stale).
+  added there will not link. The live F1 overlay is two pieces: `platform/debug_ui/*.cpp` is the
+  window and its pages (`CMakeLists.txt:661-664`, built into `mp_port_audio`, :689), and
+  `platform/port_overlay.cpp` holds the `PortOverlayState` knobs and the game-facing API behind them;
+  it keeps no settings file at all (every knob is an `MP2_*` env var). `tools/boot_probe.sh` is the
+  build that enables `MP_BOOT_STUBS=ON` itself (`:78-82`), so `PortReachStubs.cpp` is linked there and
+  nowhere else (`CMakeLists.txt:141-156`).
 - Upstream code casting pointers to `u32`/`uint` fails on 64-bit; most excluded units are that.
 - Disc data is big-endian: every raw read of resource bytes needs `CBasics::SwapBytes` under
   TARGET_PC (material data, CMDL/TXTR headers, compressed-block lengths in `CResFactory`).
