@@ -145,17 +145,10 @@ static void DrawUnlocksSection() {
 void DrawCutscenesSection() {
   ImGui::SeparatorText("Cutscenes");
   Changed(ImGui::Checkbox("Original experience", &sOriginalExperience));
-  ItemHelp("The game as it shipped: skippable cutscenes, world name, hint delay, the Enhancements "
-           "page and the Controls page's charge, lock-on and auto-aim tweaks all act as retail "
-           "while this is on. Your values are kept and return when it is "
-           "off.");
+  ItemHelp("The game as it shipped: the world name, the Enhancements page and the Controls page's "
+           "charge, lock-on and auto-aim tweaks all act as retail while this is on. Your values "
+           "are kept and return when it is off.");
   const bool locked = PortOverlay::OriginalExperience();
-  ImGui::BeginDisabled(locked);
-  // The game reads this every frame in its cinematic flow state.
-  Changed(ImGui::Checkbox("Skippable cutscenes", &sSkipCinematics));
-  ItemHelp("START or A skips any cutscene and the new game's intro text, seen or not. Off: START skips "
-           "only the ones already seen.");
-  ImGui::EndDisabled();
   // One row for the boot logos (read by CSplashScreen at launch) and the world name card (read by
   // CMFGameLoader at the next load); the keys stay separate. Original experience shows the card.
   int splash = sBootLogos;
@@ -166,7 +159,7 @@ void DrawCutscenesSection() {
   }
   ItemHelp("The health warning and the Nintendo, Retro and Dolby logos at launch, and the world's name "
            "typed out while a save loads. The logos change from the next launch. The new game's intro "
-           "text follows Skippable cutscenes.");
+           "text follows Enhancements > Skippable cutscenes.");
   ImGui::BeginDisabled(locked);
   int language = sLanguage;
   if (ImGui::Combo("Language", &language,
@@ -178,25 +171,7 @@ void DrawCutscenesSection() {
   ItemHelp("The language of the game's text, changed while the game runs (a screen that is already open "
            "keeps its text until it is reopened). A PAL disc carries English, French, German, Spanish, "
            "Italian and Japanese; a language the disc lacks shows English.");
-  int hintDelay = sHintDelay;
-  if (ImGui::SliderInt("Hint delay", &hintDelay, PortOverlay::kHintDelayMin,
-                       PortOverlay::kHintDelayMax, hintDelay == 0 ? "Game default" : "%d min",
-                       ImGuiSliderFlags_AlwaysClamp)) {
-    sHintDelay = hintDelay;
-    Changed(true);
-  }
-  ItemHelp("The longest a hint waits before it first shows. Game default keeps the game's own "
-           "timing; a shorter wait also applies to hints already waiting in your save. Needs the "
-           "in-game hint system on.");
   ImGui::EndDisabled();
-  ImGui::BeginDisabled(gpGameState == nullptr ||
-                       !gpGameState->GameOptions().GetIsHintSystemEnabled());
-  if (ImGui::Button("Show current hint")) {
-    PortOverlay::RequestShowHint();
-  }
-  ImGui::EndDisabled();
-  ItemHelp("Shows the hint the game would show next, now: the one on screen again, or the one "
-           "due soonest. Needs the in-game hint system on.");
   DrawUnlocksSection();
 }
 

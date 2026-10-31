@@ -6,6 +6,9 @@
 
 #include "port_overlay.h"
 
+#include "MetroidPrime/Player/CGameOptions.hpp"
+#include "MetroidPrime/Player/CGameState.hpp"
+
 #include <imgui.h>
 
 #include <algorithm>
@@ -29,6 +32,10 @@ void DrawEnhancementsTab() {
            "Power Bombs are unchanged. Kept between launches, unlike the Infinite cheat.");
 
   ImGui::SeparatorText("Pace");
+  // The game reads this every frame in its cinematic flow state.
+  Changed(ImGui::Checkbox("Skippable cutscenes", &sSkipCinematics));
+  ItemHelp("START or A skips any cutscene and the new game's intro text, seen or not. Off: START skips "
+           "only the ones already seen.");
   int walkSpeed = sWalkSpeed;
   if (ImGui::SliderInt("Walk speed", &walkSpeed, PortOverlay::kWalkSpeedMin,
                        PortOverlay::kWalkSpeedMax, "%d%%", ImGuiSliderFlags_AlwaysClamp)) {
@@ -84,6 +91,38 @@ void DrawEnhancementsTab() {
   ItemHelp("A small jump in morph ball with C-stick up, as in Metroid Prime Trilogy. Needs the Morph "
            "Ball Bombs.");
   ImGui::EndDisabled();
+
+  ImGui::SeparatorText("Hints");
+  // The game's own option, the same switch as the pause menu's Hint System and saved with the other
+  // game options, so Original experience leaves it alone.
+  ImGui::BeginDisabled(gpGameState == nullptr);
+  bool hints = gpGameState != nullptr && gpGameState->GameOptions().GetIsHintSystemEnabled();
+  if (ImGui::Checkbox("Hints", &hints) && gpGameState != nullptr) {
+    gpGameState->GameOptions().SetIsHintSystemEnabled(hints);
+  }
+  ImGui::EndDisabled();
+  ItemHelp("The game's hint system, the same switch as Hint System in the pause menu's options. "
+           "Saved with the game options.");
+  ImGui::BeginDisabled(PortOverlay::OriginalExperience());
+  int hintDelay = sHintDelay;
+  if (ImGui::SliderInt("Hint delay", &hintDelay, PortOverlay::kHintDelayMin,
+                       PortOverlay::kHintDelayMax, hintDelay == 0 ? "Game default" : "%d min",
+                       ImGuiSliderFlags_AlwaysClamp)) {
+    sHintDelay = hintDelay;
+    Changed(true);
+  }
+  ItemHelp("The longest a hint waits before it first shows. Game default keeps the game's own "
+           "timing; a shorter wait also applies to hints already waiting in your save. Needs Hints "
+           "on.");
+  ImGui::EndDisabled();
+  ImGui::BeginDisabled(gpGameState == nullptr ||
+                       !gpGameState->GameOptions().GetIsHintSystemEnabled());
+  if (ImGui::Button("Show current hint")) {
+    PortOverlay::RequestShowHint();
+  }
+  ImGui::EndDisabled();
+  ItemHelp("Shows the hint the game would show next, now: the one on screen again, or the one "
+           "due soonest. Needs Hints on.");
 }
 
 } // namespace PortDebug

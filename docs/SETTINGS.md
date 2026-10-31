@@ -76,7 +76,7 @@ Game page:
   delay, scan speed, elevator ride, portal transition, rotating rooms, fast morph, spring ball, the Enhancements page, toggle lock-on, sticky charge, remastered
   charge, auto-aim (on). Your saved values are kept and return when it is switched off. Mods, input,
   video and audio settings are not affected.
-- `skip_cinematics`: Cutscenes > Skippable cutscenes.
+- `skip_cinematics`: Enhancements > Pace > Skippable cutscenes.
 - `boot_logos`: Cutscenes > Skip splash screens (0 no, 1 with A or Start, 2 always), which sets both keys.
 - `world_name_card`: the same row, for the world name card on load (same values); env `MP2_WORLD_NAME`.
 - `walk_speed`: Enhancements > Pace > Walk speed (50 to 200 percent, default 100 = retail); env
@@ -124,7 +124,7 @@ Game page:
   only, so other languages show English there.
 - `igt_timer`: Speedrun > On-screen in-game time; env `MP2_IGT_TIMER`. The save file's play time
   (stops in cutscenes, menus and loads) in the bottom-right corner while a game runs.
-- `hint_delay`: Cutscenes > Hint delay (0 to 30 minutes, default 0 = the game's own timing); env
+- `hint_delay`: Enhancements > Hints > Hint delay (0 to 30 minutes, default 0 = the game's own timing); env
   `MP2_HINT_DELAY`. Caps the wait before a hint first shows, also for hints already waiting in a
   loaded save. Needs the in-game hint system on. Show current hint (Cutscenes button; console
   `hintshow`) shows the hint the game would show next: a hint already on screen comes back,
