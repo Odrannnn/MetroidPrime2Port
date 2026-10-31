@@ -1069,7 +1069,8 @@ bool CSwampBossStage1::ShouldExposeBelly(CStateManager&, const CTriggerData&) co
 
 // @ fn_78_63D8
 bool CSwampBossStage1::ShouldSplash(CStateManager&, const CTriggerData&) const {
-  return GetHealthInfo()->GetHP() > 1.f && xb8c_nextAttackTime <= xb1c_clock && CurrentAttack() == 0;
+  return !(GetHealthInfo()->GetHP() <= 1.f) && // retail NaN arm (A8-4)
+         !(xb8c_nextAttackTime > xb1c_clock) && CurrentAttack() == 0;
 }
 
 // @ fn_78_5CD4
