@@ -38,6 +38,21 @@ const uint kPortWiiZ = 0x60ACB985;
 const PortWiiPrompt kPortSpiderBallPrompt = {kPortWiiZ, 0xD89B9F7C, 1.0f, 1.0f}; // Z -> R
 bool sPortSpiderBallText = false;
 
+// Trilogy draws these four GameCube actions with art that means another button here (#39).
+// Each is told apart by its string, since the same art means other buttons elsewhere.
+const uint kPortWiiC = 0x4475EAD6;     // Nunchuk C: Morph Ball (X) elsewhere, the map legend Key (Y)
+const uint kPortWiiStart = 0x83A73184; // Start: pause Exit, but the map world toggle (X)
+const uint kPortGcXArt = 0xF1FA8D68;   // GC X art; Trilogy's "Press X for Logbook" is really Start
+const uint kPortWiiDpadDown = 0x13AD51E9;
+const uint kPortWiiDpad = 0xB4EDE4B6;
+const PortWiiPrompt kPortKeyPrompt = {kPortWiiC, 0xDFC47FA2, 1.0f, 1.0f}; // -> Y, see kTrilogyYAsset
+const PortWiiPrompt kPortWorldPrompt = {kPortWiiStart, kPortGcXArt, 0.70f, 1.0f};       // -> X
+const PortWiiPrompt kPortZoomPrompt = {kPortWiiDpad, kPortGcXArt, 0.70f, 1.0f};         // -> X
+const PortWiiPrompt kPortLogbookPrompt = {kPortGcXArt, kPortWiiStart, 1.0f, 1.0f};      // -> Start
+bool sPortKeyText = false;
+bool sPortWorldText = false;
+bool sPortZoomText = false;
+
 bool PortTextContains(const wchar_t* str, int len, const char* needle) {
   for (int i = 0; len == -1 ? str[i] != 0 : i < len; ++i) {
     int j = 0;
@@ -55,9 +70,31 @@ bool PortIsSpiderBallText(const wchar_t* str, int len) {
   return PortTextContains(str, len, "Spider Ball") || PortTextContains(str, len, "Morph Ball mode");
 }
 
-const PortWiiPrompt* PortFindWiiPrompt(CAssetId id) {
+// True when the string has no text outside its &...; tags and whitespace (a bare button prompt).
+bool PortIsBareTags(const wchar_t* str, int len) {
+  for (int i = 0; len == -1 ? str[i] != 0 : i < len; ++i) {
+    if (str[i] == L'&') {
+      while ((len == -1 || i < len) && str[i] && str[i] != L';')
+        ++i;
+    } else if (str[i] > L' ') {
+      return false;
+    }
+  }
+  return true;
+}
+
+const PortWiiPrompt* PortFindWiiPrompt(CAssetId id, const CVector2f* crop) {
   if (!port::entry::IsTrilogy(port::entry::CurrentDiscVersion()))
     return nullptr;
+  const uint raw = static_cast< uint >(id);
+  if (raw == kPortGcXArt && crop != nullptr && crop->GetX() == 0.6875f)
+    return &kPortLogbookPrompt;
+  if (sPortKeyText && raw == kPortWiiC)
+    return &kPortKeyPrompt;
+  if (sPortWorldText && raw == kPortWiiStart)
+    return &kPortWorldPrompt;
+  if (sPortZoomText && (raw == kPortWiiDpad || raw == kPortWiiDpadDown))
+    return &kPortZoomPrompt;
   if (sPortSpiderBallText && static_cast< uint >(id) == kPortWiiZ)
     return &kPortSpiderBallPrompt;
   for (const PortWiiPrompt& prompt : kPortWiiPrompts) {
@@ -69,7 +106,7 @@ const PortWiiPrompt* PortFindWiiPrompt(CAssetId id) {
 
 // The id to load for `id`, setting `crop` when it stands in for Wii art.
 CAssetId PortGcPrompt(CAssetId id, CVector2f* crop) {
-  const PortWiiPrompt* prompt = PortFindWiiPrompt(id);
+  const PortWiiPrompt* prompt = PortFindWiiPrompt(id, crop);
   if (prompt == nullptr)
     return id;
   if (crop != nullptr)
@@ -85,8 +122,14 @@ void CTextParser::ParseText(CTextExecuteBuffer& buffer, const wchar_t* str, int 
                             const rstl::vector< rstl::pair< CAssetId, CAssetId > >* textureMap) {
 #ifdef TARGET_PC
   const bool portWasSpiderBallText = sPortSpiderBallText;
-  sPortSpiderBallText = port::entry::IsTrilogy(port::entry::CurrentDiscVersion()) &&
-                        PortIsSpiderBallText(str, len);
+  const bool portWasKeyText = sPortKeyText;
+  const bool portWasWorldText = sPortWorldText;
+  const bool portWasZoomText = sPortZoomText;
+  const bool portTrilogy = port::entry::IsTrilogy(port::entry::CurrentDiscVersion());
+  sPortSpiderBallText = portTrilogy && PortIsSpiderBallText(str, len);
+  sPortKeyText = portTrilogy && PortTextContains(str, len, "\nKey");
+  sPortWorldText = portTrilogy && PortIsBareTags(str, len);
+  sPortZoomText = portTrilogy && PortTextContains(str, len, "Zoom");
 #endif
   int begin = 0;
   int end = 0;
@@ -117,6 +160,9 @@ void CTextParser::ParseText(CTextExecuteBuffer& buffer, const wchar_t* str, int 
   }
 #ifdef TARGET_PC
   sPortSpiderBallText = portWasSpiderBallText;
+  sPortKeyText = portWasKeyText;
+  sPortWorldText = portWasWorldText;
+  sPortZoomText = portWasZoomText;
 #endif
 }
 
