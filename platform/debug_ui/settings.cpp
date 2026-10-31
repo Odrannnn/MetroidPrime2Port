@@ -391,6 +391,7 @@ const SettingKey kSettingKeys[] = {
     BoolKey< &sCinemaBars >("cinema_bars"),
     BoolKey< &sSecondaryCrosshairs >("secondary_crosshairs"),
     BoolKey< &sDarkVisorFull >("dark_visor_full"),
+    IntKey< &sDarkVisorStatic, 0, PortOverlay::kDarkVisorStaticMax >("dark_visor_static", "50", "100"),
     IntKey< &sHudOpacityEcho, PortOverlay::kHudOpacityVisor, PortOverlay::kHudOpacityMax >(
         "hud_opacity_echo", "-1", "40"),
     IntKey< &sHudOpacityDark, PortOverlay::kHudOpacityVisor, PortOverlay::kHudOpacityMax >(

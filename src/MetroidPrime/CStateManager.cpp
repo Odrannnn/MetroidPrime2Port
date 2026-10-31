@@ -1231,10 +1231,20 @@ void CStateManager::DrawDarkVisor(const CInGameGuiManagerSet& gui) {
 #endif
   gui.GetPlayerGuiManager(mCurrentRenderPlayerIndex).DrawDarkVisorMask(*this);
   const CPlayer* player = mCurrentRenderPlayer;
+#ifdef TARGET_PC
+  // Port: the static color's alpha carries the Dark Visor static setting to the renderer.
+  gpRender->DrawDarkWorldTransition(
+      gpTweakGui->GetDarkVisorStaticColor().WithAlphaOf(
+          float(PortOverlay::DarkVisorStatic()) / float(PortOverlay::kDarkVisorStaticMax)),
+      gpTweakGui->GetDarkWorldBaseColor(),
+      gpTweakGui->GetDarkVisorPaletteModulate(), CColor(uchar(0), uchar(0), uchar(0), alpha),
+      player->GetScreenPosition(), CVector2i(x, y), CVector2i(width, height));
+#else
   gpRender->DrawDarkWorldTransition(
       gpTweakGui->GetDarkVisorStaticColor(), gpTweakGui->GetDarkWorldBaseColor(),
       gpTweakGui->GetDarkVisorPaletteModulate(), CColor(uchar(0), uchar(0), uchar(0), alpha),
       player->GetScreenPosition(), CVector2i(x, y), CVector2i(width, height));
+#endif
 }
 
 void CStateManager::DrawDarkWorldCloud(CPlayerState::EPlayerVisor visor) {

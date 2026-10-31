@@ -136,6 +136,7 @@ bool sHideVisorEffects = false;
 bool sCinemaBars = true;
 bool sSecondaryCrosshairs = true;
 bool sDarkVisorFull = false;
+int sDarkVisorStatic = PortOverlay::kDarkVisorStaticMax;
 int sHudOpacityEcho = PortOverlay::kHudOpacityVisor;
 int sHudOpacityDark = PortOverlay::kHudOpacityVisor;
 int sHudOpacityScan = PortOverlay::kHudOpacityVisor;
@@ -786,6 +787,14 @@ bool DarkVisorFullScreen() {
     return false;
   }
   return EnvBool("MP2_DARK_VISOR_FULL", sDarkVisorFull);
+}
+
+int DarkVisorStatic() {
+  ReadEnv();
+  if (OriginalExperience()) {
+    return kDarkVisorStaticMax;
+  }
+  return std::clamp(port::EnvInt("MP2_DARK_VISOR_STATIC", sDarkVisorStatic), 0, kDarkVisorStaticMax);
 }
 
 int HudOpacity(HudOpacityPart part) {

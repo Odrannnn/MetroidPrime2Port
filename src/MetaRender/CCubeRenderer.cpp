@@ -3802,12 +3802,22 @@ void CCubeRenderer::DrawDarkWorldTransition(const CColor& color0, const CColor& 
   GXCopyTex(CGraphics::GetDolphinSpareBuffer(), false);
   CGraphics::LoadDolphinSpareTexture(width, height, GX_TF_I8, nullptr, spareTexMap);
   CGraphics::SetDepthWriteMode(false, kE_Always, false);
+#ifdef TARGET_PC
+  // Port: color0's alpha is how much of the static image covers the scene (the Dark Visor
+  // static setting; 255, the retail callers' value, blends to the same result as One/Zero).
+  CGraphics::SetBlendMode(kBM_Blend, kBF_SrcAlpha, kBF_InvSrcAlpha, kLO_Clear);
+#else
   CGraphics::SetBlendMode(kBM_Blend, kBF_One, kBF_Zero, kLO_Clear);
+#endif
   CGraphics::SetAlphaCompare(kAF_Always, 0, kAO_And, kAF_Always, 0);
   CGX::SetStandardTevColorAlphaOp(GX_TEVSTAGE0);
   CGX::SetTevColorIn(GX_TEVSTAGE0, GX_CC_ZERO, GX_CC_TEXC, GX_CC_KONST, GX_CC_ZERO);
   CGX::SetTevAlphaIn(GX_TEVSTAGE0, GX_CA_ZERO, GX_CA_ZERO, GX_CA_ZERO, GX_CA_KONST);
+#ifdef TARGET_PC
+  CGX::SetTevKAlphaSel(GX_TEVSTAGE0, GX_TEV_KASEL_K0_A);
+#else
   CGX::SetTevKAlphaSel(GX_TEVSTAGE0, GX_TEV_KASEL_8_8);
+#endif
   CGX::SetTevKColorSel(GX_TEVSTAGE0, GX_TEV_KCSEL_K0);
   CGX::SetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR_NULL);
   CGX::SetTevColorOp(GX_TEVSTAGE1, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_2, true, GX_TEVPREV);

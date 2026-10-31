@@ -426,6 +426,12 @@ bool SecondaryCrosshairs();
 // (FRME_DarkVisorMask) inside the tweak frame. Off by default; Original experience keeps the lens.
 // Read by CStateManager::DrawDarkVisor.
 bool DarkVisorFullScreen();
+// Dark Visor static (`dark_visor_static`, env `MP2_DARK_VISOR_STATIC`), in percent: how much of
+// the grey static image covers the scene; below 100 the scene's own colours show through, 0 keeps
+// only the highlights. 100 (the game's look) by default and under Original experience. Read by
+// CCubeRenderer::DrawDarkWorldTransition through CStateManager::DrawDarkVisor.
+const int kDarkVisorStaticMax = 100;
+int DarkVisorStatic();
 // HUD opacity per visor (`hud_opacity_echo/dark/scan`), in percent, or kHudOpacityVisor for the
 // game's Visor Opacity (Options > Visor). The Combat and Ball HUDs always use the option. Original
 // experience ignores these. Read by CGameOptions::GetVisorHudAlpha.

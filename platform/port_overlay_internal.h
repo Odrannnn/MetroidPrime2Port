@@ -79,6 +79,7 @@ extern bool sHideVisorEffects;
 extern bool sCinemaBars;
 extern bool sSecondaryCrosshairs;
 extern bool sDarkVisorFull;
+extern int sDarkVisorStatic;
 extern int sHudOpacityEcho;
 extern int sHudOpacityDark;
 extern int sHudOpacityScan;

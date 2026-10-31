@@ -304,6 +304,9 @@ Video > Display:
 - `dark_visor_full` (default off, env `MP2_DARK_VISOR_FULL`): HUD and view > Full-screen Dark
   Visor; the Dark Visor's effect covers the whole view (the split-screen path, no lens mask).
   Original experience keeps the lens.
+- `dark_visor_static` (0-100, default 100, env `MP2_DARK_VISOR_STATIC`): HUD and view > Dark Visor
+  static; how much of the visor's grey static covers the scene. Lower keeps the scene's colours,
+  0 leaves only the highlights. Original experience keeps 100.
 - `hud_opacity_echo`, `hud_opacity_dark`, `hud_opacity_scan` (`-1` = the game's Visor Opacity,
   default; else 0-100): HUD and view > Echo/Dark/Scan HUD opacity. Applies to that visor's HUD, its
   visor/beam menu, the radar and the map; the energy readout is part of the HUD frame and has no
