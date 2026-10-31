@@ -424,6 +424,7 @@ bool CGameArchitectureSupport::UpdateTicks() {
                            : mPortTickClock.Advance(stopwatchTime, maxSpeed || stopwatchTime > 0.035f,
                                                     PortOverlay::FrameLimit());
     mArchQueue.Push(MakeMsg::CreateFrameBegin(kAMT_Game, mGameFrameCount));
+    unsigned ran = 0;
     for (unsigned tick = 0; tick < ticks; ++tick) {
       PortTiming::BeginTick();
       PortMouse::BeginTick();
@@ -433,11 +434,17 @@ bool CGameArchitectureSupport::UpdateTicks() {
       }
       mArchQueue.Push(MakeMsg::CreateTimerTick(kAMT_Game, 1.f / 60.f));
       mIoWinMgr.PumpMessages(mArchQueue);
+      ++ran;
+      // `state load ... hold` sets the hold inside a tick: the rest of a fixed-tick frame must not
+      // run past it (up to MP2_TICKS_PER_FRAME - 1 ticks of drift in every restored timer).
+      if (PortOverlay::TickHold()) {
+        break;
+      }
     }
     // MP1's GUI clock by tick: GUI frames and HUD materials advance with the game, not the frame
     // rate (BeginScene skips its per-frame step after this).
-    CGraphics::PortAdvanceRenderTimings(ticks);
-    mPortAudioDt = static_cast< float >(ticks) * (1.f / 60.f);
+    CGraphics::PortAdvanceRenderTimings(ran);
+    mPortAudioDt = static_cast< float >(ran) * (1.f / 60.f);
     // Back to the cap starts the retail remainder afresh.
     mTickRemainder = 0.f;
     mPreviousTickRemainder2 = 0.f;
