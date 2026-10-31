@@ -452,8 +452,15 @@ int ReplayScriptMsgs(CStateManager& mgr, CEntity& ent, const RoomObject& obj) {
   return replayed;
 }
 
+// The saved fields of objects whose messages ran: applied once every object has had its own, so
+// no object's Activate (which can reset a helper actor's timers) lands after another's fields.
+struct DeferredFields {
+  TUniqueId uid;
+  const RoomObject* obj;
+};
+
 bool ApplyObject(CStateManager& mgr, CEntity& ent, const RoomObject& obj, ChangeLog& log,
-                 bool holdTimers, std::vector< uint32_t >& held, int* fieldsSet = nullptr) {
+                 bool holdTimers, std::vector< uint32_t >& held, std::vector< DeferredFields >& later) {
   bool changed = false;
   if (ent.GetActive() != obj.active) {
     // Through the message, as a relay does: an object's own kSM_Activate sets up what its Think
@@ -669,13 +676,7 @@ bool ApplyObject(CStateManager& mgr, CEntity& ent, const RoomObject& obj, Change
     }
   }
   if (fieldsBlock != nullptr) {
-    if (const int set = ApplyEntityFields(mgr, ent, fieldsBlock->data)) {
-      if (fieldsSet != nullptr) {
-        *fieldsSet += set;
-      }
-      log.Note(obj.editorId, "fields restored");
-      changed = true;
-    }
+    later.push_back({ent.GetUniqueId(), &obj});
   }
   return changed;
 }
@@ -852,6 +853,7 @@ int ApplyRoomState(CStateManager& mgr, const RoomState& room, RoomApplyProgress&
     mgr.DispatchScriptMessages();
     mgr.ClearGraveyard();
   }
+  std::vector< DeferredFields > later;
   std::vector< const RoomObject* > copies;
   for (const RoomObject& obj : room.objects) {
     if (now.count(TEditorId(obj.editorId).AreaNum()) == 0) {
@@ -867,7 +869,7 @@ int ApplyRoomState(CStateManager& mgr, const RoomState& room, RoomApplyProgress&
       ++unmatchedLayers[LayerKey(obj.editorId)];
       continue;
     }
-    if (ApplyObject(mgr, *ent, obj, log, waiting > 0, progress.held, &stats.fields)) {
+    if (ApplyObject(mgr, *ent, obj, log, waiting > 0, progress.held, later)) {
       ++stats.changed;
     }
     ++stats.applied;
@@ -933,11 +935,25 @@ int ApplyRoomState(CStateManager& mgr, const RoomState& room, RoomApplyProgress&
         continue;
       }
       const RoomObject* obj = pr.second;
-      if (ApplyObject(mgr, *ent, *obj, log, waiting > 0, progress.held, &stats.fields)) {
+      if (ApplyObject(mgr, *ent, *obj, log, waiting > 0, progress.held, later)) {
         ++stats.changed;
       }
       ++stats.applied;
       ++generatedCopies;
+    }
+  }
+  // Every object's own messages have run: the saved fields go in.
+  mgr.DispatchScriptMessages();
+  for (const DeferredFields& d : later) {
+    CEntity* ent = mgr.ObjectById(d.uid);
+    const RoomBlock* fieldsBlock = ent != nullptr ? FindBlock(*d.obj, kTagFields) : nullptr;
+    if (fieldsBlock == nullptr) {
+      continue;
+    }
+    if (const int set = ApplyEntityFields(mgr, *ent, fieldsBlock->data)) {
+      stats.fields += set;
+      log.Note(d.obj->editorId, "fields restored");
+      ++stats.changed;
     }
   }
   if (generatedCopies != 0) {
