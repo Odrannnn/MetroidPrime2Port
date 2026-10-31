@@ -30,6 +30,11 @@ public:
   ~CStringTable();
 
   void Load(CInputStream& in);
+#ifdef TARGET_PC
+  // Trilogy only: renames the Wii button art in the few strings whose GC button differs from the
+  // one the same art means elsewhere (the Spider Ball's Z, the Visor switch's D-pad); see #39.
+  void PortMarkTrilogyPrompts(uint strgId);
+#endif
 
   static void SetLanguage(int language);
 

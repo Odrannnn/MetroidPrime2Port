@@ -27,50 +27,38 @@ struct PortWiiPrompt {
 const PortWiiPrompt kPortWiiPrompts[] = {
     {0x574CDE37, 0xD523DE3B, 0.70f, 0.68f}, // A -> A
     {0x71AA55E3, 0x53B7AC95, 0.70f, 0.68f}, // 2 (jump) -> B
-    {0x60ACB985, 0x967A3516, 1.0f, 1.0f},   // Z (lock-on, scan; also Spider Ball) -> L
+    {0x60ACB985, 0x967A3516, 1.0f, 1.0f},   // Z (lock-on, scan) -> L
     {0xB5F3DA09, 0xADCBEDAE, 0.6f, 0.85f},  // + (beams) -> C-stick
     {0xE2F4B915, 0xB4EDE4B6, 0.6f, 0.85f},  // - (visors) -> D-pad
+    // Stand-ins CStringTable::PortMarkTrilogyPrompts writes into the strings that mean the GC
+    // disc's own D-pad (Visor) and R (Spider Ball), so the rules below leave them alone.
+    {0x13AD51EA, 0x13AD51E9, 0.6f, 0.85f},  // D-pad down (Visor switch) -> D-pad down
+    {0x60ACB986, 0xD89B9F7C, 1.0f, 1.0f},   // Z (Spider Ball) -> R
 };
 
 // The Wii's Z both scans/grapples and holds the Spider Ball; the GC disc says L for the first
-// and R for the second. Set while ParseText reads a string about the Spider Ball.
-const uint kPortWiiZ = 0x60ACB985;
-const PortWiiPrompt kPortSpiderBallPrompt = {kPortWiiZ, 0xD89B9F7C, 1.0f, 1.0f}; // Z -> R
-bool sPortSpiderBallText = false;
+// and R for the second. CStringTable::PortMarkTrilogyPrompts renames the Z of the Spider Ball
+// strings (by STRG id and index, so it holds in every language) to 60ACB986, mapped above.
 
-// Trilogy draws these four GameCube actions with art that means another button here (#39).
-// Each is told apart by its string, since the same art means other buttons elsewhere.
+// Trilogy draws these GameCube actions with art that means another button here (#39). Each is
+// told apart by the shape of its tag, never by its words, so every language and disc agrees.
 const uint kPortWiiC = 0x4475EAD6;     // Nunchuk C: Morph Ball (X) elsewhere, the map legend Key (Y)
 const uint kPortWiiStart = 0x83A73184; // Start: pause Exit, but the map world toggle (X)
 const uint kPortGcXArt = 0xF1FA8D68;   // GC X art; Trilogy's "Press X for Logbook" is really Start
+const uint kPortGcYArt = 0x3AA65ECD;   // GC Y art; on Trilogy the same id is the map's "Z" prompt
+const uint kPortGcMapArt = 0xBC322C63; // GC art for the map prompt
 const uint kPortWiiDpadDown = 0x13AD51E9;
-const uint kPortWiiDpad = 0xB4EDE4B6;
-const PortWiiPrompt kPortKeyPrompt = {kPortWiiC, 0xDFC47FA2, 1.0f, 1.0f}; // -> Y, see kTrilogyYAsset
-const PortWiiPrompt kPortWorldPrompt = {kPortWiiStart, kPortGcXArt, 0.70f, 1.0f};       // -> X
-const PortWiiPrompt kPortZoomPrompt = {kPortWiiDpad, kPortGcXArt, 0.70f, 1.0f};         // -> X
-const PortWiiPrompt kPortLogbookPrompt = {kPortGcXArt, kPortWiiStart, 1.0f, 1.0f};      // -> Start
-bool sPortKeyText = false;
+const PortWiiPrompt kPortKeyPrompt = {kPortWiiC, kPortGcYArt, 1.0f, 1.0f};                // -> Y
+const PortWiiPrompt kPortWorldPrompt = {kPortWiiStart, kPortGcXArt, 0.70f, 1.0f};         // -> X
+const PortWiiPrompt kPortZoomPrompt = {kPortWiiDpadDown, kPortGcXArt, 0.70f, 1.0f};       // -> X
+const PortWiiPrompt kPortMissilePrompt = {kPortWiiDpadDown, kPortGcYArt, 1.0f, 0.68f};   // -> Y
+const PortWiiPrompt kPortMapPrompt = {kPortGcYArt, kPortGcMapArt, 1.0f, 0.68f};           // -> Z
+const PortWiiPrompt kPortLogbookPrompt = {kPortGcXArt, kPortWiiStart, 1.0f, 1.0f};        // -> Start
 bool sPortWorldText = false;
 bool sPortZoomText = false;
 
-bool PortTextContains(const wchar_t* str, int len, const char* needle) {
-  for (int i = 0; len == -1 ? str[i] != 0 : i < len; ++i) {
-    int j = 0;
-    while (needle[j] && (len == -1 || i + j < len) && str[i + j] == static_cast< wchar_t >(needle[j]))
-      ++j;
-    if (!needle[j])
-      return true;
-  }
-  return false;
-}
-
-// Every Trilogy string that draws Z for the Spider Ball names it one of these two ways, and no
-// scan, grapple, lock-on or hack string does.
-bool PortIsSpiderBallText(const wchar_t* str, int len) {
-  return PortTextContains(str, len, "Spider Ball") || PortTextContains(str, len, "Morph Ball mode");
-}
-
 // True when the string has no text outside its &...; tags and whitespace (a bare button prompt).
+// The only such string with Start art is the map's world toggle, in every language.
 bool PortIsBareTags(const wchar_t* str, int len) {
   for (int i = 0; len == -1 ? str[i] != 0 : i < len; ++i) {
     if (str[i] == L'&') {
@@ -83,30 +71,66 @@ bool PortIsBareTags(const wchar_t* str, int len) {
   return true;
 }
 
-const PortWiiPrompt* PortFindWiiPrompt(CAssetId id, const CVector2f* crop) {
+// True for the map legend's "Zoom" line: a Wii D-pad-down animation first in the string, then
+// at most a short one-line word (ENGL "Zoom", JAPN "ズーム"). The same animation is Missile or Power
+// Bomb in the longer sentences that mention it, which never start with it and a few words.
+bool PortIsZoomText(const wchar_t* str, int len) {
+  int i = 0;
+  const auto at = [&](int pos) { return (len == -1 || pos < len) ? str[pos] : L'\0'; };
+  while (at(i) == L'&' && !(at(i + 1) == L'i' && at(i + 2) == L'm')) {
+    while (at(i) && at(i) != L';')
+      ++i;
+    if (at(i) == L';')
+      ++i;
+  }
+  if (!(at(i) == L'&' && at(i + 1) == L'i' && at(i + 2) == L'm' && at(i + 6) == L'='))
+    return false;
+  bool dpadDown = false;
+  int tagBegin = i;
+  while (at(i) && at(i) != L';')
+    ++i;
+  for (int j = tagBegin; j + 8 <= i; ++j) {
+    static const wchar_t kId[] = L"13AD51E9";
+    int k = 0;
+    while (k < 8 && str[j + k] == kId[k])
+      ++k;
+    dpadDown = dpadDown || k == 8;
+  }
+  if (!dpadDown || at(i) != L';')
+    return false;
+  int count = 0;
+  for (++i; at(i); ++i) {
+    if (at(i) == L'\n' && count > 0)
+      return false;
+    if (at(i) > L' ')
+      ++count;
+  }
+  return count > 0 && count < 12;
+}
+
+const PortWiiPrompt* PortFindWiiPrompt(CAssetId id, const CVector2f* crop, bool bare) {
   if (!port::entry::IsTrilogy(port::entry::CurrentDiscVersion()))
     return nullptr;
   const uint raw = static_cast< uint >(id);
   if (raw == kPortGcXArt && crop != nullptr && crop->GetX() == 0.6875f)
     return &kPortLogbookPrompt;
-  if (sPortKeyText && raw == kPortWiiC)
+  if (raw == kPortGcYArt && crop != nullptr && crop->GetX() == 0.6875f)
+    return &kPortMapPrompt;
+  // A bare Nunchuk C (no SI/SA tag) is only the map legend's Key; Morph Ball's C is an SI tag.
+  if (raw == kPortWiiC && bare)
     return &kPortKeyPrompt;
   if (sPortWorldText && raw == kPortWiiStart)
     return &kPortWorldPrompt;
-  if (sPortZoomText && (raw == kPortWiiDpad || raw == kPortWiiDpadDown))
-    return &kPortZoomPrompt;
-  if (sPortSpiderBallText && static_cast< uint >(id) == kPortWiiZ)
-    return &kPortSpiderBallPrompt;
   for (const PortWiiPrompt& prompt : kPortWiiPrompts) {
-    if (prompt.wiiId == static_cast< uint >(id))
+    if (prompt.wiiId == raw)
       return &prompt;
   }
   return nullptr;
 }
 
 // The id to load for `id`, setting `crop` when it stands in for Wii art.
-CAssetId PortGcPrompt(CAssetId id, CVector2f* crop) {
-  const PortWiiPrompt* prompt = PortFindWiiPrompt(id, crop);
+CAssetId PortGcPrompt(CAssetId id, CVector2f* crop, bool bare = false) {
+  const PortWiiPrompt* prompt = PortFindWiiPrompt(id, crop, bare);
   if (prompt == nullptr)
     return id;
   if (crop != nullptr)
@@ -121,15 +145,11 @@ CTextParser::CTextParser(IObjectStore& store) : mObjectStore(store) {}
 void CTextParser::ParseText(CTextExecuteBuffer& buffer, const wchar_t* str, int len,
                             const rstl::vector< rstl::pair< CAssetId, CAssetId > >* textureMap) {
 #ifdef TARGET_PC
-  const bool portWasSpiderBallText = sPortSpiderBallText;
-  const bool portWasKeyText = sPortKeyText;
   const bool portWasWorldText = sPortWorldText;
   const bool portWasZoomText = sPortZoomText;
   const bool portTrilogy = port::entry::IsTrilogy(port::entry::CurrentDiscVersion());
-  sPortSpiderBallText = portTrilogy && PortIsSpiderBallText(str, len);
-  sPortKeyText = portTrilogy && PortTextContains(str, len, "\nKey");
   sPortWorldText = portTrilogy && PortIsBareTags(str, len);
-  sPortZoomText = portTrilogy && PortTextContains(str, len, "Zoom");
+  sPortZoomText = portTrilogy && PortIsZoomText(str, len);
 #endif
   int begin = 0;
   int end = 0;
@@ -159,8 +179,6 @@ void CTextParser::ParseText(CTextExecuteBuffer& buffer, const wchar_t* str, int 
     buffer.AddString(str + begin, end - begin);
   }
 #ifdef TARGET_PC
-  sPortSpiderBallText = portWasSpiderBallText;
-  sPortKeyText = portWasKeyText;
   sPortWorldText = portWasWorldText;
   sPortZoomText = portWasZoomText;
 #endif
@@ -229,13 +247,27 @@ CFontImageDef CTextParser::GetImage(const wchar_t* str, int len,
       const float cropY = atof(tokens[3].c_str());
 #ifdef TARGET_PC
       CVector2f crop(cropX, cropY);
+      // Wii D-pad-down animation: the map's Zoom (X) or a Missile/Power Bomb prompt (Y); the one
+      // Visor-switch prompt that GC keeps as D-pad was renamed on load. Every frame becomes the one
+      // GC button.
+      const PortWiiPrompt* portWhole = nullptr;
+      if (port::entry::IsTrilogy(port::entry::CurrentDiscVersion())) {
+        for (int i = 4; i < tokens.size(); ++i) {
+          if (static_cast< uint >(GetAssetIdFromString(tokens[i], vec)) == kPortWiiDpadDown)
+            portWhole = sPortZoomText ? &kPortZoomPrompt : &kPortMissilePrompt;
+        }
+      }
+      if (portWhole != nullptr)
+        crop = CVector2f(portWhole->cropX, portWhole->cropY);
 #endif
       rstl::vector< TToken< CTexture > > textures;
       textures.reserve(tokens.size() - 4);
       for (int i = 4; i < tokens.size(); ++i) {
 #ifdef TARGET_PC
-        textures.push_back_unsafe(mObjectStore.GetObj(
-            SObjectTag('TXTR', PortGcPrompt(GetAssetIdFromString(tokens[i], vec), &crop))));
+        textures.push_back_unsafe(mObjectStore.GetObj(SObjectTag(
+            'TXTR', portWhole != nullptr
+                        ? portWhole->gcId
+                        : PortGcPrompt(GetAssetIdFromString(tokens[i], vec), &crop))));
 #else
         textures.push_back_unsafe(
             mObjectStore.GetObj(SObjectTag('TXTR', GetAssetIdFromString(tokens[i], vec))));
@@ -266,7 +298,7 @@ CFontImageDef CTextParser::GetImage(const wchar_t* str, int len,
 #ifdef TARGET_PC
   CVector2f crop(1.f, 1.f);
   return CFontImageDef(
-      mObjectStore.GetObj(SObjectTag('TXTR', PortGcPrompt(GetAssetIdFromString(text, vec), &crop))),
+      mObjectStore.GetObj(SObjectTag('TXTR', PortGcPrompt(GetAssetIdFromString(text, vec), &crop, true))),
       crop);
 #else
   return CFontImageDef(mObjectStore.GetObj(SObjectTag('TXTR', GetAssetIdFromString(text, vec))),
