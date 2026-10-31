@@ -5,7 +5,8 @@
     statecheck.py --port 4780 --area 5                                  # a run already up (MP2_CONSOLE=4780)
 
 The first --area is the run's MP2_TELEPORT (tools/run_gameplay.sh), the others `warp`. Without --area
-the room the run is in is checked. --setup 'cmd' (repeatable) runs unheld in each room first.
+the room the run is in is checked. --setup 'cmd' (repeatable) runs unheld in each room first (`wait N` = N game updates;
+ids are uids or `e<editor id>`, a bare editor id is not a uid and the command fails).
 
 Sequence (all with the game held, so ticks are exact; `statedump` runs between ticks, also while held):
   1. setup commands run unheld, then `hold 1`;
@@ -403,7 +404,8 @@ def main():
     ap.add_argument("--userdir", help="directory holding the memory card: start a run with tools/run_gameplay.sh")
     ap.add_argument("--area", action="append", default=[], help="area (slot, id or name) to check; repeatable")
     ap.add_argument("--setup", action="append", default=[], metavar="CMD",
-                    help="console command run unheld in each room before the round trip (repeatable)")
+                    help="console command run unheld in each room before the round trip (repeatable); "
+                    "`wait N` lets the game run N more updates (the game must be running, not held)")
     ap.add_argument("--out", default="statecheck-out", help="directory for the JSONL dumps (default %(default)s)")
     ap.add_argument("--log", default="/tmp/opencode/statecheck.log", help="the run's stderr log (the restore is read from it)")
     ap.add_argument("--build", help="build dir for run_gameplay.sh (default build-port-link)")
@@ -444,7 +446,15 @@ def main():
                 con.cmd(f"warp {area}")
                 game.wait_for("[warp] arrival check", n)
             for c in a.setup:
-                con.cmd(c)
+                m = re.fullmatch(r"wait\s+(\d+)", c.strip())
+                if m:
+                    # `wait N`: let the game run N more updates (a boss fight takes seconds to get going)
+                    _, text = con.cmd("frame")
+                    goal = int(text.split()[-1]) + int(m.group(1))
+                    while int(con.cmd("frame")[1].split()[-1]) < goal:
+                        time.sleep(0.5)
+                else:
+                    con.cmd(c)
             if a.wait:
                 # settle: the room's script start-up, spawns and the first AI states run unheld
                 con.cmd("hold 1")
