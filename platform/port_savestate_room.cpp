@@ -54,6 +54,7 @@ struct PortRoomState {
   // rebuilds it, so it is not a kill the state should remember.
   static bool IsFlotsam(const CDarkTrooper& t) { return t.mRagDollHolder.mFlotsam; }
   static CScriptDoor::ELockState DoorLock(const CScriptDoor& d) { return d.mLockState; }
+  static void SetDoorUnlocked(CScriptDoor& d, CStateManager& mgr) { d.SetLockState(mgr, CScriptDoor::kLS_Unlocked); }
   static float TimerTime(const CScriptTimer& t) { return t.mTime; }
   static void SetTimer(CScriptTimer& t, float time, bool timing) {
     t.mTime = time;
@@ -610,7 +611,14 @@ bool ApplyObject(CStateManager& mgr, CEntity& ent, const RoomObject& obj, Change
                                 saved == CScriptDoor::kLS_Locking || saved == CScriptDoor::kLS_Locked;
         const bool isLocked = live == CScriptDoor::kLS_Pending || live == CScriptDoor::kLS_Locking ||
                               live == CScriptDoor::kLS_Locked;
-        if (wantLocked != isLocked) {
+        if (saved == CScriptDoor::kLS_Unlocked && live != CScriptDoor::kLS_Unlocked) {
+          // A rebuilt door starts Locked (AreaLoaded) when its template says so; an unlock
+          // message would only start the 1 s unlocking animation and leave it in Unlocking, so
+          // go straight to the settled state the save had.
+          PortRoomState::SetDoorUnlocked(*door, mgr);
+          log.Note(obj.editorId, "door unlocked");
+          changed = true;
+        } else if (wantLocked != isLocked) {
           mgr.SendScriptMsg(door, kInvalidUniqueId, wantLocked ? kSM_Lock : kSM_Unlock);
           log.Note(obj.editorId, wantLocked ? "door locked" : "door unlocked");
           changed = true;
