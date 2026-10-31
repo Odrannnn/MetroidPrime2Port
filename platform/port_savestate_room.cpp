@@ -515,15 +515,6 @@ bool ApplyObject(CStateManager& mgr, CEntity& ent, const RoomObject& obj, Change
         physics->SetTransform(xf);
       }
     }
-    if (const RoomBlock* b = FindBlock(obj, kTagMotion)) {
-      BlockReader r(b->data);
-      CVector3f velocity(0.f, 0.f, 0.f);
-      CVector3f momentum(0.f, 0.f, 0.f);
-      if (r.Vec(velocity) && r.Vec(momentum)) {
-        physics->SetVelocityWR(velocity);
-        physics->SetMomentumWR(momentum);
-      }
-    }
   }
   if (CScriptPlatform* plat = TCastToPtr< CScriptPlatform >(&ent)) {
     if (const RoomBlock* b = FindBlock(obj, kTagPlatform)) {
@@ -691,6 +682,21 @@ bool ApplyObject(CStateManager& mgr, CEntity& ent, const RoomObject& obj, Change
   }
   if (fieldsBlock != nullptr) {
     later.push_back({ent.GetUniqueId(), &obj});
+  }
+  // Velocity and momentum go in last, after every block above: a class's own block can stop the
+  // actor, and a platform's does - PortRoomState::SetPlatform calls CScriptPlatform::SetMotionTime,
+  // which calls Stop() and so zeroed the velocity kTagMotion had just carried in: Agon area 12's
+  // moving platforms read 0,0,0 after a round trip while the save held 0.1-1.5 units/tick.
+  if (CPhysicsActor* physics = TCastToPtr< CPhysicsActor >(&ent)) {
+    if (const RoomBlock* b = FindBlock(obj, kTagMotion)) {
+      BlockReader r(b->data);
+      CVector3f velocity(0.f, 0.f, 0.f);
+      CVector3f momentum(0.f, 0.f, 0.f);
+      if (r.Vec(velocity) && r.Vec(momentum)) {
+        physics->SetVelocityWR(velocity);
+        physics->SetMomentumWR(momentum);
+      }
+    }
   }
   return changed;
 }
