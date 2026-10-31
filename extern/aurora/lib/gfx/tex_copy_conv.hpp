@@ -43,10 +43,14 @@ struct ConvRequest {
   SampleFilter sampleFilter = SampleFilter::Nearest;
   CopyDomain domain = CopyDomain::Display;
   Range toneRange; // HdrDisplay: the tone curve's three vec4f rows
-  uint32_t srcSamples = 1; // Depth formats: srcView's sample count (a multisampled EFB reads sample 0)
+  uint32_t srcSamples = 1; // Depth and index formats: srcView's sample count (a multisampled EFB reads sample 0)
 };
 
 bool needs_conversion(GXTexFmt fmt);
+// Port: A8/R8/G8/B8, whose texels are indices or masks; and whether run() can convert such a copy
+// from a multisampled colour source (sample 0; Core devices only).
+bool index_copy_format(GXTexFmt fmt) noexcept;
+bool index_copy_ms_supported(GXTexFmt fmt) noexcept;
 // Whether run() can convert a depth copy of fmt from an EFB with msaaSamples samples. Compatibility
 // devices cannot bind multisampled depth textures.
 bool depth_conversion_supported(GXTexFmt fmt, uint32_t msaaSamples) noexcept;

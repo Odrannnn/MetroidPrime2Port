@@ -340,9 +340,17 @@ void render(wgpu::CommandEncoder& cmd, FramePacket& frame, RenderPass& passInfo,
     const bool isDepth = isDepthCopy;
     // Depth copies read the depth buffer, which an HDR scene pass leaves as it is.
     const auto domain = isDepth ? tex_copy_conv::CopyDomain::Display : passInfo.resolveDomain;
+    // Port: an index/mask copy from a multisampled EFB reads sample 0 of the original attachment (kept
+    // stored by discard_dead_stores), not the averaged resolve: a blend of two ids is another id.
+    const bool indexMs = !isDepth && passInfo.msaaSamples > 1 && domain == tex_copy_conv::CopyDomain::Display &&
+                         is_index_copy_format(passInfo.resolveFormat) &&
+                         tex_copy_conv::index_copy_ms_supported(passInfo.resolveFormat) &&
+                         passInfo.colorAttachments[SceneColorAttachmentIndex].storeOp == wgpu::StoreOp::Store;
     const tex_copy_conv::ConvRequest convReq{
         .fmt = passInfo.resolveFormat,
-        .srcView = isDepth ? passInfo.copySourceDepthView : passInfo.copySourceView,
+        .srcView = isDepth ? passInfo.copySourceDepthView
+                 : indexMs ? passInfo.colorAttachments[SceneColorAttachmentIndex].view
+                           : passInfo.copySourceView,
         .uniformRange = passInfo.resolveUniformRange,
         .dst = passInfo.resolveTarget,
         // Port: 8-bit index/mask copies (A8/R8/G8/B8; scan visor ids, C8 lookups) hold values that
@@ -352,7 +360,7 @@ void render(wgpu::CommandEncoder& cmd, FramePacket& frame, RenderPass& passInfo,
                             : tex_copy_conv::SampleFilter::Nearest,
         .domain = domain,
         .toneRange = passInfo.resolveToneRange,
-        .srcSamples = isDepth ? passInfo.msaaSamples : 1u,
+        .srcSamples = (isDepth || indexMs) ? passInfo.msaaSamples : 1u,
     };
     // A raw copy only between equal formats in the same domain: an HDR display copy always
     // post-tones, and RGBA16F never goes to an 8-bit texture as is.
