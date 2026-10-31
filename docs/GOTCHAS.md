@@ -256,3 +256,10 @@ game ignores SIGPIPE, the copier ignores SIGTERM/SIGHUP, and Aurora logs through
   onto the new `origin/port`, never merge them. The shared `.git/hooks/pre-push` rejects any push that carries
   those paths. The files stay on disk (gitignored); the tests that use them skip when they're missing.
   Backup of the old refs: `../mp2-purge-2026-10-28/pre-purge-all.bundle`.
+
+## No GPL LZO (2026-10-31)
+
+- Upstream vendors LZO 1.08 (GPL) in `src/LZO`/`include/LZO`; this tree deletes both. In an upstream merge
+  that touches them, keep the deletion (`git rm`). Their units and `Kyoto/Streams/CLZOSupport.cpp` stay
+  NonMatching in `configure.py` (keep that too), so the matching build links the original objects. The port
+  decodes with `src/Kyoto/Streams/CLZOSupportPort.cpp` (MIT, checked byte-identical on every disc chunk).
