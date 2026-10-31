@@ -289,6 +289,7 @@ void CaptureObject(CStateManager& mgr, CEntity& ent, RoomObject& obj) {
     if (const CHealthInfo* health = actor->HealthInfo()) {
       BlockWriter w;
       w.F32(health->GetHP());
+      w.F32(health->GetKnockBackResistance());
       obj.blocks.push_back({kTagHealth, w.bytes});
     }
   }
@@ -504,6 +505,13 @@ bool ApplyObject(CStateManager& mgr, CEntity& ent, const RoomObject& obj, Change
       if (r.ok && hp == hp && health != nullptr && health->GetHP() != hp) {
         health->SetHP(hp);
         log.Note(obj.editorId, "health restored");
+        changed = true;
+      }
+      // Knockback resistance follows hp; states written before it was saved end after hp.
+      const float resist = r.F32();
+      if (r.ok && resist == resist && health != nullptr && health->GetKnockBackResistance() != resist) {
+        health->SetKnockbackResistance(resist);
+        log.Note(obj.editorId, "knockback resistance restored");
         changed = true;
       }
     }
