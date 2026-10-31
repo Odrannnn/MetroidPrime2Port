@@ -761,8 +761,6 @@ if(AURORA_SDL3_TARGET)
         COMMAND ${Python3_EXECUTABLE} -I ${CMAKE_CURRENT_SOURCE_DIR}/tests/port_console_docs.py
                 ${CMAKE_CURRENT_SOURCE_DIR})
     set_tests_properties(port_console_docs PROPERTIES TIMEOUT 15 LABELS port)
-    # Every settings.cfg key reads back as written (platform/debug_ui/settings.cpp, kSettingKeys); the game
-    # binary checks itself and exits before starting.
     # The generated entity field schema (tools/gen_entity_schema.py): it compiles the
     # accessors against every entity header, as mp_port_audio does.
     add_executable(port_entity_schema_tests tests/port_entity_schema.cpp platform/port_entity_schema.cpp)
@@ -780,6 +778,8 @@ if(AURORA_SDL3_TARGET)
         COMMAND ${Python3_EXECUTABLE} -I ${CMAKE_CURRENT_SOURCE_DIR}/tools/gen_entity_schema.py --check)
     set_tests_properties(port_entity_schema_current PROPERTIES TIMEOUT 300 LABELS port
         SKIP_RETURN_CODE 77)
+    # Every settings.cfg key reads back as written (platform/debug_ui/settings.cpp, kSettingKeys); the game
+    # binary checks itself and exits before starting.
     add_test(NAME port_settings_roundtrip COMMAND metroid_prime2_port --settings-selftest)
     set_tests_properties(port_settings_roundtrip PROPERTIES TIMEOUT 30 LABELS port
         ENVIRONMENT "MP2_USER_PATH=${CMAKE_CURRENT_BINARY_DIR}/settings-selftest/")
