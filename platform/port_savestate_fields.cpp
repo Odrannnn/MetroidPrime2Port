@@ -222,8 +222,19 @@ struct PortStateCodec {
     }
     // A machine is set up lazily (first Think); a freshly loaded actor that has not run yet has
     // no definition to enter a state in.
-    // A machine saved without a state never ran (inactive): leave it to start on its own.
+    // A machine saved without a state never ran (inactive): it must start on its own, so a live
+    // one that already entered a state (the layer rebuild ticked the actor before the restore
+    // deactivated it) is reset to the unstarted machine.
     if (name.empty()) {
+      if (r.ok && m->HasState()) {
+        m->Reset(mgr, *owner);
+        // Reset keeps the clock of the state it left.
+        if (auto* ts = dynamic_cast< TStateMachineState< CPatterned >* >(m)) {
+          ts->mTime = 0.f;
+        } else if (auto* fsm = dynamic_cast< CGenericFSM2State< CPatterned >* >(m)) {
+          fsm->mTime = 0.f;
+        }
+      }
       return true;
     }
     if (!m->HasState()) {
