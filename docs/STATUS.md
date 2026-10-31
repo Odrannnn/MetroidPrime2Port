@@ -5,7 +5,7 @@ appended, dated as in the heading there.
 
 ## 2026-10-31: save-state sweep, sessions 2-3
 
-Merged into port (unpushed):
+Merged into port (pushed at 1e14b5f63):
 - sc/restorehold: `src/MetroidPrime/main.cpp` fixed-tick loop counts ticks actually run and stops on
   `PortOverlay::TickHold()` (Rezbit timer / ai_time drift after a restore).
 - kbres: knockback resistance saved after hp (optional trailing field; Dark Trooper).
@@ -20,16 +20,14 @@ Merged into port (unpushed):
   env claims (settings.cpp header, QOL idle cursor, console `(env X set; wins if the key reads it)`),
   CONSOLE.md + console help strings (state hold, crosshair gamecube, hint radius, place angles), MODS.md.
 
-Lanes running at handoff (review the full diff, merge, release the slot):
-- sonnet `ses_e6cd854abffeETfhrA5kCCHUtY` sc/ing3stage1 (lane2) → /tmp/opencode/reports/sc-ing3stage1.md.
-- sonnet `ses_e6cb09371ffeccjj7P9el6yQl6` sc/dg-pickups (lane1) → sc-dg-pickups.md.
-- sonnet `ses_e6caf0fcfffeO5GjyT4GwY4g0k` sc/statecheck-setup (lane3; `--setup` `;` desync, dead
-  Puffer round trip) → sc-statecheck-setup.md.
-- worker `ses_e6ca17b9effeNnn05Q9aNlyfQH` docs/mods-followup (settings index texture rows filed
-  under Game, stale header comments) → mods-followup.md.
+Session 3 lanes merged: sc/ing3stage1 (reset a live FSM whose saved machine never started),
+sc/statecheck-setup (`--setup` chains with `;`), docs/mods-followup, sc/dg-pickups (not reproduced
+in 8 runs; debris drops documented in SAVESTATE_SCHEMA.md). GPL LZO replaced by an MIT decoder.
 
-Open: CMinorIng Ing3 ai Idle→PathFind; knee-kill pickups lost on round trip; retail Puffer has no
-engaged state. `platform/debug_ui.cpp:296` has the old env claim but is unbuilt. Statecheck runs:
+Running: sonnet `ses_e6c761547ffeX5tUweH9CI54Y4` sc/debris-pickup (saved fields applied to the
+pickup a restored debris drops) → /tmp/opencode/reports/sc-debris-pickup.md.
+
+Open: retail Puffer has no engaged state. `platform/debug_ui.cpp:296` has the old env claim but is unbuilt. Statecheck runs:
 copy the userdir, own --port/--display, `--build <tree>/build-port-link`.
 
 ## 2026-10-31: behaviour audit 2 (A8) complete
