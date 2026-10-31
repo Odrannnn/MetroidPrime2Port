@@ -128,6 +128,10 @@ env "${VIDEO[@]}" SDL_AUDIODRIVER=dummy \
   AURORA_PRESENT_EVERY=$PRESENT_EVERY_VALUE AURORA_RENDER_EVERY=${RENDER_EVERY:-$PRESENT_EVERY_VALUE} \
   env "${envs[@]}" "${SLOT[@]}" timeout -k 10 "${SECS:-460}" ./metroid_prime2_port > "$LOG" 2>&1 &
 GAME=$!
+# `timeout` puts the game in a process group of its own, so a caller's killpg on this script never
+# reaches it (statecheck left games holding their console port): pass the signal on, `timeout`
+# forwards it to the game.
+trap 'kill -TERM "$GAME" 2>/dev/null; wait "$GAME"; exit 143' TERM INT HUP
 # STOP_ON_STALL=1: a paused game (a save screen with nothing to answer it, the ending's "Save
 # progress?" prompt in Temple Grounds 58) never reaches MP2_FRAMES, so only the timeout would end
 # the run. The harness's "no game update for" line is the signal; end the run on it, exit 125.
