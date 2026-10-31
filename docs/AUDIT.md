@@ -142,6 +142,7 @@ Scripts: `tools/audit/` (see its README).
 | A8-9 | DarkTrooper | CDarkTrooper.cpp:752 | constant | low | ThinkRagDoll no-water sentinel: retail .rodata+0xAC = 0xFEFFFFFF (-1.7014117e38, fn_12_2D98 0x2DD8), port `-FLT_MAX` (0xFF7FFFFF); both below any world coordinate, no gameplay impact shown | open |
 | A8-10 | FishCloud | CFishCloud.cpp:358-396 | eval-order | low | Create/PlaceBoid draw RNG inside constructor arguments; retail order is z,y,x then scale then vel y,x (fn_20 0x4210-0x4260, 0x44E4-0x4578). GCC happens to match; clang (Android/Apple) evaluates left to right, so boid layout differs | open |
 | A8-11 | FishCloud | CFishCloud.hpp:130 | uninit | low | mThinkCounter (+0x188) never initialised in retail ctor either (0x5990-0x59CC); Think increments it (0x31C4). Host heap isn't zeroed: UB on host, retail value unknown; init 0 under TARGET_PC | open |
+| A8-12 | Lumite | CLumite.cpp:826 | eval-order | low | RandomVector builds CVector3f(Range,Range,Range); retail draws z,y,x. Same class as A8-10: clang assigns draws to other axes (shot jitter only) | open |
 
 ## Sweep log
 
@@ -151,7 +152,7 @@ tiers a-c over the unlinked/matching upstream units, and the Review 5 per-module
 row above is the result; the log only records which functions each slice covered.
 
 Sweep A8 (behaviour audit 2, 2026-10-31, in progress): lane reports in `/tmp/opencode/reports/audit-a8-*.md`;
-covered so far: reached stubs (clean), Grenchler parts 1-3 (part 3 clean), Sporb parts 1-2, DarkTrooper (A8-9), FishCloud (A8-10, A8-11; random-scale pow 1 ulp, wontfix), Lumite part 1 (clean), the 90 port-folded
+covered so far: reached stubs (clean), Grenchler parts 1-3 (part 3 clean), Sporb parts 1-2, DarkTrooper (A8-9), FishCloud (A8-10, A8-11; random-scale pow 1 ulp, wontfix), Lumite (A8-12), DestructibleBarrier (clean; Think clamps differ only on NaN), the 90 port-folded
 constants (none diverge; fn_78_2E38 may round 1 ulp differently), FlyingPirate (clean), ScriptSafeZone
 (clean), the 50 NaN-flagged comparisons (A8-3..7), commits since 2026-10-29 (gate list; the 9 that reach
 gameplay at defaults restore retail behaviour or are port features by design: quick resume, input mapping).
