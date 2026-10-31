@@ -538,7 +538,9 @@ def emit_doc(res):
           "camera interpolation, melee contacts, script messages and fixed ID arrays.", "",
           "Field policy 2 stores self/player/editor identities after the POD bytes (whose IDs are",
           "scrubbed). Unnamed dynamic references retain only a valid rebuilt reference. Policy 1",
-          "states remain readable, but their embedded raw IDs are replaced with rebuilt references.", ""]
+          "states remain readable, but their embedded raw IDs are replaced with rebuilt references.",
+          "Field policy 3 stores a body-state command's `TUniqueId` member (the wall-hang waypoint)",
+          "the same way, in the command payload's own four bytes; older policies stay readable.", ""]
     o.append(", ".join(f"`{t}` {n}" for t, n in pods.most_common()))
     o += ["", "## `smart_ptr` / `container` templates", ""]
     o.append(", ".join(f"`{t}` {n}" for t, n in smart.most_common()))
