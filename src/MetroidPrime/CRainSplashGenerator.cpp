@@ -15,18 +15,6 @@
 static const GXVtxDescList skSplashVertexDesc[] = {
     {GX_VA_POS, GX_DIRECT}, {GX_VA_CLR0, GX_DIRECT}, {GX_VA_NULL, GX_NONE}};
 
-// Port: `CSkinnedModel::GetSkinnedPosition` and `GetSkinnedNormal` have no host definition
-// (`DolphinCSkinnedModel.cpp` is not in the port's build), so the three sampling functions below
-// record the gap instead of hiding it.
-#ifdef TARGET_PC
-// Real behaviour gap, recorded rather than papered over: the port has no skinned model to
-// sample, so it chooses no vertex. Delete this branch when the skinned model is in the port's
-// build, or the link sees two bodies.
-int CRainSplashGenerator::GetNextBestPt(int point, const CSkinnedModel&, const SSkinningWorkspace&,
-                                        int, CRandom16&, float) {
-  return point;
-}
-#else
 int CRainSplashGenerator::GetNextBestPt(int point, const CSkinnedModel& model,
                                         const SSkinningWorkspace& workspace, int count,
                                         CRandom16& random, float minZ) {
@@ -48,7 +36,6 @@ int CRainSplashGenerator::GetNextBestPt(int point, const CSkinnedModel& model,
   }
   return nextPoint;
 }
-#endif // TARGET_PC
 
 CRainSplashGenerator::CRainSplashGenerator(const CVector3f& scale, int maxSplashes,
                                            int generationRate, float minZ, float alpha)
@@ -80,15 +67,6 @@ void CRainSplashGenerator::AddPoint(const CVector3f& position) {
   ++mQueueTail;
 }
 
-#ifdef TARGET_PC
-// The other half of the gap recorded above: the port generates no rain-splash points and
-// returns no sampled point, because the skinned model it would sample is not built.
-void CRainSplashGenerator::GeneratePoints(const CSkinnedModel&, const SSkinningWorkspace&) {}
-
-CVector3f CRainSplashGenerator::GeneratePoint(const CSkinnedModel&, const SSkinningWorkspace&) {
-  return CVector3f::Zero();
-}
-#else
 void CRainSplashGenerator::GeneratePoints(const CSkinnedModel& model,
                                           const SSkinningWorkspace& workspace) {
   const int numPoints = model.GetSkinRules()->GetNumPoints();
@@ -114,7 +92,6 @@ CVector3f CRainSplashGenerator::GeneratePoint(const CSkinnedModel& model,
                                 model.GetSkinRules()->GetNumPoints(), mRandom, mMinZ);
   return CVector3f::ByElementMultiply(mScale, model.GetSkinnedPosition(workspace, mCurrentPoint));
 }
-#endif // TARGET_PC
 
 void CRainSplashGenerator::UpdateRainSplashRange(CStateManager& mgr, const int start, int end,
                                                  float dt) {
