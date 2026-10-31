@@ -2,6 +2,10 @@
 # Drop the 'PENDING' ones once the TARGET_PC lane lands its edits, then rerun the generator.
 
 src/Kyoto/CARAMManager.cpp | 64-bit pointer cast to u32/uint in upstream source (needs TARGET_PC handling)
+src/Kyoto/Streams/CLZOSupport.cpp | calls the GPL LZO library; src/Kyoto/Streams/CLZOSupportPort.cpp (MIT) stands in
+src/LZO/lzo1x_d1.c | GPL LZO 1.08, matching build only; kept out of the port binary
+src/LZO/lzo_init.c | GPL LZO 1.08, matching build only; kept out of the port binary
+src/LZO/lzo_ptr.c | GPL LZO 1.08, matching build only; kept out of the port binary
 src/Kyoto/CFactoryFunctionsPort.cpp | port stub written against the old decomp; upstream header/layout differs (Kyoto/CFactoryFunctions.hpp: No such file or directory)
 src/MetroidPrime/Player/PortSPersistentOptionsValue.cpp | port stub written against the old decomp; upstream header/layout differs (MetroidPrime/Player/SPersistentOptionsValue.hpp: No such file or directory)
 src/MetroidPrime/PortBoot.cpp | port stub written against the old decomp; upstream header/layout differs (‘GetMaxSpeed’ was not declared in this scope; did you mean ‘SetMaxSpeed’?)

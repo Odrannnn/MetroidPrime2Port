@@ -28,6 +28,7 @@ PORT_ONLY = [
     "src/Kyoto/Alloc/PortMwccNew.cpp",
     "src/Kyoto/CARAMManagerPort.cpp",
     "src/Kyoto/CFactoryFunctionsPort.cpp",
+    "src/Kyoto/Streams/CLZOSupportPort.cpp",
     "src/Kyoto/Graphics/PortDrawDebug.cpp",
     "src/Kyoto/PortCMemoryCardSys.cpp",
     "src/MetroidPrime/Player/PortSPersistentOptionsValue.cpp",
@@ -137,11 +138,7 @@ def render() -> str:
         "# Exclusions (with reasons): tools/files_cmake_excluded.txt\n"
         f"set(MP_GAME_SOURCES\n{body})\n"
         f"# REL modules, each its own symbol namespace\n{mbody}\n"
-        f"# Port-only sources\nlist(APPEND MP_GAME_SOURCES\n{pbody})\n\n"
-        "# LZO's bundled config assumes 32-bit size_t; set the host width for native builds.\n"
-        "set_source_files_properties(\n    src/LZO/lzo1x_d1.c\n    src/LZO/lzo_init.c\n"
-        "    src/LZO/lzo_ptr.c\n    PROPERTIES\n"
-        '    COMPILE_DEFINITIONS "SIZEOF_SIZE_T=${CMAKE_SIZEOF_VOID_P}"\n)\n'
+        f"# Port-only sources\nlist(APPEND MP_GAME_SOURCES\n{pbody})\n"
     )
 
 

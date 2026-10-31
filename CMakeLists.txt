@@ -225,18 +225,17 @@ mp_signed_char(mp_game)
 # searched *after* Aurora, because Echoes' `include/dolphin/` tree is the partial
 # SDK decompilation and must not shadow Aurora's complete, PC-aware SDK view.
 # `platform/include/dolphin` fills the SDK headers Aurora omits. `include/LZO`
-# is on the path project-wide because the bundled codec is included both as
-# `<lzo1x.h>` (upstream's own build does the same).
+# stays off the path: the GPL LZO library is matching-build only, and
+# src/Kyoto/Streams/CLZOSupportPort.cpp is the host decompressor.
 target_include_directories(mp_game PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/platform/include
     ${CMAKE_CURRENT_SOURCE_DIR}/extern/aurora/include
     ${CMAKE_CURRENT_SOURCE_DIR}/extern/musyx-port/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/LZO)
+    ${CMAKE_CURRENT_SOURCE_DIR}/include)
 # compat.h restores the SDK macros Aurora omits; it is force-included ahead of
 # every C++ game translation unit. It is C++-only (it pulls in the game's
 # CMemory/IAllocator headers), so it must not reach the few C translation units
-# in the list - the bundled LZO codec - which are compiled as C, exactly as the
+# in the list, which are compiled as C, exactly as the
 # matching build does.
 # clang-cl takes the GNU-style warning flags too; MWCC accepted the narrowing initializers.
 set(MP_MSVC_GAME_OPTIONS /W3

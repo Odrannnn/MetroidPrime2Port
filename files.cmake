@@ -237,7 +237,6 @@ set(MP_GAME_SOURCES
     src/Kyoto/Particles/CVectorElement.cpp
     src/Kyoto/Streams/CBitStreamReader.cpp
     src/Kyoto/Streams/CBitStreamWriter.cpp
-    src/Kyoto/Streams/CLZOSupport.cpp
     src/Kyoto/Streams/CLookaheadRes.cpp
     src/Kyoto/Streams/CMemoryInStream.cpp
     src/Kyoto/Streams/CMemoryStreamOut.cpp
@@ -271,9 +270,6 @@ set(MP_GAME_SOURCES
     src/Kyoto/Text/CTextRenderBuffer.cpp
     src/Kyoto/Text/CWordBreakTables.cpp
     src/Kyoto/Text/CWordInstruction.cpp
-    src/LZO/lzo1x_d1.c
-    src/LZO/lzo_init.c
-    src/LZO/lzo_ptr.c
     src/MetaRender/AmbientLightScale.cpp
     src/MetaRender/CCubeRenderer.cpp
     src/MetroidPrime/BodyState/CABSAim.cpp
@@ -1087,6 +1083,7 @@ list(APPEND MP_GAME_SOURCES
     src/MetroidPrime/HUD/PortRadialHud.cpp
     src/Kyoto/Alloc/PortMwccNew.cpp
     src/Kyoto/CARAMManagerPort.cpp
+    src/Kyoto/Streams/CLZOSupportPort.cpp
     src/Kyoto/Graphics/PortDrawDebug.cpp
     src/MetroidPrime/PortCMorphBallVtables.cpp
     src/MetroidPrime/PortCPlayerDynamicsVtables.cpp
@@ -1103,13 +1100,4 @@ list(APPEND MP_GAME_SOURCES
     src/MetroidPrime/PortSkipFrontEnd.cpp
     src/MetroidPrime/PortStateMachineBase.cpp
     src/MetroidPrime/PortTweakGlobals.cpp
-)
-
-# LZO's bundled config assumes 32-bit size_t; set the host width for native builds.
-set_source_files_properties(
-    src/LZO/lzo1x_d1.c
-    src/LZO/lzo_init.c
-    src/LZO/lzo_ptr.c
-    PROPERTIES
-    COMPILE_DEFINITIONS "SIZEOF_SIZE_T=${CMAKE_SIZEOF_VOID_P}"
 )
