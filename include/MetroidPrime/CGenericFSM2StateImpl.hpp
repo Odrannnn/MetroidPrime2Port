@@ -424,11 +424,12 @@ int CGenericFSM2State< T >::PortFindStateDepth(const rstl::string& name, int max
 template < class T >
 int CGenericFSM2State< T >::PortSetStateDeep(CStateManager& mgr, T& owner,
                                              const rstl::string& name, const char** path,
-                                             int maxDepth) {
+                                             int maxDepth, const char* const* want,
+                                             int wantCount) {
   if (mMachine == nullptr) {
     return -1;
   }
-  if (GetStateIndex(name) != -1) {
+  if (wantCount <= 0 && GetStateIndex(name) != -1) {
     SetState(mgr, owner, name);
     return 0;
   }
@@ -440,6 +441,18 @@ int CGenericFSM2State< T >::PortSetStateDeep(CStateManager& mgr, T& owner,
     if (sub->PortFindStateDepth(name, maxDepth - 1) < 0) {
       continue;
     }
+    if (wantCount > 0) {
+      const CState2* n = mSubMachines[i].mState;
+      const char* have = n != nullptr ? static_cast< const CState2SubMachine* >(n)->GetName().data() : "";
+      const char* w = want[0];
+      while (*have != '\0' && *have == *w) {
+        ++have;
+        ++w;
+      }
+      if (*have != *w) {
+        continue;
+      }
+    }
     // ExecuteSubflow's activate, minus its one-level SetState: stay in the sub-machine when it
     // is already the active node, else leave the active node and make it active.
     const CState2* node = mSubMachines[i].mState;
@@ -449,7 +462,9 @@ int CGenericFSM2State< T >::PortSetStateDeep(CStateManager& mgr, T& owner,
       mTime = 0.f;
     }
     path[0] = static_cast< const CState2SubMachine* >(node)->GetName().data();
-    const int depth = sub->PortSetStateDeep(mgr, owner, name, path + 1, maxDepth - 1);
+    const int depth = sub->PortSetStateDeep(mgr, owner, name, path + 1, maxDepth - 1,
+                                                want != nullptr ? want + 1 : nullptr,
+                                                wantCount > 0 ? wantCount - 1 : 0);
     return depth >= 0 ? depth + 1 : -1;
   }
   return -1;

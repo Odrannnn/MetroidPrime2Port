@@ -53,8 +53,10 @@ public:
   // whose own states hold `name`, or -1. PortSetStateDeep enters it the way a transition into a
   // sub-machine does, filling path[0..depth) with the sub-machine names it went through.
   int PortFindStateDepth(const rstl::string& name, int maxDepth) const;
+  // `want[0..wantCount)`, when given, is the sub-machine path to follow (the same names path
+  // reports): a leaf name can exist at several levels, so the name alone picks the wrong one.
   int PortSetStateDeep(CStateManager& mgr, T& owner, const rstl::string& name, const char** path,
-                       int maxDepth);
+                       int maxDepth, const char* const* want = nullptr, int wantCount = 0);
   // Port console (`statecall`): the function SetStateFunctions was given under `name`, whether or
   // not a node of the asset uses it (so a state the shipped FSM never enters can still run), or
   // null.
