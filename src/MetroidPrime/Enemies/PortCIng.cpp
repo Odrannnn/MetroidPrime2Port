@@ -531,6 +531,7 @@ CIng::CIng(TUniqueId uid, const rstl::string& name, const CEntityInfo& info, con
 , mHurtfulZone(false)
 , mLastLoggedState(nullptr)
 , mStateTime(0.f)
+, mSuckTickLogged(false)
 , mPathArea(nullptr)
 , mDebugPoll(0) {
   // fn_29_E7C8 (0x110) builds the data block's sub-structs inside the constructor: the host takes
