@@ -229,8 +229,38 @@ void render(wgpu::CommandEncoder& cmd, FramePacket& frame, RenderPass& passInfo,
     return;
   }
 
+  // Port: a continuation pass that draws nothing and loads (never clears) its targets leaves them as the
+  // pass before stored them, so beginning it only costs a full-target load and store (a tiler's main
+  // cost). Its copy reads the same single-sampled attachment, so skip the pass and keep the rest.
+  bool emptyLoadPass = passInfo.msaaSamples == 1;
+  if (emptyLoadPass) {
+    for (const auto& command : passInfo.commands) {
+      if (command.type == CommandType::Draw || command.type == CommandType::CustomDraw) {
+        emptyLoadPass = false;
+        break;
+      }
+    }
+  }
+  if (emptyLoadPass) {
+    for (uint32_t i = 0; i < passInfo.colorAttachmentCount; ++i) {
+      const auto& source = passInfo.colorAttachments[i];
+      if (source.clear || source.loadOp == wgpu::LoadOp::Clear || source.storeOp != wgpu::StoreOp::Store ||
+          source.resolveView) {
+        emptyLoadPass = false;
+      }
+    }
+    if (passInfo.depthStencilView && passInfo.hasDepth &&
+        (passInfo.depthLoadOp == wgpu::LoadOp::Clear ||
+         (passInfo.depthLoadOp == wgpu::LoadOp::Undefined && passInfo.clearDepth))) {
+      emptyLoadPass = false;
+    }
+    if (passInfo.depthStencilView && passInfo.hasStencil && passInfo.stencilLoadOp == wgpu::LoadOp::Clear) {
+      emptyLoadPass = false;
+    }
+  }
+
   std::array<wgpu::RenderPassColorAttachment, MaxColorAttachments> attachments{};
-  for (uint32_t i = 0; i < passInfo.colorAttachmentCount; ++i) {
+  for (uint32_t i = 0; i < passInfo.colorAttachmentCount && !emptyLoadPass; ++i) {
     const auto& source = passInfo.colorAttachments[i];
     attachments[i] = {
         .view = source.view,
@@ -271,12 +301,17 @@ void render(wgpu::CommandEncoder& cmd, FramePacket& frame, RenderPass& passInfo,
       .colorAttachmentCount = passInfo.colorAttachmentCount,
       .colorAttachments = attachments.data(),
       .depthStencilAttachment = depthStencilAttachmentPtr,
-      .timestampWrites = webgpu::gpu_prof::pass_writes(passIndex == 0 ? "EFB pass (first)" : "EFB pass (later)"),
+      // Port: a skipped pass must not take a profiler zone (its timestamps would never be written).
+      .timestampWrites = emptyLoadPass ? nullptr
+                                       : webgpu::gpu_prof::pass_writes(passIndex == 0 ? "EFB pass (first)"
+                                                                                      : "EFB pass (later)"),
   };
 
-  auto pass = cmd.BeginRenderPass(&renderPassDescriptor);
-  render_pass(pass, frame, passInfo);
-  pass.End();
+  if (!emptyLoadPass) {
+    auto pass = cmd.BeginRenderPass(&renderPassDescriptor);
+    render_pass(pass, frame, passInfo);
+    pass.End();
+  }
 
   if (passInfo.captureDepthSnapshot || passInfo.forceDepthSnapshot) {
     depth_peek::encode_frame_snapshot(cmd, passInfo.copySourceDepthView,
