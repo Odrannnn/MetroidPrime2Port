@@ -52,7 +52,7 @@ constexpr uint32_t kUidDynamic = 0xFFFFFFFEu;
 constexpr uint32_t kUidPlayer = 0xFFFFFFFDu;
 constexpr uint32_t kUidSelf = 0xFFFFFFFCu;
 
-uint32_t PutUid(const CStateManager& mgr, const CEntity& owner, TUniqueId uid) {
+static uint32_t PutUid(const CStateManager& mgr, const CEntity& owner, TUniqueId uid) {
   if (uid == kInvalidUniqueId) {
     return kUidNone;
   }
@@ -71,7 +71,7 @@ uint32_t PutUid(const CStateManager& mgr, const CEntity& owner, TUniqueId uid) {
   return kUidDynamic;
 }
 
-TUniqueId GetUid(CStateManager& mgr, CEntity& owner, uint32_t id, TUniqueId live) {
+static TUniqueId GetUid(CStateManager& mgr, CEntity& owner, uint32_t id, TUniqueId live) {
   if (id == kUidSelf) {
     return owner.GetUniqueId();
   }
