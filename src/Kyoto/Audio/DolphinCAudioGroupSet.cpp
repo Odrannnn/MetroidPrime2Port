@@ -217,7 +217,8 @@ uint CountSampleDirEntries(const uchar* sampleDir, uint sampleDirSize) {
 // entry array.
 void ConvertAdpcmInfoBlocks(uchar* sampleDir, uint blocksOffset, uint blocksSize,
                             SDIR_DATA* entries, uint count, uint discEntryBytes) {
-  uint converted[256];
+  // One slot per entry: a fixed-size table would leave blocks past its end big-endian.
+  uint* converted = rs_new uint[count];
   uint convertedCount = 0;
   for (uint i = 0; i < count; ++i) {
     const uint oldOffset = entries[i].extraData;
@@ -229,7 +230,7 @@ void ConvertAdpcmInfoBlocks(uchar* sampleDir, uint blocksOffset, uint blocksSize
       continue;
     }
     entries[i].extraData = newOffset;
-    if (!RecordOffset(converted, convertedCount, 256, newOffset)) {
+    if (!RecordOffset(converted, convertedCount, count, newOffset)) {
       continue;
     }
     uchar* info = sampleDir + newOffset;
@@ -241,6 +242,7 @@ void ConvertAdpcmInfoBlocks(uchar* sampleDir, uint blocksOffset, uint blocksSize
       WriteU16(info + at, ReadBigU16(info + at)); // coefTab[8][2]
     }
   }
+  delete[] converted;
 }
 
 void ConvertSampleDir(SDIR_DATA* dest, uint destCount, const uchar* source, uint sourceSize) {
