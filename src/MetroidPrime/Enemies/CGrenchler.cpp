@@ -2223,7 +2223,7 @@ bool CGrenchler::ShouldBackstep(CStateManager& mgr, const CTriggerData& data) co
     CActor* actor =
         TCastToPtr< CActor >(const_cast< CEntity* >(mgr.GetObjectById(mTouchingTeammateId)));
     if (actor != nullptr) {
-      if (IsFacing(actor->GetTranslation(), 2.0943952f) == true) {
+      if (IsFacing(actor->GetTranslation(), 1.9198622f) == true) {
         return true;
       }
       if (CMath::AbsF(actor->GetTranslation().GetZ() - GetTranslation().GetZ()) > 4.f) {
@@ -2705,7 +2705,7 @@ void CGrenchler::BeamAttack(CStateManager& mgr, EStateMsg msg, float) {
   } else if (BodyController()->IsFrozen() == true) {
     StopElectricBeam(mgr);
   }
-  const CVector3f target = GetPlayerTargetPosition(mgr) + CVector3f(0.f, 0.f, 2.5f);
+  const CVector3f target = GetTargetPosition(mgr) + CVector3f(0.f, 0.f, 2.5f);
   DeliverCommand(msg, pas::kAS_ProjectileAttack,
                  CBCProjectileAttackCmd(pas::kS_One, target, false));
 }

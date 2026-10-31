@@ -131,6 +131,8 @@ Scripts: `tools/audit/` (see its README).
 | A6-6 | render (copy dest) | CCubeRenderer.cpp:3585 | render | visual | binds the shared spare as I8 while this frame's scan-visor A8 copy went to a private Destination, so the spare's registered copy may be stale (A6-2 class) | fixed ca50af073 |
 | A6-7 | render (copy dest) | CGameResultsScreen.cpp:574 | render | visual | samples the shared spare at half-viewport RGB565 with no copy found before it on its path; relies on an older copy | fixed 4f777959f |
 | A6-8 | render (Aurora) | extern/aurora/lib/dolphin/gx/GXFrameBuffer.cpp (copyTextures) | render | minor | copyTextures[dest] outlives the game buffer; a reused address of the same size could bind a stale GPU copy | wontfix (Aurora rejects size-mismatched copies; PortEfbCopy destroys recycled slots; only same-size address reuse remains, no free hook) |
+| A8-1 | Grenchler | src/MetroidPrime/Enemies/CGrenchler.cpp:2226 (ShouldBackstep, fn_27_A7C4) | wrong-const | low | retail 0xA858-0xA86C loads lbl_27_rodata_20C = 1.9198622 (110°) for IsFacing on the touching teammate; port used 2.0943952 (120°) | fixed (this commit) |
+| A8-2 | Grenchler | src/MetroidPrime/Enemies/CGrenchler.cpp:2708 (BeamAttack, fn_27_8660) | wrong-call | med | retail 0x874C calls GetTargetPosition__10CGrenchlerCFR13CStateManager (+0,0,2.5); port aimed the beam at GetPlayerTargetPosition | fixed (this commit) |
 
 ## Sweep log
 
@@ -138,6 +140,9 @@ Moved verbatim to `docs/history/AUDIT-to-2026-10-29.md` (one row per lane report
 tiers a-c over the unlinked/matching upstream units, and the Review 5 per-module slices through
 2026-10-29). Lane reports were `/tmp/opencode/reports/audit-<slice>.md` (not kept in the tree). A finding
 row above is the result; the log only records which functions each slice covered.
+
+Sweep A8 (behaviour audit 2, 2026-10-31, in progress): lane reports in `/tmp/opencode/reports/audit-a8-*.md`;
+covered so far: reached stubs (clean), Grenchler, Sporb, FlyingPirate parts 1-2, SafeZone part 1.
 
 Open: only A1-26 (RadialHud `model_inner_ring`, widget name on the GameCube pak unconfirmed); every other
 row above is `fixed`, `not-a-bug`, `wontfix` or `partly fixed` (state in its status cell).
