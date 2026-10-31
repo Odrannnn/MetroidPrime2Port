@@ -737,6 +737,9 @@ void CaptureRoomState(CStateManager& mgr, RoomState& out) {
   }
   std::map< uint32_t, uint32_t > copyIndex;
   ForEachObject(mgr, [&](CEntity& ent) {
+    // Objects without an editor id (projectiles, effects, owner-spawned children such as the Boost
+    // Guardian's ball) are not recorded: nothing could rebuild them. An owner state that needs its child
+    // re-makes it on re-entry (BoostAttack's Activate), and GetUid's kUidDynamic keeps the live id.
     if (!IsScripted(ent) || areas.count(ent.GetEditorId().AreaNum()) == 0 || IsGone(ent)) {
       return;
     }
