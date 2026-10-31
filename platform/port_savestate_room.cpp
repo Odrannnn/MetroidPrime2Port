@@ -1036,7 +1036,6 @@ void NoteScriptMsg(CStateManager& mgr, uint16_t dest, uint16_t sender, uint32_t 
   }
 }
 
-
 // Read-only views of what the room save keeps, for the statedump console command
 // (platform/port_statedump.cpp, tools/statecheck.py): the same members CaptureObject writes, as
 // JSON members (each starting with a comma) rather than as a block.

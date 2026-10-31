@@ -56,7 +56,9 @@ std::string Esc(const char* s) {
   return out;
 }
 
+#if defined(__GNUC__)
 std::string Fmt(const char* fmt, ...) __attribute__((format(printf, 1, 2)));
+#endif
 std::string Fmt(const char* fmt, ...) {
   char buf[512];
   va_list ap;

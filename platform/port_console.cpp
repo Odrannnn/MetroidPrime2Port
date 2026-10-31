@@ -4945,7 +4945,7 @@ const CommandSpec kCommands[] = {
     {"gpuselftest", CmdGpuSelfTest,
       "gpuselftest                 run the GPU self-test next frame; PASS/FAIL lines go to the log\n"},
     {"statedump", CmdStateDump,
-     "statedump <file>   every live object's state as JSON lines (tools/statecheck.py)\n"},
+      "statedump <file>            every live object's state as JSON lines (tools/statecheck.py)\n"},
     {"state", CmdState,
       "state save|load <slot>      the F5/F9 save states (load 0 = undo the last load)\n"},
     {"reloadmods", CmdReloadMods,
