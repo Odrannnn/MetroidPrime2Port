@@ -528,6 +528,23 @@ struct PortStateCodec {
 };
 
 
+// CSplinter::SSacData's layout (private there), for the two ids in it that name objects the
+// splinter made when the room was rebuilt: the saved bytes must not overwrite them.
+struct PortSplinterSacLayout {
+  TUniqueId mGrabbedId;
+  float a;
+  CVector3f b;
+  float c;
+  CVector3f d;
+  bool e1 : 1;
+  bool e2 : 1;
+  bool e3 : 1;
+  int f[4];
+  TUniqueId mSacId;
+  CVector3f g;
+  float h;
+};
+
 namespace PortSaveState {
 namespace {
 
@@ -847,7 +864,17 @@ bool GetField(CStateManager& mgr, CEntity& ent, const PortSchemaField& f, BlockR
         return false;
       }
     }
-    std::memcpy(f.addr(ent), buf.data(), size);
+    void* dst = f.addr(ent);
+    if (f.kind == PortSchemaKind::pod && std::strcmp(f.name, "mSac") == 0 && size == sizeof(PortSplinterSacLayout)) {
+      auto* live = static_cast< PortSplinterSacLayout* >(dst);
+      const TUniqueId grabbed = live->mGrabbedId;
+      const TUniqueId sac = live->mSacId;
+      std::memcpy(dst, buf.data(), size);
+      live->mGrabbedId = grabbed;
+      live->mSacId = sac;
+      return true;
+    }
+    std::memcpy(dst, buf.data(), size);
     return true;
   }
   }
