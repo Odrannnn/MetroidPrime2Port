@@ -147,6 +147,8 @@ KneeDestroyedReaction. `damage` on the colliders cannot (they forward hits and l
 Engaged CPuffer (Torvus 07_swamp_shaft): there is none. Retail's Puffer has no aggro: its FSM is
 Start/Patrol/Dead with no triggers, so `fsm PathFind` returns to Patrol (CPatterned::PathFind needs a
 search path). The states it has: roaming Patrol, and `send e002801f0 Action` (dies and is deleted).
+Statecheck of a dead Puffer (Torvus 07_swamp_shaft, boot `3dfd2249,07_swamp_shaft`): `statecheck.py --setup 'send e002801f0 Action; objs CPuffer'`
+(`;` chains work in one --setup); the area's generators respawn it, 0 strict over 2 runs.
 `gameevent <score|kill|generic|scan|damage|stop|spawn> [src] [tgt] [value] [as <proxyType>]` delivers a
 multiplayer game event (CGMMultiplayer::NotifyListeners) to every CScriptPlayerProxy listener whose mask
 holds tgt (0), which CGMSinglePlayer never registers: CListener::OnGameEvent -> OnGameEvent, and through it
