@@ -55,6 +55,17 @@ struct PortStateCodec {
     return static_cast< rstl::single_ptr< TStateMachineStateBase< CPatterned > >* >(p)->get();
   }
 
+  // The active path of a CGenericFSM2State, top first: every level keeps its own clock, and
+  // GetTime reads the deepest one.
+  static void FsmLevels(CGenericFSM2State< CPatterned >* m, std::vector< CGenericFSM2State< CPatterned >* >& out) {
+    for (int depth = 0; m != nullptr && depth < 8; ++depth) {
+      out.push_back(m);
+      const CState2SubMachine* sub = m->GetActiveSubMachine();
+      const int i = sub != nullptr ? m->GetSubMachineIndex(sub) : -1;
+      m = i >= 0 && i < m->mSubMachines.size() ? m->mSubMachines[i].mMachine.GetPtr() : nullptr;
+    }
+  }
+
   static void PutMachine(CEntity& ent, const PortSchemaField& f, BlockWriter& w) {
     TStateMachineStateBase< CPatterned >* m = Machine(ent, f);
     if (m == nullptr) {
@@ -84,6 +95,14 @@ struct PortStateCodec {
       w.F32(ts->mRandom);
       w.F32(ts->mFixedRandom);
       w.U8(ts->mCodeTrigger ? 1 : 0);
+    } else {
+      std::vector< CGenericFSM2State< CPatterned >* > levels;
+      FsmLevels(fsm, levels);
+      w.U8(static_cast< uint8_t >(levels.size()));
+      for (CGenericFSM2State< CPatterned >* l : levels) {
+        w.F32(l->mTime);
+        w.F32(l->mDelay);
+      }
     }
   }
 
@@ -107,8 +126,21 @@ struct PortStateCodec {
       fixedRandom = r.F32();
       trigger = r.U8() != 0;
     }
+    // Per-level clocks of an FSM2 path (absent in states saved before they were added).
+    std::vector< float > clocks;
+    if (kind == 1 && r.ok && r.at < data.size()) {
+      const uint32_t n = r.U8();
+      for (uint32_t i = 0; i < n * 2 && r.ok; ++i) {
+        clocks.push_back(r.F32());
+      }
+    }
     if (!r.ok || kind > 1 || !Ok(time) || !Ok(delay) || !Ok(random) || !Ok(fixedRandom)) {
       return false;
+    }
+    for (float c : clocks) {
+      if (!Ok(c)) {
+        return false;
+      }
     }
     if (kind == 0) {
       auto* ts = dynamic_cast< TStateMachineState< CPatterned >* >(m);
@@ -159,8 +191,17 @@ struct PortStateCodec {
         return false;
       }
     }
-    fsm->mTime = time;
-    fsm->SetDelay(delay);
+    std::vector< CGenericFSM2State< CPatterned >* > levels;
+    FsmLevels(fsm, levels);
+    if (!clocks.empty() && clocks.size() == levels.size() * 2) {
+      for (size_t i = 0; i < levels.size(); ++i) {
+        levels[i]->mTime = clocks[i * 2];
+        levels[i]->mDelay = clocks[i * 2 + 1];
+      }
+    } else {
+      fsm->mTime = time;
+      fsm->SetDelay(delay);
+    }
     return true;
   }
 
@@ -349,6 +390,15 @@ struct PortStateCodec {
       });
     }
 
+    // Commands go in before a state is started (CBSScripted::Start reads its anim from the
+    // scripted command) and again after, as Start may consume them.
+    auto applyCmds = [&] {
+      size_t i = 0;
+      ForEachCmd(cm, [&](auto& c) {
+        using T = std::remove_reference_t< decltype(c) >;
+        std::memcpy(reinterpret_cast< char* >(&c) + sizeof(void*), cmds[i++].data(), sizeof(T) - sizeof(void*));
+      });
+    };
     std::vector< char > keep;
     if (!bc->mActive && (bits & 2) != 0) {
       AllDelivered(cm, keep, true);
@@ -356,6 +406,9 @@ struct PortStateCodec {
       AllDelivered(cm, keep, false);
     }
     if (bc->mActive && (bits & 2) != 0) {
+      if (fits) {
+        applyCmds();
+      }
       if (fits && static_cast< int >(info.mState) != state && ValidState(info, state)) {
         if (ValidState(info, info.mState)) {
           info.mStates[info.mState]->Shutdown(*bc);
@@ -376,11 +429,7 @@ struct PortStateCodec {
       }
     }
     if (fits) {
-      size_t i = 0;
-      ForEachCmd(cm, [&](auto& c) {
-        using T = std::remove_reference_t< decltype(c) >;
-        std::memcpy(reinterpret_cast< char* >(&c) + sizeof(void*), cmds[i++].data(), sizeof(T) - sizeof(void*));
-      });
+      applyCmds();
       cm.mMove = CVector3f(steer[0], steer[1], steer[2]);
       cm.mFace = CVector3f(steer[3], steer[4], steer[5]);
       cm.mTarget = CVector3f(steer[6], steer[7], steer[8]);
