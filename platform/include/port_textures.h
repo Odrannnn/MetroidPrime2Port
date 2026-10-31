@@ -17,8 +17,9 @@
 // A user pack (MP2_USER_TEXTURES, else `user_textures` in the user folder) is
 // layered over that built-in set, with the same device-folder rules. Nothing
 // the app does on update touches it. A folder copied to `<user root>.new` is
-// swapped into place on the main thread (or at the next start); in the Prime 1
-// port the Android overlay's folder picker fills it, which Echoes lacks so far.
+// swapped into place on the main thread (or at the next start); the Android
+// overlay fills it from the system folder picker (F1 > Mods > Textures > Choose
+// texture pack folder), the desktop one imports a .zip into it.
 //
 // Texture dumping (for authoring replacements) is enabled with
 // MP2_DUMP_TEXTURES; dumps land in <cachePath>/texture_dumps.
