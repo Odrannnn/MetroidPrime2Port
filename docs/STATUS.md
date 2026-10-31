@@ -3,6 +3,15 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-10-31: behaviour audit 2 (A8) complete
+
+- Ledger `docs/AUDIT.md` A8-1..A8-28 all closed. Fixes merged: A8-17 morph-ball Render PC arm
+  (fix/a8-ballrender, reviewed vs asm 800C4404-800C4F40, review rework d00eab8b5), A8-24 snow forces,
+  A8-25 rain splash generator, docs RUNNING/GOTCHAS staleness.
+- User decisions: A8-16 keep the #30 multiplayer gate; A8-22 keep the once-per-system screen copy
+  (perf); A8-26 keep the confirming START press; A8-28 keep Remastered crosshair default.
+- Not seen on screen: morph-ball rain splash and spider glass (no raining area / magnet track reached).
+
 ## 2026-10-29: 0.6.3 released
 
 - Bumped `versionCode` 9 / `versionName` "0.6.3", metainfo 0.6.3 entry, notes
