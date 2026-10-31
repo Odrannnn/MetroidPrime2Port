@@ -361,7 +361,14 @@ void CWorldTransManager::UpdateEnabled(float dt) {
     mModelData->mRandTimeout -= dt;
     if (mModelData->mRandTimeout <= 0.f) {
       mModelData->mRandTimeout = mRandom.Range(0.016666668f, 0.1f);
+#ifdef TARGET_PC
+      // retail draw order y,x (A8-13)
+      const float shakeY = mRandom.Range(-0.075f, 0.075f);
+      const float shakeX = mRandom.Range(-0.025f, 0.025f);
+      const CVector2f shake(shakeX, shakeY);
+#else
       const CVector2f shake(mRandom.Range(-0.025f, 0.025f), mRandom.Range(-0.075f, 0.075f));
+#endif
       mModelData->mShakeDelta = (shake - mModelData->mShakeResult) / mModelData->mRandTimeout;
       const float blur = mRandom.Range(-2.f, 4.f);
       mModelData->mBlurDelta = (blur - mModelData->mBlurResult) / mModelData->mRandTimeout;

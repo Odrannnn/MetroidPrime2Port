@@ -391,12 +391,24 @@ void CIngSnatchingSwarm::ExitPortal(CStateManager& mgr, int msg, float dt) {
     const CVector3f base = mStartPosition + mData.mExitPortalDistance * mStartForward;
     mArcPoints.clear();
     mArcPoints.push_back(from);
+#ifdef TARGET_PC
+    // retail draw order z,y,x (A8-13), each vector drawn before the next
+    const float fromArcZ = mgr.Random()->Range(-1.f, 1.f);
+    const float fromArcY = mgr.Random()->Range(-1.f, 1.f);
+    const float fromArcX = mgr.Random()->Range(-1.f, 1.f);
+    mArcPoints.push_back(from + CVector3f(fromArcX, fromArcY, fromArcZ));
+    const float baseArcZ = mgr.Random()->Range(-1.f, 1.f);
+    const float baseArcY = mgr.Random()->Range(-1.f, 1.f);
+    const float baseArcX = mgr.Random()->Range(-1.f, 1.f);
+    mArcPoints.push_back(base + CVector3f(baseArcX, baseArcY, baseArcZ));
+#else
     mArcPoints.push_back(from + CVector3f(mgr.Random()->Range(-1.f, 1.f),
                                           mgr.Random()->Range(-1.f, 1.f),
                                           mgr.Random()->Range(-1.f, 1.f)));
     mArcPoints.push_back(base + CVector3f(mgr.Random()->Range(-1.f, 1.f),
                                           mgr.Random()->Range(-1.f, 1.f),
                                           mgr.Random()->Range(-1.f, 1.f)));
+#endif
     mArcPoints.push_back(base);
     mArcLength = CalculateArcLength();
     mArcSpeedScale = 1.f;
@@ -520,9 +532,17 @@ void CIngSnatchingSwarm::SetPortalSwarmPath(CStateManager& mgr, float dt) {
   const CVector3f base = mStartPosition + mData.mExitPortalDistance * mStartForward;
   for (int i = 1; i < 4; ++i) {
     const float jitter = mData.mArcJitter;
+#ifdef TARGET_PC
+    // retail draw order z,y,x (A8-13)
+    const float arcZ = mgr.Random()->Range(-jitter, jitter);
+    const float arcY = mgr.Random()->Range(-jitter, jitter);
+    const float arcX = mgr.Random()->Range(-jitter, jitter);
+    mArcPoints.push_back(base + CVector3f(arcX, arcY, arcZ));
+#else
     mArcPoints.push_back(base + CVector3f(mgr.Random()->Range(-jitter, jitter),
                                           mgr.Random()->Range(-jitter, jitter),
                                           mgr.Random()->Range(-jitter, jitter)));
+#endif
   }
   mArcLength = CalculateArcLength();
   mArcSpeedScale = 1.f;

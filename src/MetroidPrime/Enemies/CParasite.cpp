@@ -829,16 +829,35 @@ void CParasite::Attack(CStateManager& mgr, EStateMsg msg, float) {
     mTelegraphRemTime = 0.f;
     CRandom16& random = *mgr.Random();
     if (mgr.GetPlayer(0)->GetMorphballTransitionState() == CPlayer::kMS_Morphed) {
+#ifdef TARGET_PC
+      // retail draw order z,y,x (A8-13)
+      const float offZ = random.Float() - 0.5f;
+      const float offY = random.Float() - 0.5f;
+      const float offX = random.Float() - 0.5f;
+      mTargetPos = mgr.GetPlayer(0)->GetTranslation() + 0.5f * CVector3f(offX, offY, offZ);
+#else
       mTargetPos =
           mgr.GetPlayer(0)->GetTranslation() +
           0.5f * CVector3f(random.Float() - 0.5f, random.Float() - 0.5f, random.Float() - 0.5f);
+#endif
     } else {
+#ifdef TARGET_PC
+      // retail draw order z,y,x (A8-13); the +0.5 is on z as retail has it
+      const float jitZ = random.Float() + 0.5f;
+      const float jitY = random.Float() - 0.5f;
+      const float jitX = random.Float() - 0.5f;
+      mTargetPos = GetTranslation() +
+                   15.f * (mgr.GetPlayer(0)->GetTranslation() + CVector3f(jitX, jitY, jitZ) -
+                           GetTranslation())
+                              .AsNormalized();
+#else
       mTargetPos =
           GetTranslation() +
           15.f * (mgr.GetPlayer(0)->GetTranslation() +
                   CVector3f(random.Float() - 0.5f, random.Float() - 0.5f, random.Float() + 0.5f) -
                   GetTranslation())
                      .AsNormalized();
+#endif
     }
     FaceTarget(mTargetPos);
     mStateProgress = 0;
