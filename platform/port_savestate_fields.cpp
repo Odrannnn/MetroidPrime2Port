@@ -93,8 +93,9 @@ struct PortStateCodec {
         }
       }
       w.U32(static_cast< uint32_t >(index));
-      w.F32(ts->mRandom);
-      w.F32(ts->mFixedRandom);
+      // Never-drawn randoms are uninitialised host heap (can be NaN); save them as 0.
+      w.F32(Ok(ts->mRandom) ? ts->mRandom : 0.f);
+      w.F32(Ok(ts->mFixedRandom) ? ts->mFixedRandom : 0.f);
       w.U8(ts->mCodeTrigger ? 1 : 0);
     } else {
       std::vector< CGenericFSM2State< CPatterned >* > levels;
@@ -151,8 +152,18 @@ struct PortStateCodec {
     if (!m->HasState()) {
       owner->InitializeStateMachine(mgr);
     }
-    if (!r.ok || kind > 1 || !Ok(time) || !Ok(delay) || !Ok(random) || !Ok(fixedRandom)) {
-      return Fail("payload malformed or a non-finite value");
+    if (!r.ok || kind > 1) {
+      return Fail("payload malformed");
+    }
+    // A state saved before the sanitising above may carry NaN randoms: they were never drawn.
+    if (!Ok(random)) {
+      random = 0.f;
+    }
+    if (!Ok(fixedRandom)) {
+      fixedRandom = 0.f;
+    }
+    if (!Ok(time) || !Ok(delay)) {
+      return Fail("non-finite time or delay");
     }
     for (float c : clocks) {
       if (!Ok(c)) {
