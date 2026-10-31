@@ -428,6 +428,9 @@ public:
 };
 
 class CScriptMsg {
+#ifdef TARGET_PC
+  friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+#endif
 public:
   CScriptMsg()
   : mSenderId(kInvalidUniqueId)

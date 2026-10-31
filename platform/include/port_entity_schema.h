@@ -12,6 +12,7 @@
 #include <cstdint>
 
 class CEntity;
+struct TUniqueId;
 
 enum class PortSchemaKind : uint8_t {
   bool_,           // bool
@@ -47,6 +48,8 @@ struct PortSchemaField {
   void* (*addr)(CEntity& ent);                          // null for a bitfield or a reference
   long long (*getInt)(const CEntity& ent);              // bool, int and bitfield kinds
   void (*setInt)(CEntity& ent, long long value);        // the same, unless const
+  // References embedded in PODs/arrays, declaration order; null at the end.
+  TUniqueId* (*uidAt)(CEntity& ent, unsigned index) = nullptr;
 };
 
 struct PortSchemaClass {

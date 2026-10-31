@@ -69,6 +69,8 @@ int main() {
         CHECK(f.size % sizeof(float) == 0, "%s::%s math size %d", c.name, f.name, f.size);
       if (f.kind == PortSchemaKind::uid)
         CHECK(f.size == 2, "%s::%s TUniqueId size %d", c.name, f.name, f.size);
+      if (f.uidAt != nullptr)
+        CHECK(f.kind == PortSchemaKind::pod, "%s::%s embedded IDs outside POD", c.name, f.name);
       CHECK(PortEntitySchema::IsPlain(f.kind) ==
                 (integral || f.kind == PortSchemaKind::float_ || f.kind == PortSchemaKind::math ||
                  f.kind == PortSchemaKind::uid),
@@ -89,6 +91,22 @@ int main() {
   CHECK(sm != nullptr && sm->kind == PortSchemaKind::state_machine, "CPatterned::mStateMachine");
   const PortSchemaField* body = FieldOf("CPatterned", "mBodyController");
   CHECK(body != nullptr && body->kind == PortSchemaKind::body_controller, "CPatterned::mBodyController");
+
+  // A pointer-free POD is not necessarily reference-free. These used to copy old slot IDs
+  // into a rebuilt room (CParasite's owner could become an actor with no model).
+  const char* referencePods[][2] = {
+      {"CParasite", "mLineOfSight"}, {"CBlogg", "mLineOfSightTracker"},
+      {"CCommandoPirate", "mVisualKnowledge"}, {"CPatterned", "mWaypointNavigation"},
+      {"CPatterned", "mPathFindNavigation"}, {"CAi", "mHealthInfo"},
+      {"CSplinter", "mSac"}, {"CLumite", "mSurface"},
+      {"CDarkSamus", "mAttackerUids"}, {"CDarkSamus", "mMeleeContact"},
+      {"CGameCamera", "mFovInterpolation"}, {"CScriptTimer", "mScriptMsg"}};
+  for (const auto& pod : referencePods) {
+    const PortSchemaField* f = FieldOf(pod[0], pod[1]);
+    CHECK(f != nullptr && f->uidAt != nullptr, "%s::%s missing reference accessor", pod[0], pod[1]);
+  }
+  const PortSchemaField* color = FieldOf("CActor", "mDrawFlags");
+  CHECK(color != nullptr && color->uidAt == nullptr, "scalar-only POD must not invent references");
 
   if (g_failures != 0) {
     std::printf("%d failure(s)\n", g_failures);

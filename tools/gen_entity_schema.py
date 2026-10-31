@@ -209,6 +209,29 @@ class Model:
                 return False
         return True
 
+    def uid_paths(self, name, expr, owners, depth=0):
+        """Named references inside a POD, including arrays; never infer IDs from byte patterns."""
+        name = self.resolve(name)
+        if name == "TUniqueId":
+            return [expr]
+        if depth > 8:
+            return []
+        a = re.fullmatch(r"(.*?)\[(\d+)\](.*)", name)
+        if a:
+            return [p for i in range(int(a[2]))
+                    for p in self.uid_paths(a[1] + a[3], f"{expr}[{i}]", owners, depth + 1)]
+        r = self.lookup(name)
+        if r is None:
+            return []
+        paths = []
+        for b in r["bases"]:
+            paths += self.uid_paths(b, f"static_cast< {b}& >({expr})", owners, depth + 1)
+        for f in r["fields"]:
+            paths += self.uid_paths(f["canon"], f"{expr}.{f['name']}", owners, depth + 1)
+        if paths:
+            owners.add(r["name"])
+        return paths
+
     def kind(self, f, depth=0):
         if f["bitfield"]:
             return "bitfield"
@@ -361,6 +384,21 @@ def build(args):
                        "private": any(f["access"] != "public" for f in fields)})
     for c in classes:
         c["fingerprint"] = fingerprint(c["base"], c["fields"])
+    # A POD can be pointer-free but still contain runtime object references. Expose them
+    # through compiler-checked member access, just like top-level fields.
+    uid_owners = set()
+    for c in classes:
+        for f in c["fields"]:
+            f["uids"] = (model.uid_paths(f["canon"], f"static_cast< {c['name']}& >(ent).{f['name']}", uid_owners)
+                         if f["kind"] == "pod" else [])
+    all_headers = sorted(str(p.relative_to(ROOT)) for p in (ROOT / "include").rglob("*.hpp"))
+    all_texts = {h: (ROOT / h).read_text(errors="replace") for h in all_headers}
+    for name in sorted(uid_owners):
+        if name not in {c["name"] for c in classes + friends_only}:
+            header, _ = locate(name, all_headers, all_texts)
+            if header is None:
+                sys.exit(f"gen_entity_schema: no header defines POD {name}")
+            friends_only.append({"name": name, "header": header})
     # Entities only a .cpp defines are out of reach of the generated table.
     cpp_only = []
     names = {c["name"] for c in classes}
@@ -381,6 +419,7 @@ def has_friend(text, m):
 def need_friend(res):
     """(class name, header) of every class the generated code must be a friend of."""
     out = [(c["name"], c["header"]) for c in res["classes"] if c["private"]]
+    out += [(c["name"], c["header"]) for c in res["friends_only"]]
     for c in res["classes"]:
         if "::" in c["name"]:
             outer = c["name"].rsplit("::", 1)[0]
@@ -442,8 +481,12 @@ def emit_inc(res):
                 addr = "nullptr" if f["bitfield"] or ref else f"PES_ADDR({n}, {f['name']})"
                 geti = f"PES_GETI({n}, {f['name']})" if integral else "nullptr"
                 seti = f"PES_SETI({n}, {f['name']})" if integral and not const else "nullptr"
+                uids = ""
+                if f.get("uids"):
+                    cases = " ".join(f"case {i}: return &({p});" for i, p in enumerate(f["uids"]))
+                    uids = f", [](CEntity& ent, unsigned i) -> TUniqueId* {{ switch (i) {{ {cases} default: return nullptr; }} }}"
                 o.append(f"      {{{cstr(f['name'])}, {cstr(f['canon'])}, PortSchemaKind::{k + '_' if k in ('bool', 'int', 'float') else k}, {f['bits']}, "
-                         f"{' | '.join(flags) or '0'}, {size}, {addr}, {geti}, {seti}}},")
+                         f"{' | '.join(flags) or '0'}, {size}, {addr}, {geti}, {seti}{uids}}},")
                 nfields += 1
             o.append("  };")
             o.append(f"  static const PortSchemaClass desc = {{{cstr(n)}, {cstr(c['base'])}, fields, "
@@ -488,7 +531,14 @@ def emit_doc(res):
     o += ["", "## `other`: types without a codec yet (by field count)", ""]
     for t, n in unknown.most_common():
         o.append(f"- {n} `{t}`")
-    o += ["", "## `pod`: trivially copyable, pointer-free structs and arrays (raw bytes)", ""]
+    o += ["", "## `pod`: trivially copyable, pointer-free structs and arrays", "",
+          "Scalar bytes are copied; embedded `TUniqueId` members have generated accessors and are",
+          "saved by stable identity, never restored as raw runtime IDs. This includes line-of-sight",
+          "and visual trackers, waypoint/path navigation, health damage owners, sac/zone targets,",
+          "camera interpolation, melee contacts, script messages and fixed ID arrays.", "",
+          "Field policy 2 stores self/player/editor identities after the POD bytes (whose IDs are",
+          "scrubbed). Unnamed dynamic references retain only a valid rebuilt reference. Policy 1",
+          "states remain readable, but their embedded raw IDs are replaced with rebuilt references.", ""]
     o.append(", ".join(f"`{t}` {n}" for t, n in pods.most_common()))
     o += ["", "## `smart_ptr` / `container` templates", ""]
     o.append(", ".join(f"`{t}` {n}" for t, n in smart.most_common()))
