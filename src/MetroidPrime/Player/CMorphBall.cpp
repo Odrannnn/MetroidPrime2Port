@@ -26,17 +26,19 @@
 #include "MetroidPrime/CGameCollision.hpp"
 #include "MetroidPrime/CGameLight.hpp"
 #include "MetroidPrime/CModelData.hpp"
-#include "MetaRender/CCubeRenderer.hpp"
 #include "MetroidPrime/CRainSplashGenerator.hpp"
 #include "MetroidPrime/CWorld.hpp"
 #include "MetroidPrime/CWorldShadow.hpp"
-#include "MetroidPrime/CActorModelParticles.hpp"
-#include "Kyoto/Animation/CSkinnedModel.hpp"
 #include "MetroidPrime/Cameras/CGameCamera.hpp"
 #include "MetroidPrime/Player/CMorphBallShadow.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/Player/CPlayerBodyController.hpp"
 #include "MetroidPrime/Player/CPlayerState.hpp"
+#ifdef TARGET_PC
+#include "Kyoto/Animation/CSkinnedModel.hpp"
+#include "MetaRender/CCubeRenderer.hpp"
+#include "MetroidPrime/CActorModelParticles.hpp"
+#endif
 #include "MetroidPrime/SFX/CliffsideRoll.h"
 #include "MetroidPrime/SFX/MothTempleRoll.h"
 #include "MetroidPrime/SFX/SamusFootsteps.h"
@@ -1485,7 +1487,8 @@ void CMorphBall::Render(const CStateManager& mgr, const CActorLights* lights) co
 
   if (mBallModel.get() != nullptr) {
     if (hacked.first) {
-      mBallModel->RenderNoise(mgr, ballXf, hacked.second, true);
+      // 800C4454: the noise draw takes a fresh ball transform, without the tire tilt.
+      mBallModel->RenderNoise(mgr, GetBallToWorld(), hacked.second, true);
     } else if (burnDeath) {
       // 800C44A0: ashy disintegrate draw, tinted by the knock-back state.
       if (const CTexture* texture = mgr.GetActorModelParticles()->GetAshyTexture(mPlayer)) {
@@ -1573,24 +1576,31 @@ void CMorphBall::Render(const CStateManager& mgr, const CActorLights* lights) co
           tails[i]->Render();
         }
       }
-      if (mBoostTrailFadeTimer > 0.f && mJaggyTrailGen.get() != nullptr) {
+      // 800C49A8: both the jaggy trail and the side swooshes need the fade timer > 0.
+      if (mBoostTrailFadeTimer > 0.f) {
         float fade = mBoostTrailFadeTimer / 0.25f;
         fade = fade > 1.f ? 1.f : fade;
         float jaggy = (speed - 25.f) / 15.f;
         jaggy = jaggy < 0.f ? 0.f : (jaggy > 1.f ? 1.f : jaggy);
         jaggy = jaggy > fade ? fade : jaggy;
-        mJaggyTrailGen->SetModulationColor(
-            CColor(skJaggyTrailColor[idx][0], skJaggyTrailColor[idx][1], skJaggyTrailColor[idx][2],
-                   CCast::ToUint8(255.f * (jaggy * deathAlpha))));
-        mJaggyTrailGen->Render();
-      }
-      if (playerState->HasPowerUp(CPlayerState::kIT_BoostBall) && !mgr.IsMultiplayer() &&
-          mLoadedModelId % 3 == 1) {
-        CParticleSwoosh* const sides[2] = {mSideSwooshGen.get(), mSideSwooshGen2.get()};
-        for (int i = 0; i < 2; ++i) {
-          if (sides[i] != nullptr) {
-            sides[i]->SetModulationColor(trail);
-            sides[i]->Render();
+        const float jaggyAlpha = jaggy * deathAlpha;
+        if (mJaggyTrailGen.get() != nullptr) {
+          mJaggyTrailGen->SetModulationColor(CColor(skJaggyTrailColor[idx][0],
+                                                    skJaggyTrailColor[idx][1],
+                                                    skJaggyTrailColor[idx][2],
+                                                    CCast::ToUint8(255.f * jaggyAlpha)));
+          mJaggyTrailGen->Render();
+        }
+        // 800C4AE4-4B60: side swooshes use the lerped trail colour with the jaggy alpha byte.
+        if (playerState->HasPowerUp(CPlayerState::kIT_BoostBall) && !mgr.IsMultiplayer() &&
+            mLoadedModelId % 3 == 1) {
+          const CColor sideColor = trail.WithAlphaOf(jaggyAlpha);
+          CParticleSwoosh* const sides[2] = {mSideSwooshGen.get(), mSideSwooshGen2.get()};
+          for (int i = 0; i < 2; ++i) {
+            if (sides[i] != nullptr) {
+              sides[i]->SetModulationColor(sideColor);
+              sides[i]->Render();
+            }
           }
         }
       }
@@ -1645,12 +1655,14 @@ void CMorphBall::Render(const CStateManager& mgr, const CActorLights* lights) co
     glow->Render();
   }
 
-  // 800C4D7C: magnet, boost and death-ball effects, skipped once the ball has faded out.
-  if (!burnDeath && deathAlpha > 0.f) {
+  // 800C4D84-4D98: gated on the model flags colour alpha byte * (1/255) > 0, and not burn death.
+  if (!burnDeath && flags.GetColor().GetAlphau8() * (1.f / 255.f) > 0.f) {
     if (mSpiderBallMagnetGen.get() != nullptr) {
       mSpiderBallMagnetGen->Render();
     }
-    if (mBoostBallGlowGen.get() != nullptr) {
+    // 800C4DB0-4DE0: the boost glow draws only while its modulation colour word is nonzero.
+    if (mBoostBallGlowGen.get() != nullptr &&
+        !(mBoostBallGlowGen->GetModulationColor() == CColor(0.f, 0.f, 0.f, 0.f))) {
       mBoostBallGlowGen->Render();
     }
     if (mBoostEffectGen.get() != nullptr) {
