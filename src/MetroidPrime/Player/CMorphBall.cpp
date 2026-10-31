@@ -26,6 +26,7 @@
 #include "MetroidPrime/CGameCollision.hpp"
 #include "MetroidPrime/CGameLight.hpp"
 #include "MetroidPrime/CModelData.hpp"
+#include "MetaRender/CCubeRenderer.hpp"
 #include "MetroidPrime/CRainSplashGenerator.hpp"
 #include "MetroidPrime/CWorld.hpp"
 #include "MetroidPrime/CWorldShadow.hpp"
@@ -1409,9 +1410,8 @@ void CMorphBall::ResetMorphBallTransitionFlash() {
 
 #ifdef TARGET_PC
 // Port: behaviour from retail Render__10CMorphBallCFRC13CStateManagerPC12CActorLights
-// (800C406C). Not restored: the rain splash (retail 800C428C hooks the generator's point function,
-// 800C45B0 draws it; CRainSplashGenerator::x48_24_ has no accessor and GeneratePoints is a stub,
-// A8-25) and the visor-mode renderer reset at 800C457C (gpRender vtable slot 0x12c, unidentified).
+// (800C406C). The rain splash hooks the generator's point function (800C428C) and draws it at
+// 800C45B0; the visor reset at 800C457C is gpRender vtable slot 0x12c = DisableDestinationAlpha.
 // The Screw Attack jump flashes are drawn by CPlayer::Render, not here.
 void CMorphBall::Render(const CStateManager& mgr, const CActorLights* lights) const {
   static const uchar skTrailColorA[3][3] = {{112, 212, 255}, {255, 128, 51}, {255, 255, 204}};
@@ -1475,6 +1475,10 @@ void CMorphBall::Render(const CStateManager& mgr, const CActorLights* lights) co
   if (shadow) {
     mWorldShadow->EnableModelProjectedShadow(ballXf, lights->GetShadowLightArrayIndex(), 1.f);
   }
+  // 800C428C: lwz r3,0xe54(r31) cmplwi/beq; lbz r0,0x48(r3); extrwi. r0,r0,1,25 = mRaining (0x40)
+  if (mRainSplashGen.get() != nullptr && mRainSplashGen->IsRaining()) {
+    CSkinnedModel::SetPointGeneratorFunc(mRainSplashGen.get(), &CMorphBall::PointGenerator);
+  }
   if (pointGen) {
     mgr.SetupParticleHook(mPlayer);
   }
@@ -1503,6 +1507,17 @@ void CMorphBall::Render(const CStateManager& mgr, const CActorLights* lights) co
   }
   if (mWorldShadow.get() != nullptr) {
     mWorldShadow->DisableModelProjectedShadow();
+  }
+  // 800C457C-800C45AC: GetActiveVisor (cmpwi r3,4 bge; cmpwi r3,2 bge) = kPV_Scan(2)/kPV_Dark(3),
+  // then gpRender->vtbl[0x12c] = DisableDestinationAlpha
+  const CPlayerState::EPlayerVisor activeVisor = mPlayer.GetPlayerState()->GetActiveVisor(mgr);
+  if (activeVisor >= CPlayerState::kPV_Scan && activeVisor < CPlayerState::kPV_Dark + 1) {
+    gpRender->DisableDestinationAlpha();
+  }
+  // 800C45B0: Draw(CTransform4f::Translate(ballXf translation))
+  if (mRainSplashGen.get() != nullptr && mRainSplashGen->IsRaining()) {
+    CSkinnedModel::ClearPointGeneratorFunc();
+    mRainSplashGen->Draw(CTransform4f::Translate(ballXf.GetTranslation()));
   }
 
   const float speed = mPlayer.GetVelocityWR().Magnitude();
