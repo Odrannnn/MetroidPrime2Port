@@ -15,6 +15,7 @@
  * main.dol.
  */
 #include <cstdlib>
+#include <cstring>
 #include <new>
 #ifdef _WIN32
 #include <malloc.h>
@@ -204,6 +205,48 @@ static inline void PortDelete(void* ptr) noexcept {
   } else {
     std::free(ptr);
   }
+}
+
+// Zero-filled `new` (sc/zero): retail's console heap is zeroed, the host's is not, so a member a
+// constructor never touches read host-heap garbage (save-state diffs that varied run to run). Every
+// global `new` - game objects, containers - returns zeroed memory; `calloc` takes fresh pages for
+// free and memsets recycled chunks. Frees go through `PortDelete` unchanged.
+static void* PortZeroNew(std::size_t n) {
+  void* p = std::calloc(1, n ? n : 1);
+  if (p == nullptr) {
+    throw std::bad_alloc();
+  }
+  return p;
+}
+static void* PortZeroNewAligned(std::size_t n, std::size_t al) {
+  if (al < sizeof(void*)) {
+    al = sizeof(void*);
+  }
+  n = n ? n : 1;
+#ifdef _WIN32
+  void* p = _aligned_malloc(n, al);
+#else
+  void* p = std::aligned_alloc(al, (n + al - 1) & ~(al - 1));
+#endif
+  if (p == nullptr) {
+    throw std::bad_alloc();
+  }
+  std::memset(p, 0, n);
+  return p;
+}
+void* operator new(std::size_t n) { return PortZeroNew(n); }
+void* operator new[](std::size_t n) { return PortZeroNew(n); }
+void* operator new(std::size_t n, const std::nothrow_t&) noexcept {
+  return std::calloc(1, n ? n : 1);
+}
+void* operator new[](std::size_t n, const std::nothrow_t&) noexcept {
+  return std::calloc(1, n ? n : 1);
+}
+void* operator new(std::size_t n, std::align_val_t a) {
+  return PortZeroNewAligned(n, static_cast< std::size_t >(a));
+}
+void* operator new[](std::size_t n, std::align_val_t a) {
+  return PortZeroNewAligned(n, static_cast< std::size_t >(a));
 }
 
 void operator delete(void* ptr) noexcept { PortDelete(ptr); }
