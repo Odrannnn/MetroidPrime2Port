@@ -1,7 +1,9 @@
 # Running the port (desktop)
 
 Moved out of AGENTS.md to keep the per-turn prompt small. `T` is the toolchain dir from AGENTS.md
-Commands; all runs need `Xvfb :86 -screen 0 1280x720x24 -ac` (check with `pgrep -x Xvfb` + `xdpyinfo`).
+Commands; the run scripts below start their own `Xvfb` (default `:86`, `-screen 0 1280x720x24 -ac`),
+so a hand-started one (`pgrep -x Xvfb` + `xdpyinfo` to check) is only for a bare binary, as in the
+`gdb` boot below.
 
 ## Boot under gdb (from build-port-link)
 
@@ -86,7 +88,7 @@ at once (the machine is back where it was) says `entered and left at once; now X
 whose machine was never set up (it was not created yet) says `the actor has no state machine state
 (is it active?)`), `place`,
 `send`, `damage` (direct, no projectile; also the combos `darkburst`/`sunburst`/`sonicboom` and
-`powerbomb`, which knockback rule sets tell apart) and `shoot <id> [charged] [d] [dir x y z]` (a real beam projectile
+`powerbomb`, which knockback rule sets tell apart) and `shoot <id> [charged|missile] [d] [dir x y z]` (a real beam projectile
 from d units, travelling along dir, for modules that only count projectile hits on a joint; `missile`
 instead of `charged` fires a real player missile through the launcher's own path
 (`CPlayerGun::FireSecondary`: weapon type kWT_Missile, the missile's damage, aimed at the actor the
@@ -184,6 +186,9 @@ itself on the tick `[savestate] room state restored` shows, so nothing runs past
 from A1 (so tick drift is filtered); the rest are warnings. `--post-wait N` also steps N ticks and
 dumps C. Dumps land in `--out` (`<n>-area_<a>-A.jsonl`); `--detail`/`--all` list more. An empty
 card runs as a new game (`MP2_NEW_GAME=1`). Use a copy of the card: the run saves slot 8 and loads it.
+The player is held safe by default: every room runs `god 1` and `nodarkair 1` before its `--setup`
+commands (then `--wait` unheld ticks to let the room settle), so an enemy hit or a dark-aether drain
+is not a strict player hp diff; `--unsafe-player` leaves the player as the room found it.
 
 ## Driving pads 1-3 (multiplayer)
 
@@ -538,7 +543,8 @@ What differs from a normal run (render side only; the game logic is the same):
   false, so the game keeps its own "nothing read yet" values (Splitter beam length at the far
   plane, scan target 0xFF) and `CVisorFlare::UpdateOcclusion` takes its retail `GXCopyTex` path
   (console `status` shows ~30 copies and ~47 draws a frame instead of 1-2).
-- No copy destination is ever recorded, so `perf` counters describe recording, not rendering.
+- No copy destination is ever recorded, so the `status` line's `perf` counters describe recording,
+  not rendering.
 
 Measured 2026-10-23 (agon54, one game): Aurora init 0.53 s -> 0.01 s, input probe 0.6 s -> 0,
 first game update 5.2 s -> 4.1 s wall. "Gameplay reached" stays ~9.1 s: it is a frame-count wait
