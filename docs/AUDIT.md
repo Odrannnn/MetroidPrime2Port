@@ -131,8 +131,14 @@ Scripts: `tools/audit/` (see its README).
 | A6-6 | render (copy dest) | CCubeRenderer.cpp:3585 | render | visual | binds the shared spare as I8 while this frame's scan-visor A8 copy went to a private Destination, so the spare's registered copy may be stale (A6-2 class) | fixed ca50af073 |
 | A6-7 | render (copy dest) | CGameResultsScreen.cpp:574 | render | visual | samples the shared spare at half-viewport RGB565 with no copy found before it on its path; relies on an older copy | fixed 4f777959f |
 | A6-8 | render (Aurora) | extern/aurora/lib/dolphin/gx/GXFrameBuffer.cpp (copyTextures) | render | minor | copyTextures[dest] outlives the game buffer; a reused address of the same size could bind a stale GPU copy | wontfix (Aurora rejects size-mismatched copies; PortEfbCopy destroys recycled slots; only same-size address reuse remains, no free hook) |
-| A8-1 | Grenchler | src/MetroidPrime/Enemies/CGrenchler.cpp:2226 (ShouldBackstep, fn_27_A7C4) | wrong-const | low | retail 0xA858-0xA86C loads lbl_27_rodata_20C = 1.9198622 (110°) for IsFacing on the touching teammate; port used 2.0943952 (120°) | fixed (this commit) |
-| A8-2 | Grenchler | src/MetroidPrime/Enemies/CGrenchler.cpp:2708 (BeamAttack, fn_27_8660) | wrong-call | med | retail 0x874C calls GetTargetPosition__10CGrenchlerCFR13CStateManager (+0,0,2.5); port aimed the beam at GetPlayerTargetPosition | fixed (this commit) |
+| A8-1 | Grenchler | src/MetroidPrime/Enemies/CGrenchler.cpp:2226 (ShouldBackstep, fn_27_A7C4) | wrong-const | low | retail 0xA858-0xA86C loads lbl_27_rodata_20C = 1.9198622 (110°) for IsFacing on the touching teammate; port used 2.0943952 (120°) | fixed 8d27d3d81 |
+| A8-2 | Grenchler | src/MetroidPrime/Enemies/CGrenchler.cpp:2708 (BeamAttack, fn_27_8660) | wrong-call | med | retail 0x874C calls GetTargetPosition__10CGrenchlerCFR13CStateManager (+0,0,2.5); port aimed the beam at GetPlayerTargetPosition | fixed 8d27d3d81 |
+| A8-3 | SandBoss | PortCSandBossAttacks.cpp:209, :224, :252 (fn_55_1D74, fn_55_1F84, fn_55_2030) | nan-arm | low | retail `fcmpo; ble exit` exits on NaN (angle of a zero-length toTarget); port `<=` proceeds (audit-a8-nan rows 1-3; row 1 re-read: asm 0x1F20-0x1F24) | open (fix/a8-nan) |
+| A8-4 | SwampBossStage1 | PortCSwampBossStage1.cpp:1054, :1059 (ShouldBeach fn_78_6358, ShouldBob fn_78_64D0) | nan-arm | low | retail ble/cror-bne continue on NaN to the next test; port `&&` forms return false (nan rows 5-6) | open (fix/a8-nan) |
+| A8-5 | SwampBossStage2 | PortCSwampBossStage2.cpp:571, :1445-1450, :2392-2397 (UpdateHover fn_79_215C, IsLevel fn_79_A13C, AddToRenderer fn_79_A59C) | nan-arm | low | NaN takes the opposite arm to retail's ble/bge (nan rows 8-10) | open (fix/a8-nan) |
+| A8-6 | rstl/CMath inlines | include/rstl/math.hpp:14 (max_val) | nan-arm | info | retail inline `max_val(x,0)` is `fcmpo 0,x; bge -> 0` (NaN -> 0, SwampBossStage1 RetractTongue asm 8379-8380); host `(a<b)?b:a` gives NaN -> x. Shared header, no realistic NaN source | wontfix (class note; changing the shared helper affects every caller) |
+| A8-7 | SpacePirate | PortCSpacePirate.cpp:1449 (PreRender fn_72_38E4) | missing-check | info | retail sets draw flag 0x8000 when \|portal-plane d\| > 0 (asm 4171-4174); port omits it, the plane is never set in the port | not-a-bug (unreachable) |
+| A8-8 | ScriptDebris/Coin | CScriptDebris.cpp:483, CScriptCoin.cpp:344 (84acb682e) | convention | info | GRNT fix (retail `subis 0x4752; cmplwi 0x4e54`, CScriptDebris.s:312-313) edits upstream code outside a TARGET_PC block; both units NonMatching (configure.py:484, :1912), matching build unaffected; an upstream decomp bug | not-a-bug (upstreamable) |
 
 ## Sweep log
 
@@ -142,7 +148,9 @@ tiers a-c over the unlinked/matching upstream units, and the Review 5 per-module
 row above is the result; the log only records which functions each slice covered.
 
 Sweep A8 (behaviour audit 2, 2026-10-31, in progress): lane reports in `/tmp/opencode/reports/audit-a8-*.md`;
-covered so far: reached stubs (clean), Grenchler, Sporb, FlyingPirate parts 1-2, SafeZone part 1.
+covered so far: reached stubs (clean), Grenchler parts 1-2, Sporb parts 1-2, FlyingPirate (clean), ScriptSafeZone
+(clean), the 50 NaN-flagged comparisons (A8-3..7), commits since 2026-10-29 (gate list; the 9 that reach
+gameplay at defaults restore retail behaviour or are port features by design: quick resume, input mapping).
 
 Open: only A1-26 (RadialHud `model_inner_ring`, widget name on the GameCube pak unconfirmed); every other
 row above is `fixed`, `not-a-bug`, `wontfix` or `partly fixed` (state in its status cell).
