@@ -421,6 +421,11 @@ bool CinemaBars();
 // reticle in combat and the seeker ring it shares; the lock-on reticle and the scan box stay. On
 // by default; Original experience keeps them. Read by CCompoundTargetReticle::DrawSeeker.
 bool SecondaryCrosshairs();
+// Full-screen Dark Visor (`dark_visor_full`, env `MP2_DARK_VISOR_FULL`): the visor reveals and
+// highlights over the whole view, as the game's own split-screen does, instead of the lens
+// (FRME_DarkVisorMask) inside the tweak frame. Off by default; Original experience keeps the lens.
+// Read by CStateManager::DrawDarkVisor.
+bool DarkVisorFullScreen();
 // HUD opacity per visor (`hud_opacity_echo/dark/scan`), in percent, or kHudOpacityVisor for the
 // game's Visor Opacity (Options > Visor). The Combat and Ball HUDs always use the option. Original
 // experience ignores these. Read by CGameOptions::GetVisorHudAlpha.

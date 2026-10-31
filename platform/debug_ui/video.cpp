@@ -202,6 +202,8 @@ void DrawVideoDisplay() {
   ImGui::SetItemTooltip("Off lets a cutscene fill the screen instead of the game's letterbox.");
   Changed(ImGui::Checkbox("Secondary crosshairs", &sSecondaryCrosshairs));
   ImGui::SetItemTooltip("Off hides the next-target reticle; the lock-on reticle and the scan box stay.");
+  Changed(ImGui::Checkbox("Full-screen Dark Visor", &sDarkVisorFull));
+  ImGui::SetItemTooltip("The Dark Visor shows hidden things over the whole view, not only inside its lens.");
   // Applied by CCameraManager::UpdateCameras: the first-person camera takes its FOV when it is
   // built, so the live change goes through CCameraManager::mFirstPersonFov. 0 is the game's own 55.
   float fov = sFirstPersonFov > 0.f ? sFirstPersonFov : 55.f;

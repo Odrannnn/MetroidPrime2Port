@@ -1209,7 +1209,13 @@ void CStateManager::DrawDarkVisor(const CInGameGuiManagerSet& gui) {
   int y;
   int width;
   int height;
+#ifdef TARGET_PC
+  // Port: the full-screen option takes the split-screen path, which has no lens mask.
+  const bool fullScreen = IsMultiplayer() || PortOverlay::DarkVisorFullScreen();
+  if (fullScreen) {
+#else
   if (IsMultiplayer()) {
+#endif
     const CViewport& viewport = CGraphics::GetViewport();
     x = viewport.mLeft;
     y = viewport.mTop;
@@ -1220,6 +1226,9 @@ void CStateManager::DrawDarkVisor(const CInGameGuiManagerSet& gui) {
   } else {
     gpTweakGui->GetDarkVisorFrame(&x, &y, &width, &height);
   }
+#ifdef TARGET_PC
+  if (!fullScreen)
+#endif
   gui.GetPlayerGuiManager(mCurrentRenderPlayerIndex).DrawDarkVisorMask(*this);
   const CPlayer* player = mCurrentRenderPlayer;
   gpRender->DrawDarkWorldTransition(

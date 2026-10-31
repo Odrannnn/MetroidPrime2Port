@@ -2492,8 +2492,15 @@ void CSamusHud::Update(float dt, const CStateManager& mgr, uint helmetVisibility
   }
   if (mDarkVisor != nullptr && mDarkVisorBacking != nullptr) {
     const CPlayerState::EPlayerVisor visor = player.GetPlayerState()->GetCurrentVisor();
+#ifdef TARGET_PC
+    // Port: the full-screen Dark Visor option drops the lens frame too.
+    const bool lens = visor == CPlayerState::kPV_Dark && !PortOverlay::DarkVisorFullScreen();
+    mDarkVisor->SetIsVisible(lens);
+    mDarkVisorBacking->SetIsVisible(lens);
+#else
     mDarkVisor->SetIsVisible(visor == CPlayerState::kPV_Dark);
     mDarkVisorBacking->SetIsVisible(visor == CPlayerState::kPV_Dark);
+#endif
   }
   if (player.WasDamaged() && mgr.GetGameState() == CStateManager::kGS_Running) {
     const CVector3f position = player.GetDamageLocationWR();

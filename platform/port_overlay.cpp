@@ -135,6 +135,7 @@ bool sHideVisorEffects = false;
 // `cinema_bars`, `secondary_crosshairs`: the game's own on both. `hud_opacity_*`: -1 follows Visor Opacity.
 bool sCinemaBars = true;
 bool sSecondaryCrosshairs = true;
+bool sDarkVisorFull = false;
 int sHudOpacityEcho = PortOverlay::kHudOpacityVisor;
 int sHudOpacityDark = PortOverlay::kHudOpacityVisor;
 int sHudOpacityScan = PortOverlay::kHudOpacityVisor;
@@ -777,6 +778,14 @@ bool SecondaryCrosshairs() {
     return true;
   }
   return EnvBool("MP2_SECONDARY_CROSSHAIRS", sSecondaryCrosshairs);
+}
+
+bool DarkVisorFullScreen() {
+  ReadEnv();
+  if (OriginalExperience()) {
+    return false;
+  }
+  return EnvBool("MP2_DARK_VISOR_FULL", sDarkVisorFull);
 }
 
 int HudOpacity(HudOpacityPart part) {
