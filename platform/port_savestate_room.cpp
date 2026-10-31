@@ -8,6 +8,7 @@
 
 #include "port_savestate.h"
 #include "port_savestate_block.h"
+#include <cmath>
 
 #include "Kyoto/Math/CTransform4f.hpp"
 #include "Kyoto/Math/CVector3f.hpp"
@@ -26,6 +27,7 @@
 #include "MetroidPrime/Cameras/CCinematicCamera.hpp"
 #include "MetroidPrime/Enemies/CDarkTrooper.hpp"
 #include "MetroidPrime/Enemies/CPatterned.hpp"
+#include "MetroidPrime/Player/CPlayer.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptCamera.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptActorRotate.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptCounter.hpp"
@@ -122,6 +124,7 @@ enum : uint32_t {
   kTagMessages = 14,  // u8 n, n x (u32 message, u32 sender editor id): what woke a scripted enemy
   kTagFields = 15,    // the schema fields of an enemy, pickup or debris (port_savestate_fields.cpp)
   kTagRng = 16,       // u32 seed of the state manager's CRandom16: room-wide, on the first object
+  kTagPlayer = 17,    // 4 x f32 dark-air clocks of the player (CPlayer::PortGetDarkAir): room-wide, first object
 };
 
 // Per-object lines a restore logs, at most; the summary line always follows.
@@ -733,6 +736,15 @@ void CaptureRoomState(CStateManager& mgr, RoomState& out) {
     BlockWriter w;
     w.U32(static_cast< uint32_t >(mgr.Random()->GetSeed()));
     out.objects.front().blocks.push_back({kTagRng, w.bytes});
+    if (CPlayer* player = mgr.GetPlayer(0)) {
+      float v[4];
+      player->PortGetDarkAir(v);
+      BlockWriter pw;
+      for (float f : v) {
+        pw.F32(f);
+      }
+      out.objects.front().blocks.push_back({kTagPlayer, pw.bytes});
+    }
   }
   size_t copies = 0;
   for (const RoomObject& obj : out.objects) {
@@ -980,6 +992,21 @@ int ApplyRoomState(CStateManager& mgr, const RoomState& room, RoomApplyProgress&
       const uint32_t seed = r.U32();
       if (r.ok) {
         mgr.Random()->SetSeed(seed);
+      }
+      break;
+    }
+  }
+  for (const RoomObject& obj : room.objects) {
+    if (const RoomBlock* b = FindBlock(obj, kTagPlayer)) {
+      BlockReader r(b->data);
+      float v[4];
+      for (float& f : v) {
+        f = r.F32();
+      }
+      CPlayer* player = mgr.GetPlayer(0);
+      if (r.ok && player != nullptr && std::isfinite(v[0]) && std::isfinite(v[1]) &&
+          std::isfinite(v[2]) && std::isfinite(v[3])) {
+        player->PortSetDarkAir(v);
       }
       break;
     }
