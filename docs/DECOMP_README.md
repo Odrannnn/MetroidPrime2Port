@@ -2,6 +2,11 @@ Metroid Prime 2: Echoes
 [![Build Status]][actions] [![Code Progress]][progress] [![Data Progress]][progress] [![Discord Badge]][discord]
 =============
 
+> Upstream `PrimeDecomp/echoes`'s README, kept here for the decomp build this tree also carries
+> (`python3 configure.py && ninja`, see the root README). The badges, the `git clone` line and
+> "this repository" below are upstream's: this fork is the port, whose own README is at the
+> repository root, and this copy does not track later upstream edits by itself.
+
 [Build Status]: https://github.com/PrimeDecomp/echoes/actions/workflows/build.yml/badge.svg
 [actions]: https://github.com/PrimeDecomp/echoes/actions/workflows/build.yml
 [Code Progress]: https://decomp.dev/PrimeDecomp/echoes.svg?mode=shield&measure=code&label=Code
