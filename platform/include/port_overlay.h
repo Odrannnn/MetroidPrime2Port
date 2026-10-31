@@ -158,6 +158,17 @@ const int kScanSpeedMax = 400;
 const int kScanSpeedDefault = 100;
 int ScanSpeed();
 void SetScanSpeed(int percent);
+// Music and sound-effects boost in percent (`MP2_MUSIC_BOOST`, `MP2_SFX_BOOST`, 100 = no boost):
+// the port's mixer scales the music path (the streamed voices) or every other voice, so 150 plays
+// that path louder than the game's own volume maximum alone. The F1 Game > Audio sliders use it
+// for their part above 100 percent (#41).
+const int kVolumeBoostMin = 100;
+const int kVolumeBoostMax = 200;
+const int kVolumeBoostDefault = 100;
+int MusicBoost();
+void SetMusicBoost(int percent);
+int SfxBoost();
+void SetSfxBoost(int percent);
 // Glyph set the on-screen prompts are forced to (`MP2_PROMPT_GLYPHS`: 0 follow the input in use,
 // 1 Xbox, 2 PlayStation, 3 Switch, 4 GameCube, 5 keyboard); PromptGlyphs() is the device name or
 // nullptr to follow the input. Original experience shows the GameCube art.

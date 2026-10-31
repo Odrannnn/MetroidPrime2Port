@@ -147,6 +147,12 @@ Game page:
   the turned-off folder names, `/`-separated); take effect on restart. Folder: `<user>/mods`, or
   `MP2_MODS`. See docs/MODS.md.
 - `suit_colour_varia`, `suit_colour_dark`, `suit_colour_light`: Video > Display > Suit colours (suit, colour per slot, Random). Each is one hex colour per slot (`FF4000,-`, `-` keeps that slot's original); empty is the original. The recoloured textures are built from the disc at startup, so a change applies on restart. Details: `docs/MODS.md` "Suit colours".
+- `music_boost`, `sfx_boost`: Game > Audio > Music volume and Sound effects volume above 100
+  percent (100 to 200, default 100 = no boost); env `MP2_MUSIC_BOOST`, `MP2_SFX_BOOST`. Up to 100
+  the row sets the game's own volume (`game_options`); above it the game stays at its maximum and
+  the port's mixer scales that path by percent / 100 (music = the streamed voices, sound effects =
+  every other voice, and the movie audio's stream), so the level goes past what the game alone
+  reaches. It can clip.
 - `game_options`: the game's own Options menu (volumes, sound mode, brightness...), stored as a
   hex blob so they survive without a memory card; not an overlay row.
 
