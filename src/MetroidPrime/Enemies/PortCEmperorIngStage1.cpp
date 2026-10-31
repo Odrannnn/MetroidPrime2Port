@@ -997,6 +997,13 @@ void CEmperorIngStage1::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& ms
       // The second lookup is CONNECT/ATTACH (`lis r7, 0x4154` + 0x4348 at 0x7DB8/0x7DD0).
       xa1a_ = FindConnectedObject(mgr, kSS_Connect, kSM_Attach);
       xa1c_ = FindConnectedObject(mgr, kSS_Connect, kSM_Activate);
+#ifdef TARGET_PC
+      // A repeated AreaLoaded (the console's `send`) would add the joints again past the
+      // vector's eight elements.
+      if (mJoints.mCount != 0) {
+        break;
+      }
+#endif
       SetupTentacleAnimations(mgr);
       SetupTentacleCollisions(mgr);
       SetupTentacleJoints(mgr);
