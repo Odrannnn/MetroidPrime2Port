@@ -3,33 +3,34 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
-## 2026-10-31: save-state sweep, second session
+## 2026-10-31: save-state sweep, sessions 2-3
 
 Merged into port (unpushed):
 - sc/restorehold: `src/MetroidPrime/main.cpp` fixed-tick loop counts ticks actually run and stops on
   `PortOverlay::TickHold()` (Rezbit timer / ai_time drift after a restore).
-- kbres: `port_savestate_room.cpp` saves knockback resistance after hp (optional trailing field;
-  Dark Trooper).
-- ds2doors: an hp <= 0 restore marks actors/platforms dead (`PortRoomState::MarkDead`); DS2 debris
-  0 strict in 2 runs. DS2/Ing3 door_open 1→0 not reproduced.
-- sc/quadraxis: FSM2 machines saved with their sub-machine path and leaf node index
-  (`CGenericFSM2State.hpp`, `CGenericFSM2StateImpl.hpp` TARGET_PC, `port_savestate_fields.cpp`);
-  `PortSetStateDeep` follows the path (same-named nodes no longer restart FaceTarget).
-- Docs audits: GOTCHAS.md, TRILOGY.md (touch overlay rewritten), DECOMP_README.md, LANE_BRIEF.md,
-  DECOMP_WORKFLOW.md + `tools/review_decomp_diff.sh` (crash gate `port: crashed:|reach-stub`).
+- kbres: knockback resistance saved after hp (optional trailing field; Dark Trooper).
+- ds2doors: an hp <= 0 restore marks actors/platforms dead (`PortRoomState::MarkDead`).
+- sc/quadraxis: FSM2 machines saved with sub-machine path + leaf node index; Quadraxis 3/3, 0 strict.
+- sc/dg-collider: `tools/statecheck.py` `step_ticks()` (console `step N` only queues; polls `frame`),
+  used by A1, C (`--post-wait`) and `--wait`. Quadraxis x10CC_ `cls:X -> none` in B is a lazy rebuild
+  in `x61DC_` on the first Think: harmless; use `--post-wait ~30`.
+- Ending slots 53→56, dg.kneecol/killknee route, `docs/SAVESTATE_SCHEMA.md` "what a save keeps",
+  RUNNING.md names `MP_SAVESTATE_FIELDS=0`.
+- Docs audits: GOTCHAS, TRILOGY, DECOMP_README, LANE_BRIEF, DECOMP_WORKFLOW, MODULES, SETTINGS,
+  env claims (settings.cpp header, QOL idle cursor, console `(env X set; wins if the key reads it)`),
+  CONSOLE.md + console help strings (state hold, crosshair gamecube, hint radius, place angles), MODS.md.
 
-Lanes running at handoff (review with the diff, then merge):
-- sonnet `ses_e6cd854abffeETfhrA5kCCHUtY` sc/ing3stage1 → /tmp/opencode/reports/sc-ing3stage1.md.
-- sonnet `ses_e6cf04357ffeEheMffD74DpuCV` Quadraxis re-run on restorehold (lane1; appends to
-  /tmp/opencode/reports/sc-quadraxis.md with setup commands; releases lane1).
-- worker `ses_e6cdee07cffeYuxvSJ3iEwasnf` docs/modules-audit in ../wt-mp2-sc-stall →
-  /tmp/opencode/reports/modules-audit.md.
+Lanes running at handoff (review the full diff, merge, release the slot):
+- sonnet `ses_e6cd854abffeETfhrA5kCCHUtY` sc/ing3stage1 (lane2) → /tmp/opencode/reports/sc-ing3stage1.md.
+- sonnet `ses_e6cb09371ffeccjj7P9el6yQl6` sc/dg-pickups (lane1) → sc-dg-pickups.md.
+- sonnet `ses_e6caf0fcfffeO5GjyT4GwY4g0k` sc/statecheck-setup (lane3; `--setup` `;` desync, dead
+  Puffer round trip) → sc-statecheck-setup.md.
+- worker `ses_e6ca17b9effeNnn05Q9aNlyfQH` docs/mods-followup (settings index texture rows filed
+  under Game, stale header comments) → mods-followup.md.
 
-Open: CMinorIng ai Idle→PathFind diff in Ing3 (seen once); console routes for an engaged Puffer and
-for lowering Quadraxis hp (knee collider or counter 0035005F); RUNNING.md ending slots 47/50/53/56/58
-vs `sweep_areas.sh` "slot 53"; RUNNING.md and MODULES.md not yet audited. Elite Pirate, Amorbis,
-Splinter: 0 strict. Statecheck runs: copy the userdir, own --port/--display, `--build <tree>/build-port-link`.
-Upstream DOL: if ninja rebuilds nothing, compare `build/G2ME01/main.dol` sha1 with `config/G2ME01/build.sha1`.
+Open: CMinorIng Ing3 ai Idle→PathFind; knee-kill pickups lost on round trip; retail Puffer has no
+engaged state. `platform/debug_ui.cpp:296` has the old env claim but is unbuilt. Statecheck runs:
+copy the userdir, own --port/--display, `--build <tree>/build-port-link`.
 
 ## 2026-10-31: behaviour audit 2 (A8) complete
 
