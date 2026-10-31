@@ -358,21 +358,45 @@ void CFishCloud::PlaceBoid(CStateManager& mgr, CBoid& boid, const CAABox& aabb) 
   CRandom16& random = *mgr.Random();
   const CPlane plane = FindClosestPlane(aabb, boid.mPos);
   boid.mPos -= plane.GetHeight(boid.mPos) * plane.GetNormal() + 0.0001f * plane.GetNormal();
+#ifdef TARGET_PC
+  // retail draw order y,x (A8-10)
+  const float velY = random.Float() - 0.5f;
+  const float velX = random.Float() - 0.5f;
+  boid.mVel = CVector3f(velX, velY, 0.f);
+#else
   boid.mVel = CVector3f(random.Float() - 0.5f, random.Float() - 0.5f, 0.f);
+#endif
   if (!mWorldSpace) {
     if (!aabb.PointInside(boid.mPos)) {
       const CVector3f min = aabb.GetMinPoint();
+#ifdef TARGET_PC
+      // retail draw order z,y,x (A8-10)
+      const float posZ = random.Float() * aabb.GetDepth() + min.GetZ();
+      const float posY = random.Float() * aabb.GetHeight() + min.GetY();
+      const float posX = random.Float() * aabb.GetWidth() + min.GetX();
+      boid.mPos = CVector3f(posX, posY, posZ);
+#else
       boid.mPos = CVector3f(random.Float() * aabb.GetWidth() + min.GetX(),
                             random.Float() * aabb.GetHeight() + min.GetY(),
                             random.Float() * aabb.GetDepth() + min.GetZ());
+#endif
     }
   } else if (!PointInBox(aabb, boid.mPos)) {
     const CAABox localBounds = GetUntransformedBoundingBox();
     const CVector3f min = localBounds.GetMinPoint();
+#ifdef TARGET_PC
+    // retail draw order z,y,x (A8-10)
+    const float posZ =
+        random.Float() * (localBounds.GetMaxPoint().GetZ() - min.GetZ()) + min.GetZ();
+    const float posY = random.Float() * localBounds.GetHeight() + min.GetY();
+    const float posX = random.Float() * localBounds.GetWidth() + min.GetX();
+    const CVector3f pos(posX, posY, posZ);
+#else
     const CVector3f pos(random.Float() * localBounds.GetWidth() + min.GetX(),
                         random.Float() * localBounds.GetHeight() + min.GetY(),
                         random.Float() * (localBounds.GetMaxPoint().GetZ() - min.GetZ()) +
                             min.GetZ());
+#endif
     boid.mPos = GetTransform() * pos;
   }
 }
@@ -393,12 +417,29 @@ void CFishCloud::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
     CRandom16& random = *mgr.Random();
     const CVector3f& min = bounds.GetMinPoint();
     for (int i = 0; i < mBoids.capacity(); ++i) {
+#ifdef TARGET_PC
+      // retail draw order z,y,x (A8-10)
+      const float posZ = random.Float() * bounds.GetDepth() + min[kDZ];
+      const float posY = random.Float() * bounds.GetHeight() + min[kDY];
+      const float posX = random.Float() * bounds.GetWidth() + min[kDX];
+      const CVector3f pos(posX, posY, posZ);
+#else
       const CVector3f pos(random.Float() * bounds.GetWidth() + min[kDX],
                           random.Float() * bounds.GetHeight() + min[kDY],
                           random.Float() * bounds.GetDepth() + min[kDZ]);
+#endif
+#ifdef TARGET_PC
+      // retail draw order: scale, then vel.y, then vel.x (A8-10)
+      const float boidScale = 0.2f * FishPow(random.Float(), 7.f) + 0.9f;
+      const float boidVelY = random.Float() - 0.5f;
+      const float boidVelX = random.Float() - 0.5f;
+      mBoids.push_back_unsafe(
+          CBoid(GetTransform() * pos, CVector3f(boidVelX, boidVelY, 0.f), boidScale));
+#else
       mBoids.push_back_unsafe(CBoid(GetTransform() * pos,
                                     CVector3f(random.Float() - 0.5f, random.Float() - 0.5f, 0.f),
                                     0.2f * FishPow(random.Float(), 7.f) + 0.9f));
+#endif
     }
     CreatePartitionList();
     if (mValidModel) {

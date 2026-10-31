@@ -45,9 +45,17 @@ bool CVESphere::GetValue(int frame, CVector3f& pPos, CVector3f& pVel) const {
   mSphereOrigin->GetValue(frame, origin);
   mSphereRadius->GetValue(frame, radius);
 
+#ifdef TARGET_PC
+  // retail draw order z,y,x (A8-13)
+  const int normZ = CRandom16::GetRandomNumber()->Range(-100, 100);
+  const int normY = CRandom16::GetRandomNumber()->Range(-100, 100);
+  const int normX = CRandom16::GetRandomNumber()->Range(-100, 100);
+  CVector3f normVec1 = CVector3f(normX, normY, normZ);
+#else
   CVector3f normVec1 = CVector3f(CRandom16::GetRandomNumber()->Range(-100, 100),
                                  CRandom16::GetRandomNumber()->Range(-100, 100),
                                  CRandom16::GetRandomNumber()->Range(-100, 100));
+#endif
   normVec1 = (normVec1.CanBeNormalized() ? (0.01f * normVec1).AsNormalized() : (0.01f * normVec1));
   pPos = origin + (normVec1 * radius);
 
@@ -84,9 +92,17 @@ bool CVEEllipsoid::GetValue(int frame, CVector3f& pPos, CVector3f& pVel) const {
   mRotation->GetValue(frame, rotation);
   mVelocityMag->GetValue(frame, mag);
 
+#ifdef TARGET_PC
+  // retail draw order z,y,x (A8-13)
+  const int dirZ = CRandom16::GetRandomNumber()->Range(-100, 100);
+  const int dirY = CRandom16::GetRandomNumber()->Range(-100, 100);
+  const int dirX = CRandom16::GetRandomNumber()->Range(-100, 100);
+  CVector3f dir = CVector3f(dirX, dirY, dirZ);
+#else
   CVector3f dir = CVector3f(CRandom16::GetRandomNumber()->Range(-100, 100),
                             CRandom16::GetRandomNumber()->Range(-100, 100),
                             CRandom16::GetRandomNumber()->Range(-100, 100));
+#endif
   bool canNormalize = dir.CanBeNormalized();
   dir *= 0.01f;
   if (canNormalize) {
