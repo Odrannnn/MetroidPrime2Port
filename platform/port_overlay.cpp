@@ -38,6 +38,7 @@
 #include <dolphin/vi.h>
 #include <imgui.h>
 #include <imgui_internal.h>
+#include <musyx/port_voices.h>
 
 #include <algorithm>
 #include <atomic>
@@ -51,6 +52,9 @@
 #include <utility>
 #include <vector>
 
+
+// platform/ai_dma.cpp: the streamed-audio (music, movie) stream's own gain.
+extern "C" void AIPortSetOutputGain(float gain);
 
 namespace PortOverlayState {
 
@@ -71,6 +75,8 @@ bool sMapInvertX = false;
 bool sMapInvertY = false;
 int sWalkSpeed = PortOverlay::kWalkSpeedDefault;
 int sScanSpeed = PortOverlay::kScanSpeedDefault;
+int sMusicBoost = PortOverlay::kVolumeBoostDefault;
+int sSfxBoost = PortOverlay::kVolumeBoostDefault;
 int sLanguage = 0;
 int sElevatorRide = PortOverlay::kElevatorRide_Original;
 int sPortalTransition = PortOverlay::kPortalTransition_Original;
@@ -312,6 +318,8 @@ void ReadEnv() {
   sInfiniteAmmo = port::EnvFlag("MP2_INFINITE_AMMO") ? PortOverlay::kInfAmmoAll : 0;
   sNoDarkAetherDamage = port::EnvFlag("MP2_NO_DARK_AETHER_DAMAGE");
   PortOverlaySettings::LoadSettings();
+  // The volume boosts too: MP2_MUSIC_BOOST and MP2_SFX_BOOST are read only here.
+  ApplyVolumeBoosts();
 }
 
 // A setter's change is saved at once (a no-op when nothing differs from the file).
@@ -1786,6 +1794,25 @@ bool sLowPowerGpu = false;
 bool sLowPowerGpuAtStart = false;
 } // namespace PortOverlayState
 
+namespace PortOverlayState {
+
+void ApplyVolumeBoosts() {
+  const float music = static_cast< float >(EnvIntIn("MP2_MUSIC_BOOST", sMusicBoost,
+                                                   PortOverlay::kVolumeBoostMin,
+                                                   PortOverlay::kVolumeBoostMax)) /
+                      100.f;
+  const float sfx = static_cast< float >(EnvIntIn("MP2_SFX_BOOST", sSfxBoost,
+                                                 PortOverlay::kVolumeBoostMin,
+                                                 PortOverlay::kVolumeBoostMax)) /
+                    100.f;
+  // The MusyX voices scale one by one in the mix; the AI DMA stream (front-end music, movie audio)
+  // takes the sound effects boost as its stream's gain.
+  MusyxPortSetVolumeBoost(music, sfx);
+  AIPortSetOutputGain(sfx);
+}
+
+} // namespace PortOverlayState
+
 namespace PortOverlay {
 
 bool DynamicRes() {
@@ -1875,6 +1902,30 @@ int ScanSpeed() {
 void SetScanSpeed(int percent) {
   ReadEnv();
   sScanSpeed = std::clamp(percent, kScanSpeedMin, kScanSpeedMax);
+  Persist();
+}
+
+int MusicBoost() {
+  ReadEnv();
+  return EnvIntIn("MP2_MUSIC_BOOST", sMusicBoost, kVolumeBoostMin, kVolumeBoostMax);
+}
+
+void SetMusicBoost(int percent) {
+  ReadEnv();
+  sMusicBoost = std::clamp(percent, kVolumeBoostMin, kVolumeBoostMax);
+  ApplyVolumeBoosts();
+  Persist();
+}
+
+int SfxBoost() {
+  ReadEnv();
+  return EnvIntIn("MP2_SFX_BOOST", sSfxBoost, kVolumeBoostMin, kVolumeBoostMax);
+}
+
+void SetSfxBoost(int percent) {
+  ReadEnv();
+  sSfxBoost = std::clamp(percent, kVolumeBoostMin, kVolumeBoostMax);
+  ApplyVolumeBoosts();
   Persist();
 }
 

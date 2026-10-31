@@ -60,6 +60,12 @@ static int salStatsPeak;
 static SDL_AtomicInt salMuted;
 void salSetMuted(int muted) { SDL_SetAtomicInt(&salMuted, muted != 0); }
 
+// The port's volume boost (F1 > Game > Audio above 100 percent, `music_boost`/`sfx_boost`): a
+// linear factor on the decoded voice, 1.0 for the game's own maximum. The mix thread reads it once
+// per voice, so a change lands between voices; a plain float is enough for that.
+static float salVolumeBoostMusic = 1.0f;
+static float salVolumeBoostSfx = 1.0f;
+
 static SND_SOME_CALLBACK userCallback = NULL;
 
 extern float gPortListenerHeading[3];
@@ -121,6 +127,13 @@ void MusyxPortSetSampleMuted(unsigned smpId, int muted) {
 }
 
 void MusyxPortClearSampleMutes(void) { sMutedSampleCount = 0; }
+
+// The port's two volume boosts: the music path (a streamed voice) and everything else. 1.0 is no
+// boost, so the default mix stays exactly the game's.
+void MusyxPortSetVolumeBoost(float music, float sfx) {
+  salVolumeBoostMusic = music > 0.0f ? music : 1.0f;
+  salVolumeBoostSfx = sfx > 0.0f ? sfx : 1.0f;
+}
 
 int MusyxPortGetMutedSamples(unsigned* out, int maxIds) {
   salInitMuteList();
@@ -585,6 +598,21 @@ static int renderVoiceSegment(DSPvoice* vp, s32* mainL, s32* mainR, s32* mainS, 
     filterState[voiceIdx] = yn;
   }
 #endif
+
+  /* The port's volume boost above the game's own maximum: scale this voice, the music path (a
+   * stream) or the effects, and saturate to the decode buffer's 16-bit range. No boost means no
+   * multiply at all, so the default output stays bit-identical. */
+  {
+    const float boost =
+        musyxPcStreamedAdpcm(smp->compType) ? salVolumeBoostMusic : salVolumeBoostSfx;
+    if (boost != 1.0f) {
+      for (int i = 0; i < nSamples; ++i) {
+        const float scaled = (float)voiceDecodeBuf[i] * boost;
+        voiceDecodeBuf[i] =
+            scaled >= 32767.0f ? 32767 : scaled <= -32768.0f ? -32768 : (s32)scaled;
+      }
+    }
+  }
 
   mixRampChannel(mainL ? mainL + frameOffset : NULL, voiceDecodeBuf, nSamples,
                  (s16)vp->lastVolL + dVolL * frameOffset, dVolL, (s16)adsrStart, adsrDelta);

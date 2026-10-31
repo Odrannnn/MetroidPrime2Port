@@ -249,20 +249,61 @@ void DrawCutscenesSection() {
 // The game's own volumes, the same as the pause menu's two sliders. Echoes clamps both to 0x69
 // (`CGameOptions::SetSfxVolume`/`SetMusicVolume`), not Prime 1's 0x7F, and 0x69 is also the
 // default, so 100% here is the retail maximum. Scaling by 127 capped the slider at 83% (#14).
+// Above 100% the game stays at 0x69 and the port's mixer boosts that path instead (#41), so the
+// row goes on to kVolumeBoostMax.
 constexpr int kGameVolumeMax = 0x69;
+
+// A row's value for one of the game's volumes: the game's own volume in percent, or the port's
+// boost once the game's volume is at its maximum.
+int VolumeSliderPercent(int gameVolume, int boost) {
+  if (gameVolume >= kGameVolumeMax) {
+    return boost;
+  }
+  return (gameVolume * 100 + kGameVolumeMax / 2) / kGameVolumeMax;
+}
+
+// One row: up to 100 the game's own volume, above it the game at its maximum and the port's boost
+// in its place; back at 100 or under the boost returns to 1.0.
+void GameVolumeRow(const char* label, int gameVolume, int boost, bool music) {
+  int percent = VolumeSliderPercent(gameVolume, boost);
+  if (!ImGui::SliderInt(label, &percent, 0, PortOverlay::kVolumeBoostMax, "%d%%",
+                        ImGuiSliderFlags_AlwaysClamp) ||
+      gpGameState == nullptr) {
+    return;
+  }
+  const bool boosted = percent > PortOverlay::kVolumeBoostDefault;
+  const int volume = boosted ? kGameVolumeMax : (percent * kGameVolumeMax + 50) / 100;
+  if (music) {
+    gpGameState->GameOptions().SetMusicVolume(volume, true);
+    sMusicBoost = boosted ? percent : PortOverlay::kVolumeBoostDefault;
+  } else {
+    gpGameState->GameOptions().SetSfxVolume(volume, true);
+    sSfxBoost = boosted ? percent : PortOverlay::kVolumeBoostDefault;
+  }
+  // The mixer takes it now; DrawUI writes the file once the drag is over, as the other rows do.
+  ApplyVolumeBoosts();
+  Changed(true);
+}
+
 void DrawGameAudio() {
   ImGui::SeparatorText("Audio");
   ImGui::BeginDisabled(gpGameState == nullptr);
-  int music = gpGameState != nullptr ? static_cast< int >(gpGameState->GameOptions().GetMusicVolume()) : 0;
-  int musicPct = (music * 100 + kGameVolumeMax / 2) / kGameVolumeMax;
-  if (ImGui::SliderInt("Music volume", &musicPct, 0, 100, "%d%%") && gpGameState != nullptr) {
-    gpGameState->GameOptions().SetMusicVolume((musicPct * kGameVolumeMax + 50) / 100, true);
-  }
-  int sfx = gpGameState != nullptr ? static_cast< int >(gpGameState->GameOptions().GetSfxVolume()) : 0;
-  int sfxPct = (sfx * 100 + kGameVolumeMax / 2) / kGameVolumeMax;
-  if (ImGui::SliderInt("Sound effects volume", &sfxPct, 0, 100, "%d%%") && gpGameState != nullptr) {
-    gpGameState->GameOptions().SetSfxVolume((sfxPct * kGameVolumeMax + 50) / 100, true);
-  }
+  GameVolumeRow("Music volume",
+                gpGameState != nullptr
+                    ? static_cast< int >(gpGameState->GameOptions().GetMusicVolume())
+                    : 0,
+                PortOverlay::MusicBoost(), true);
+  ImGui::SetItemTooltip("Up to 100 percent the game's own Music volume; above it the game stays at "
+                        "its maximum and the port boosts the music. That is louder than retail, and "
+                        "very high values can clip.");
+  GameVolumeRow("Sound effects volume",
+                gpGameState != nullptr
+                    ? static_cast< int >(gpGameState->GameOptions().GetSfxVolume())
+                    : 0,
+                PortOverlay::SfxBoost(), false);
+  ImGui::SetItemTooltip("Up to 100 percent the game's own Sound effects volume; above it the game "
+                        "stays at its maximum and the port boosts every voice, and the movie audio. "
+                        "That is louder than retail, and very high values can clip.");
   // Sound mode: Mono / Stereo / Dolby Surround
   int soundMode = gpGameState != nullptr ? static_cast< int >(gpGameState->GameOptions().GetSurroundMode())
                                          : CAudioSys::kSM_Stereo;

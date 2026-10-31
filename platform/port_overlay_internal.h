@@ -24,6 +24,8 @@ extern bool sMapInvertX;
 extern bool sMapInvertY;
 extern int sWalkSpeed;
 extern int sScanSpeed;
+extern int sMusicBoost;
+extern int sSfxBoost;
 extern int sLanguage;
 extern int sElevatorRide;
 extern int sPortalTransition;
@@ -107,6 +109,11 @@ extern int sUiTheme;
 extern bool sUiSounds;
 extern bool sDiscord;
 extern bool sUpdateCheck;
+
+// Hands both boosts (percent / 100, MP2_MUSIC_BOOST and MP2_SFX_BOOST included, so the effective
+// levels) to the mixers: the MusyX voices in hw_pc.c and the AI DMA stream's own gain. Called as a
+// value is read from the settings file, by the setters, and once by ReadEnv for the environment.
+void ApplyVolumeBoosts();
 
 } // namespace PortOverlayState
 

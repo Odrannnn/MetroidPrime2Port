@@ -207,6 +207,28 @@ const SettingKey kSettingKeys[] = {
                                                                                   "200"),
     IntKey< &sScanSpeed, PortOverlay::kScanSpeedMin, PortOverlay::kScanSpeedMax >("scan_speed", "50",
                                                                                   "400"),
+    // The F1 Game > Audio rows' part above 100 percent: the mixer reads a boost, so a loaded value
+    // is handed to it here as well as by the rows (a plain IntKey could not).
+    {"music_boost",
+     [](const std::string& value) {
+       int parsed = 0;
+       if (ParseInt(value, parsed) && parsed >= PortOverlay::kVolumeBoostMin &&
+           parsed <= PortOverlay::kVolumeBoostMax) {
+         sMusicBoost = parsed;
+         ApplyVolumeBoosts();
+       }
+     },
+     [](std::ostream& out) { out << sMusicBoost; }, false, "100", "200"},
+    {"sfx_boost",
+     [](const std::string& value) {
+       int parsed = 0;
+       if (ParseInt(value, parsed) && parsed >= PortOverlay::kVolumeBoostMin &&
+           parsed <= PortOverlay::kVolumeBoostMax) {
+         sSfxBoost = parsed;
+         ApplyVolumeBoosts();
+       }
+     },
+     [](std::ostream& out) { out << sSfxBoost; }, false, "100", "200"},
     IntKey< &sElevatorRide, PortOverlay::kElevatorRide_Original, PortOverlay::kElevatorRide_Skip >(
         "elevator_ride", "0", "2"),
     IntKey< &sRotatingRooms, PortOverlay::kRotatingRooms_Original, PortOverlay::kRotatingRooms_Fast >(
