@@ -140,7 +140,11 @@ static u32 mcmdWait(SYNTH_VOICE* svoice, MSTEP* cstep) {
 }
 
 static u32 mcmdWaitMs(SYNTH_VOICE* svoice, MSTEP* cstep) {
-  *((u8*)cstep->para + 6) = 1;
+  /* Retail pokes byte 6 of the big-endian step: bits 8-15 of para[1] become 1 ("time is ms").
+   * On a little-endian host that byte is the low byte of the wait time, which turned the
+   * wait-forever 0xFFFF of looped-sample macros into a 65281-tick one: the title music was
+   * cut after ~85 s. */
+  cstep->para[1] = (cstep->para[1] & ~0xFF00u) | 0x100u;
   return mcmdWait(svoice, cstep);
 }
 
