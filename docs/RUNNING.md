@@ -139,6 +139,14 @@ guardian's crystals need), `gren.crystal` (crystal state; 4 = ForceGrapple), `gr
 `gren.grappledmg`, `gren.tailhp`, `gren.action` (read-only attack state), `gren.tail` (1 runs DestroyTail).
 The guardian grapple chain: `var <id> gren.scanned 1; var <id> gren.crystal 4; fsm <id> Pursue`
 (`tools/cov/specs/grenchler_grapple*.con`).
+Quadraxis knees: `var <CDigitalGuardian> dg.kneecol0..3` reads the knee collider uids (u0580..u0583 in
+Sanctuary 09_cliff_temple_dark), `dg.killknee0..3 1` sets that collider's HP to 0 and gives the body its
+XDMG (fn_14_5838/5470): the boss-bar counter (e0035005f) drops 9 -> 8, IS07 runs and the FSM goes to
+KneeDestroyedReaction. `damage` on the colliders cannot (they forward hits and lose no HP); boot
+`1baa96c2,09_cliff_temple_dark`, then `layer 3`, `layer 11`, `send e00350060 Activate`, `send e0035000f Activate`.
+Engaged CPuffer (Torvus 07_swamp_shaft): there is none. Retail's Puffer has no aggro: its FSM is
+Start/Patrol/Dead with no triggers, so `fsm PathFind` returns to Patrol (CPatterned::PathFind needs a
+search path). The states it has: roaming Patrol, and `send e002801f0 Action` (dies and is deleted).
 `gameevent <score|kill|generic|scan|damage|stop|spawn> [src] [tgt] [value] [as <proxyType>]` delivers a
 multiplayer game event (CGMMultiplayer::NotifyListeners) to every CScriptPlayerProxy listener whose mask
 holds tgt (0), which CGMSinglePlayer never registers: CListener::OnGameEvent -> OnGameEvent, and through it

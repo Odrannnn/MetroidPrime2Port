@@ -3445,6 +3445,34 @@ bool CDigitalGuardian::PortConsoleVar(CEntity& ent, const char* name, const int*
       return true;
     }
   }
+  // dg.kneecol0..3: the knee collider uids at 0xFBC (fn_14_3E2C's table). dg.killknee0..3
+  // (write 1): the collider's HP goes to 0 and the body takes its XDMG (fn_14_5838), as a
+  // shot that breaks the knee armour does, so the boss-bar counter drops by one and IS07 /
+  // KneeDestroyed run. `damage` cannot: the colliders forward hits to the body without losing HP.
+  for (int i = 0; i < 4; ++i) {
+    char key[20];
+    snprintf(key, sizeof(key), "dg.kneecol%d", i);
+    if (strcmp(name, key) == 0) {
+      if (value != nullptr) {
+        dg->xFBC_[i] = static_cast< u16 >(*value);
+      }
+      current = dg->xFBC_[i];
+      return true;
+    }
+    snprintf(key, sizeof(key), "dg.killknee%d", i);
+    if (strcmp(name, key) == 0) {
+      CStateManager* mgr = PortConsole::VarManager();
+      CCollisionActor* collider =
+          mgr != nullptr ? TCastToPtr< CCollisionActor >(mgr->ObjectById(TUniqueId(dg->xFBC_[i])))
+                         : nullptr;
+      if (value != nullptr && *value != 0 && collider != nullptr) {
+        collider->HealthInfo()->SetHP(0.f);
+        dg->x5838_(*mgr, collider->GetUniqueId());
+      }
+      current = collider != nullptr ? static_cast< int >(collider->GetHealthInfo()->GetHP()) : -1;
+      return true;
+    }
+  }
   // dg.armor0..3: the knee armour ids 0xFB0..0xFB6 (fn_14_3DA8).
   u16* const armor[4] = {&dg->xFB0_, &dg->xFB2_, &dg->xFB4_, &dg->xFB6_};
   for (int i = 0; i < 4; ++i) {
