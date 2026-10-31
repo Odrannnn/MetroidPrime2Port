@@ -685,7 +685,9 @@ bool SavedField(const PortSchemaClass& cls, const PortSchemaField& f) {
   }
   if (std::strcmp(cls.name, "CActor") == 0) {
     return Named(f.name, {"mModelData", "mDrawFlags", "mMuted", "mCallTouch", "mRenderParticleDBInside",
-                          "mTargetableVisorFlags", "mEnableRender", "mDrawEnabled", "mDoTargetDistanceTest"});
+                          "mTargetableVisorFlags", "mEnableRender", "mDrawEnabled", "mDoTargetDistanceTest",
+                          // Render-sort cache: SetTransform sets it, the next sort clears it.
+                          "mNotInSortedLists"});
   }
   if (std::strcmp(cls.name, "CPhysicsActor") == 0) {
     // Motion too, though kTagMotion has velocity and momentum: these are applied after the

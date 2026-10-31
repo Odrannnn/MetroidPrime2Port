@@ -253,7 +253,7 @@ void operator delete(void* ptr) noexcept { PortDelete(ptr); }
 void operator delete[](void* ptr) noexcept { PortDelete(ptr); }
 void operator delete(void* ptr, std::size_t) noexcept { PortDelete(ptr); }
 void operator delete[](void* ptr, std::size_t) noexcept { PortDelete(ptr); }
-// The aligned `operator new` stays the runtime's. On Windows that is `_aligned_malloc`, whose
+// The aligned `operator new` above is `_aligned_malloc` on Windows, whose
 // block `free` corrupts the heap (0xC0000374), so the aligned deletes give it to `_aligned_free`.
 static inline void PortAlignedDelete(void* ptr) noexcept {
 #ifdef _WIN32
