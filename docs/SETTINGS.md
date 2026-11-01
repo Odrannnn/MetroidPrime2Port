@@ -189,7 +189,8 @@ Controls > Options:
 - `sticky_charge`, `rapid_charge`: Buttons > Sticky Charge, Remastered charge (rapid fire).
 - `auto_aim`: Aiming > Auto-aim.
 - `pointer_aim`, `pointer_aim_box`, `pointer_aim_turn`: Aiming > Pointer aim (Trilogy style),
-  Dead box, Edge turn speed.
+  Dead box, Edge turn speed. An empty lock (L with nothing targeted, outside the Scan Visor)
+  holds the view and leaves the pointer free, as Trilogy's Z does, whatever Lock-on free aim says.
 - `hand_on_cannon`: Aiming > Hand on cannon when still (default on; needs Mouse aim, Twin stick
   or Touch aim; env `MP2_HAND_ON_CANNON`), as in Trilogy and PrimeHack: after a second on the
   ground without walking the gun enters the R free-look pose with the left hand on the cannon.

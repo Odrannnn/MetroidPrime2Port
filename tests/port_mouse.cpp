@@ -162,6 +162,29 @@ int main() {
       REQUIRE(Near(Yaw(), 0.f) && Near(Pitch(), 0.f));
     }
 
+    // An empty lock under pointer aim keeps the pointer where it was as the lock starts and
+    // ends; a target lock re-centres it.
+    for (bool empty : {true, false}) {
+      Start(sensitivity, true);
+      AddMotion(3.f, -2.f);
+      Apply();
+      float px, py;
+      REQUIRE(PointerAimPosition(px, py));
+      BeginTick();
+      REQUIRE(!UpdateAim(true, true, 0.f, 1.f, 0.f, dt, true, false, empty));
+      REQUIRE(LockFreeAimActive());
+      if (empty) {
+        CheckPointer(px, py);
+      } else {
+        CheckPointer(0.f, 0.f);
+      }
+      BeginTick();
+      UpdateAim(true, false, 0.f, 1.f, 0.f, dt);
+      if (empty) {
+        CheckPointer(px, py);
+      }
+    }
+
     Start(sensitivity, false);
     AddMotion(3.f, -2.f);
     AddStickAim(1.f, 1.f, dt);

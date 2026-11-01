@@ -81,6 +81,8 @@ float sLastTickDt = 1.f / 60.f;
 PortMouse::PointerAim sPointer;
 // The last update left the pointer free under a lock (lock-on free aim).
 bool sLockFree = false;
+// That lock had no target (UpdateAim's pointerStays): its end leaves the pointer put.
+bool sLockStays = false;
 bool sPointerEnabled = false;
 bool sPointerFree = false;
 // The console's `pointeraim <x> <y>` holds the pointer there (free, the view not turned) until
@@ -538,7 +540,7 @@ void BeginTick() {
 }
 
 bool UpdateAim(bool active, bool locked, float x, float y, float z, float dt, bool pointerLock,
-                bool pointerHold) {
+                bool pointerHold, bool pointerStays) {
   ReadEnv();
   sAppliedLastTick = false;
   if (PortRadial::Capturing()) {
@@ -558,6 +560,7 @@ bool UpdateAim(bool active, bool locked, float x, float y, float z, float dt, bo
     sAiming = false;
     sPointerFree = false;
     sLockFree = false;
+    sLockStays = false;
     sPointer.Center();
     SetCapture(false);
     return false;
@@ -598,9 +601,12 @@ bool UpdateAim(bool active, bool locked, float x, float y, float z, float dt, bo
   // the centre, where the target is. A touch source with no finger down re-centres it.
   const bool lockFree = pointerLock && active && locked && !touchIdle;
   if (lockFree != sLockFree) {
-    sPointer.Center();
+    if (!(lockFree ? pointerStays : sLockStays)) {
+      sPointer.Center();
+    }
     sLockFree = lockFree;
   }
+  sLockStays = lockFree && pointerStays;
   // A held pointer stays where the lock found it, and neither moves nor turns the view.
   const bool pointerHeld = (active && locked && !lockFree && pointerHold && sPointerEnabled && !touchIdle) ||
                            (sDebugHold && sPointerEnabled && !lockFree && !touchIdle);
@@ -650,6 +656,7 @@ bool UpdateAim(bool active, bool locked, float x, float y, float z, float dt, bo
   }
   sPointerFree = false;
   sLockFree = false;
+  sLockStays = false;
   // Without pointer aim the gyro's travel turns the view beside the mouse's, stick's and touch's.
   const bool applied = sAim.Update(active, held, x, y, z, sFrameX + sCameraFrameX, sFrameY + sCameraFrameY,
                                    sSensitivity, sInvertX, sInvertY);

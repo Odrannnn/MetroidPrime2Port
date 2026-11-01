@@ -2955,10 +2955,17 @@ bool CPlayer::PortAimCrosshairsOpen() const {
 
 bool CPlayer::PortLockFreeAim(const CStateManager& mgr) const {
   // Scan locks and grapples still aim through the centre.
-  return PortOverlay::LockOnFreeAim() && PortDirectAimControls() &&
+  if (!PortDirectAimControls() || mgr.GetPlayerState()->GetCurrentVisor() == CPlayerState::kPV_Scan) {
+    return false;
+  }
+  // Under pointer aim an empty lock always frees the pointer: Trilogy's Z with nothing targeted
+  // holds the view and leaves the cursor free. A target lock follows the setting.
+  if (mOrbitState == kOS_OrbitPoint && PortOverlay::PointerAim()) {
+    return true;
+  }
+  return PortOverlay::LockOnFreeAim() &&
          (mOrbitState == kOS_OrbitObject || mOrbitState == kOS_OrbitPoint ||
-          mOrbitState == kOS_OrbitCarcass || mOrbitState == kOS_ForcedOrbitObject) &&
-         mgr.GetPlayerState()->GetCurrentVisor() != CPlayerState::kPV_Scan;
+          mOrbitState == kOS_OrbitCarcass || mOrbitState == kOS_ForcedOrbitObject);
 }
 
 bool CPlayer::PortDirectAimControls() const {
@@ -2999,8 +3006,10 @@ void CPlayer::UpdateMouseAim(CStateManager& mgr, float dt) {
   // the scan point under the pointer's window rather than the one at the centre (MP1 issue #190).
   const bool scanPointHold = mOrbitState == kOS_OrbitPoint &&
                              mgr.GetPlayerState()->GetCurrentVisor() == CPlayerState::kPV_Scan;
+  const bool lockFree = PortLockFreeAim(mgr);
+  const bool emptyLock = lockFree && mOrbitState == kOS_OrbitPoint && PortOverlay::PointerAim();
   if (!PortMouse::UpdateAim(true, !allowed, forward.GetX(), forward.GetY(), forward.GetZ(), dt,
-                            PortLockFreeAim(mgr), scanPointHold)) {
+                            lockFree, scanPointHold, emptyLock)) {
     return;
   }
 
