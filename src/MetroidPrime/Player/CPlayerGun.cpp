@@ -3143,8 +3143,8 @@ void CPlayerGun::UpdateTimers(float dt) {
 }
 
 void CPlayerGun::UpdateFreeLook(float dt, CStateManager& mgr) {
-  bool freeLook = GetPlayer(mgr)->IsInFreeLook();
 #ifdef TARGET_PC
+  bool freeLook = GetPlayer(mgr)->IsInFreeLook();
   // Port: as in Trilogy and PrimeHack, standing still under direct aim rests the left hand on the
   // cannon. Direct aim replaces R's free look, so its pose stands in; turning and firing keep it,
   // walking or leaving the ground drops it.
@@ -3158,7 +3158,11 @@ void CPlayerGun::UpdateFreeLook(float dt, CStateManager& mgr) {
   freeLook = freeLook || mPortHandOnCannon;
 #endif
   if (mFidget.GetState() == CFidget::kS_NoFidget) {
+#ifdef TARGET_PC
     if (freeLook && mMotionState.mMotionState == CMotionState::kMS_Zero &&
+#else
+    if (GetPlayer(mgr)->IsInFreeLook() && mMotionState.mMotionState == CMotionState::kMS_Zero &&
+#endif
         !mInBigStrike) {
       if (mInFreeLook != true && mBeamChangeState == kBCS_Idle) {
         if (mEnterFreeLookDelayTimer < 0.25f) {
