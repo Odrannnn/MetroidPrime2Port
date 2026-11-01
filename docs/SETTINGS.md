@@ -169,10 +169,32 @@ Controls > Options:
   applies the Remastered layout to all controllers (Remap > Presets...), replacing your own
   controller bindings; greyed out with a GameCube adapter.
 - `lockon_toggle`: Buttons > Toggle Lock-On; env `MP2_LOCK_ON_TOGGLE`.
+- `spider_toggle`: Buttons > Toggle Spider Ball (default off, off under Original Experience; env
+  `MP2_SPIDER_TOGGLE`): an R press on a Spider Ball track clings until the next press; leaving the
+  track (more than 0.15 s) or the morph ball ending lets go. Away from a track, R works as usual.
+  Grapple key, Toggle Grapple and Shoot While Grappling (MP1 #243) are not ported: Echoes grapples
+  with the fire button at a grapple point and never holsters the cannon for it.
+- `aim_lock_on`: Buttons > Aim Lock-On (default off, off under Original Experience; env
+  `MP2_AIM_LOCK_ON`): lock-on picks the target nearest the crosshair, measured as an angle (screen x
+  weighed by the aspect ratio) with line of sight still required. Retail prefers a target nearer the
+  player by more than the orbit distance threshold even when it is off to the side. Grapple points
+  and the scan visor keep retail's pick.
+- Dodge (Controls > Remap > Move and aim, binding `dodge`, unbound by default): pressed on the
+  ground while strafing (strafe at least as strong as forward/back), it dashes. Locked on, it does
+  what a jump tapped while strafing does: retail's dash around the target. Not locked on, it does
+  the same dash (hop, speed, length, sound and rumble) straight sideways along the facing at the
+  press, with mouse/stick look free during it. A press is kept for 0.12 s, so pressing just before
+  the strafe works. Like any digital action it can be a touch button in the layout editor. Off under
+  Original Experience; the jump-tap dash is unchanged.
 - `sticky_charge`, `rapid_charge`: Buttons > Sticky Charge, Remastered charge (rapid fire).
 - `auto_aim`: Aiming > Auto-aim.
 - `pointer_aim`, `pointer_aim_box`, `pointer_aim_turn`: Aiming > Pointer aim (Trilogy style),
-  Dead box, Edge turn speed.
+  Dead box, Edge turn speed. An empty lock (L with nothing targeted, outside the Scan Visor)
+  holds the view and leaves the pointer free, as Trilogy's Z does, whatever Lock-on free aim says.
+- `hand_on_cannon`: Aiming > Hand on cannon when still (default on; needs Mouse aim, Twin stick
+  or Touch aim; env `MP2_HAND_ON_CANNON`), as in Trilogy and PrimeHack: after a second on the
+  ground without walking the gun enters the R free-look pose with the left hand on the cannon.
+  Turning, aiming and firing keep it; walking, jumping, lock-on, grapple and the morph ball drop it.
 - `lock_on_free_aim`: Aiming > Lock-on free aim (default off; needs Mouse aim, Twin stick or
   Touch aim), as in Remastered; env `MP2_LOCK_ON_FREE_AIM`. Under a combat lock the mouse, the
   right stick, gyro aim or a touch aim drag moves a crosshair over the view and shots leave along

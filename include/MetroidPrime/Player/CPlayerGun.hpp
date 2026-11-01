@@ -381,6 +381,10 @@ private:
   bool mBeamLoadRequested : 1;
 #ifdef TARGET_PC
   // Port: Remastered charge (Power Beam only), see CPlayerGun::PortRapidChargeShot.
+  // Hand on cannon (PortOverlay::HandOnCannon): how long Samus has stood still under direct aim,
+  // and whether that holds R's free-look pose (left hand on the cannon).
+  float mPortStillTime = 0.f;
+  bool mPortHandOnCannon = false;
   bool mPortRapidCharge;
   int mPortRapidShots;
   float mPortRapidTimer;

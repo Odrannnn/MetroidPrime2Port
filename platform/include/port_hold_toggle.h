@@ -137,4 +137,20 @@ private:
   float mHeldTime = 0.f;
 };
 
+// Keeps a condition true for kGrace after it ends, so a one-tick drop (a spider
+// ball crossing a seam in its track) doesn't count as the end.
+class Grace {
+public:
+  static constexpr float kGrace = 0.15f;
+
+  bool Update(bool on, float dt) {
+    mLeft = on ? kGrace : (mLeft > dt ? mLeft - dt : 0.f);
+    return on || mLeft > 0.f;
+  }
+  void Reset() { mLeft = 0.f; }
+
+private:
+  float mLeft = 0.f;
+};
+
 } // namespace PortHoldToggle

@@ -292,6 +292,14 @@ float SpringBallFlickRate();
 const float kStickyChargeAfter = 0.35f;
 bool LockOnToggle();
 void SetLockOnToggle(bool enabled);
+// Aim Lock-On: lock onto the target nearest the crosshair instead of the retail pick, which
+// prefers a nearer target (CPlayer::FindBestOrbitableObject). Off under Original Experience.
+// Toggle Spider Ball: an R press on a Spider Ball track clings until the next press. Off under
+// Original Experience.
+bool SpiderToggle();
+void SetSpiderToggle(bool enabled);
+bool AimLockOn();
+void SetAimLockOn(bool enabled);
 bool StickyCharge();
 void SetStickyCharge(bool enabled);
 // Auto-aim (`MP2_AUTO_AIM=0` turns it off, default on): off, the arm cannon aims only at a
@@ -350,6 +358,10 @@ float GyroSensitivityY();
 // moves a crosshair over the view and shots follow it, with or without pointer aim
 // (`MP2_LOCK_ON_FREE_AIM`). CPlayer::PortLockFreeAim reads it.
 bool LockOnFreeAim();
+// Hand on cannon (Trilogy, PrimeHack): under direct aim, after a second standing still on the
+// ground Samus rests her left hand on the cannon (R's free-look pose); `MP2_HAND_ON_CANNON`.
+// CPlayerGun::UpdateFreeLook reads it.
+bool HandOnCannon();
 // The Reset aim binding recentres the pointer under pointer aim, else levels the camera;
 // `MP2_RESET_AIM_BOTH` makes it do both either way.
 bool ResetAimBoth();

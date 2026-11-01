@@ -258,6 +258,8 @@ const SettingKey kSettingKeys[] = {
      "20"},
     BoolKey< &sQuickResume >("quick_resume"),
     BoolKey< &sLockOnToggle >("lockon_toggle"),
+    BoolKey< &sAimLockOn >("aim_lock_on"),
+    BoolKey< &sSpiderToggle >("spider_toggle"),
     BoolKey< &sStickyCharge >("sticky_charge"),
     BoolKey< &sRapidCharge >("rapid_charge"),
     BoolKey< &sAutoAim >("auto_aim"),
@@ -300,6 +302,7 @@ const SettingKey kSettingKeys[] = {
      "2",
      "1"},
     BoolKey< &sLockOnFreeAim >("lock_on_free_aim"),
+    BoolKey< &sHandOnCannon >("hand_on_cannon"),
     BoolKey< &sResetAimBoth >("reset_aim_both"),
     BoolKey< &sMenuStandardButtons >("menu_standard_buttons"),
     // The emulator whose card the port shares (System > Memory card); normalised on the way in.

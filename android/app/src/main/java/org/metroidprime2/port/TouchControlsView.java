@@ -3078,6 +3078,7 @@ final class TouchControlsView extends View {
             case "visor_next": return "Visor +";
             case "visor_prev": return "Visor −";
             case "spring_ball": return "Spring";
+            case "dodge": return "Dodge";
             case "port_menu": return "Menu";
             case "save_state": return "Save";
             case "load_state": return "Load";

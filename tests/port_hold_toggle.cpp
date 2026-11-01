@@ -148,6 +148,33 @@ int main() {
     REQUIRE(Is(s.Update(false, false, false, kDt), false, false));
     REQUIRE(Is(s.Update(true, false, false, kDt), false, false));
   }
+  // Grace: a drop shorter than kGrace is bridged, a longer one ends it.
+  {
+    PortHoldToggle::Grace g;
+    REQUIRE(!g.Update(false, kDt));
+    REQUIRE(g.Update(true, kDt));
+    for (int i = 0; i < 5; ++i) {
+      REQUIRE(g.Update(false, kDt)); // 5 ticks < 0.15 s
+    }
+    REQUIRE(g.Update(true, kDt));
+    int ticks = 0;
+    while (g.Update(false, kDt) && ticks < 100) {
+      ++ticks;
+    }
+    REQUIRE(ticks >= 8 && ticks <= 9);
+  }
+  // Toggle as the spider ball uses it: R pressed away from a track is a hold,
+  // attaching during it latches, leaving the track lets go.
+  {
+    PortHoldToggle::Toggle t;
+    REQUIRE(Is(t.Update(true, true, true, false, kDt), true, true));
+    REQUIRE(Is(t.Update(true, true, false, false, kDt), true, false));
+    REQUIRE(Is(t.Update(true, true, false, true, kDt), true, false)); // attached
+    REQUIRE(t.Latched());
+    REQUIRE(Is(t.Update(true, false, false, true, kDt), true, false));
+    REQUIRE(Is(t.Update(true, false, false, false, kDt), false, false)); // track ended
+    REQUIRE(!t.Latched());
+  }
   std::puts("hold/toggle ok");
   return 0;
 }

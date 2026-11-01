@@ -140,6 +140,8 @@ Each needs MP2 game-side hooks found fresh; a row with no possible MP2 backend i
       5dff869f3`); Grapple binding/toggle, Spider Ball toggle, Shoot While Grappling (`35c2c420c
       ddf94f1ff 31ffa6430 559266ef8 31f1a0dc3`, #243); hand on cannon (`976e914eb de9281a79`);
       empty lock frees the pointer (`bfaa241d6`).
+      DONE (2026-11-01, branch `sync/s27b-input`, not merged): all five ported; grapple key, Toggle Grapple
+      and Shoot While Grappling skipped (Echoes grapples with the fire button), Spider toggle + Grace helper only.
     - **s27c small**: per-visor crosshair toggles mapped to Echoes' visors (`486f7a0df 2d2ba0a5e`);
       morph ball bars option (`535ccd192`); console `freeze` (`aee3e53ac`); `[motion]` dumps
       (`105f65deb`); Android settings top band (`5d83055aa`).

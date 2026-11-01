@@ -97,6 +97,8 @@ bool sSpringFlick = false;
 float sSpringFlickRate = PortOverlay::kSpringFlickRateDefault;
 bool sQuickResume = true;
 bool sLockOnToggle = false;
+bool sAimLockOn = false;
+bool sSpiderToggle = false;
 bool sStickyCharge = false;
 bool sAutoAim = true;
 bool sPointerAim = false;
@@ -117,6 +119,7 @@ bool sGyroSplit = false;
 float sGyroSensitivityY = PortOverlay::kGyroSensitivityDefault;
 bool sResetAimBoth = false;
 bool sLockOnFreeAim = false;
+bool sHandOnCannon = true;
 bool sMenuStandardButtons = false;
 bool sRapidCharge = false;
 // `MP2_CARD_BACKUP`: copy the card's save file into save-backups before every card write (F1 >
@@ -1169,6 +1172,34 @@ void SetLockOnToggle(bool enabled) {
   Persist();
 }
 
+bool SpiderToggle() {
+  ReadEnv();
+  if (OriginalExperience()) {
+    return false;
+  }
+  return EnvBool("MP2_SPIDER_TOGGLE", sSpiderToggle);
+}
+
+void SetSpiderToggle(bool enabled) {
+  ReadEnv();
+  sSpiderToggle = enabled;
+  Persist();
+}
+
+bool AimLockOn() {
+  ReadEnv();
+  if (OriginalExperience()) {
+    return false;
+  }
+  return EnvBool("MP2_AIM_LOCK_ON", sAimLockOn);
+}
+
+void SetAimLockOn(bool enabled) {
+  ReadEnv();
+  sAimLockOn = enabled;
+  Persist();
+}
+
 bool StickyCharge() {
   ReadEnv();
   if (OriginalExperience()) {
@@ -1295,6 +1326,11 @@ bool GyroSplit() {
 float GyroSensitivityY() {
   ReadEnv();
   return EnvFloatIn("MP2_GYRO_SENSITIVITY_Y", sGyroSensitivityY, kGyroSensitivityMin, kGyroSensitivityMax);
+}
+
+bool HandOnCannon() {
+  ReadEnv();
+  return EnvBool("MP2_HAND_ON_CANNON", sHandOnCannon);
 }
 
 bool LockOnFreeAim() {

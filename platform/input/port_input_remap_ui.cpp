@@ -1247,7 +1247,7 @@ const std::vector<SGroup>& Groups() {
         // The C-stick is the right stick: twin-stick aim, classic beam picks, map panning.
         {"Move and aim",
          {Action::MainUp, Action::MainDown, Action::MainLeft, Action::MainRight, Action::CUp, Action::CDown,
-          Action::CLeft, Action::CRight},
+          Action::CLeft, Action::CRight, Action::Dodge},
          true},
         // Direct picks work in every scheme; the GameCube inputs behind them are listed above.
         {"Beams",

@@ -628,6 +628,15 @@ void RequestSpringBall(float seconds) {
 
 void ClearSpringBallRequest() { sSpringRequestUntilNs.store(0); }
 
+std::atomic< uint64_t > sDodgeRequestUntilNs{0};
+
+void RequestDodge() { sDodgeRequestUntilNs.store(SDL_GetTicksNS() + 120'000'000); }
+
+bool TakeDodgeRequest() {
+  const uint64_t until = sDodgeRequestUntilNs.exchange(0);
+  return SDL_GetTicksNS() < until && !PortOverlay::OriginalExperience();
+}
+
 bool AimEnabled() { return Read(&Settings::aim); }
 
 float AimSpeed() { return Read(&Settings::aimSpeed); }

@@ -70,6 +70,12 @@ void DrawControlsOptions() {
   Changed(ImGui::Checkbox("Toggle Lock-On", &sLockOnToggle));
   ItemHelp("Press L once to lock on, scan or grapple, and again to let go. With no target, L works "
            "as usual.");
+  Changed(ImGui::Checkbox("Toggle Spider Ball", &sSpiderToggle));
+  ItemHelp("Press R once to cling to a Spider Ball track, and again to let go. Leaving the track "
+           "lets go by itself. Away from a track, R works as usual.");
+  Changed(ImGui::Checkbox("Aim Lock-On", &sAimLockOn));
+  ItemHelp("Lock onto the target nearest the crosshair. The original prefers a nearer target even "
+           "when it is off to the side. Scanning works as usual.");
   Changed(ImGui::Checkbox("Sticky Charge", &sStickyCharge));
   ItemHelp("Tap to fire as usual. Hold fire, let go, and the beam keeps charging; press fire again "
            "to shoot. Needs the Charge Beam.");
@@ -101,6 +107,10 @@ void DrawControlsOptions() {
   ItemHelp("As in Remastered: while locked on, the mouse, right stick, gyro or a touch drag moves a "
            "crosshair and shots follow it. Centred, shots and missiles go for the locked target as "
            "before. Needs Mouse aim, Twin stick or Touch aim.");
+  Changed(ImGui::Checkbox("Hand on cannon when still", &sHandOnCannon));
+  ItemHelp("As in Trilogy and PrimeHack: after a second standing still, Samus rests her left hand "
+           "on the cannon (the R free-look pose) and keeps it while you aim and fire. Walking or "
+           "jumping drops it. Needs Mouse aim, Twin stick or Touch aim.");
   ImGui::BeginDisabled(!sPointerAim);
   if (ImGui::SliderInt("Dead box", &sPointerAimBox, PortOverlay::kPointerAimBoxMin, PortOverlay::kPointerAimBoxMax,
                        "%d%%")) {
