@@ -31,8 +31,8 @@ Things that took real effort to find out. AGENTS.md keeps a one-line index; the 
   source's frame count comes out 0, and anything that divides by a parsed count must guard it under
   TARGET_PC (`CAnimSource` did not, and an integer divide by zero ended a run). When a sweep sees a
   stream of these after a world change, the question to answer is *which pak family* is missing.
-- **A save load comes up with ~1008 of the 1024 object ids allocated** and only settles near ~350 a
-  few hundred frames later (`CStateManager.cpp:5420` has the same numbers; `MP2_DEBUG_IDS=1` prints
+- **A save load comes up with ~1008 object ids allocated** (of 1024 retail; the port has 2048 since
+  MP1 sync 27, `kMaxObjects` in `TGameTypes.hpp`) and only settles near ~350 a few hundred frames later (`CStateManager.cpp:5420` has the same numbers; `MP2_DEBUG_IDS=1` prints
   the count every 300 frames). A warp that lands in that window can exhaust the pool; `PortWarpSettle`
   waits for 256 free and drops the areas around the player, which is what frees them (the first
   threshold, 512, was tuned for the boot spike and blocked ordinary hops - 499 of 526 waits in one
