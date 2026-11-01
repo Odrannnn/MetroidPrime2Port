@@ -644,12 +644,15 @@ void ClearSpringBallRequest(int player) {
   if (ValidPlayer(player)) sSpringRequestUntilNs[player].store(0);
 }
 
-std::atomic< uint64_t > sDodgeRequestUntilNs{0};
+std::atomic< uint64_t > sDodgeRequestUntilNs[kPlayers]{};
 
-void RequestDodge() { sDodgeRequestUntilNs.store(SDL_GetTicksNS() + 120'000'000); }
+void RequestDodge(int player) {
+  if (ValidPlayer(player)) sDodgeRequestUntilNs[player].store(SDL_GetTicksNS() + 120'000'000);
+}
 
-bool TakeDodgeRequest() {
-  const uint64_t until = sDodgeRequestUntilNs.exchange(0);
+bool TakeDodgeRequest(int player) {
+  if (!ValidPlayer(player)) return false;
+  const uint64_t until = sDodgeRequestUntilNs[player].exchange(0);
   return SDL_GetTicksNS() < until && !PortOverlay::OriginalExperience();
 }
 

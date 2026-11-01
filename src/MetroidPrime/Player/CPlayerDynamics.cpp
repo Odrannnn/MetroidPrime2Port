@@ -428,7 +428,7 @@ void CPlayer::ComputeMovement(const CFinalInput& input, CStateManager& mgr, floa
     right.SetZ(0.f);
     if (CMath::AbsF(strafe) >= CMath::AbsF(forward) &&
         CMath::AbsF(strafe) > GetTweakPlayer()->GetDashStrafeInputThreshold() &&
-        right.CanBeNormalized() && PortTouch::TakeDodgeRequest()) {
+        right.CanBeNormalized() && PortTouch::TakeDodgeRequest(mPlayerIndex)) {
       SetMoveState(NPlayer::kMS_Jump, mgr);
       if (lockedOn) {
         sDodgeOrbitDash = true;

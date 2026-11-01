@@ -739,7 +739,7 @@ void RouteDirectActions(const PortInput::Output& out, double nowSec) {
 }
 
 // RouteDirectActions for Players 2-4: their direct and next/previous beam and visor picks and
-// Spring Ball, to their own player; no radial.
+// Spring Ball and Dodge, to their own player; no radial.
 void RoutePlayerActions(const PortInput::Output& out, int player) {
   static constexpr Action kBeams[] = {Action::BeamPower, Action::BeamIce, Action::BeamWave, Action::BeamPlasma};
   static constexpr Action kVisors[] = {Action::VisorCombat, Action::VisorXray, Action::VisorScan,
@@ -759,6 +759,7 @@ void RoutePlayerActions(const PortInput::Output& out, int player) {
   const int visorDir = out.Pressed(Action::VisorNext) ? 1 : out.Pressed(Action::VisorPrev) ? -1 : 0;
   PushCyclePick(false, visorDir != 0 ? CycleTarget(false, visorDir, player) : -1, false, player);
   if (out.Pressed(Action::SpringBall)) PortTouch::RequestSpringBall(0.12f, player);
+  if (out.Pressed(Action::Dodge)) PortTouch::RequestDodge(player);
 }
 
 // The port's own actions: polled every frame by PollPortActions, not with the game
