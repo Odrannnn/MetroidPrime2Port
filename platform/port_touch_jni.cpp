@@ -178,6 +178,11 @@ Java_org_metroidprime2_port_TouchControlsView_nativeTouchTurboFire(JNIEnv*, jcla
 }
 
 JNIEXPORT void JNICALL
+Java_org_metroidprime2_port_TouchControlsView_nativeTouchMenuBack(JNIEnv*, jclass, jboolean held) {
+  PortTouch::SetMenuBack(held == JNI_TRUE);
+}
+
+JNIEXPORT void JNICALL
 Java_org_metroidprime2_port_TouchControlsView_nativeSetTouchDevice(JNIEnv*, jclass, jboolean xbox) {
   PortTouch::NoteDevice(xbox == JNI_TRUE);
 }

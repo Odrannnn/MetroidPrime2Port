@@ -160,6 +160,11 @@ bool WheelIcon(int wheel, int item, std::vector< uint32_t >& out);
 // The twin layout's Beam button, and the Turbo button.
 void SetBeamShift(bool held);
 void SetTurboFire(bool held);
+// The pointer menus' back arrow: Player 1's pad reads B while it is held, past every remap
+// (a Remastered preset turns the overlay's east button into fire). TakeMenuBack: held now, or
+// pressed since the last call (Player 1's pad poll is its one caller).
+void SetMenuBack(bool held);
+bool TakeMenuBack();
 // The game is paused (kFS_Paused: the pause menu, or a HUD memo / message screen - MP2's flow
 // state does not tell those apart).
 bool PauseScreenOpen();

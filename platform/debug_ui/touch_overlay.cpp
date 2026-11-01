@@ -80,6 +80,8 @@ constexpr int kBeamShift = -2;
 constexpr int kTurboFire = -3;
 // A button added in the layout editor: its action is a touch: binding. Sends no GameCube button.
 constexpr int kCustomButton = -4;
+// The pointer menus' back arrow: GameCube B, whatever the remaps do with the overlay's buttons.
+constexpr int kMenuBack = -5;
 // Axis-held controls are tracked with ids above this, to share one press map.
 constexpr int kAxisIdBase = 100;
 
@@ -1466,6 +1468,8 @@ void PressControl(int id) {
       PortTouch::SetBeamShift(true);
     } else if (id == kTurboFire) {
       PortTouch::SetTurboFire(true);
+    } else if (id == kMenuBack) {
+      PortTouch::SetMenuBack(true);
     } else if (id >= kAxisIdBase) {
       SetAxis(id - kAxisIdBase, 1.f);
     } else {
@@ -1490,6 +1494,8 @@ void ReleaseControl(int id) {
       PortTouch::SetBeamShift(false);
     } else if (id == kTurboFire) {
       PortTouch::SetTurboFire(false);
+    } else if (id == kMenuBack) {
+      PortTouch::SetMenuBack(false);
     } else if (id >= kAxisIdBase) {
       // Triggers are axes with the minimum as rest: releasing with 0 left them half pressed.
       SetAxis(id - kAxisIdBase, -1.f);
@@ -3205,7 +3211,7 @@ void DrawEye(ImDrawList* dl, const Rect& bounds) {
 void DrawBackButton(ImDrawList* dl) {
   const float cx = sBackButtonRect.Cx(), cy = sBackButtonRect.Cy();
   const float radius = sBackButtonRect.Width() * 0.5f;
-  const ImU32 fill = Argb(sHeld.find(kBtnEast) != sHeld.end() ? 0xCC3A5A70 : 0x99081218);
+  const ImU32 fill = Argb(sHeld.find(kMenuBack) != sHeld.end() ? 0xCC3A5A70 : 0x99081218);
   const ImU32 stroke = Argb(0xBBFFFFFF);
   dl->AddCircleFilled(ImVec2(cx, cy), radius, fill, 32);
   dl->AddCircle(ImVec2(cx, cy), radius, stroke, 32, Dp(2));
@@ -3925,7 +3931,7 @@ bool TouchDown(SDL_FingerID id, float x, float y) {
   SetTouchDevice(sTwin);
   if (menu) {
     // Only the back and cog buttons get here (toGame took the rest).
-    const int target = OnCogButton(x, y) ? kToggleDebugOverlay : kBtnEast;
+    const int target = OnCogButton(x, y) ? kToggleDebugOverlay : kMenuBack;
     TouchTarget t;
     t.type = kButton;
     t.id = target;

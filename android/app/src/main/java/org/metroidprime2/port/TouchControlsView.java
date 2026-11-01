@@ -74,6 +74,9 @@ final class TouchControlsView extends View {
     // A button added in the layout editor: its action is a touch: binding the
     // native side makes from the layout, so it sends no GameCube button itself.
     private static final int CUSTOM_BUTTON = -4;
+    // The pointer menus' back arrow: GameCube B, whatever the remaps do with
+    // the overlay's buttons (nativeTouchMenuBack, not the virtual pad).
+    private static final int MENU_BACK = -5;
     // Axis-held controls are tracked with ids above this, to share one press map.
     private static final int AXIS_ID_BASE = 100;
 
@@ -635,6 +638,8 @@ final class TouchControlsView extends View {
     private static native void nativeTouchBeamShift(boolean held);
     // The Turbo button is held: the game acts as if Fire were mashed.
     private static native void nativeTouchTurboFire(boolean held);
+    // The pointer menu's back arrow is held: the game reads GameCube B.
+    private static native void nativeTouchMenuBack(boolean held);
     private static native void nativeVirtualAxis(int axis, float value);
     private static native boolean nativeTakePhysicalInput();
     private int leftPointer = -1;
@@ -1113,7 +1118,7 @@ final class TouchControlsView extends View {
         final float cx = backButtonRect.centerX();
         final float cy = backButtonRect.centerY();
         final float radius = backButtonRect.width() * 0.5f;
-        fillPaint.setColor(held.containsKey(BTN_EAST) ? 0xCC3A5A70 : 0x99081218);
+        fillPaint.setColor(held.containsKey(MENU_BACK) ? 0xCC3A5A70 : 0x99081218);
         strokePaint.setColor(0xBBFFFFFF);
         canvas.drawCircle(cx, cy, radius, fillPaint);
         canvas.drawCircle(cx, cy, radius, strokePaint);
@@ -1262,7 +1267,7 @@ final class TouchControlsView extends View {
             float y = event.getY(actionIndex);
             if (menu) {
                 // Only the back and cog buttons get here (toGame took the rest).
-                final int id = onCogButton(x, y) ? TOGGLE_DEBUG_OVERLAY : BTN_EAST;
+                final int id = onCogButton(x, y) ? TOGGLE_DEBUG_OVERLAY : MENU_BACK;
                 targets.put(pointerId, new TouchTarget(BUTTON, id));
                 pressControl(id);
                 invalidate();
@@ -2209,6 +2214,8 @@ final class TouchControlsView extends View {
                 nativeTouchBeamShift(true);
             } else if (id == TURBO_FIRE) {
                 nativeTouchTurboFire(true);
+            } else if (id == MENU_BACK) {
+                nativeTouchMenuBack(true);
             } else if (id >= AXIS_ID_BASE) {
                 nativeVirtualAxis(id - AXIS_ID_BASE, 1f);
             } else {
@@ -2257,6 +2264,8 @@ final class TouchControlsView extends View {
                 nativeTouchBeamShift(false);
             } else if (id == TURBO_FIRE) {
                 nativeTouchTurboFire(false);
+            } else if (id == MENU_BACK) {
+                nativeTouchMenuBack(false);
             } else if (id >= AXIS_ID_BASE) {
                 // Triggers are axes, and SDL's joystick axes run -32768..32767
                 // with a trigger resting at the minimum: releasing with 0 left

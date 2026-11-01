@@ -1458,6 +1458,9 @@ SPoll Poll(unsigned mouseHeld, bool focused) {
     r.status = Synthesize(out);
   }
   AddExtButtons(r.status, raw.padButtons);
+  if (PortTouch::TakeMenuBack()) {
+    r.status.button |= PAD_BUTTON_B;
+  }
   // MP1 also adjusts A and Escape while the scan text is up: that context needs the scan
   // soft-pause (above) and Escape is no pointer-menu key here.
   return r;

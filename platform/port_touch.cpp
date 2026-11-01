@@ -107,6 +107,9 @@ std::atomic< int > sPendingBeam[kPlayers]{-1, -1, -1, -1};
 bool ValidPlayer(int player) { return player >= 0 && player < kPlayers; }
 std::atomic< bool > sBeamShift{false};
 std::atomic< bool > sTurboHeld{false};
+std::atomic< bool > sMenuBackHeld{false};
+// A back-arrow press not yet read, so a tap whose down and up fall between two polls still counts.
+std::atomic< bool > sMenuBackPressed{false};
 // The D-pad buttons the beam shift swallowed on their press, so their release is swallowed too
 // (and a press that reached the pad before the shift still releases there). UI thread only.
 bool sDpadShifted[4] = {};
@@ -955,6 +958,18 @@ bool WheelIcon(int wheel, int item, std::vector< uint32_t >& out) {
 void SetBeamShift(bool held) { sBeamShift.store(held, std::memory_order_release); }
 
 void SetTurboFire(bool held) { sTurboHeld.store(held, std::memory_order_release); }
+
+void SetMenuBack(bool held) {
+  if (held) {
+    sMenuBackPressed.store(true, std::memory_order_release);
+  }
+  sMenuBackHeld.store(held, std::memory_order_release);
+}
+
+bool TakeMenuBack() {
+  const bool pressed = sMenuBackPressed.exchange(false, std::memory_order_acq_rel);
+  return sMenuBackHeld.load(std::memory_order_acquire) || pressed;
+}
 
 bool PauseScreenOpen() { return PortHarness::FlowState() == kPaused; }
 
