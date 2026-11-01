@@ -277,6 +277,29 @@ void PointerAimScale(float& sx, float& sy) {
 
 namespace PortMouse {
 
+static void ResetSlot(Slot& s) {
+  s.aim.Reset();
+  s.aiming = false;
+  ClearPendingTravel(s);
+  s.pointer.Center();
+  s.pointerFree = false;
+}
+
+// `keepOwnSticks`: Player 1's sources going off leaves alone a player whose own twin stick is on.
+static void ResetSlots(bool keepOwnSticks) {
+  for (int i = 0; i < kSlots; ++i) {
+    if (!keepOwnSticks || i == 0 || !StickEnabled(i)) {
+      ResetSlot(sSlots[i]);
+    }
+  }
+  // A finger's state belongs to the aim being reset: a held spring must not re-open the view
+  // the next frame, and a later down must not inherit a stale hold.
+  sTouchAimDown = false;
+  sTouchAimLatched = false;
+  sTouchHoldUntilNs = 0;
+  SetCapture(false);
+}
+
 bool Enabled() {
   ReadEnv();
   return sEnabled;
@@ -286,7 +309,7 @@ void SetEnabled(bool enabled) {
   ReadEnv();
   sEnabled = enabled;
   if (!enabled && !sStickEnabled && !sTouchEnabled.load()) {
-    Reset();
+    ResetSlots(true);
   }
 }
 
@@ -313,7 +336,7 @@ void SetStickEnabled(bool enabled) {
   ReadEnv();
   sStickEnabled = enabled;
   if (!enabled && !sEnabled && !sTouchEnabled.load()) {
-    Reset();
+    ResetSlots(true);
   }
 }
 
@@ -446,7 +469,7 @@ void SetTouchEnabled(bool enabled) {
   // Turning the layout's drag-to-aim off is the same shape as releasing the mouse: with no
   // source left, the aim must not keep a stale yaw for the next one to snap to.
   if (!enabled && !sEnabled && !sStickEnabled) {
-    Reset();
+    ResetSlots(true);
   }
 }
 
@@ -672,7 +695,13 @@ bool UpdateAim(bool active, bool locked, float x, float y, float z, float dt, bo
   if (std::isfinite(dt) && dt > 0.f) {
     s.lastTickDt = dt;
   }
-  if (!SlotLive(first ? 0 : player, sEnabled || sStickEnabled || sTouchEnabled.load()) || sUiActive) {
+  const bool live = SlotLive(first ? 0 : player, sEnabled || sStickEnabled || sTouchEnabled.load());
+  if (!live || sUiActive) {
+    // Another player's slot drops its aim with its twin stick, so turning it back on starts
+    // from the view rather than a stale yaw.
+    if (!first && !live) {
+      s.aim.Reset();
+    }
     s.aiming = false;
     s.pointerFree = false;
     s.lockFree = false;
@@ -896,21 +925,7 @@ void SetAimAngles(float yawDeg, float pitchDeg, int player) {
   }
 }
 
-void Reset() {
-  for (Slot& s : sSlots) {
-    s.aim.Reset();
-    s.aiming = false;
-    ClearPendingTravel(s);
-    s.pointer.Center();
-    s.pointerFree = false;
-  }
-  // A finger's state belongs to the aim being reset: a held spring must not re-open the view
-  // the next frame, and a later down must not inherit a stale hold.
-  sTouchAimDown = false;
-  sTouchAimLatched = false;
-  sTouchHoldUntilNs = 0;
-  SetCapture(false);
-}
+void Reset() { ResetSlots(false); }
 
 bool Aiming(int player) { return SlotFor(player).aiming; }
 bool Initialized(int player) { return SlotFor(player).aim.initialized; }

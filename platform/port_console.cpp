@@ -1183,6 +1183,32 @@ void CmdRemapPort(CStateManager&, const Args& args, std::string& out) {
   out += "remap port " + std::to_string(PortControls::RemapPort()) + "\n";
 }
 
+// `players`: each match player's position, body yaw, aim (yaw, pitch, whether it owns the view),
+// twin stick, direct aim controls, orbit state and beam.
+void CmdPlayers(CStateManager& mgr, const Args&, std::string& out) {
+  const int count = mgr.GetNumPlayers();
+  for (int i = 0; i < count; ++i) {
+    const CPlayer* player = mgr.GetPlayer(i);
+    const CPlayerState* state = mgr.GetPlayerState(i);
+    char line[256];
+    if (player == nullptr) {
+      std::snprintf(line, sizeof(line), "p%d none\n", i + 1);
+    } else {
+      const CVector3f p = player->GetTranslation();
+      const CVector3f fwd = player->GetTransform().GetForward();
+      std::snprintf(line, sizeof(line),
+                    "p%d pos %.2f %.2f %.2f yaw %.2f aim %.2f %.2f %s twin_stick %d direct %d orbit %d "
+                    "beam %d\n",
+                    i + 1, p.GetX(), p.GetY(), p.GetZ(), std::atan2(-fwd.GetX(), fwd.GetY()) * 57.29578f,
+                    PortMouse::Yaw(i), PortMouse::Pitch(i), PortMouse::Aiming(i) ? "aiming" : "held",
+                    PortMouse::StickEnabled(i) ? 1 : 0, player->PortDirectAimControls() ? 1 : 0,
+                    static_cast< int >(player->GetOrbitState()),
+                    state != nullptr ? static_cast< int >(state->GetCurrentBeam()) : -1);
+    }
+    out += line;
+  }
+}
+
 // `padread`: what the game's PADRead returns for each port right now.
 void CmdPadRead(CStateManager&, const Args&, std::string& out) {
   PADStatus status[PAD_MAX_CONTROLLERS]{};
@@ -2814,7 +2840,7 @@ void DropUnplayableBodyCmds(CStateManager& mgr, std::string* out) {
       if (std::find(sUnplayableReported.begin(), sUnplayableReported.end(), key) ==
           sUnplayableReported.end()) {
         sUnplayableReported.push_back(key);
-        char line[192];
+        char line[256];
         std::snprintf(line, sizeof(line),
                       "u%04x: body cmd %s dropped: its PAS has no %s state (retail plays anim -1)\n",
                       key.first, entry.name, entry.name);
@@ -4285,7 +4311,7 @@ void CmdRay(CStateManager& mgr, const Args& args, std::string& out) {
   }
   dir = dir.AsNormalized();
   const CMaterialFilter filter = CMaterialFilter::MakeInclude(CMaterialList(kMT_Solid));
-  char line[192];
+  char line[256];
   CVector3f start = origin;
   float left = len;
   for (int i = 0; i < 16 && left > 0.f; ++i) {
@@ -4537,7 +4563,7 @@ void CmdGrapple(CStateManager& mgr, const Args& args, std::string& out) {
   player->Teleport(CTransform4f::LookAt(pos, pos - dir, CVector3f::Up()), mgr, true);
   player->PortRefreshOrbitCandidates();
   PortInput::Hold(PAD_TRIGGER_L, 0, 0, 0, 0, 0, 2);
-  char line[192];
+  char line[256];
   std::snprintf(line, sizeof(line),
                 "grapple u%04x at (%.1f, %.1f, %.1f)%s: player at (%.1f, %.1f, %.1f), L held from "
                 "2 updates on%s\n",
@@ -4593,7 +4619,7 @@ void CmdLock(CStateManager& mgr, const Args& args, std::string& out) {
   player->Teleport(CTransform4f::LookAt(pos, pos - dir, CVector3f::Up()), mgr, true);
   player->PortRefreshOrbitCandidates();
   PortInput::Hold(PAD_TRIGGER_L, 0, 0, 0, 0, updates, 2);
-  char line[192];
+  char line[256];
   std::snprintf(line, sizeof(line),
                 "lock u%04x orbit point (%.1f, %.1f, %.1f): player at (%.1f, %.1f, %.1f), L held "
                 "from 2 updates on\n",
@@ -5093,6 +5119,8 @@ const CommandSpec kCommands[] = {
       "padpreset <name> [port]     apply a pad preset (gamecube, remastered, modern, southpaw) to a port's controller (default 0)\n"},
     {"remapport", CmdRemapPort,
       "remapport [port]            the player (port 0-3) the F1 remap page's Presets change; no argument prints it\n"},
+    {"players", CmdPlayers,
+      "players                     each player's position, yaw, aim, twin stick, direct aim, orbit, beam\n"},
     {"padread", CmdPadRead,
       "padread                     PADRead's status (err, buttons, sticks, triggers) for ports 0-3 right now\n"},
     {"vpad", CmdVpad,
