@@ -311,7 +311,8 @@ void RunInputScript(unsigned frame) {
 
 // MP2_VPAD_INPUT="v1.A@300+10,v2.SUP@400+60,v1.DETACH@900,v1.ATTACH@1200": the MP2_INPUT names
 // (buttons, S*/C* sticks, Z, L, R, D-pad as UP/DOWN/LEFT/RIGHT) on SDL virtual gamepad N; DETACH
-// and ATTACH unplug and replug it. Only changes are sent to SDL.
+// and ATTACH unplug and replug it. `v1.GYRO=<yaw>:<pitch>@300` sets that pad's gyro in rad/s (positive
+// yaw turns right, pitch looks up) and holds it until the next GYRO token. Only changes are sent to SDL.
 void RunVpadScript(unsigned frame) {
   size_t count = 0;
   InputToken* tokens = VpadScript(count);
@@ -352,6 +353,13 @@ void RunVpadScript(unsigned frame) {
     } else if (fire && NameIs("ATTACH", token.name, token.at)) {
       std::fprintf(stderr, "[vpad-input] v%d ATTACH at frame %u (%s)\n", token.pad, frame,
                    PortVpads::AttachSlot(token.pad, err) ? "ok" : err.c_str());
+    }
+    if (fire && std::strncmp(token.name, "GYRO=", 5) == 0) {
+      char* mid = nullptr;
+      const double yaw = std::strtod(token.name + 5, &mid);
+      const double pitch = (mid != nullptr && *mid == ':') ? std::strtod(mid + 1, nullptr) : 0.0;
+      std::fprintf(stderr, "[vpad-input] v%d GYRO yaw %.3f pitch %.3f at frame %u (%s)\n", token.pad, yaw,
+                   pitch, frame, PortVpads::SetGyro(token.pad, yaw, pitch, err) ? "ok" : err.c_str());
     }
     for (size_t k = 0; k < std::size(kMap); ++k) {
       if (NameIs(kMap[k].name, token.name, token.at)) {

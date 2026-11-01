@@ -5096,7 +5096,7 @@ const CommandSpec kCommands[] = {
     {"padread", CmdPadRead,
       "padread                     PADRead's status (err, buttons, sticks, triggers) for ports 0-3 right now\n"},
     {"vpad", CmdVpad,
-      "vpad list|attach [n]|detach <i>|<i> <button|axis> <value>  SDL virtual gamepads (MP2_VPADS=n attaches at start);\n"
+      "vpad list|attach [n]|detach <i>|<i> <button|axis> <value>|<i> gyro <yaw> <pitch>  SDL virtual gamepads (MP2_VPADS=n attaches at start);\n"
       "                            buttons a b x y back guide start ls rs lb rb up down left right (0/1), axes lx ly rx ry lt rt (-1..1)\n"},
     {"overlay", CmdOverlay,
       "overlay <page>[/<sub>]|off  open the F1 window on a page (name prefixes: `overlay video/qual`)\n"},

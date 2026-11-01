@@ -49,6 +49,10 @@ bool Attach(int slot, std::string& err) {
   static char names[kMax][24];
   std::snprintf(names[slot], sizeof(names[slot]), "Virtual Pad %d", slot + 1);
   desc.name = names[slot];
+  // A gyro, so gyro aim can be tested per pad (`vpad <i> gyro <yaw> <pitch>`, GYRO= in MP2_VPAD_INPUT).
+  static const SDL_VirtualJoystickSensorDesc kSensors[] = {{SDL_SENSOR_GYRO, 250.f}};
+  desc.nsensors = 1;
+  desc.sensors = kSensors;
   desc.vendor_id = 0x4d50; // distinct ids: SDL's mapping name lookup is by GUID and would name every pad alike
   desc.product_id = static_cast<Uint16>(slot + 1);
   const SDL_JoystickID id = SDL_AttachVirtualJoystick(&desc);
@@ -125,6 +129,22 @@ bool Set(int slot, const std::string& what, double value, std::string& err) {
   return false;
 }
 
+bool SetGyro(int slot, double yaw, double pitch, std::string& err) {
+  if (slot < 0 || slot >= kMax || sJoy[slot] == nullptr) {
+    err = "vpad " + std::to_string(slot) + " not attached";
+    return false;
+  }
+  // SDL gamepad gyro: x = pitch rate, y = yaw rate (positive turns left, counter-clockwise from
+  // above), rad/s; it holds the last value sent. The yaw/pitch arguments are the turn the game
+  // reads: positive yaw turns right, positive pitch looks up.
+  const float data[3] = {static_cast<float>(pitch), static_cast<float>(-yaw), 0.f};
+  if (!SDL_SendJoystickVirtualSensorData(sJoy[slot], SDL_SENSOR_GYRO, SDL_GetTicksNS(), data, 3)) {
+    err = std::string("SDL_SendJoystickVirtualSensorData: ") + SDL_GetError();
+    return false;
+  }
+  return true;
+}
+
 bool Present(int slot) { return slot >= 0 && slot < kMax && sIds[slot] != 0; }
 
 bool AttachSlot(int slot, std::string& err) {
@@ -170,7 +190,7 @@ bool Command(const std::string& args, std::string& out, std::string& err) {
   }
   const int slot = std::atoi(first.c_str());
   if (slot < 0 || slot >= kMax || (first[0] < '0' || first[0] > '3')) {
-    err = "usage: vpad list | attach [n] | detach <i> | <i> <button|axis> <value>";
+    err = "usage: vpad list | attach [n] | detach <i> | <i> <button|axis> <value> | <i> gyro <yaw> <pitch>";
     return false;
   }
   std::string what;
@@ -180,6 +200,15 @@ bool Command(const std::string& args, std::string& out, std::string& err) {
       return false;
     }
     out += "detached vpad " + std::to_string(slot) + "\n";
+    return true;
+  }
+  if (what == "gyro") {
+    double yaw = 0, pitch = 0;
+    in >> yaw >> pitch;
+    if (!SetGyro(slot, yaw, pitch, err)) {
+      return false;
+    }
+    out += "ok\n";
     return true;
   }
   double value = 1;

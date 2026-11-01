@@ -296,19 +296,19 @@ void EndPhotoCapture();
 bool TakePhotoLook(float& yawDegrees, float& pitchDegrees);
 // Aim state is per player (the pad port's player in a match): the functions below that take
 // `player` default to 0, which single player and every caller without a player use. The mouse,
-// touch and gyro feed player 0 only; a player above 0 follows its own pad's twin stick only. The
+// and touch feed player 0 only; a player above 0 follows its own pad's twin stick and gyro. The
 // settings (sensitivity, rates, source switches) stay global.
 // Gyro aim on the pointer (MP1's PollGyro pointer branch): yaw (right) and pitch (up) in rad/s
 // over dt seconds; `sweep` radians of pad turn move the pointer across the screen, and the
 // vertical travel is scaled by `scaleY` (the gyro's vertical over horizontal sensitivity).
-void AddGyroPointer(float yaw, float pitch, float dt, float sweep, float scaleY = 1.f);
+void AddGyroPointer(float yaw, float pitch, float dt, float sweep, float scaleY = 1.f, int player = 0);
 // Gyro camera travel (MP1's gyro pending): the view turns by `sensitivity` (`sensitivityY` up and
 // down) times the pad's turn (yaw right, pitch up, rad/s over dt). Without pointer aim this is
 // the gyro's aim; with it, "Gyro also turns the camera" beside the pointer.
-void AddGyroCamera(float yaw, float pitch, float dt, float sensitivity, float sensitivityY);
+void AddGyroCamera(float yaw, float pitch, float dt, float sensitivity, float sensitivityY, int player = 0);
 // Set by PollGyro each loop while the gyro is read and aiming: under pointer aim the stick then
 // turns the camera instead of moving the pointer.
-void SetGyroDrivesAim(bool drives);
+void SetGyroDrivesAim(bool drives, int player = 0);
 // The Reset aim binding: the next UpdateAim recentres the pointer under pointer aim, otherwise
 // levels the view (pitch 0); `both` does both.
 void RequestResetAim(bool both, int player = 0);

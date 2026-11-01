@@ -1455,22 +1455,70 @@ namespace {
 
 // MP1's gyro reader (platform/debug_ui/input.cpp ReadGyroRates). The phone's sensors are opened
 // once, on the first poll that wants them.
-PortGyro::Motion sGyroMotion;
-PortGyro::Filter sGyroFilter;
-PortGyro::Activation sGyroActivation;
-const char* sGyroStatus = "off";
-bool sGyroCalibrating = false;
+constexpr int kGyroPorts = 4;
+// One pad port's gyro: its own calibration, drift, smoothing and activation. Port 0 is also the one
+// F1 > Controls shows and recalibrates; ports 1-3 matter only in a multiplayer match.
+struct GyroPort {
+  PortGyro::Motion motion;
+  PortGyro::Filter filter;
+  PortGyro::Activation activation;
+  const char* status = "off";
+  bool calibrating = false;
+  // The source the motion state belongs to: a pad's joystick instance id (never reused, unlike its
+  // pointer after a replug), or kPhoneSource; 0 for none.
+  uint32_t motionSource = 0;
+  bool hasAccel = false;
+  uint64_t lastNs = 0;
+};
+GyroPort sGyro[kGyroPorts];
+
+// The gyro settings one port reads. Global for now; a per-port lookup replaces the body here.
+struct GyroSettings {
+  bool aim;
+  int source;
+  int space;
+  int autoCalibrate;
+  float smoothing;
+  float tightening;
+  int mode;
+  float sensitivity;
+  float sensitivityY;
+  float cursorAngle;
+  bool cursorCamera;
+  bool pointerAim;
+};
+GyroSettings SettingsFor(int /*port*/) {
+  GyroSettings g;
+  g.aim = PortOverlay::GyroAim();
+  g.source = PortOverlay::GyroSource();
+  g.space = PortOverlay::GyroSpace();
+  g.autoCalibrate = PortOverlay::GyroAutoCalibrate();
+  g.smoothing = PortOverlay::GyroSmoothing();
+  g.tightening = PortOverlay::GyroTightening();
+  g.mode = PortOverlay::GyroMode();
+  g.sensitivity = PortOverlay::GyroSensitivity();
+  g.sensitivityY = PortOverlay::GyroSplit() ? PortOverlay::GyroSensitivityY() : g.sensitivity;
+  g.cursorAngle = PortOverlay::GyroCursorAngle();
+  g.cursorCamera = PortOverlay::GyroCursorCamera();
+  g.pointerAim = PortOverlay::PointerAim();
+  return g;
+}
+
+// How many players the running game has (1 outside a match): ports above it are ignored.
+int GyroPlayers() {
+  if (gpGameState == nullptr) {
+    return 1;
+  }
+  return std::clamp(static_cast<int>(gpGameState->GetGameMode().GetNumPlayers()), 1, kGyroPorts);
+}
+
 // MP1's Recalibrate: manual calibration starts this long after the press, so the pad can be
 // put down, and then averages the still pad for kManualCalibrationSeconds.
 constexpr double kRecalibrateSeconds = 5.0;
 constexpr double kManualCalibrationSeconds = 3.0;
 uint64_t sRecalibrateAtNs = 0;
 uint64_t sManualCalibrationEndNs = 0;
-// The source the motion state belongs to: a pad's joystick instance id (never reused, unlike its
-// pointer after a replug), or kPhoneSource; 0 for none.
 constexpr uint32_t kPhoneSource = 0xFFFFFFFFu;
-uint32_t sGyroMotionSource = 0;
-bool sGyroHasAccel = false;
 SDL_Sensor* sPhoneGyro = nullptr;
 SDL_Sensor* sPhoneAccel = nullptr;
 // The phone sensors are searched again after a miss (a sensor can appear late), once a second.
@@ -1492,10 +1540,12 @@ int OrientationQuarters(SDL_DisplayOrientation orientation) {
 // Pitch (x, positive tilts the far edge up) and yaw (positive turns right) rates in rad/s from
 // the chosen source, after calibration and gyro space; false when there is none. dt is the time
 // since the last call.
-bool ReadGyroRates(float& pitch, float& yaw, float dt) {
-  const int gyroSource = PortOverlay::GyroSource();
+bool ReadGyroRates(int port, const GyroSettings& cfg, float& pitch, float& yaw, float dt) {
+  GyroPort& st = sGyro[port];
+  const int gyroSource = cfg.source;
   const bool wantController = gyroSource == 0 || gyroSource == 1;
-  const bool wantPhone = gyroSource == 0 || gyroSource == 2;
+  // The phone's sensors belong to player 0.
+  const bool wantPhone = port == 0 && (gyroSource == 0 || gyroSource == 2);
   // SDL's sensor axes (x right, y up, z toward the player), rad/s and m/s^2.
   float gyro[3];
   float accel[3];
@@ -1503,8 +1553,8 @@ bool ReadGyroRates(float& pitch, float& yaw, float dt) {
   uint32_t source = 0;
 
   if (wantController) {
-    // The player's pad: whichever controller Aurora has on port 0, not the first one opened.
-    const s32 padIndex = PADGetIndexForPort(kPort);
+    // The player's pad: whichever controller Aurora has on this port, not the first one opened.
+    const s32 padIndex = PADGetIndexForPort(static_cast<u32>(port));
     if (SDL_Gamepad* pad = padIndex >= 0 ? PADGetSDLGamepadForIndex(static_cast<u32>(padIndex)) : nullptr) {
       if (SDL_GamepadHasSensor(pad, SDL_SENSOR_GYRO)) {
         // Asked per pad, so a reconnected or swapped pad gets its sensors on too.
@@ -1513,7 +1563,7 @@ bool ReadGyroRates(float& pitch, float& yaw, float dt) {
         }
         if (SDL_GetGamepadSensorData(pad, SDL_SENSOR_GYRO, gyro, 3)) {
           source = static_cast<uint32_t>(SDL_GetGamepadID(pad));
-          sGyroStatus = "controller";
+          st.status = "controller";
           if (SDL_GamepadHasSensor(pad, SDL_SENSOR_ACCEL)) {
             if (!SDL_GamepadSensorEnabled(pad, SDL_SENSOR_ACCEL)) {
               SDL_SetGamepadSensorEnabled(pad, SDL_SENSOR_ACCEL, true);
@@ -1544,7 +1594,7 @@ bool ReadGyroRates(float& pitch, float& yaw, float dt) {
     }
     if (sPhoneGyro != nullptr && SDL_GetSensorData(sPhoneGyro, gyro, 3)) {
       source = kPhoneSource;
-      sGyroStatus = "phone";
+      st.status = "phone";
       haveAccel = sPhoneAccel != nullptr && SDL_GetSensorData(sPhoneAccel, accel, 3);
       // The phone reports its own axes (x right, y up in its natural orientation), so turn them
       // to the screen's, as SDL does for its accelerometer: landscape would otherwise swap pitch
@@ -1583,21 +1633,19 @@ bool ReadGyroRates(float& pitch, float& yaw, float dt) {
   if (source == 0) {
     return false;
   }
-  if (source != sGyroMotionSource || haveAccel != sGyroHasAccel) {
-    sGyroMotion.Reset();
-    sGyroFilter.Reset();
-    sGyroMotionSource = source;
-    sGyroHasAccel = haveAccel;
+  if (source != st.motionSource || haveAccel != st.hasAccel) {
+    st.motion.Reset();
+    st.filter.Reset();
+    st.motionSource = source;
+    st.hasAccel = haveAccel;
   }
   // 2 = only in menus: F1 open or no free aim running (paused, a frontend screen). Outside them
   // the learned drift is kept, only learning stops.
-  const int autoCalibrate = PortOverlay::GyroAutoCalibrate();
-  const bool inMenus = PortOverlay::Visible() || !PortMouse::Aiming();
-  const bool calibrate = autoCalibrate == 1 || (autoCalibrate == 2 && inMenus);
-  sGyroCalibrating = haveAccel && calibrate;
-  sGyroMotion.Process(gyro, haveAccel ? accel : nullptr, dt, PortOverlay::GyroSpace(), calibrate, pitch,
-                      yaw);
-  sGyroFilter.Apply(pitch, yaw, dt, PortOverlay::GyroSmoothing(), PortOverlay::GyroTightening());
+  const bool inMenus = PortOverlay::Visible() || !PortMouse::Aiming(port);
+  const bool calibrate = cfg.autoCalibrate == 1 || (cfg.autoCalibrate == 2 && inMenus);
+  st.calibrating = haveAccel && calibrate;
+  st.motion.Process(gyro, haveAccel ? accel : nullptr, dt, cfg.space, calibrate, pitch, yaw);
+  st.filter.Apply(pitch, yaw, dt, cfg.smoothing, cfg.tightening);
   return true;
 }
 
@@ -1605,23 +1653,23 @@ void FireRecalibration() {
   const uint64_t now = SDL_GetTicksNS();
   if (sRecalibrateAtNs != 0 && now >= sRecalibrateAtNs) {
     sRecalibrateAtNs = 0;
-    sGyroMotion.BeginManualCalibration();
+    sGyro[0].motion.BeginManualCalibration();
     sManualCalibrationEndNs = now + uint64_t(kManualCalibrationSeconds * 1e9);
   }
   if (sManualCalibrationEndNs != 0 && now >= sManualCalibrationEndNs) {
     sManualCalibrationEndNs = 0;
-    sGyroMotion.EndManualCalibration();
+    sGyro[0].motion.EndManualCalibration();
   }
 }
 
 } // namespace
 
 void SetGyroButton(bool held) {
-  sGyroActivation.Update(PortOverlay::GyroAim() ? PortOverlay::GyroMode() : 0, held);
+  sGyro[0].activation.Update(PortOverlay::GyroAim() ? PortOverlay::GyroMode() : 0, held);
 }
 
 void StartGyroRecalibration() {
-  sGyroMotion.EndManualCalibration();
+  sGyro[0].motion.EndManualCalibration();
   sManualCalibrationEndNs = 0;
   sRecalibrateAtNs = SDL_GetTicksNS() + uint64_t(kRecalibrateSeconds * 1e9);
 }
@@ -1638,60 +1686,63 @@ float GyroRecalibrationCountdown() {
 
 float GyroManualCalibrationProgress() {
   FireRecalibration();
-  if (sManualCalibrationEndNs == 0 || !sGyroMotion.ManualCalibrating()) {
+  if (sManualCalibrationEndNs == 0 || !sGyro[0].motion.ManualCalibrating()) {
     return -1.f;
   }
   const double left = double(sManualCalibrationEndNs - SDL_GetTicksNS()) * 1e-9;
   return std::clamp(static_cast<float>(1.0 - left / kManualCalibrationSeconds), 0.f, 1.f);
 }
 
-const char* GyroStatus() { return sGyroStatus; }
+const char* GyroStatus() { return sGyro[0].status; }
 
-bool GyroCalibrating() { return sGyroCalibrating || sGyroMotion.ManualCalibrating(); }
+bool GyroCalibrating() { return sGyro[0].calibrating || sGyro[0].motion.ManualCalibrating(); }
 
 float GyroCalibrationConfidence() {
-  return sGyroMotionSource != 0 && sGyroHasAccel ? sGyroMotion.Confidence() : -1.f;
+  return sGyro[0].motionSource != 0 && sGyro[0].hasAccel ? sGyro[0].motion.Confidence() : -1.f;
 }
 
-void PollGyro() {
-  // Called once per loop iteration, which is not once per tick when the frame limiter is off, so
-  // the rates integrate over the real frame time.
-  static uint64_t sLastNs = 0;
-  FireRecalibration();
-  PortMouse::SetGyroDrivesAim(false);
+namespace {
+
+// One port's gyro for this loop iteration. Port 0 is single player's pad (and also drives the
+// Spring Ball flick); ports 1-3 run only for a player of the running match.
+void PollGyroPort(int port, uint64_t nowNs) {
+  GyroPort& st = sGyro[port];
+  const GyroSettings cfg = SettingsFor(port);
+  PortMouse::SetGyroDrivesAim(false, port);
   // MP1's PollGyro: the gyro feeds the aim the mouse, twin stick and touch drag use, so it needs
   // one of them on. With pointer aim it moves the pointer (and, with "Gyro also turns the
   // camera", the view); without, it turns the view. Off, the sensors are never touched.
   // The Spring Ball flick reads the same rates, so it keeps them alive with gyro aim off.
-  const bool aim = PortOverlay::GyroAim();
-  const bool flick = PortOverlay::SpringBallFlick();
+  const bool aim = cfg.aim;
+  const bool flick = port == 0 && PortOverlay::SpringBallFlick();
   static bool sFlickArmed = true;
   if (!aim && !flick) {
-    sGyroStatus = "off";
-    sGyroCalibrating = false;
-    sLastNs = 0;
+    st.status = "off";
+    st.calibrating = false;
+    st.lastNs = 0;
     return;
   }
   if (aim && !PortMouse::Enabled() && !PortMouse::StickEnabled() && !PortMouse::TouchEnabled() && !flick) {
-    sGyroStatus = "needs mouse aim, twin stick or touch controls";
-    sGyroCalibrating = false;
-    sLastNs = 0;
+    st.status = "needs mouse aim, twin stick or touch controls";
+    st.calibrating = false;
+    st.lastNs = 0;
     return;
   }
-  const uint64_t nowNs = SDL_GetTicksNS();
-  const float dt = sLastNs == 0 ? 0.f : std::min(float(double(nowNs - sLastNs) * 1e-9), 0.1f);
-  sLastNs = nowNs;
+  // Called once per loop iteration, which is not once per tick when the frame limiter is off, so
+  // the rates integrate over the real frame time.
+  const float dt = st.lastNs == 0 ? 0.f : std::min(float(double(nowNs - st.lastNs) * 1e-9), 0.1f);
+  st.lastNs = nowNs;
   float yaw = 0.f;
   float pitch = 0.f;
   // Read before the button's check, as MP1 does, so calibration keeps learning while paused.
-  if (!ReadGyroRates(pitch, yaw, dt)) {
-    sGyroStatus = "no gyro found";
-    sGyroCalibrating = false;
+  if (!ReadGyroRates(port, cfg, pitch, yaw, dt)) {
+    st.status = "no gyro found";
+    st.calibrating = false;
     return;
   }
-  if (sGyroMotion.ManualCalibrating()) {
+  if (st.motion.ManualCalibrating()) {
     // The pad is meant to lie still: nothing it reads now aims.
-    sGyroStatus = "calibrating, keep the pad still";
+    st.status = "calibrating, keep the pad still";
     return;
   }
   if (flick) {
@@ -1707,33 +1758,58 @@ void PollGyro() {
   if (!aim ||
       (!PortMouse::Enabled() && !PortMouse::StickEnabled() && !PortMouse::TouchEnabled())) {
     if (!aim) {
-      sGyroStatus = "flick only";
+      st.status = "flick only";
     } else {
-      sGyroStatus = "needs mouse aim, twin stick or touch controls";
+      st.status = "needs mouse aim, twin stick or touch controls";
     }
     return;
   }
-  PortMouse::SetGyroDrivesAim(true);
+  PortMouse::SetGyroDrivesAim(true, port);
   // The "Gyro aim" binding (R3 / left ctrl by default) turns gyro on while held in hold to aim,
-  // off in hold to pause, or flips it on each fresh press in toggle.
-  if (!sGyroActivation.Active()) {
-    sGyroStatus = PortOverlay::GyroMode() == 3 ? "paused by the Gyro aim button" : "waiting for the Gyro aim button";
+  // off in hold to pause, or flips it on each fresh press in toggle. Port 0 has its binding fed
+  // by PollPortActions; the other ports read their pad's right stick click.
+  if (port != 0) {
+    bool held = false;
+    const s32 padIndex = PADGetIndexForPort(static_cast<u32>(port));
+    if (SDL_Gamepad* pad = padIndex >= 0 ? PADGetSDLGamepadForIndex(static_cast<u32>(padIndex)) : nullptr) {
+      held = SDL_GetGamepadButton(pad, SDL_GAMEPAD_BUTTON_RIGHT_STICK);
+    }
+    st.activation.Update(cfg.mode, held);
+  }
+  if (!st.activation.Active()) {
+    st.status = cfg.mode == 3 ? "paused by the Gyro aim button" : "waiting for the Gyro aim button";
     return;
   }
   if (!std::isfinite(dt) || dt <= 0.f) {
     return;
   }
-  const float sense = PortOverlay::GyroSensitivity();
-  const float senseY = PortOverlay::GyroSplit() ? PortOverlay::GyroSensitivityY() : sense;
-  if ((!PortOverlay::PointerAim() || !PortMouse::PointerAimEnabled()) &&
-      !PortMouse::LockFreeAimActive()) {
-    PortMouse::AddGyroCamera(yaw, pitch, dt, sense, senseY);
+  const float sense = cfg.sensitivity;
+  const float senseY = cfg.sensitivityY;
+  if ((!cfg.pointerAim || !PortMouse::PointerAimEnabled(port)) && !PortMouse::LockFreeAimActive(port)) {
+    PortMouse::AddGyroCamera(yaw, pitch, dt, sense, senseY, port);
     return;
   }
-  PortMouse::AddGyroPointer(yaw, pitch, dt, PortOverlay::GyroCursorAngle() * (PortMouse::kPi / 180.f),
-                            senseY / sense);
-  if (PortOverlay::GyroCursorCamera()) {
-    PortMouse::AddGyroCamera(yaw, pitch, dt, sense, senseY);
+  PortMouse::AddGyroPointer(yaw, pitch, dt, cfg.cursorAngle * (PortMouse::kPi / 180.f), senseY / sense, port);
+  if (cfg.cursorCamera) {
+    PortMouse::AddGyroCamera(yaw, pitch, dt, sense, senseY, port);
+  }
+}
+
+} // namespace
+
+void PollGyro() {
+  FireRecalibration();
+  const uint64_t nowNs = SDL_GetTicksNS();
+  const int players = GyroPlayers();
+  for (int port = 0; port < kGyroPorts; ++port) {
+    if (port < players) {
+      PollGyroPort(port, nowNs);
+    } else if (port != 0) {
+      // No player on this port: nothing moves, and the next player starts from a fresh clock.
+      PortMouse::SetGyroDrivesAim(false, port);
+      sGyro[port].lastNs = 0;
+      sGyro[port].status = "off";
+    }
   }
 }
 

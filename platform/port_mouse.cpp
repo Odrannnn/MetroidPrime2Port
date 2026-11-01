@@ -63,8 +63,8 @@ std::mutex sPendingMutex;
 constexpr float kTouchSpringHoldSeconds = 0.35f;
 
 // One player's aim. In a match the player index is the pad port, so each pad's right stick feeds
-// its own slot; the mouse, touch and gyro feed slot 0 only. Settings (sensitivity, rates, the
-// source switches) stay global.
+// its own slot, and so does each pad's gyro; the mouse, touch and the phone's gyro feed slot 0
+// only. Settings (sensitivity, rates, the source switches) stay global.
 struct Slot {
   PortMouse::AimState aim;
   bool aiming = false;
@@ -499,7 +499,7 @@ bool TakePhotoLook(float& yawDegrees, float& pitchDegrees) {
   return true;
 }
 
-void AddGyroPointer(float yaw, float pitch, float dt, float sweep, float scaleY) {
+void AddGyroPointer(float yaw, float pitch, float dt, float sweep, float scaleY, int player) {
   if (!std::isfinite(yaw) || !std::isfinite(pitch) || !(dt > 0.f) || !(sweep > 0.f) || !std::isfinite(scaleY)) {
     return;
   }
@@ -512,13 +512,13 @@ void AddGyroPointer(float yaw, float pitch, float dt, float sweep, float scaleY)
     return;
   }
   const float cursor = 2.f / sweep * dt / px;
-  Slot& s = sSlots[0];
+  Slot& s = SlotFor(player);
   std::lock_guard< std::mutex > lock(sPendingMutex);
   s.pendingX += yaw * cursor;
   s.pendingY -= pitch * cursor * scaleY;
 }
 
-void AddGyroCamera(float yaw, float pitch, float dt, float sensitivity, float sensitivityY) {
+void AddGyroCamera(float yaw, float pitch, float dt, float sensitivity, float sensitivityY, int player) {
   ReadEnv();
   if (!std::isfinite(yaw) || !std::isfinite(pitch) || !(dt > 0.f) || !(sSensitivity > 0.f)) {
     return;
@@ -530,13 +530,13 @@ void AddGyroCamera(float yaw, float pitch, float dt, float sensitivity, float se
   const float sy = sInvertY ? -1.f : 1.f;
   const float scale = sensitivity * dt / sSensitivity;
   const float scaleY = sensitivityY * dt / sSensitivity;
-  Slot& s = sSlots[0];
+  Slot& s = SlotFor(player);
   std::lock_guard< std::mutex > lock(sPendingMutex);
   s.cameraPendingX += sx * yaw * scale;
   s.cameraPendingY -= sy * pitch * scaleY;
 }
 
-void SetGyroDrivesAim(bool drives) { sSlots[0].gyroDrivesAim = drives; }
+void SetGyroDrivesAim(bool drives, int player) { SlotFor(player).gyroDrivesAim = drives; }
 
 void RequestResetAim(bool both, int player) {
   SlotFor(player).resetAimRequest.store(both ? 2 : 1, std::memory_order_release);
