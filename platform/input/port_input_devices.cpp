@@ -1263,17 +1263,30 @@ static void UpdatePromptBindings(const Profile& p) {
 // The first of `actions` with a single input from `family`: one that applies in
 // the current context, else one that applies anywhere outside the user layers;
 // never one blocked in the current context (its input does something else here).
+// A pad action bound twice shows its face button (Remastered's B beside RT, A
+// beside LB), else its first binding.
 static bool PromptInputFor(std::initializer_list<Action> actions, PortInput::Family family, Input& out) {
+  const auto face = [](const Input& in) {
+    return in.device == Device::PadButton && in.code >= SDL_GAMEPAD_BUTTON_SOUTH && in.code <= SDL_GAMEPAD_BUTTON_NORTH;
+  };
   const uint16_t contexts = GameContexts();
   std::lock_guard lock(sPromptMutex);
   for (const uint16_t want : {contexts, static_cast<uint16_t>(~PortInput::kCtxLayers)}) {
     for (const Action a : actions) {
+      const Binding* found = nullptr;
       for (const Binding& b : sPromptBindings) {
         if (b.action == a && (b.contexts & want) != 0 && (b.blocked & contexts) == 0 &&
             PortInput::BindingFamily(b) == family) {
-          out = b.inputs[0];
-          return true;
+          if (found == nullptr) found = &b;
+          if (face(b.inputs[0])) {
+            found = &b;
+            break;
+          }
         }
+      }
+      if (found != nullptr) {
+        out = found->inputs[0];
+        return true;
       }
     }
   }
