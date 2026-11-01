@@ -1183,6 +1183,30 @@ void CmdRemapPort(CStateManager&, const Args& args, std::string& out) {
   out += "remap port " + std::to_string(PortControls::RemapPort()) + "\n";
 }
 
+// `padmap <port> [<gc button> <native>]`: a port's GameCube buttons on its controller (Aurora's
+// mapping, what the Multiplayer page's Buttons rows edit); with a button and a native input
+// ("a", "lb", "lt", "none" or an SDL button number) binds it, swapping as the page does.
+void CmdPadMap(CStateManager&, const Args& args, std::string& out) {
+  const int port = args.size() > 1 ? ArgToInt(args[1], -1) : -1;
+  if (port < 0 || port > 3 || (args.size() != 2 && args.size() != 4)) {
+    Fail("usage: padmap <port 0-3> [<a|b|x|y|l|r|z|start|up|down|left|right> <native>]");
+    return;
+  }
+  if (args.size() == 4) {
+    const int button = PortControls::PadButtonForLabel(args[2]);
+    const long long native = PortControls::NativeForLabel(args[3]);
+    if (button < 0 || native < 0) {
+      Fail("padmap: unknown button or native input");
+      return;
+    }
+    if (!PortControls::BindPadButton(port, button, static_cast< unsigned >(native))) {
+      Fail("padmap: port " + std::to_string(port) + " has no real controller");
+      return;
+    }
+  }
+  out += "port " + std::to_string(port) + ": " + PortControls::PadButtonsText(port) + "\n";
+}
+
 // `players`: each match player's position, body yaw, aim (yaw, pitch, whether it owns the view),
 // twin stick, direct aim controls, orbit state and beam.
 void CmdPlayers(CStateManager& mgr, const Args&, std::string& out) {
@@ -5119,6 +5143,9 @@ const CommandSpec kCommands[] = {
       "padpreset <name> [port]     apply a pad preset (gamecube, remastered, modern, southpaw) to a port's controller (default 0)\n"},
     {"remapport", CmdRemapPort,
       "remapport [port]            the player (port 0-3) the F1 remap page's Presets change; no argument prints it\n"},
+    {"padmap", CmdPadMap,
+      "padmap <port> [<btn> <in>]  a port's GC buttons on its controller; with a button (a..z, start, up..right)\n"
+      "                            and an input (a, lb, lt, none, SDL number) binds it (swaps); Player 2-4 remap\n"},
     {"players", CmdPlayers,
       "players                     each player's position, yaw, aim, twin stick, direct aim, orbit, beam\n"},
     {"padread", CmdPadRead,

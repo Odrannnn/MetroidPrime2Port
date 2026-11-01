@@ -25,6 +25,8 @@
 
 #include <algorithm>
 #include <atomic>
+#include <bit>
+#include <cctype>
 #include <cmath>
 #include <iterator>
 #include <string>
@@ -450,6 +452,217 @@ void DrawDeadZones(unsigned port) {
   if (PADDeadZones* zones = PADGetDeadZones(port)) {
     DrawDeadZoneSliders(*zones);
   }
+}
+
+namespace {
+// The button capture of DrawPadButtons: the port and kControlPadButtons row waiting for a press.
+int sButtonCapturePort = -1;
+int sButtonCaptureRow = 0;
+u64 sButtonCaptureHeld = 0; // inputs already held when it started, ignored until released
+uint64_t sButtonCaptureStartMs = 0;
+constexpr uint64_t kButtonCaptureMs = 5000;
+
+// Native inputs as bits: SDL_GamepadButton, then the two triggers past half pull.
+constexpr int kBitTriggerL = SDL_GAMEPAD_BUTTON_COUNT;
+constexpr int kBitTriggerR = SDL_GAMEPAD_BUTTON_COUNT + 1;
+
+u64 HeldNatives(SDL_Gamepad* pad) {
+  u64 bits = 0;
+  for (int b = 0; b < SDL_GAMEPAD_BUTTON_COUNT; ++b) {
+    if (SDL_GetGamepadButton(pad, static_cast< SDL_GamepadButton >(b))) bits |= u64{1} << b;
+  }
+  if (SDL_GetGamepadAxis(pad, SDL_GAMEPAD_AXIS_LEFT_TRIGGER) > 16384) bits |= u64{1} << kBitTriggerL;
+  if (SDL_GetGamepadAxis(pad, SDL_GAMEPAD_AXIS_RIGHT_TRIGGER) > 16384) bits |= u64{1} << kBitTriggerR;
+  return bits;
+}
+
+u32 NativeForBit(int bit) {
+  if (bit == kBitTriggerL) return PAD_NATIVE_BUTTON_TRIGGER_LEFT;
+  if (bit == kBitTriggerR) return PAD_NATIVE_BUTTON_TRIGGER_RIGHT;
+  return static_cast< u32 >(bit);
+}
+
+// As the Remap page labels them (Xbox names, by SDL_GamepadButton).
+std::string NativeName(u32 native) {
+  static constexpr const char* kLabels[] = {
+      "A",        "B",        "X",        "Y",          "Back",       "Guide",       "Start",
+      "Left stick", "Right stick", "LB",   "RB",         "D-pad up",   "D-pad down",  "D-pad left",
+      "D-pad right", "Share",  "Paddle 1", "Paddle 2",   "Paddle 3",   "Paddle 4",    "Touchpad",
+      "Misc 2",   "Misc 3",   "Misc 4",   "Misc 5",     "Misc 6",
+  };
+  if (native == PAD_NATIVE_BUTTON_INVALID) return "(none)";
+  if (native == PAD_NATIVE_BUTTON_TRIGGER_LEFT) return "LT";
+  if (native == PAD_NATIVE_BUTTON_TRIGGER_RIGHT) return "RT";
+  if (native < std::size(kLabels)) return kLabels[native];
+  return "Button " + std::to_string(native);
+}
+
+PADButtonMapping* FindMapping(PADButtonMapping* list, u32 count, PADButton button) {
+  for (u32 i = 0; i < count; ++i) {
+    if (list[i].padButton == button) return &list[i];
+  }
+  return nullptr;
+}
+
+// L and R's analog follows their button, as the presets set it: a trigger drives it as an axis,
+// any other input fully.
+void SetTriggerAnalog(u32 port, PADButton button, u32 native) {
+  if (button != PAD_TRIGGER_L && button != PAD_TRIGGER_R) return;
+  const PADAxis axis = button == PAD_TRIGGER_L ? PAD_AXIS_TRIGGER_L : PAD_AXIS_TRIGGER_R;
+  PADAxisMapping mapping{{-1, AXIS_SIGN_POSITIVE}, static_cast< s32 >(native), axis};
+  if (native == PAD_NATIVE_BUTTON_TRIGGER_LEFT || native == PAD_NATIVE_BUTTON_TRIGGER_RIGHT) {
+    mapping.nativeAxis.nativeAxis =
+        native == PAD_NATIVE_BUTTON_TRIGGER_LEFT ? SDL_GAMEPAD_AXIS_LEFT_TRIGGER : SDL_GAMEPAD_AXIS_RIGHT_TRIGGER;
+    mapping.nativeButton = SDL_GAMEPAD_BUTTON_INVALID;
+  }
+  PADSetAxisMapping(port, mapping);
+}
+
+// A mapping's input as the player sees it: Aurora's default L and R have no button and come from
+// their trigger axis past its activation zone.
+u32 ShownNative(u32 port, const PADButtonMapping* mapping) {
+  if (mapping == nullptr) return PAD_NATIVE_BUTTON_INVALID;
+  if (mapping->nativeButton != PAD_NATIVE_BUTTON_INVALID ||
+      (mapping->padButton != PAD_TRIGGER_L && mapping->padButton != PAD_TRIGGER_R)) {
+    return mapping->nativeButton;
+  }
+  const PADAxis axis = mapping->padButton == PAD_TRIGGER_L ? PAD_AXIS_TRIGGER_L : PAD_AXIS_TRIGGER_R;
+  u32 count = 0;
+  const PADAxisMapping* axes = PADGetAxisMappings(port, &count);
+  for (u32 i = 0; axes != nullptr && i < count; ++i) {
+    if (axes[i].padAxis != axis) continue;
+    if (axes[i].nativeAxis.nativeAxis == SDL_GAMEPAD_AXIS_LEFT_TRIGGER) return PAD_NATIVE_BUTTON_TRIGGER_LEFT;
+    if (axes[i].nativeAxis.nativeAxis == SDL_GAMEPAD_AXIS_RIGHT_TRIGGER) return PAD_NATIVE_BUTTON_TRIGGER_RIGHT;
+  }
+  return PAD_NATIVE_BUTTON_INVALID;
+}
+} // namespace
+
+bool BindPadButton(unsigned port, unsigned padButton, unsigned native) {
+  // Aurora keeps a virtual pad at its defaults; editing its list in place would get around that.
+  if (port > PAD_CHAN3 || PadPortInfo(port).state != EPadPortState::kReal) return false;
+  const PADButton button = static_cast< PADButton >(padButton);
+  u32 count = 0;
+  PADButtonMapping* list = PADGetButtonMappings(port, &count);
+  PADButtonMapping* target = list != nullptr ? FindMapping(list, count, button) : nullptr;
+  if (target == nullptr) return false;
+  const u32 old = ShownNative(port, target);
+  if (old == native && target->nativeButton == native) return true;
+  // The GameCube button already on that input takes this one's old input, so nothing is lost.
+  for (const SControlPadButton& row : kControlPadButtons) {
+    PADButtonMapping* other = FindMapping(list, count, row.button);
+    if (other != nullptr && other != target && ShownNative(port, other) == native) {
+      other->nativeButton = old;
+      SetTriggerAnalog(port, row.button, old);
+    }
+  }
+  target->nativeButton = native;
+  SetTriggerAnalog(port, button, native);
+  PADSerializeMappings();
+  return true;
+}
+
+std::string PadButtonsText(unsigned port) {
+  u32 count = 0;
+  PADButtonMapping* list = port <= PAD_CHAN3 ? PADGetButtonMappings(port, &count) : nullptr;
+  if (list == nullptr) return "no controller";
+  std::string text;
+  for (const SControlPadButton& row : kControlPadButtons) {
+    const PADButtonMapping* m = FindMapping(list, count, row.button);
+    if (!text.empty()) text += ", ";
+    text += std::string(row.label) + "=" + NativeName(ShownNative(port, m));
+  }
+  return text;
+}
+
+static bool EqualsNoCase(std::string_view a, std::string_view b) {
+  return a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin(), [](char x, char y) {
+           return std::tolower(static_cast< unsigned char >(x)) == std::tolower(static_cast< unsigned char >(y));
+         });
+}
+
+int PadButtonForLabel(std::string_view label) {
+  for (const SControlPadButton& row : kControlPadButtons) {
+    std::string_view name = row.label;
+    if (name.starts_with("D-pad ")) name.remove_prefix(6);
+    if (EqualsNoCase(name, label)) return row.button;
+  }
+  return -1;
+}
+
+long long NativeForLabel(std::string_view label) {
+  if (EqualsNoCase(label, "none")) return PAD_NATIVE_BUTTON_INVALID;
+  if (EqualsNoCase(label, "lt")) return PAD_NATIVE_BUTTON_TRIGGER_LEFT;
+  if (EqualsNoCase(label, "rt")) return PAD_NATIVE_BUTTON_TRIGGER_RIGHT;
+  for (u32 b = 0; b < SDL_GAMEPAD_BUTTON_COUNT; ++b) {
+    if (EqualsNoCase(NativeName(b), label)) return b;
+  }
+  if (label.empty() || label.size() > 2 ||
+      !std::all_of(label.begin(), label.end(), [](char c) { return c >= '0' && c <= '9'; })) {
+    return -1;
+  }
+  const int b = std::stoi(std::string(label));
+  return b < SDL_GAMEPAD_BUTTON_COUNT ? b : -1;
+}
+
+void DrawPadButtons(unsigned port) {
+  if (port > PAD_CHAN3) return;
+  const s32 index = PADGetIndexForPort(port);
+  SDL_Gamepad* pad = index >= 0 ? PADGetSDLGamepadForIndex(static_cast< u32 >(index)) : nullptr;
+  u32 count = 0;
+  PADButtonMapping* list = pad != nullptr ? PADGetButtonMappings(port, &count) : nullptr;
+  if (list == nullptr || SDL_IsJoystickVirtual(SDL_GetGamepadID(pad))) {
+    if (sButtonCapturePort == int(port)) sButtonCapturePort = -1;
+    ImGui::TextDisabled(pad == nullptr ? "No controller; choose one above." : "Virtual pads can't be remapped.");
+    return;
+  }
+  const uint64_t now = SDL_GetTicks();
+  if (sButtonCapturePort == int(port)) {
+    const u64 held = HeldNatives(pad);
+    sButtonCaptureHeld &= held;
+    if (const u64 fresh = held & ~sButtonCaptureHeld; fresh != 0) {
+      BindPadButton(port, kControlPadButtons[sButtonCaptureRow].button, NativeForBit(std::countr_zero(fresh)));
+      sButtonCapturePort = -1;
+    } else if (now - sButtonCaptureStartMs > kButtonCaptureMs) {
+      sButtonCapturePort = -1;
+    }
+  }
+  if (ImGui::BeginTable("padbuttons", 2, ImGuiTableFlags_SizingFixedFit)) {
+    for (int row = 0; row < int(std::size(kControlPadButtons)); ++row) {
+      const SControlPadButton& b = kControlPadButtons[row];
+      const PADButtonMapping* m = FindMapping(list, count, b.button);
+      ImGui::TableNextRow();
+      ImGui::TableNextColumn();
+      ImGui::AlignTextToFramePadding();
+      ImGui::TextUnformatted(b.label);
+      ImGui::TableNextColumn();
+      ImGui::PushID(row);
+      const bool waiting = sButtonCapturePort == int(port) && sButtonCaptureRow == row;
+      const uint64_t left = (kButtonCaptureMs - std::min(now - sButtonCaptureStartMs, kButtonCaptureMs)) / 1000 + 1;
+      const std::string text = waiting ? "Press a button... (" + std::to_string(left) + ")"
+                                       : NativeName(ShownNative(port, m));
+      if (ImGui::Button(text.c_str(), ImVec2(ImGui::GetFontSize() * 11.f, 0.f))) {
+        if (waiting) {
+          sButtonCapturePort = -1;
+        } else {
+          sButtonCapturePort = int(port);
+          sButtonCaptureRow = row;
+          sButtonCaptureHeld = HeldNatives(pad);
+          sButtonCaptureStartMs = now;
+        }
+      }
+      ImGui::SetItemTooltip("Click, then press the button on this player's controller. A GameCube button "
+                            "already on it swaps.");
+      ImGui::PopID();
+    }
+    ImGui::EndTable();
+  }
+  if (ImGui::Button("Default buttons")) {
+    sButtonCapturePort = -1;
+    PADRestoreDefaultMapping(port);
+    PADSerializeMappings();
+  }
+  ImGui::SetItemTooltip("This controller's GameCube layout again (sticks too); twin stick stays as set.");
 }
 
 } // namespace PortControls

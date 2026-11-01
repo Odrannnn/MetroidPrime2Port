@@ -1838,7 +1838,7 @@ void DrawRemapPlayer() {
   }
   if (PortControls::RemapPort() != 0) {
     ImGui::TextDisabled("Presets change this player's controller mapping. The binding table below (controls.toml) "
-                        "is per controller kind and shared by every player.");
+                        "is Player 1's; set this player's buttons on the Multiplayer page.");
   }
 }
 
