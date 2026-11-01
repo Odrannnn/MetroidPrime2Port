@@ -190,6 +190,10 @@ Controls > Options:
 - `auto_aim`: Aiming > Auto-aim.
 - `pointer_aim`, `pointer_aim_box`, `pointer_aim_turn`: Aiming > Pointer aim (Trilogy style),
   Dead box, Edge turn speed.
+- `hand_on_cannon`: Aiming > Hand on cannon when still (default on; needs Mouse aim, Twin stick
+  or Touch aim; env `MP2_HAND_ON_CANNON`), as in Trilogy and PrimeHack: after a second on the
+  ground without walking the gun enters the R free-look pose with the left hand on the cannon.
+  Turning, aiming and firing keep it; walking, jumping, lock-on, grapple and the morph ball drop it.
 - `lock_on_free_aim`: Aiming > Lock-on free aim (default off; needs Mouse aim, Twin stick or
   Touch aim), as in Remastered; env `MP2_LOCK_ON_FREE_AIM`. Under a combat lock the mouse, the
   right stick, gyro aim or a touch aim drag moves a crosshair over the view and shots leave along

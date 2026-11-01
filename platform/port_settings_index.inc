@@ -30,6 +30,7 @@
 {"Controls", "Options", "Aiming", "Native Trilogy radial selectors", "beam visor menu held wheel rs5"},
 {"Controls", "Options", "Aiming", "Auto-aim", "aim assist homing target"},
 {"Controls", "Options", "Aiming", "Pointer aim (Trilogy style)", "wii cursor pointer trilogy"},
+{"Controls", "Options", "Aiming", "Hand on cannon when still", "left hand arm cannon idle rest still free aim trilogy primehack"},
 {"Controls", "Options", "Aiming", "Lock-on free aim", "lock on lockon free aim cursor pointer crosshair remastered"},
 {"Controls", "Options", "Aiming", "Dead box", "pointer box centre"},
 {"Controls", "Options", "Aiming", "Edge turn speed", "pointer turn edge"},

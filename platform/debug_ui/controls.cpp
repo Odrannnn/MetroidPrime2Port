@@ -107,6 +107,10 @@ void DrawControlsOptions() {
   ItemHelp("As in Remastered: while locked on, the mouse, right stick, gyro or a touch drag moves a "
            "crosshair and shots follow it. Centred, shots and missiles go for the locked target as "
            "before. Needs Mouse aim, Twin stick or Touch aim.");
+  Changed(ImGui::Checkbox("Hand on cannon when still", &sHandOnCannon));
+  ItemHelp("As in Trilogy and PrimeHack: after a second standing still, Samus rests her left hand "
+           "on the cannon (the R free-look pose) and keeps it while you aim and fire. Walking or "
+           "jumping drops it. Needs Mouse aim, Twin stick or Touch aim.");
   ImGui::BeginDisabled(!sPointerAim);
   if (ImGui::SliderInt("Dead box", &sPointerAimBox, PortOverlay::kPointerAimBoxMin, PortOverlay::kPointerAimBoxMax,
                        "%d%%")) {

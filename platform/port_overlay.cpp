@@ -119,6 +119,7 @@ bool sGyroSplit = false;
 float sGyroSensitivityY = PortOverlay::kGyroSensitivityDefault;
 bool sResetAimBoth = false;
 bool sLockOnFreeAim = false;
+bool sHandOnCannon = true;
 bool sMenuStandardButtons = false;
 bool sRapidCharge = false;
 // `MP2_CARD_BACKUP`: copy the card's save file into save-backups before every card write (F1 >
@@ -1325,6 +1326,11 @@ bool GyroSplit() {
 float GyroSensitivityY() {
   ReadEnv();
   return EnvFloatIn("MP2_GYRO_SENSITIVITY_Y", sGyroSensitivityY, kGyroSensitivityMin, kGyroSensitivityMax);
+}
+
+bool HandOnCannon() {
+  ReadEnv();
+  return EnvBool("MP2_HAND_ON_CANNON", sHandOnCannon);
 }
 
 bool LockOnFreeAim() {
