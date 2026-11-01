@@ -9,6 +9,7 @@
 
 #include "MetroidPrime/CMain.hpp"
 #include <SDL3/SDL.h>
+#include <dolphin/pad.h>
 #include "port_harness.h"
 #include "port_console.h"
 #include "port_discord.h"
@@ -1127,6 +1128,24 @@ void CmdInfiniteAmmo(CStateManager&, const Args& args, std::string& out) {
 void CmdMpForce(CStateManager&, const Args& args, std::string& out) {
   gPortForceMultiplayer = args.size() < 2 ? !gPortForceMultiplayer : ArgToInt(args[1], 1) != 0;
   out += gPortForceMultiplayer ? "forced multiplayer on\n" : "forced multiplayer off\n";
+}
+
+// `pads`: which connected controller drives each pad port 0-3 (the F1 page's Player rows,
+// PADSetPortForIndex/PADClearPort), and how many controllers there are.
+void CmdPads(CStateManager&, const Args&, std::string& out) {
+  const u32 count = PADCount();
+  out += "count " + std::to_string(count) + "\n";
+  for (u32 port = PAD_CHAN0; port <= PAD_CHAN3; ++port) {
+    const s32 index = PADGetIndexForPort(port);
+    const char* name =
+        index >= 0 ? PADGetNameForControllerIndex(static_cast<u32>(index)) : nullptr;
+    out += "port " + std::to_string(port) + ": ";
+    if (index < 0) {
+      out += "none\n";
+    } else {
+      out += std::to_string(index) + " " + (name != nullptr ? name : "unknown") + "\n";
+    }
+  }
 }
 
 void CmdFreeCam(CStateManager& mgr, const Args& args, std::string& out) {
@@ -5026,6 +5045,8 @@ const CommandSpec kCommands[] = {
       "                            powerbomb, dark or light\n"},
     {"mpforce", CmdMpForce,
       "mpforce <0|1>               IsMultiplayer reports true (multiplayer-only arms)\n"},
+    {"pads", CmdPads,
+      "pads                        the controller on each pad port 0-3 (players 1-4) and the controller count\n"},
     {"overlay", CmdOverlay,
       "overlay <page>[/<sub>]|off  open the F1 window on a page (name prefixes: `overlay video/qual`)\n"},
     {"gpuselftest", CmdGpuSelfTest,

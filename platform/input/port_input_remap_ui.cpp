@@ -1793,37 +1793,61 @@ void DrawProfileOptions(const SView& v) {
   }
 }
 
-void DrawActiveController() {
-  const s32 activeIndex = PADGetIndexForPort(PAD_CHAN0);
-  const char* activeName = activeIndex >= 0 ? PADGetNameForControllerIndex(static_cast<u32>(activeIndex)) : nullptr;
-  ImGui::SetNextItemWidth(ImGui::GetFontSize() * 18.f);
-  if (ImGui::BeginCombo("Active controller", activeName != nullptr ? activeName : "No controller assigned")) {
-    const u32 count = PADCount();
-    if (count == 0) ImGui::TextDisabled("No controllers detected.");
-    for (u32 index = 0; index < count; ++index) {
-      SDL_Gamepad* pad = PADGetSDLGamepadForIndex(index);
-      const char* name = PADGetNameForControllerIndex(index);
-      ImGui::PushID(static_cast<int>(index));
-      const bool selected = static_cast<s32>(index) == activeIndex;
-      const std::string label = std::string(name != nullptr ? name : "Unknown controller") + " (" +
-                                std::to_string(index + 1) + ")";
-      if (ImGui::Selectable(label.c_str(), selected) && !selected) {
-        EndCapture();
-        sEditing = kEditNone;
-        PADSetPortForIndex(index, PAD_CHAN0);
+// One combo per pad port (PAD_CHAN0..PAD_CHAN3), the four local-multiplayer players. Choosing a
+// controller hands it to that port and takes it off its old one (Aurora's PADSetPortForIndex);
+// None clears the port (PADClearPort). The assignment is what the game reads as that player's pad.
+void DrawPlayers() {
+  const u32 count = PADCount();
+  ImGui::BeginGroup();
+  for (u32 port = PAD_CHAN0; port <= PAD_CHAN3; ++port) {
+    const s32 activeIndex = PADGetIndexForPort(port);
+    const char* activeName =
+        activeIndex >= 0 ? PADGetNameForControllerIndex(static_cast<u32>(activeIndex)) : nullptr;
+    const std::string label = "Player " + std::to_string(port + 1);
+    ImGui::SetNextItemWidth(ImGui::GetFontSize() * 18.f);
+    if (ImGui::BeginCombo(label.c_str(), activeName != nullptr ? activeName : "None")) {
+      const bool noneSelected = activeIndex < 0;
+      if (count == 0) ImGui::TextDisabled("No controllers detected.");
+      if (ImGui::Selectable("None##none", noneSelected) && !noneSelected) {
+        if (port == PAD_CHAN0) {
+          EndCapture();
+          sEditing = kEditNone;
+        }
+        PADClearPort(port);
       }
-      if (selected) ImGui::SetItemDefaultFocus();
-      if (pad != nullptr) {
-        ImGui::SetItemTooltip("SDL device %u%s", SDL_GetGamepadID(pad),
-                             SDL_IsJoystickVirtual(SDL_GetGamepadID(pad)) ? " (virtual/touch)" : "");
+      if (noneSelected) ImGui::SetItemDefaultFocus();
+      for (u32 index = 0; index < count; ++index) {
+        SDL_Gamepad* pad = PADGetSDLGamepadForIndex(index);
+        const char* name = PADGetNameForControllerIndex(index);
+        ImGui::PushID(static_cast<int>(index));
+        const bool selected = static_cast<s32>(index) == activeIndex;
+        const std::string entry = std::string(name != nullptr ? name : "Unknown controller") + " (" +
+                                  std::to_string(index + 1) + ")";
+        if (ImGui::Selectable(entry.c_str(), selected) && !selected) {
+          if (port == PAD_CHAN0) {
+            EndCapture();
+            sEditing = kEditNone;
+          }
+          PADSetPortForIndex(index, port);
+        }
+        if (selected) ImGui::SetItemDefaultFocus();
+        if (pad != nullptr) {
+          ImGui::SetItemTooltip("SDL device %u%s", SDL_GetGamepadID(pad),
+                                SDL_IsJoystickVirtual(SDL_GetGamepadID(pad)) ? " (virtual/touch)" : "");
+        }
+        ImGui::PopID();
       }
-      ImGui::PopID();
+      ImGui::EndCombo();
     }
-    ImGui::EndCombo();
+    if (port == PAD_CHAN0) {
+      ImGui::SetItemTooltip("Controller used to play and record bindings. The choice is saved and restored on "
+                            "reconnect. Keyboard and touch remain available. 'Controller bindings for' selects "
+                            "the profile to edit, independently.");
+    } else {
+      ImGui::SetItemTooltip("Controller for this player in multiplayer. Uses the default controller mapping.");
+    }
   }
-  ImGui::SetItemTooltip("Controller used to play and record bindings. The choice is saved and restored on "
-                        "reconnect. Keyboard and touch remain available. 'Controller bindings for' selects "
-                        "the profile to edit, independently.");
+  ImGui::EndGroup();
 }
 
 // The player's saved presets (port_input_user_presets.h), listed once when the
@@ -2017,7 +2041,7 @@ void Draw() {
   if (!sError.empty()) ImGui::TextColored(ImVec4(1.f, 0.4f, 0.4f, 1.f), "%s", sError.c_str());
 
   const float selectorWidth = ImGui::GetContentRegionAvail().x;
-  DrawActiveController();
+  DrawPlayers();
   if (selectorWidth >= ImGui::GetFontSize() * 70.f) ImGui::SameLine();
 
   // The profile selector changes which controller bindings are edited, not the active pad.
