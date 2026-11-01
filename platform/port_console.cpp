@@ -862,6 +862,48 @@ void CmdKill(CStateManager& mgr, const Args& args, std::string& out) {
   out += "killed\n";
 }
 
+// freeze <id>|target [seconds]: CPatterned::Freeze from the player's side, as MP1's Ice Beam
+// does. Echoes has no Ice Beam; Freeze is the body controller's frozen state (the same call
+// CGrenchler, CDarkCommando and the Space Pirate unfreeze), so the frozen draw can be looked at
+// without a source of the freeze.
+void CmdFreeze(CStateManager& mgr, const Args& args, std::string& out) {
+  if (args.size() < 2 || args.size() > 3) {
+    Fail("usage: freeze <id>|target [seconds]");
+    return;
+  }
+  CEntity* ent = nullptr;
+  if (Lower(args[1]) == "target") {
+    const CPlayer* player = mgr.GetPlayer(0);
+    ent = player != nullptr ? mgr.ObjectById(player->GetOrbitTargetId()) : nullptr;
+    if (ent == nullptr) {
+      Fail("no locked-on target");
+      return;
+    }
+  } else {
+    ent = const_cast< CEntity* >(ResolveObject(mgr, args[1]));
+  }
+  CPatterned* patterned = ent != nullptr ? TCastToPtr< CPatterned >(ent) : nullptr;
+  if (patterned == nullptr) {
+    Fail("not a patterned actor");
+    return;
+  }
+  float duration = 10.f;
+  if (args.size() > 2) {
+    duration = static_cast< float >(std::atof(Str(args[2]).c_str()));
+  }
+  CVector3f dir = CVector3f::Zero();
+  if (const CPlayer* player = mgr.GetPlayer(0)) {
+    dir = patterned->GetTranslation() - player->GetTranslation();
+  }
+  if (dir.CanBeNormalized()) {
+    dir.Normalize();
+  } else {
+    dir = patterned->GetTransform().GetForward();
+  }
+  patterned->Freeze(mgr, patterned->GetTranslation(), CUnitVector3f(dir), duration, -1.f);
+  out += "frozen\n";
+}
+
 // refill [energy|ammo]: energy up to the full tank count; ammo up to every capacity the suit has
 // (no argument: both). Unlike `heal` this also touches missiles, power bombs and beam ammo.
 void CmdRefill(CStateManager& mgr, const Args& args, std::string& out) {
@@ -4941,6 +4983,8 @@ const CommandSpec kCommands[] = {
     {"heal", CmdHeal,
       "heal | kill [id|target]     refill energy; kill the player (a respawn test), an actor or the lock-on\n"},
     {"kill", CmdKill, ""},
+    {"freeze", CmdFreeze,
+      "freeze <id>|target [s]      freeze a patterned actor as CPatterned::Freeze does, for s seconds (default 10)\n"},
     {"refill", CmdRefill,
       "refill [energy|ammo]        energy to full / missiles, power bombs and beam ammo to capacity\n"},
     {"damage", CmdDamage,
