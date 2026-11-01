@@ -21,6 +21,7 @@ hp, hp_max, visor, beam, freecam) for scripts.
 - `door | dock | station` — stand in front of the nearest door / doorway / save station (also `dock`, `station`)
 - `dimension` — go to this room's Light/Dark Aether twin, keeping the position (the cheats' "Light / Dark world")
 - `heal | kill [id|target]` — refill energy; kill the player (a respawn test), an actor or the locked-on target (also `kill`)
+- `freeze <id>|target [seconds]` — freeze a patterned actor (`CPatterned::Freeze` from the player's side, 10 s by default; Echoes has no Ice Beam to do it), to look at the frozen draw
 - `refill [energy|ammo]` — energy to full / missiles, power bombs and beam ammo to capacity (custom actions' Refill presets)
 - `damage <id> <n> [kb] [w]` — hit an actor for n as a player shot (w = power, missile, cannonball, dark, light, annihilator, powerbomb, bomb, boostball, screwattack, darkburst, sunburst, sonicboom, supermissile; kb = knockback power)
 - `layer <n>` — activate a layer of the current area

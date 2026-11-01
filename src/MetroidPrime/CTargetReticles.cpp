@@ -580,7 +580,8 @@ void CCompoundTargetReticle::PortTriUpdateCombat(float dt, const CStateManager& 
   mPortTriAimCenterAlpha = 1.f;
   const CPlayerGun* gun = player.GetPlayerGun();
   if ((gun && gun->GetGunHolsterState() == CPlayerGunBase::kGHS_Holstered) ||
-      !PortTriReticle::AimVisible(mPreviousState)) {
+      !PortTriReticle::AimVisible(mPreviousState) ||
+      !PortOverlay::CrosshairInVisor(mgr.GetPlayerState(mPlayerIndex)->GetCurrentVisor())) {
     mPortTriAimArmAlpha = mPortTriAimCenterAlpha = 0.f;
   }
 
@@ -1261,7 +1262,12 @@ void CCompoundTargetReticle::UpdateOrbitZoneGroup(float dt, const CStateManager&
 
   const CPlayer* player = mgr.GetPlayer(mPlayerIndex);
   if (player->GetDrawCrosshairs() &&
-      player->GetPlayerState()->GetCurrentVisor() != CPlayerState::kPV_Scan) {
+      player->GetPlayerState()->GetCurrentVisor() != CPlayerState::kPV_Scan
+#ifdef TARGET_PC
+      // Port: the per-visor crosshair setting fades it out as Scan does.
+      && PortOverlay::CrosshairInVisor(player->GetPlayerState()->GetCurrentVisor())
+#endif
+  ) {
     mCrosshairsDrawScale = rstl::min_val(
         mCrosshairsDrawScale + dt / gpTweakTargeting->GetCrosshairsFadeInOutTime(), 1.f);
   } else {

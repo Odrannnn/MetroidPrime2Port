@@ -156,6 +156,7 @@
 
 #ifdef TARGET_PC
 #include "port_harness.h"
+#include "port_motion_watch.h"
 #include "port_entry.h"
 #include "port_hold_toggle.h"
 #include "port_touch.h"
@@ -3721,6 +3722,9 @@ void CStateManager::ApplyKnockBack(CActor& actor, TUniqueId source, TUniqueId ow
   const bool alive = health->GetHP() > 0.f;
   const CKnockBackInfo info(direction, source, owner, damage, dampen == 0.f);
   if (player != nullptr) {
+#ifdef TARGET_PC
+    PortMotionWatch::NoteKnockback(*this, source, direction, power);
+#endif
     player->GetKnockBackManager().KnockBack(*this, *player, info);
     return;
   }
