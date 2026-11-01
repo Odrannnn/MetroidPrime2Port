@@ -646,8 +646,8 @@ bool CPlayer::CheckOrbitDisableSourceList(const CStateManager& mgr) {
 // returns it in [-1, 1] screen space, +y up. A lock re-centres the pointer, so a held scan lock
 // is unaffected; a point orbit holds it still, so an analog L's click picks through it
 // (CPlayer::UpdateMouseAim).
-static bool PortScanPointerNdc(CPlayer::EPlayerZoneInfo zone, float& x, float& y) {
-  if (zone != CPlayer::kZI_Scan || !PortMouse::PointerAimPosition(x, y)) {
+static bool PortScanPointerNdc(CPlayer::EPlayerZoneInfo zone, float& x, float& y, int player) {
+  if (zone != CPlayer::kZI_Scan || !PortMouse::PointerAimPosition(x, y, player)) {
     return false;
   }
   y = -y;
@@ -656,14 +656,15 @@ static bool PortScanPointerNdc(CPlayer::EPlayerZoneInfo zone, float& x, float& y
 
 // Trilogy's Targeting zone is centred on the pointer (0x802a0f5c: int((ndc * 0.5 + 0.5) * viewport),
 // viewport centre without a pointer). The Scan zone keeps its GC centre plus the pointer above.
-static void PortTriTargetingCentre(CPlayer::EPlayerZoneInfo zone, float& cx, float& cy) {
+static void PortTriTargetingCentre(CPlayer::EPlayerZoneInfo zone, float& cx, float& cy,
+                                   int player) {
   if (zone != CPlayer::kZI_Targeting ||
       !port::entry::IsTrilogy(port::entry::CurrentDiscVersion())) {
     return;
   }
   float px = 0.f;
   float py = 0.f;
-  if (!PortMouse::PointerAimPosition(px, py)) {
+  if (!PortMouse::PointerAimPosition(px, py, player)) {
     px = 0.f;
     py = 0.f;
   }
@@ -682,7 +683,7 @@ bool CPlayer::WithinOrbitScreenEllipse(const CVector3f& screenPosition,
 #ifdef TARGET_PC
   float cx = CCast::LtoF(GetTweakPlayer()->GetOrbitZoneCentreX(zone));
   float cy = CCast::LtoF(GetTweakPlayer()->GetOrbitZoneCentreY(zone));
-  PortTriTargetingCentre(zone, cx, cy);
+  PortTriTargetingCentre(zone, cx, cy, mPlayerIndex);
   const float x = CMath::AbsF(screenPosition.GetX() - cx);
   const float y = CMath::AbsF(screenPosition.GetY() - cy);
 #else
@@ -711,8 +712,8 @@ bool CPlayer::WithinOrbitScreenBox(const CVector3f& screenPosition, EPlayerZoneI
     float cy = float(GetTweakPlayer()->GetOrbitZoneCentreY(zone));
     float pointerX = 0.f;
     float pointerY = 0.f;
-    PortTriTargetingCentre(zone, cx, cy);
-    if (PortScanPointerNdc(zone, pointerX, pointerY)) {
+    PortTriTargetingCentre(zone, cx, cy, mPlayerIndex);
+    if (PortScanPointerNdc(zone, pointerX, pointerY, mPlayerIndex)) {
       // The zone moves with the pointer, but only what is on screen can be picked.
       const float width = CCast::LtoF(CGraphics::GetViewport().mWidth);
       const float height = CCast::LtoF(CGraphics::GetViewport().mHeight);
@@ -821,7 +822,7 @@ TUniqueId CPlayer::FindBestOrbitableObject(const rstl::reserved_vector< TUniqueI
   {
     float pointerX = 0.f;
     float pointerY = 0.f;
-    if (PortScanPointerNdc(zone, pointerX, pointerY)) {
+    if (PortScanPointerNdc(zone, pointerX, pointerY, mPlayerIndex)) {
       idealX += pointerX;
       idealY += pointerY;
     }
@@ -1007,7 +1008,7 @@ TUniqueId CPlayer::FindOrbitTargetId(CStateManager& mgr) {
     {
       float pointerX = 0.f;
       float pointerY = 0.f;
-      if (PortScanPointerNdc(mOrbitZoneMode, pointerX, pointerY)) {
+      if (PortScanPointerNdc(mOrbitZoneMode, pointerX, pointerY, mPlayerIndex)) {
         idealX += pointerX;
         idealY += pointerY;
       }
@@ -1070,7 +1071,7 @@ TUniqueId CPlayer::CheckEnemyAgainstOrbitZone(TUniqueId target, EPlayerZoneInfo 
   {
     float pointerX = 0.f;
     float pointerY = 0.f;
-    if (PortScanPointerNdc(zone, pointerX, pointerY)) {
+    if (PortScanPointerNdc(zone, pointerX, pointerY, mPlayerIndex)) {
       idealX += pointerX;
       idealY += pointerY;
     }
@@ -1311,7 +1312,7 @@ void CPlayer::UpdateAimTarget(CStateManager& mgr) {
     mAimTargetTimer = 0.f;
 #ifdef TARGET_PC
     // Port: with auto-aim off (F1), aim only at a locked or orbited target, as MP1 does.
-  } else if (!PortOverlay::AutoAim()) {
+  } else if (!PortOverlay::AutoAim(mPlayerIndex)) {
     SetAimTarget(kInvalidUniqueId);
     mAimTargetTimer = 0.f;
     if (mOrbitState == kOS_OrbitObject || mOrbitState == kOS_ForcedOrbitObject) {

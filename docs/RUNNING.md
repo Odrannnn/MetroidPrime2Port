@@ -209,9 +209,18 @@ What a save keeps of each enemy (the `kTagFields` block) is in `docs/SAVESTATE_S
 
 ## Driving pads 1-3 (multiplayer)
 
+`MP2_VPADS=<1-4>` attaches that many SDL virtual gamepads at start (console `vpad`, `pads`, `padport`): they go through Aurora's real controller-to-port assignment, which `MP2_INPUT` bypasses.
+
 `MP2_INPUT` entries take a pad prefix: `p1.A@300`, `P2:START@320+4` (`p0.`-`p3.`, `.` or `:`); no
 prefix is pad 0 as before, and warp tokens stay pad 0. A pad is connected and idle (the front end
 counts `DeviceIsPresent`) once any entry names it. Parser test: `port_input_pad_tests`.
+
+`MP2_VPAD_INPUT` is the same timeline for the SDL virtual pads (`v0.`-`v3.` prefixes, MP2_INPUT syntax
+and names, game-update frame clock; set `MP2_VPADS=<n>`): `v1.SLEFT@600+60`, `v0.A@900+4`. Names map
+to the Xbox layout (Z=rb, L/R=lt/rt, C stick=right stick, D-pad=dpad). `v1.DETACH@3000` and
+`v1.ATTACH@3600` unplug/replug that pad (a replugged pad is neutral). `v1.GYRO=0.8:0@600` sets the pad's gyro (yaw:pitch
+rad/s, positive yaw turns right; no commas, they separate tokens) and holds it until the next GYRO token;
+the console equivalent is `vpad 1 gyro 0.8 0`. Logged as `[vpad-input]`. Every virtual pad has a gyro (no accel).
 
 ## Area regression sweep (any world, shards, START-free)
 

@@ -380,6 +380,41 @@ float GyroCursorAngle();
 // fires two quick shots, then charges faster (CPlayerGun::PortRapidChargeShot).
 bool RapidCharge();
 void SetRapidCharge(bool enabled);
+// Per-player settings for a match: players 1-3 (P2-P4) may override these of Player 1's settings
+// one by one (settings.cfg `p2.lockon_toggle=` etc.); an unset one follows Player 1's value,
+// Original Experience included. Bools and ints are stored as floats.
+enum PlayerSetting {
+  kPlayer_LockOnToggle,
+  kPlayer_StickyCharge,
+  kPlayer_RapidCharge,
+  kPlayer_AutoAim,
+  kPlayer_LockOnFreeAim,
+  kPlayer_GyroAim,
+  kPlayer_GyroMode,
+  kPlayer_GyroSensitivity,
+  kPlayer_GyroSplit,
+  kPlayer_GyroSensitivityY,
+  kPlayerSettingCount,
+};
+const int kSettingPlayers = 4;
+bool PlayerSettingSet(int player, PlayerSetting key);
+// Player 0 sets Player 1's own setting; players 1-3 set their override. Both persist.
+void SetPlayerSetting(int player, PlayerSetting key, float value);
+// Player 1-3 follows Player 1 again for `key`, or for all of them.
+void ClearPlayerSetting(int player, PlayerSetting key);
+void ClearPlayerSettings(int player);
+// The effective values for `player` (0-3).
+bool LockOnToggle(int player);
+bool StickyCharge(int player);
+bool RapidCharge(int player);
+bool AutoAim(int player);
+bool LockOnFreeAim(int player);
+bool GyroAim(int player);
+int GyroMode(int player);
+float GyroSensitivity(int player);
+bool GyroSplit(int player);
+// GyroSensitivityY when the player's split is on, else their GyroSensitivity.
+float GyroSensitivityYEffective(int player);
 // Back up the card before the game writes it (`MP2_CARD_BACKUP=1`, F1 > Saves): each write to the
 // memory card copies the file as it is on disk first, into `<user>/save-backups`, so a save that
 // goes wrong can be imported back (console `save import latest`). Off by default; never saved.

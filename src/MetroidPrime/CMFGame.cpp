@@ -112,7 +112,7 @@ CMFGame::~CMFGame() {
   // Port: back in the front end there is no game flow and no player, so the touch controls
   // (and anything else reading these) stop seeing the last in-game state: the Ball page on the title.
   PortHarness::GameFlowState(-1, false);
-  PortTouch::SetMorphed(false);
+  for (int player = 0; player < 4; ++player) PortTouch::SetMorphed(false, player);
   PortTouch::SetScanTextUp(false);
   // Port: the render mode is widened by the aspect setting.
   CGraphics::SetViewport(0, 0, CGraphics::GetRenderMode().fbWidth,

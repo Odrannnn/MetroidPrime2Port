@@ -10,6 +10,7 @@
 #include <string>
 
 #include "port_graphics_backend.h"
+#include "port_overlay.h"
 
 namespace PortOverlayState {
 
@@ -70,6 +71,13 @@ extern float sGyroSensitivityY;
 extern bool sResetAimBoth;
 extern bool sLockOnFreeAim;
 extern bool sHandOnCannon;
+// PortOverlay::PlayerSetting overrides of players 1-3 ([0] unused); settings.cpp reads and
+// writes them as `p<N>.<key>`.
+struct PlayerOverride {
+  float value = 0.f;
+  bool set = false;
+};
+extern PlayerOverride sPlayerSettings[PortOverlay::kSettingPlayers][PortOverlay::kPlayerSettingCount];
 extern bool sMenuStandardButtons;
 extern bool sCardBackup;
 extern float sFirstPersonFov;

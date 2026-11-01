@@ -32,6 +32,7 @@ namespace PortDebug {
 const DebugPage kDebugPages[] = {
     {"Game", DrawGameTab},
     {"Controls", DrawControlsTab},
+    {"Multiplayer", DrawMultiplayerTab},
     {"Video", DrawVideoTab},
     {"Enhancements", DrawEnhancementsTab},
     {"Mods", DrawModsTab},

@@ -88,10 +88,13 @@ void MergeFamily(PortInput::UserBindings& all, const PortInput::UserBindings& pr
 // parse are skipped and logged once.
 std::vector<std::string> List(PortInput::Family family);
 // Snapshots the family's current bindings under a name; the same slug replaces.
-bool Save(PortInput::Family family, std::string_view name);
+// `port` (pad port 0-3, default 0) picks the controller a pad layout is read from; ports 1-3
+// handle the pad family only (no keyboard, touch or engine rows).
+bool Save(PortInput::Family family, std::string_view name, unsigned port = 0);
 // Replaces the family's own Default-profile bindings with a saved preset (name
 // matched case-insensitively). False when there is none.
-bool Apply(PortInput::Family family, std::string_view name);
+// On ports 1-3 only the pad mapping of that port is written (no-op on a virtual pad or an empty port).
+bool Apply(PortInput::Family family, std::string_view name, unsigned port = 0);
 bool Delete(PortInput::Family family, std::string_view name);
 
 // A preset across families: the union of the names, grouped by slug.
@@ -103,9 +106,10 @@ std::vector<Entry> ListAll();
 // Saves the keyboard part always, the pad part when a controller is in port 1 and
 // the touch part when touch has bindings; the slug's other parts are deleted first.
 // True when the keyboard part was written.
-bool SaveAll(std::string_view name);
+// On ports 1-3: the pad part only, from that port.
+bool SaveAll(std::string_view name, unsigned port = 0);
 // Applies every part that exists; true when any did.
-bool ApplyAll(std::string_view name);
+bool ApplyAll(std::string_view name, unsigned port = 0);
 bool DeleteAll(std::string_view name);
 
 } // namespace PortInputUserPresets

@@ -120,6 +120,7 @@ float sGyroSensitivityY = PortOverlay::kGyroSensitivityDefault;
 bool sResetAimBoth = false;
 bool sLockOnFreeAim = false;
 bool sHandOnCannon = true;
+PlayerOverride sPlayerSettings[PortOverlay::kSettingPlayers][PortOverlay::kPlayerSettingCount];
 bool sMenuStandardButtons = false;
 bool sRapidCharge = false;
 // `MP2_CARD_BACKUP`: copy the card's save file into save-backups before every card write (F1 >
@@ -1393,6 +1394,116 @@ void SetRapidCharge(bool enabled) {
   ReadEnv();
   sRapidCharge = enabled;
   Persist();
+}
+
+namespace {
+
+// Player 1-3's override of `key`, or null when it follows Player 1.
+const PlayerOverride* Override(int player, PlayerSetting key) {
+  if (player <= 0 || player >= kSettingPlayers || key < 0 || key >= kPlayerSettingCount) {
+    return nullptr;
+  }
+  const PlayerOverride& o = sPlayerSettings[player][key];
+  return o.set ? &o : nullptr;
+}
+
+bool PlayerBool(int player, PlayerSetting key, bool p1) {
+  const PlayerOverride* o = Override(player, key);
+  return o != nullptr ? o->value != 0.f : p1;
+}
+
+float PlayerFloat(int player, PlayerSetting key, float p1) {
+  const PlayerOverride* o = Override(player, key);
+  return o != nullptr ? o->value : p1;
+}
+
+} // namespace
+
+bool PlayerSettingSet(int player, PlayerSetting key) { return Override(player, key) != nullptr; }
+
+void SetPlayerSetting(int player, PlayerSetting key, float value) {
+  ReadEnv();
+  if (key < 0 || key >= kPlayerSettingCount || !std::isfinite(value)) {
+    return;
+  }
+  if (key == kPlayer_GyroMode) {
+    value = std::clamp(std::round(value), float(kGyroModeMin), float(kGyroModeMax));
+  } else if (key == kPlayer_GyroSensitivity || key == kPlayer_GyroSensitivityY) {
+    value = std::clamp(value, kGyroSensitivityMin, kGyroSensitivityMax);
+  } else {
+    value = value != 0.f ? 1.f : 0.f;
+  }
+  if (player <= 0) {
+    switch (key) {
+    case kPlayer_LockOnToggle: sLockOnToggle = value != 0.f; break;
+    case kPlayer_StickyCharge: sStickyCharge = value != 0.f; break;
+    case kPlayer_RapidCharge: sRapidCharge = value != 0.f; break;
+    case kPlayer_AutoAim: sAutoAim = value != 0.f; break;
+    case kPlayer_LockOnFreeAim: sLockOnFreeAim = value != 0.f; break;
+    case kPlayer_GyroAim: sGyroAim = value != 0.f; break;
+    case kPlayer_GyroMode: sGyroMode = int(value); break;
+    case kPlayer_GyroSensitivity: sGyroSensitivity = value; break;
+    case kPlayer_GyroSplit: sGyroSplit = value != 0.f; break;
+    case kPlayer_GyroSensitivityY: sGyroSensitivityY = value; break;
+    case kPlayerSettingCount: return;
+    }
+  } else if (player < kSettingPlayers) {
+    sPlayerSettings[player][key] = {value, true};
+  } else {
+    return;
+  }
+  Persist();
+}
+
+void ClearPlayerSetting(int player, PlayerSetting key) {
+  if (Override(player, key) == nullptr) {
+    return;
+  }
+  sPlayerSettings[player][key] = {};
+  Persist();
+}
+
+void ClearPlayerSettings(int player) {
+  if (player <= 0 || player >= kSettingPlayers) {
+    return;
+  }
+  for (PlayerOverride& o : sPlayerSettings[player]) {
+    o = {};
+  }
+  Persist();
+}
+
+bool LockOnToggle(int player) {
+  return !OriginalExperience() && PlayerBool(player, kPlayer_LockOnToggle, LockOnToggle());
+}
+
+bool StickyCharge(int player) {
+  return !OriginalExperience() && PlayerBool(player, kPlayer_StickyCharge, StickyCharge());
+}
+
+bool RapidCharge(int player) {
+  return !OriginalExperience() && PlayerBool(player, kPlayer_RapidCharge, RapidCharge());
+}
+
+bool AutoAim(int player) {
+  return OriginalExperience() || PlayerBool(player, kPlayer_AutoAim, AutoAim());
+}
+
+bool LockOnFreeAim(int player) { return PlayerBool(player, kPlayer_LockOnFreeAim, LockOnFreeAim()); }
+
+bool GyroAim(int player) { return PlayerBool(player, kPlayer_GyroAim, GyroAim()); }
+
+int GyroMode(int player) { return int(PlayerFloat(player, kPlayer_GyroMode, float(GyroMode()))); }
+
+float GyroSensitivity(int player) {
+  return PlayerFloat(player, kPlayer_GyroSensitivity, GyroSensitivity());
+}
+
+bool GyroSplit(int player) { return PlayerBool(player, kPlayer_GyroSplit, GyroSplit()); }
+
+float GyroSensitivityYEffective(int player) {
+  return GyroSplit(player) ? PlayerFloat(player, kPlayer_GyroSensitivityY, GyroSensitivityY())
+                           : GyroSensitivity(player);
 }
 
 bool CardBackup() {

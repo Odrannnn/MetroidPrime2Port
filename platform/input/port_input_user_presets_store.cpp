@@ -26,7 +26,6 @@ namespace {
 
 using PortInput::Family;
 
-constexpr u32 kPort = PAD_CHAN0;
 // A preset is a few KiB; a huge file is a mistake.
 constexpr uintmax_t kMaxFileBytes = 256 * 1024;
 
@@ -112,12 +111,12 @@ const SFile* FindByName(const std::vector<SFile>& files, std::string_view name) 
   return nullptr;
 }
 
-Layout Capture(Family family, const std::string& name) {
+Layout Capture(Family family, const std::string& name, u32 kPort) {  // kPort: the pad port a pad layout is read from
   Layout l;
   l.family = family;
   l.name = name;
   if (family == Family::Touch) return l; // bindings only
-  l.twinStick = PortMouse::StickEnabled();
+  l.twinStick = PortMouse::StickEnabled(static_cast<int>(kPort));
   if (family == Family::Pad) {
     u32 n = 0;
     if (const PADButtonMapping* b = PADGetButtonMappings(kPort, &n))
@@ -141,9 +140,12 @@ Layout Capture(Family family, const std::string& name) {
 }
 
 // The same writes as the built-in presets (port_controls.cpp), from the snapshot.
-void Restore(const Layout& l) {
+// `kPort` is the pad port the pad mapping goes to; ports other than 0 get the pad mapping
+// and their player's twin-stick switch (keyboard and settings stay the port-0 player's).
+void Restore(const Layout& l, u32 kPort) {
   if (l.family == Family::Touch) return;
-  PortMouse::SetStickEnabled(l.twinStick);
+  if (kPort != PAD_CHAN0 && l.family != Family::Pad) return;
+  PortMouse::SetPlayerStickEnabled(static_cast<int>(kPort), l.twinStick);
   if (l.family == Family::Pad) {
     // An empty snapshot (a hand-edited file) keeps the controller's mappings as they are.
     if (!l.padButtons.empty() || !l.padAxes.empty()) PADRestoreDefaultMapping(kPort);
@@ -159,6 +161,7 @@ void Restore(const Layout& l) {
     PortMouse::SetEnabled(l.mouseAim);
   }
   PADSerializeMappings();
+  if (kPort != PAD_CHAN0) return;
   PortOverlaySettings::MarkDirty();
   PortOverlaySettings::SaveSettings();
 }
@@ -178,24 +181,27 @@ std::vector<std::string> List(Family family) {
 }
 
 namespace {
-bool SaveClean(Family family, const std::string& clean);
+bool SaveClean(Family family, const std::string& clean, u32 port = PAD_CHAN0);
 bool Remove(Family family, std::string_view name);
 } // namespace
 
-bool Save(Family family, std::string_view name) {
-  return SaveClean(family, CleanName(name));
+bool Save(Family family, std::string_view name, unsigned port) {
+  return SaveClean(family, CleanName(name), port);
 }
 
 namespace {
 
-bool SaveClean(Family family, const std::string& clean) {
-  if (!Supported(family) || clean.empty()) return false;
+bool SaveClean(Family family, const std::string& clean, u32 kPort) {
+  if (!Supported(family) || clean.empty() || kPort > PAD_CHAN3) return false;
+  // Only port 0 has a keyboard or touch layer.
+  if (kPort != PAD_CHAN0 && family != Family::Pad) return false;
   // No controller in port 1: its mappings would read as empty and apply as the defaults.
   if (family == Family::Pad && PADGetIndexForPort(kPort) < 0) return false;
   const auto all = PortInputDevices::UserBindings();
   Preset preset;
-  preset.layout = Capture(family, clean);
-  if (all != nullptr) preset.bindings = ExtractFamily(*all, family);
+  preset.layout = Capture(family, clean, kPort);
+  // The input engine layer (controls.toml) is per device, not per port: only port 0 keeps it.
+  if (all != nullptr && kPort == PAD_CHAN0) preset.bindings = ExtractFamily(*all, family);
   const std::string dir = Dir();
   std::error_code ec;
   std::filesystem::create_directories(dir, ec);
@@ -229,17 +235,23 @@ bool Remove(Family family, std::string_view name) {
 
 } // namespace
 
-bool Apply(Family family, std::string_view name) {
-  if (!Supported(family)) return false;
+bool Apply(Family family, std::string_view name, unsigned port) {
+  if (!Supported(family) || port > PAD_CHAN3) return false;
   const std::vector<SFile> files = Scan(family);
   const SFile* file = FindByName(files, name);
   if (file == nullptr) return false;
+  if (port != PAD_CHAN0) {
+    // Only the pad mapping of that port; the controls.toml rows are per device and stay.
+    if (family != Family::Pad) return false;
+    Restore(file->preset.layout, port);
+    return true;
+  }
   const auto saved = PortInputDevices::UserBindings();
   PortInput::UserBindings all = saved != nullptr ? *saved : PortInput::UserBindings{};
   for (PortInput::UserProfile& p : all.profiles)
     if (p.match.empty()) PortInput::ClearFamily(p, family);
   MergeFamily(all, file->preset.bindings);
-  Restore(file->preset.layout);
+  Restore(file->preset.layout, PAD_CHAN0);
   return PortInputDevices::SetUserBindings(all);
 }
 
@@ -272,11 +284,12 @@ std::vector<Entry> ListAll() {
   return entries;
 }
 
-bool SaveAll(std::string_view name) {
+bool SaveAll(std::string_view name, unsigned port) {
   const std::string clean = CleanName(name);
   if (clean.empty()) return false;
+  if (port != PAD_CHAN0) return SaveClean(Family::Pad, clean, port);
   const auto all = PortInputDevices::UserBindings();
-  const bool pad = PADGetIndexForPort(kPort) >= 0;
+  const bool pad = PADGetIndexForPort(PAD_CHAN0) >= 0;
   bool touch = false;
   if (all != nullptr) {
     const PortInput::UserBindings t = ExtractFamily(*all, Family::Touch);
@@ -292,7 +305,8 @@ bool SaveAll(std::string_view name) {
   return true;
 }
 
-bool ApplyAll(std::string_view name) {
+bool ApplyAll(std::string_view name, unsigned port) {
+  if (port != PAD_CHAN0) return Apply(Family::Pad, name, port);
   bool any = false;
   for (const Family family : kFamilies) any = Apply(family, name) || any;
   return any;

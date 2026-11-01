@@ -23,7 +23,6 @@
 
 namespace {
 
-PortMouse::AimState sAim;
 bool sEnabled = false;
 bool sStickEnabled = false;
 bool sKeyboardCStickHeld = false;
@@ -32,7 +31,6 @@ bool sKeyboardCStickHeld = false;
 std::atomic<bool> sTouchEnabled{false};
 bool sReadEnv = false;
 bool sCaptured = false;
-bool sAiming = false;
 bool sUiActive = false;
 float sSensitivity = 0.0035f; // radians per pixel, the Prime port's default
 // MP1's "Separate vertical speed" for the mouse: vertical counts turn at sSensitivityY.
@@ -54,42 +52,6 @@ std::atomic<bool> sTouchAimDown{false};
 // view where it was aimed instead of handing it back to the free-look pitch (which is level).
 std::atomic<bool> sTouchAimLatched{false};
 std::atomic<uint64_t> sTouchHoldUntilNs{0};
-float sPendingX = 0.f;
-float sPendingY = 0.f;
-float sFrameX = 0.f;
-float sFrameY = 0.f;
-// "Gyro also turns the camera" (MP1's sGyroCameraPending): view travel in mouse pixels beside the
-// pointer's, pending and latched with it.
-float sCameraPendingX = 0.f;
-float sCameraPendingY = 0.f;
-float sCameraFrameX = 0.f;
-float sCameraFrameY = 0.f;
-// The stick's part of the latched frame: under pointer aim with the gyro driving it turns the
-// camera instead of moving the pointer (MP1's sStickFrame).
-float sStickFrameX = 0.f;
-float sStickFrameY = 0.f;
-bool sGyroDrivesAim = false;
-// Reset aim (PollPortActions): 0 none, 1 the usual, 2 both pointer and camera.
-std::atomic<int> sResetAimRequest{0};
-// The stick's part of sPendingX/Y (PresentedAimDelta shows only a tick's fraction of it), and
-// whether the last tick applied the aim, with the dt it was given.
-float sStickPendingX = 0.f;
-float sStickPendingY = 0.f;
-bool sAppliedLastTick = false;
-float sLastTickDt = 1.f / 60.f;
-// Pointer aim (MP1's sPointerAim/sPointerAimFree), configured each tick by CPlayer.
-PortMouse::PointerAim sPointer;
-// The last update left the pointer free under a lock (lock-on free aim).
-bool sLockFree = false;
-// That lock had no target (UpdateAim's pointerStays): its end leaves the pointer put.
-bool sLockStays = false;
-bool sPointerEnabled = false;
-bool sPointerFree = false;
-// The console's `pointeraim <x> <y>` holds the pointer there (free, the view not turned) until
-// `pointeraim 0 0`, so a harness can aim it without a mouse.
-bool sDebugHold = false;
-float sPointerBox = 0.7f;
-float sPointerTurnRate = PortMouse::kPi;
 
 // Pending travel is written by the UI thread (AddTouchAim) and latched by the game thread
 // (BeginFrame, and the clears), so every read or write of it takes this lock. The mouse's
@@ -100,11 +62,87 @@ std::mutex sPendingMutex;
 
 constexpr float kTouchSpringHoldSeconds = 0.35f;
 
-void ClearPendingTravel() {
+// One player's aim. In a match the player index is the pad port, so each pad's right stick feeds
+// its own slot, and so does each pad's gyro; the mouse, touch and the phone's gyro feed slot 0
+// only. Settings (sensitivity, rates, the source switches) stay global.
+struct Slot {
+  PortMouse::AimState aim;
+  bool aiming = false;
+  float pendingX = 0.f;
+  float pendingY = 0.f;
+  float frameX = 0.f;
+  float frameY = 0.f;
+  // "Gyro also turns the camera" (MP1's sGyroCameraPending): view travel in mouse pixels beside the
+  // pointer's, pending and latched with it.
+  float cameraPendingX = 0.f;
+  float cameraPendingY = 0.f;
+  float cameraFrameX = 0.f;
+  float cameraFrameY = 0.f;
+  // The stick's part of the latched frame: under pointer aim with the gyro driving it turns the
+  // camera instead of moving the pointer (MP1's sStickFrame).
+  float stickFrameX = 0.f;
+  float stickFrameY = 0.f;
+  bool gyroDrivesAim = false;
+  // Reset aim (PollPortActions): 0 none, 1 the usual, 2 both pointer and camera.
+  std::atomic< int > resetAimRequest{0};
+  // The stick's part of pendingX/Y (PresentedAimDelta shows only a tick's fraction of it), and
+  // whether the last tick applied the aim, with the dt it was given.
+  float stickPendingX = 0.f;
+  float stickPendingY = 0.f;
+  bool appliedLastTick = false;
+  float lastTickDt = 1.f / 60.f;
+  // Pointer aim (MP1's sPointerAim/sPointerAimFree), configured each tick by CPlayer.
+  PortMouse::PointerAim pointer;
+  // The last update left the pointer free under a lock (lock-on free aim).
+  bool lockFree = false;
+  // That lock had no target (UpdateAim's pointerStays): its end leaves the pointer put.
+  bool lockStays = false;
+  bool pointerEnabled = false;
+  bool pointerFree = false;
+  // The console's `pointeraim <x> <y>` holds the pointer there (free, the view not turned) until
+  // `pointeraim 0 0`, so a harness can aim it without a mouse.
+  bool debugHold = false;
+  float pointerBox = 0.7f;
+  float pointerTurnRate = PortMouse::kPi;
+};
+
+constexpr int kSlots = 4;
+Slot sSlots[kSlots];
+
+Slot& SlotFor(int player) { return sSlots[player < 0 || player >= kSlots ? 0 : player]; }
+
+// A match's other players (slots 1-3) may override Player 1's twin-stick settings field by
+// field; an unset field follows Player 1, so setups from before per-player settings keep working.
+template <typename T>
+struct PlayerValue {
+  T value{};
+  bool set = false;
+};
+struct PlayerStick {
+  PlayerValue<bool> enabled;
+  PlayerValue<float> rate;
+  PlayerValue<bool> split;
+  PlayerValue<float> rateY;
+};
+PlayerStick sPlayerStick[kSlots]; // [0] unused: Player 1 is the global settings
+
+template <typename T>
+T ForPlayer(int player, PlayerValue<T> PlayerStick::*field, T p1) {
+  if (player <= 0 || player >= kSlots) return p1;
+  const PlayerValue<T>& v = sPlayerStick[player].*field;
+  return v.set ? v.value : p1;
+}
+
+// Slot 0 follows every source; the others only a pad's right stick, and only with twin stick on.
+bool SlotLive(int player, bool anySourceOn) {
+  return player == 0 ? anySourceOn : PortMouse::StickEnabled(player);
+}
+
+void ClearPendingTravel(Slot& s) {
   std::lock_guard< std::mutex > lock(sPendingMutex);
-  sPendingX = sPendingY = sFrameX = sFrameY = 0.f;
-  sStickPendingX = sStickPendingY = sStickFrameX = sStickFrameY = 0.f;
-  sCameraPendingX = sCameraPendingY = sCameraFrameX = sCameraFrameY = 0.f;
+  s.pendingX = s.pendingY = s.frameX = s.frameY = 0.f;
+  s.stickPendingX = s.stickPendingY = s.stickFrameX = s.stickFrameY = 0.f;
+  s.cameraPendingX = s.cameraPendingY = s.cameraFrameX = s.cameraFrameY = 0.f;
 }
 
 float ClampTouchAimSpeed(float pixelsPerDp) {
@@ -211,7 +249,7 @@ void ApplyCapture(bool captured) {
     SDL_HideCursor();
   } else {
     SDL_ShowCursor();
-    ClearPendingTravel();
+    ClearPendingTravel(sSlots[0]);
   }
 }
 
@@ -241,6 +279,29 @@ void PointerAimScale(float& sx, float& sy) {
 
 namespace PortMouse {
 
+static void ResetSlot(Slot& s) {
+  s.aim.Reset();
+  s.aiming = false;
+  ClearPendingTravel(s);
+  s.pointer.Center();
+  s.pointerFree = false;
+}
+
+// `keepOwnSticks`: Player 1's sources going off leaves alone a player whose own twin stick is on.
+static void ResetSlots(bool keepOwnSticks) {
+  for (int i = 0; i < kSlots; ++i) {
+    if (!keepOwnSticks || i == 0 || !StickEnabled(i)) {
+      ResetSlot(sSlots[i]);
+    }
+  }
+  // A finger's state belongs to the aim being reset: a held spring must not re-open the view
+  // the next frame, and a later down must not inherit a stale hold.
+  sTouchAimDown = false;
+  sTouchAimLatched = false;
+  sTouchHoldUntilNs = 0;
+  SetCapture(false);
+}
+
 bool Enabled() {
   ReadEnv();
   return sEnabled;
@@ -250,18 +311,25 @@ void SetEnabled(bool enabled) {
   ReadEnv();
   sEnabled = enabled;
   if (!enabled && !sStickEnabled && !sTouchEnabled.load()) {
-    Reset();
+    ResetSlots(true);
   }
 }
 
-bool StickEnabled() {
+bool StickEnabled(int player) {
   ReadEnv();
-  return sStickEnabled;
+  return ForPlayer(player, &PlayerStick::enabled, sStickEnabled);
 }
 
-bool StickOwnsCStick() {
+bool DirectAim(int player) {
   ReadEnv();
-  return sStickEnabled && !(sEnabled && sKeyboardCStickHeld);
+  // Mouse and touch are Player 1's; the others aim directly only with their own twin stick.
+  return player <= 0 ? sEnabled || sStickEnabled || sTouchEnabled.load() : StickEnabled(player);
+}
+
+bool StickOwnsCStick(int player) {
+  ReadEnv();
+  // The keyboard's C-stick is player 0's.
+  return StickEnabled(player) && !(player == 0 && sEnabled && sKeyboardCStickHeld);
 }
 
 void SetKeyboardCStickHeld(bool held) { sKeyboardCStickHeld = held; }
@@ -270,13 +338,13 @@ void SetStickEnabled(bool enabled) {
   ReadEnv();
   sStickEnabled = enabled;
   if (!enabled && !sEnabled && !sTouchEnabled.load()) {
-    Reset();
+    ResetSlots(true);
   }
 }
 
-float StickAimRate() {
+float StickAimRate(int player) {
   ReadEnv();
-  return sStickAimRate;
+  return ForPlayer(player, &PlayerStick::rate, sStickAimRate);
 }
 
 void SetStickAimRate(float pixelsPerSecond) {
@@ -286,9 +354,9 @@ void SetStickAimRate(float pixelsPerSecond) {
   }
 }
 
-bool StickAimSplit() {
+bool StickAimSplit(int player) {
   ReadEnv();
-  return sStickAimSplit;
+  return ForPlayer(player, &PlayerStick::split, sStickAimSplit);
 }
 
 void SetStickAimSplit(bool enabled) {
@@ -296,9 +364,9 @@ void SetStickAimSplit(bool enabled) {
   sStickAimSplit = enabled;
 }
 
-float StickAimRateY() {
+float StickAimRateY(int player) {
   ReadEnv();
-  return sStickAimRateY;
+  return ForPlayer(player, &PlayerStick::rateY, sStickAimRateY);
 }
 
 void SetStickAimRateY(float pixelsPerSecond) {
@@ -308,8 +376,68 @@ void SetStickAimRateY(float pixelsPerSecond) {
   }
 }
 
-void AddStickAim(float x, float y, float dt) {
-  if (!sStickEnabled || sUiActive || dt <= 0.f || !std::isfinite(x) || !std::isfinite(y)) {
+bool PlayerStickSet(int player, StickKey key) {
+  if (player <= 0 || player >= kSlots) return false;
+  const PlayerStick& p = sPlayerStick[player];
+  switch (key) {
+  case kStick_Enabled: return p.enabled.set;
+  case kStick_Rate: return p.rate.set;
+  case kStick_Split: return p.split.set;
+  case kStick_RateY: return p.rateY.set;
+  }
+  return false;
+}
+
+void ClearPlayerStick(int player) {
+  if (player <= 0 || player >= kSlots) return;
+  sPlayerStick[player] = PlayerStick{};
+}
+
+void ClearPlayerStick(int player, StickKey key) {
+  if (player <= 0 || player >= kSlots) return;
+  PlayerStick& p = sPlayerStick[player];
+  switch (key) {
+  case kStick_Enabled: p.enabled = {}; break;
+  case kStick_Rate: p.rate = {}; break;
+  case kStick_Split: p.split = {}; break;
+  case kStick_RateY: p.rateY = {}; break;
+  }
+}
+
+void SetPlayerStickEnabled(int player, bool enabled) {
+  if (player <= 0) {
+    SetStickEnabled(enabled);
+  } else if (player < kSlots) {
+    sPlayerStick[player].enabled = {enabled, true};
+  }
+}
+
+void SetPlayerStickAimRate(int player, float pixelsPerSecond) {
+  if (player <= 0) {
+    SetStickAimRate(pixelsPerSecond);
+  } else if (player < kSlots && std::isfinite(pixelsPerSecond) && pixelsPerSecond > 0.f) {
+    sPlayerStick[player].rate = {pixelsPerSecond, true};
+  }
+}
+
+void SetPlayerStickAimSplit(int player, bool enabled) {
+  if (player <= 0) {
+    SetStickAimSplit(enabled);
+  } else if (player < kSlots) {
+    sPlayerStick[player].split = {enabled, true};
+  }
+}
+
+void SetPlayerStickAimRateY(int player, float pixelsPerSecond) {
+  if (player <= 0) {
+    SetStickAimRateY(pixelsPerSecond);
+  } else if (player < kSlots && std::isfinite(pixelsPerSecond) && pixelsPerSecond > 0.f) {
+    sPlayerStick[player].rateY = {pixelsPerSecond, true};
+  }
+}
+
+void AddStickAim(float x, float y, float dt, int player) {
+  if (!StickEnabled(player) || sUiActive || dt <= 0.f || !std::isfinite(x) || !std::isfinite(y)) {
     return;
   }
   if (x * x + y * y < 0.04f) {
@@ -318,16 +446,18 @@ void AddStickAim(float x, float y, float dt) {
   // Keep the stick's own pixels/second tuning independent of mouse sensitivity. Store
   // mouse-equivalent counts so pointer, gyro-camera routing and presentation can still
   // aggregate sources without rescaling the mouse, touch or gyro contributions.
-  const float dx = AimPixelsAsCounts(x * sStickAimRate * dt, sSensitivity);
+  const float rate = StickAimRate(player);
+  const float dx = AimPixelsAsCounts(x * rate * dt, sSensitivity);
   // The aim's dy is screen-down positive, the stick's y is up positive.
-  const float dy = AimPixelsAsCounts(-y * (sStickAimSplit ? sStickAimRateY : sStickAimRate) * dt,
+  const float dy = AimPixelsAsCounts(-y * (StickAimSplit(player) ? StickAimRateY(player) : rate) * dt,
                                     sSensitivity);
   // Same thread as the latch (see sPendingMutex), but PresentedAimDelta reads both under the lock.
+  Slot& s = SlotFor(player);
   std::lock_guard< std::mutex > lock(sPendingMutex);
-  sPendingX += dx;
-  sPendingY += dy;
-  sStickPendingX += dx;
-  sStickPendingY += dy;
+  s.pendingX += dx;
+  s.pendingY += dy;
+  s.stickPendingX += dx;
+  s.stickPendingY += dy;
 }
 
 bool TouchEnabled() {
@@ -341,7 +471,7 @@ void SetTouchEnabled(bool enabled) {
   // Turning the layout's drag-to-aim off is the same shape as releasing the mouse: with no
   // source left, the aim must not keep a stale yaw for the next one to snap to.
   if (!enabled && !sEnabled && !sStickEnabled) {
-    Reset();
+    ResetSlots(true);
   }
 }
 
@@ -353,9 +483,10 @@ void AddTouchAim(float dxDp, float dyDp) {
   }
   // Plain drags feed deltas only (MP1's model); the deltas themselves claim the view.
   sTouchAimLatched = true;
+  Slot& s = sSlots[0];
   std::lock_guard< std::mutex > lock(sPendingMutex);
-  sPendingX += dxDp * sTouchAimSpeed;
-  sPendingY += dyDp * sTouchAimSpeedY;
+  s.pendingX += dxDp * sTouchAimSpeed;
+  s.pendingY += dyDp * sTouchAimSpeedY;
 }
 
 void SetTouchAimDown(bool down) {
@@ -402,7 +533,7 @@ void SetUiActive(bool active) {
   sUiActive = active;
   if (active) {
     PortRadial::Cancel();
-    sAiming = false;
+    sSlots[0].aiming = false;
     SetCapture(false);
   }
 }
@@ -446,8 +577,8 @@ void AddMotion(float dx, float dy) {
       dy *= ratio;
     }
   }
-  sPendingX += dx;
-  sPendingY += dy;
+  sSlots[0].pendingX += dx;
+  sSlots[0].pendingY += dy;
 }
 
 // Photo mode (PortPhoto) owns the grab while active: UpdateAim is not reached then, so whatever
@@ -468,10 +599,11 @@ void EndPhotoCapture() {
 
 bool TakePhotoLook(float& yawDegrees, float& pitchDegrees) {
   ReadEnv();
+  Slot& s = sSlots[0];
   std::lock_guard< std::mutex > lock(sPendingMutex);
-  const float dx = sFrameX;
-  const float dy = sFrameY;
-  sFrameX = sFrameY = 0.f;
+  const float dx = s.frameX;
+  const float dy = s.frameY;
+  s.frameX = s.frameY = 0.f;
   if (dx == 0.f && dy == 0.f) {
     return false;
   }
@@ -481,7 +613,7 @@ bool TakePhotoLook(float& yawDegrees, float& pitchDegrees) {
   return true;
 }
 
-void AddGyroPointer(float yaw, float pitch, float dt, float sweep, float scaleY) {
+void AddGyroPointer(float yaw, float pitch, float dt, float sweep, float scaleY, int player) {
   if (!std::isfinite(yaw) || !std::isfinite(pitch) || !(dt > 0.f) || !(sweep > 0.f) || !std::isfinite(scaleY)) {
     return;
   }
@@ -494,12 +626,13 @@ void AddGyroPointer(float yaw, float pitch, float dt, float sweep, float scaleY)
     return;
   }
   const float cursor = 2.f / sweep * dt / px;
+  Slot& s = SlotFor(player);
   std::lock_guard< std::mutex > lock(sPendingMutex);
-  sPendingX += yaw * cursor;
-  sPendingY -= pitch * cursor * scaleY;
+  s.pendingX += yaw * cursor;
+  s.pendingY -= pitch * cursor * scaleY;
 }
 
-void AddGyroCamera(float yaw, float pitch, float dt, float sensitivity, float sensitivityY) {
+void AddGyroCamera(float yaw, float pitch, float dt, float sensitivity, float sensitivityY, int player) {
   ReadEnv();
   if (!std::isfinite(yaw) || !std::isfinite(pitch) || !(dt > 0.f) || !(sSensitivity > 0.f)) {
     return;
@@ -511,58 +644,74 @@ void AddGyroCamera(float yaw, float pitch, float dt, float sensitivity, float se
   const float sy = sInvertY ? -1.f : 1.f;
   const float scale = sensitivity * dt / sSensitivity;
   const float scaleY = sensitivityY * dt / sSensitivity;
+  Slot& s = SlotFor(player);
   std::lock_guard< std::mutex > lock(sPendingMutex);
-  sCameraPendingX += sx * yaw * scale;
-  sCameraPendingY -= sy * pitch * scaleY;
+  s.cameraPendingX += sx * yaw * scale;
+  s.cameraPendingY -= sy * pitch * scaleY;
 }
 
-void SetGyroDrivesAim(bool drives) { sGyroDrivesAim = drives; }
+void SetGyroDrivesAim(bool drives, int player) { SlotFor(player).gyroDrivesAim = drives; }
 
-void RequestResetAim(bool both) { sResetAimRequest.store(both ? 2 : 1, std::memory_order_release); }
+void RequestResetAim(bool both, int player) {
+  SlotFor(player).resetAimRequest.store(both ? 2 : 1, std::memory_order_release);
+}
 
 void BeginTick() {
   // The UI thread may be adding travel right now; latch and clear in one lock so a late
   // addition lands in this tick or the next, never in neither.
   std::lock_guard< std::mutex > lock(sPendingMutex);
-  sAppliedLastTick = false;
-  sFrameX = sPendingX;
-  sFrameY = sPendingY;
-  sStickFrameX = sStickPendingX;
-  sStickFrameY = sStickPendingY;
-  sPendingX = 0.f;
-  sPendingY = 0.f;
-  sStickPendingX = 0.f;
-  sStickPendingY = 0.f;
-  sCameraFrameX = sCameraPendingX;
-  sCameraFrameY = sCameraPendingY;
-  sCameraPendingX = 0.f;
-  sCameraPendingY = 0.f;
+  for (Slot& s : sSlots) {
+    s.appliedLastTick = false;
+    s.frameX = s.pendingX;
+    s.frameY = s.pendingY;
+    s.stickFrameX = s.stickPendingX;
+    s.stickFrameY = s.stickPendingY;
+    s.pendingX = 0.f;
+    s.pendingY = 0.f;
+    s.stickPendingX = 0.f;
+    s.stickPendingY = 0.f;
+    s.cameraFrameX = s.cameraPendingX;
+    s.cameraFrameY = s.cameraPendingY;
+    s.cameraPendingX = 0.f;
+    s.cameraPendingY = 0.f;
+  }
 }
 
 bool UpdateAim(bool active, bool locked, float x, float y, float z, float dt, bool pointerLock,
-                bool pointerHold, bool pointerStays) {
+                bool pointerHold, bool pointerStays, int player) {
   ReadEnv();
-  sAppliedLastTick = false;
-  if (PortRadial::Capturing()) {
+  Slot& s = SlotFor(player);
+  const bool first = &s == &sSlots[0];
+  s.appliedLastTick = false;
+  // The radial menu is player 0's; it takes the mouse and stick travel while it is open.
+  if (first && PortRadial::Capturing()) {
     if (!PortRadial::TouchOwnsSelection())
-      PortRadial::Transport().AddTravel(sFrameX - sStickFrameX, sFrameY - sStickFrameY);
-    sFrameX = sFrameY = sStickFrameX = sStickFrameY = 0.f;
-    sCameraFrameX = sCameraFrameY = 0.f;
-    sAiming = false;
+      PortRadial::Transport().AddTravel(s.frameX - s.stickFrameX, s.frameY - s.stickFrameY);
+    s.frameX = s.frameY = s.stickFrameX = s.stickFrameY = 0.f;
+    s.cameraFrameX = s.cameraFrameY = 0.f;
+    s.aiming = false;
     SetCapture(active && sEnabled);
     // Freeze both pointer and edge-turn; retain initialized yaw/pitch (no presentation snap).
-    return sAim.Update(active, locked, x, y, z, 0.f, 0.f, sSensitivity, sInvertX, sInvertY);
+    return s.aim.Update(active, locked, x, y, z, 0.f, 0.f, sSensitivity, sInvertX, sInvertY);
   }
   if (std::isfinite(dt) && dt > 0.f) {
-    sLastTickDt = dt;
+    s.lastTickDt = dt;
   }
-  if ((!sEnabled && !sStickEnabled && !sTouchEnabled.load()) || sUiActive) {
-    sAiming = false;
-    sPointerFree = false;
-    sLockFree = false;
-    sLockStays = false;
-    sPointer.Center();
-    SetCapture(false);
+  const bool live = SlotLive(first ? 0 : player, sEnabled || sStickEnabled || sTouchEnabled.load());
+  if (!live || sUiActive) {
+    // Another player's slot drops its aim with its twin stick, so turning it back on starts
+    // from the view rather than a stale yaw.
+    if (!first && !live) {
+      s.aim.Reset();
+    }
+    s.aiming = false;
+    s.pointerFree = false;
+    s.lockFree = false;
+    s.lockStays = false;
+    s.pointer.Center();
+    if (first) {
+      SetCapture(false);
+    }
     return false;
   }
   // The touch source is on for a whole run but only owns the view while a finger is down (or a
@@ -571,107 +720,110 @@ bool UpdateAim(bool active, bool locked, float x, float y, float z, float dt, bo
   // movement could no longer turn the player - so idle must read as `locked` below.
   // Once a finger has aimed (or whenever mouse/stick aim is on) the aim stays the owner after
   // the lift - handing the view back snapped the pitch to the free-look level.
-  const bool touchIdle = sTouchEnabled.load() && !sEnabled && !sStickEnabled &&
+  const bool touchIdle = first && sTouchEnabled.load() && !sEnabled && !sStickEnabled &&
                          !sTouchAimLatched.load() && !TouchAimActive();
   // `locked` means something else owns the view (a lock-on, the morph ball, a cinematic): the
   // aim tracks that direction and the caller must not turn the player. `touchIdle` is the same
   // situation, so a drag that begins there does not snap the view either.
   const bool held = locked || touchIdle;
   const bool owns = active && !held;
-  sAiming = owns;
+  s.aiming = owns;
   // Only mouse aim needs the pointer grabbed; twin-stick and touch leave the cursor alone.
   // The grab has to survive a lock: a target lock (and a cinematic, and the morph ball) makes
   // `locked` true, and releasing the grab then would stop the mouse buttons reaching the pad
   // - `ReadMouseButtons` only reads them while the window is in relative mode - so the L that
   // started the lock would look released on the next tick and the lock would drop again. The
   // grab is the game's, not the free look's.
-  SetCapture((owns || locked) && sEnabled);
+  if (first) {
+    SetCapture((owns || locked) && sEnabled);
+  }
   // MP1's Reset aim: under pointer aim recentre the pointer, otherwise look level (pitch 0; yaw
   // stays); `both` does both either way.
-  if (const int reset = sResetAimRequest.exchange(0, std::memory_order_acq_rel); reset != 0) {
-    if (sPointerEnabled || reset == 2) {
-      sPointer.Center();
+  if (const int reset = s.resetAimRequest.exchange(0, std::memory_order_acq_rel); reset != 0) {
+    if (s.pointerEnabled || reset == 2) {
+      s.pointer.Center();
     }
-    if ((!sPointerEnabled || reset == 2) && sAim.initialized) {
-      sAim.pitch = 0.f;
+    if ((!s.pointerEnabled || reset == 2) && s.aim.initialized) {
+      s.aim.pitch = 0.f;
     }
   }
   // Lock-on free aim (MP1 83ff2ecba, 1881b35d4): the lock owns the view and a pointer moves over
   // it, pointer aim's or, without pointer aim, one for the lock only. It starts and ends a lock at
   // the centre, where the target is. A touch source with no finger down re-centres it.
   const bool lockFree = pointerLock && active && locked && !touchIdle;
-  if (lockFree != sLockFree) {
-    if (!(lockFree ? pointerStays : sLockStays)) {
-      sPointer.Center();
+  if (lockFree != s.lockFree) {
+    if (!(lockFree ? pointerStays : s.lockStays)) {
+      s.pointer.Center();
     }
-    sLockFree = lockFree;
+    s.lockFree = lockFree;
   }
-  sLockStays = lockFree && pointerStays;
+  s.lockStays = lockFree && pointerStays;
   // A held pointer stays where the lock found it, and neither moves nor turns the view.
-  const bool pointerHeld = (active && locked && !lockFree && pointerHold && sPointerEnabled && !touchIdle) ||
-                           (sDebugHold && sPointerEnabled && !lockFree && !touchIdle);
-  if (sPointerEnabled || lockFree) {
+  const bool pointerHeld = (active && locked && !lockFree && pointerHold && s.pointerEnabled && !touchIdle) ||
+                           (s.debugHold && s.pointerEnabled && !lockFree && !touchIdle);
+  if (s.pointerEnabled || lockFree) {
     // MP1's pointer path: the travel moves the pointer, not the view. A lock (or anything that
     // stops free look) re-centres it (except under lock-on free aim), so lock-on, scan and grapple
     // still aim through the centre.
     // With the gyro driving the pointer, the stick turns the camera as it does without pointer
     // aim (MP1 4b8117d16).
     // A lock leaves the view nothing to turn, so the stick moves the pointer too.
-    const bool stickTurns = sGyroDrivesAim && !lockFree;
-    const bool moves = (owns || lockFree) && !(sDebugHold && !lockFree);
+    const bool stickTurns = s.gyroDrivesAim && !lockFree;
+    const bool moves = (owns || lockFree) && !(s.debugHold && !lockFree);
     if (moves) {
       float sx = 0.f, sy = 0.f;
       PointerAimScale(sx, sy);
       if (stickTurns) {
-        sPointer.Move((sFrameX - sStickFrameX) * sx, (sFrameY - sStickFrameY) * sy);
+        s.pointer.Move((s.frameX - s.stickFrameX) * sx, (s.frameY - s.stickFrameY) * sy);
       } else {
-        sPointer.Move(sFrameX * sx, sFrameY * sy);
+        s.pointer.Move(s.frameX * sx, s.frameY * sy);
       }
     } else if (!pointerHeld) {
-      sPointer.Center();
+      s.pointer.Center();
     }
     // The view turns only by the gyro's camera travel (zero unless it also turns the camera),
     // and the stick's when it turns the camera.
-    const float cameraX = sCameraFrameX + (stickTurns ? sStickFrameX : 0.f);
-    const float cameraY = sCameraFrameY + (stickTurns ? sStickFrameY : 0.f);
-    const bool applied = sAim.Update(active, held, x, y, z, owns ? cameraX : 0.f, owns ? cameraY : 0.f,
+    const float cameraX = s.cameraFrameX + (stickTurns ? s.stickFrameX : 0.f);
+    const float cameraY = s.cameraFrameY + (stickTurns ? s.stickFrameY : 0.f);
+    const bool applied = s.aim.Update(active, held, x, y, z, owns ? cameraX : 0.f, owns ? cameraY : 0.f,
                                      sSensitivity, sInvertX, sInvertY);
-    if (applied && owns && !sDebugHold) {
+    if (applied && owns && !s.debugHold) {
       float dyaw = 0.f, dpitch = 0.f;
-      PortMouse::PointerAim::TurnAt(sPointer.x, sPointer.y, sPointerBox, sPointerTurnRate, dt,
+      PortMouse::PointerAim::TurnAt(s.pointer.x, s.pointer.y, s.pointerBox, s.pointerTurnRate, dt,
                                     dyaw, dpitch);
-      sAim.Turn(dyaw, dpitch);
+      s.aim.Turn(dyaw, dpitch);
     }
-    sPointerFree = (applied && owns) || lockFree || pointerHeld;
-    if (!sPointerFree) {
-      sPointer.Center();
+    s.pointerFree = (applied && owns) || lockFree || pointerHeld;
+    if (!s.pointerFree) {
+      s.pointer.Center();
     }
     // The second update of a tick must not move the pointer by the same travel again.
     if (applied || lockFree) {
-      sFrameX = sFrameY = sStickFrameX = sStickFrameY = 0.f;
-      sCameraFrameX = sCameraFrameY = 0.f;
+      s.frameX = s.frameY = s.stickFrameX = s.stickFrameY = 0.f;
+      s.cameraFrameX = s.cameraFrameY = 0.f;
     }
-    sAppliedLastTick = applied && owns;
+    s.appliedLastTick = applied && owns;
     return applied && owns;
   }
-  sPointerFree = false;
-  sLockFree = false;
-  sLockStays = false;
+  s.pointerFree = false;
+  s.lockFree = false;
+  s.lockStays = false;
   // Without pointer aim the gyro's travel turns the view beside the mouse's, stick's and touch's.
-  const bool applied = sAim.Update(active, held, x, y, z, sFrameX + sCameraFrameX, sFrameY + sCameraFrameY,
+  const bool applied = s.aim.Update(active, held, x, y, z, s.frameX + s.cameraFrameX, s.frameY + s.cameraFrameY,
                                    sSensitivity, sInvertX, sInvertY);
   if (applied) {
-    sFrameX = sFrameY = sStickFrameX = sStickFrameY = 0.f;
-    sCameraFrameX = sCameraFrameY = 0.f;
+    s.frameX = s.frameY = s.stickFrameX = s.stickFrameY = 0.f;
+    s.cameraFrameX = s.cameraFrameY = 0.f;
   }
-  sAppliedLastTick = applied && owns;
+  s.appliedLastTick = applied && owns;
   return applied && owns;
 }
 
-bool PresentedAimDelta(float fraction, float& dyaw, float& dpitch) {
+bool PresentedAimDelta(float fraction, float& dyaw, float& dpitch, int player) {
   dyaw = dpitch = 0.f;
-  if (PortRadial::Capturing()) return false;
-  if (!sAppliedLastTick || !sAiming || !sAim.initialized || !std::isfinite(fraction) ||
+  Slot& s = SlotFor(player);
+  if (&s == &sSlots[0] && PortRadial::Capturing()) return false;
+  if (!s.appliedLastTick || !s.aiming || !s.aim.initialized || !std::isfinite(fraction) ||
       fraction < 0.f) {
     return false;
   }
@@ -681,24 +833,24 @@ bool PresentedAimDelta(float fraction, float& dyaw, float& dpitch) {
   float dx = 0.f, dy = 0.f, cx = 0.f, cy = 0.f;
   {
     std::lock_guard< std::mutex > lock(sPendingMutex);
-    dx = sPendingX - sStickPendingX * (1.f - fraction);
-    dy = sPendingY - sStickPendingY * (1.f - fraction);
-    cx = sCameraPendingX;
-    cy = sCameraPendingY;
+    dx = s.pendingX - s.stickPendingX * (1.f - fraction);
+    dy = s.pendingY - s.stickPendingY * (1.f - fraction);
+    cx = s.cameraPendingX;
+    cy = s.cameraPendingY;
   }
   // The aim the next tick would reach, through the same Update/Turn as UpdateAim.
-  PortMouse::AimState next = sAim;
-  if (sPointerEnabled) {
-    if (!sPointerFree) {
+  PortMouse::AimState next = s.aim;
+  if (s.pointerEnabled) {
+    if (!s.pointerFree) {
       return false;
     }
     float sx = 0.f, sy = 0.f;
     PointerAimScale(sx, sy);
-    PortMouse::PointerAim pointer = sPointer;
-    if (sGyroDrivesAim) {
+    PortMouse::PointerAim pointer = s.pointer;
+    if (s.gyroDrivesAim) {
       // The stick turns the camera (UpdateAim's stickTurns): only its tick fraction shows.
-      const float stickX = dx - (sPendingX - sStickPendingX);
-      const float stickY = dy - (sPendingY - sStickPendingY);
+      const float stickX = dx - (s.pendingX - s.stickPendingX);
+      const float stickY = dy - (s.pendingY - s.stickPendingY);
       pointer.Move((dx - stickX) * sx, (dy - stickY) * sy);
       cx += stickX;
       cy += stickY;
@@ -707,91 +859,85 @@ bool PresentedAimDelta(float fraction, float& dyaw, float& dpitch) {
     }
     next.Update(true, false, 0.f, 0.f, 0.f, cx, cy, sSensitivity, sInvertX, sInvertY);
     float turnYaw = 0.f, turnPitch = 0.f;
-    PortMouse::PointerAim::TurnAt(pointer.x, pointer.y, sPointerBox, sPointerTurnRate,
-                                  fraction * sLastTickDt, turnYaw, turnPitch);
+    PortMouse::PointerAim::TurnAt(pointer.x, pointer.y, s.pointerBox, s.pointerTurnRate,
+                                  fraction * s.lastTickDt, turnYaw, turnPitch);
     next.Turn(turnYaw, turnPitch);
   } else {
     next.Update(true, false, 0.f, 0.f, 0.f, dx + cx, dy + cy, sSensitivity, sInvertX, sInvertY);
   }
-  dyaw = static_cast< float >(std::remainder(double(next.yaw) - sAim.yaw, 2.0 * PortMouse::kPi));
-  dpitch = next.pitch - sAim.pitch;
+  dyaw = static_cast< float >(std::remainder(double(next.yaw) - s.aim.yaw, 2.0 * PortMouse::kPi));
+  dpitch = next.pitch - s.aim.pitch;
   return std::isfinite(dyaw) && std::isfinite(dpitch);
 }
 
-void SetPointerAim(bool enabled, float box, float turnRate) {
-  if (enabled != sPointerEnabled) {
+void SetPointerAim(bool enabled, float box, float turnRate, int player) {
+  Slot& s = SlotFor(player);
+  if (enabled != s.pointerEnabled) {
     // MP1's SetPointerAim: switching either way starts from the centre.
-    sPointer.Center();
-    sPointerFree = false;
-    sPointerEnabled = enabled;
+    s.pointer.Center();
+    s.pointerFree = false;
+    s.pointerEnabled = enabled;
   }
   if (std::isfinite(box)) {
-    sPointerBox = box < 0.f ? 0.f : box > 0.99f ? 0.99f : box;
+    s.pointerBox = box < 0.f ? 0.f : box > 0.99f ? 0.99f : box;
   }
   if (std::isfinite(turnRate) && turnRate >= 0.f) {
-    sPointerTurnRate = turnRate;
+    s.pointerTurnRate = turnRate;
   }
 }
 
-bool PointerAimEnabled() { return sPointerEnabled; }
+bool PointerAimEnabled(int player) { return SlotFor(player).pointerEnabled; }
 
-bool LockFreeAimActive() { return sLockFree; }
+bool LockFreeAimActive(int player) { return SlotFor(player).lockFree; }
 
-bool PointerAimPosition(float& x, float& y) {
-  x = sPointer.x;
-  y = sPointer.y;
-  return sPointerFree;
+bool PointerAimPosition(float& x, float& y, int player) {
+  const Slot& s = SlotFor(player);
+  x = s.pointer.x;
+  y = s.pointer.y;
+  return s.pointerFree;
 }
 
-void SetPointerAimPosition(float x, float y) {
-  sPointer.Center();
-  sPointer.Move(x, y);
+void SetPointerAimPosition(float x, float y, int player) {
+  Slot& s = SlotFor(player);
+  s.pointer.Center();
+  s.pointer.Move(x, y);
 }
 
-void SetPointerAimHold(bool hold) { sDebugHold = hold; }
+void SetPointerAimHold(bool hold, int player) { SlotFor(player).debugHold = hold; }
 
-void Synchronize(float x, float y, float z) {
-  if (Enabled()) {
-    sAim.Synchronize(x, y, z);
+void Synchronize(float x, float y, float z, int player) {
+  if (player == 0 ? Enabled() : StickEnabled(player)) {
+    SlotFor(player).aim.Synchronize(x, y, z);
   }
 }
 
-void SetAimAngles(float yawDeg, float pitchDeg) {
+void SetAimAngles(float yawDeg, float pitchDeg, int player) {
   ReadEnv();
+  Slot& s = SlotFor(player);
   if (!std::isfinite(yawDeg) || !std::isfinite(pitchDeg)) {
     return;
   }
   // The camera builds its direction as (sin -yaw, cos -yaw, sin pitch) and CPlayer turns the
   // body by +yaw, so the world heading `face` names is -yaw here.
   const double radians = -double(yawDeg) * (PortMouse::kPi / 180.f);
-  sAim.yaw = static_cast< float >(std::remainder(radians, 2.0 * PortMouse::kPi));
+  s.aim.yaw = static_cast< float >(std::remainder(radians, 2.0 * PortMouse::kPi));
   const double pitch = double(pitchDeg) * (PortMouse::kPi / 180.f);
   const double limit = double(kMaxPitch);
-  sAim.pitch = static_cast< float >(pitch < -limit ? -limit : pitch > limit ? limit : pitch);
-  sAim.initialized = true;
+  s.aim.pitch = static_cast< float >(pitch < -limit ? -limit : pitch > limit ? limit : pitch);
+  s.aim.initialized = true;
   // CFirstPersonCamera only consumes the aim while a direct source is on; mouse aim is the one
   // with no input of its own here, so a console run cannot turn it by accident.
-  SetEnabled(true);
+  if (player == 0) {
+    SetEnabled(true);
+  }
 }
 
-void Reset() {
-  sAim.Reset();
-  sAiming = false;
-  ClearPendingTravel();
-  sPointer.Center();
-  sPointerFree = false;
-  // A finger's state belongs to the aim being reset: a held spring must not re-open the view
-  // the next frame, and a later down must not inherit a stale hold.
-  sTouchAimDown = false;
-  sTouchAimLatched = false;
-  sTouchHoldUntilNs = 0;
-  SetCapture(false);
-}
+void Reset() { ResetSlots(false); }
 
-bool Aiming() { return sAiming; }
-bool Initialized() { return sAim.initialized; }
-float Yaw() { return sAim.yaw; }
-float Pitch() { return sAim.pitch; }
+bool Aiming(int player) { return SlotFor(player).aiming; }
+bool Initialized(int player) { return SlotFor(player).aim.initialized; }
+float Yaw(int player) { return SlotFor(player).aim.yaw; }
+float Pitch(int player) { return SlotFor(player).aim.pitch; }
 float Sensitivity() {
   ReadEnv();
   return sSensitivity;

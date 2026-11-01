@@ -112,6 +112,11 @@ constexpr STouchInfo kTouchControls[] = {
 UserBindings sWork;     // what the page edits; written through on every change
 bool sLoaded = false;
 uint64_t sSeenVersion = 0; // the bindings version sWork matches
+int sWorkPort = 0;         // the player sWork is (index; 1-3 edit controls_p<N>.toml)
+
+// The player the page edits: the F1 Multiplayer page's selection. Players 2-4 keep only their
+// pad's rows (PortInputDevices::BuildProfile drops the rest).
+int EditPort() { return PortControls::RemapPort(); }
 // What the Controller column edits: "pads" (the Default profile's controller
 // bindings) or a controller profile's match ("type:..." / "guid:..."). Keyboard
 // and touch always edit the Default profile.
@@ -208,11 +213,11 @@ bool InputsFromText(const char* text, Binding& b) {
 }
 
 void Commit() {
-  if (!PortInputDevices::SetUserBindings(sWork)) {
-    sError = "Couldn't write controls.toml.";
+  if (!PortInputDevices::SetUserBindings(sWork, sWorkPort)) {
+    sError = "Couldn't write " + PortInputDevices::UserBindingsPath(sWorkPort) + ".";
   } else {
     sError.clear();
-    sSeenVersion = PortInputDevices::UserBindingsVersion();
+    sSeenVersion = PortInputDevices::UserBindingsVersion(sWorkPort);
   }
 }
 
@@ -270,7 +275,7 @@ SView MakeView(PortInput::Family family) {
     v.match = sPadDevice;
     if (const UserProfile* p = Find(sPadDevice)) v.name = p->name;
   }
-  PortInputDevices::BuildBaseProfile(v.inherited);
+  PortInputDevices::BuildBaseProfile(v.inherited, sWorkPort);
   // A kind or model sits on top of the Default profile's own overrides.
   if (!v.match.empty()) {
     if (const UserProfile* def = Find("")) PortInput::Overlay(v.inherited, *def);
@@ -350,8 +355,11 @@ void UpdateCapture() {
   using PortInput::Family;
   if (!sCapture.active) return;
   PortInput::RawState raw;
-  PortInputDevices::ReadRaw(raw);
-  if (raw.keys.test(SDL_SCANCODE_ESCAPE) || SDL_GetTicks() - sCapture.startMs > kCaptureTimeoutMs) {
+  PortInputDevices::ReadRaw(raw, sWorkPort);
+  // Another player's capture reads only their pad; Esc still cancels from the keyboard.
+  PortInput::RawState keys;
+  if (sWorkPort != 0) PortInputDevices::ReadRaw(keys);
+  if ((sWorkPort != 0 ? keys : raw).keys.test(SDL_SCANCODE_ESCAPE) || SDL_GetTicks() - sCapture.startMs > kCaptureTimeoutMs) {
     EndCapture();
     return;
   }
@@ -833,7 +841,7 @@ void DrawEffective() {
   if (!ImGui::TreeNode("Everything bound now")) return;
   ImGui::TextDisabled("The built-in controls with every profile in use on top.");
   PortInput::Profile p;
-  PortInputDevices::BuildProfile(p);
+  PortInputDevices::BuildProfile(p, sWorkPort);
   if (ImGui::BeginTable("effective", 4, ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
     for (const Binding& b : p.bindings) {
       ImGui::TableNextRow();
@@ -1623,9 +1631,10 @@ constexpr SPreset kPadPresets[] = {
     {"GameCube", "gamecube",
      "The default layout: the face buttons and shoulder as on a GameCube pad.\nTurns off Twin Stick Aim."},
     {"Remastered", "remastered",
-     "Metroid Prime Remastered's Dual Sticks scheme (Xbox labels): RT fire, LT lock on,\n"
-     "A jump, X morph ball, RB missile, Menu map, View pause, right stick click free look.\n"
-     "Turns on Twin Stick Aim."},
+     "Metroid Prime Remastered's Dual Sticks scheme (Xbox labels): RT or B fire, LT lock on\n"
+      "(Spider Ball), A or LB jump, X morph ball, RB missile, Y + D-pad beams (Spring Ball in\n"
+      "the ball), D-pad visors, View map, Menu pause, right stick click free look.\n"
+      "Turns on Twin Stick Aim."},
     {"Modern", "modern",
      "RT fire, LT lock on, A jump, B morph ball, RB missile, Y map,\n"
      "right stick click free look. Turns on Twin Stick Aim."},
@@ -1667,7 +1676,7 @@ void ResetSection(const SView& v) {
   if (ImGui::Button("Reset")) {
     ClearOwn(v);
     if (layout && v.family == Family::Keyboard) PortControls::ApplyKeyPresetNamed(kKeyPresets[0].id);
-    if (layout && v.family == Family::Pad) PortControls::ApplyPadPresetNamed(kPadPresets[0].id);
+    if (layout && v.family == Family::Pad) PortControls::ApplyPadPresetNamed(kPadPresets[0].id, unsigned(EditPort()));
     ImGui::CloseCurrentPopup();
   }
   ImGui::PopID();
@@ -1701,13 +1710,56 @@ void ApplyBallPreset(PortInput::Family family, std::string_view id) {
   Commit();
 }
 
+// Remastered's Dual Sticks rows that one Aurora mapping per GameCube button can't
+// hold: the right face button fires beside RT, LB jumps beside the bottom one,
+// and the top face button is the beam shift (with the D-pad, in the retail
+// C-stick directions) and springs the ball, which takes the built-in LB shift's
+// rows away. After the pad preset, so the inherited rows are its mapping's.
+void ApplyRemasteredRows(int port) {
+  using PortInput::Action;
+  using PortInput::Family;
+  PortInput::Profile inherited;
+  PortInputDevices::BuildBaseProfile(inherited, port);
+  UserProfile& profile = Ensure("", "Default");
+  const auto add = [&profile](Action action, std::initializer_list<const char*> inputs, uint16_t contexts) {
+    Binding b;
+    for (const char* text : inputs) {
+      if (!PortInput::InputFromText(text, b.inputs[b.count++])) return;
+    }
+    b.action = action;
+    b.contexts = contexts;
+    PortInput::AddUserBinding(profile, b);
+  };
+  PortInput::Materialize(profile, Action::PadA, Family::Pad, inherited);
+  PortInput::Materialize(profile, Action::PadB, Family::Pad, inherited);
+  add(Action::PadA, {"pad:b"}, PortInput::kCtxAll);
+  add(Action::PadB, {"pad:leftshoulder"}, PortInput::kCtxAll);
+  const auto noBall = static_cast<uint16_t>(PortInput::kCtxAll & ~PortInput::kCtxMorphBall);
+  add(Action::BeamPower, {"pad:y", "pad:dpup"}, noBall);
+  add(Action::BeamWave, {"pad:y", "pad:dpleft"}, noBall);
+  add(Action::BeamIce, {"pad:y", "pad:dpright"}, noBall);
+  add(Action::BeamPlasma, {"pad:y", "pad:dpdown"}, noBall);
+  add(Action::SpringBall, {"pad:y"}, PortInput::kCtxMorphBall);
+  Commit();
+}
+
 // Takes the saved bindings as the page's copy: a PortControls preset writes them
 // itself, and the next Commit would otherwise put the page's older copy back.
-void Reload() {
-  sWork = *PortInputDevices::UserBindings();
-  sSeenVersion = PortInputDevices::UserBindingsVersion();
+void Reload(int port) {
+  sWorkPort = port;
+  sWork = *PortInputDevices::UserBindings(sWorkPort);
+  sSeenVersion = PortInputDevices::UserBindingsVersion(sWorkPort);
   sLoaded = true;
 }
+
+void Reload() { Reload(EditPort()); }
+
+bool sSavedStale = true;
+
+unsigned RemapPort() { return static_cast<unsigned>(PortControls::RemapPort()); }
+
+// True when presets can change the selected player's controller.
+bool RemapPortUsable() { return PortControls::PadPortInfo(RemapPort()).state == PortControls::EPadPortState::kReal; }
 
 // One row of preset buttons. A click replaces the family's own Default-profile
 // bindings with the preset; a kind or model's own bindings stay on top.
@@ -1717,13 +1769,16 @@ void PresetRow(const SView& v, const SPreset* presets, int count) {
   ImGui::SeparatorText(kFamilies[int(v.family)]);
   const bool pads = v.family == Family::Pad;
   // A GameCube pad has no right stick (click) for the dual-stick layouts.
-  const bool gcAdapter = pads && PADIsGCAdapter(0) != 0;
+  const bool gcAdapter = pads && PADIsGCAdapter(RemapPort()) != 0;
+  const bool otherPlayer = RemapPort() != 0;
   for (int i = 0; i < count; ++i) {
     const std::string_view id = presets[i].id;
     if (i != 0) ImGui::SameLine();
-    ImGui::BeginDisabled(gcAdapter && (id == "remastered" || id == "modern"));
+    // Players 2-4 have no keyboard, and need a real controller for the pad rows.
+    ImGui::BeginDisabled((gcAdapter && (id == "remastered" || id == "modern")) ||
+                         (otherPlayer && (!pads || !RemapPortUsable())));
     if (ImGui::Button(presets[i].name)) {
-      ApplyPreset(v.family, id);
+      ApplyPreset(v.family, id, RemapPort());
       ImGui::CloseCurrentPopup();
     }
     ImGui::EndDisabled();
@@ -1793,67 +1848,99 @@ void DrawProfileOptions(const SView& v) {
   }
 }
 
-// One combo per pad port (PAD_CHAN0..PAD_CHAN3), the four local-multiplayer players. Choosing a
-// controller hands it to that port and takes it off its old one (Aurora's PADSetPortForIndex);
-// None clears the port (PADClearPort). The assignment is what the game reads as that player's pad.
-void DrawPlayers() {
+// The player the page edits: PortControls::RemapPort(). Ports 1-3 edit their own controls_p<N>.toml
+// (pad rows only). F1 Multiplayer embeds the page with its own player selector instead.
+void DrawRemapPlayer() {
+  int port = PortControls::RemapPort();
+  ImGui::SetNextItemWidth(ImGui::GetFontSize() * 8.f);
+  const std::string current = "Player " + std::to_string(port + 1);
+  if (ImGui::BeginCombo("Remap player", current.c_str())) {
+    for (int i = 0; i < 4; ++i) {
+      const std::string entry = "Player " + std::to_string(i + 1);
+      if (ImGui::Selectable(entry.c_str(), i == port) && i != port) {
+        EndCapture();
+        sEditing = kEditNone;
+        PortControls::SetRemapPort(i);
+        sSavedStale = true;
+      }
+    }
+    ImGui::EndCombo();
+  }
+  ImGui::SetItemTooltip("Whose bindings the page edits. Player 1 also owns the keyboard, mouse and touch; "
+                        "players 2-4 have a controller only.");
+  const PortControls::SPadPortInfo info = PortControls::PadPortInfo(static_cast<unsigned>(PortControls::RemapPort()));
+  ImGui::SameLine();
+  switch (info.state) {
+  case PortControls::EPadPortState::kNone:
+    ImGui::TextDisabled("No controller on this port; nothing to remap.");
+    break;
+  case PortControls::EPadPortState::kVirtual:
+    ImGui::TextDisabled("%s: virtual pads can't be remapped.", info.name.c_str());
+    break;
+  case PortControls::EPadPortState::kReal:
+    ImGui::TextDisabled("%s", info.name.c_str());
+    break;
+  }
+  if (PortControls::RemapPort() != 0) {
+    ImGui::TextDisabled("The bindings below are this player's (%s; controller rows only).",
+                        PortInputDevices::UserBindingsPath(PortControls::RemapPort()).c_str());
+  }
+}
+
+// The controller combo of one pad port (PAD_CHAN0..PAD_CHAN3), one local-multiplayer player. Choosing a
+// controller hands it to that port and takes it off its old one (Aurora's PADSetPortForIndex); None
+// clears the port (PADClearPort). The assignment is what the game reads as that player's pad.
+void DrawPortController(u32 port, const char* label) {
   const u32 count = PADCount();
-  ImGui::BeginGroup();
-  for (u32 port = PAD_CHAN0; port <= PAD_CHAN3; ++port) {
-    const s32 activeIndex = PADGetIndexForPort(port);
-    const char* activeName =
-        activeIndex >= 0 ? PADGetNameForControllerIndex(static_cast<u32>(activeIndex)) : nullptr;
-    const std::string label = "Player " + std::to_string(port + 1);
-    ImGui::SetNextItemWidth(ImGui::GetFontSize() * 18.f);
-    if (ImGui::BeginCombo(label.c_str(), activeName != nullptr ? activeName : "None")) {
-      const bool noneSelected = activeIndex < 0;
-      if (count == 0) ImGui::TextDisabled("No controllers detected.");
-      if (ImGui::Selectable("None##none", noneSelected) && !noneSelected) {
+  const s32 activeIndex = PADGetIndexForPort(port);
+  const char* activeName = activeIndex >= 0 ? PADGetNameForControllerIndex(static_cast<u32>(activeIndex)) : nullptr;
+  ImGui::SetNextItemWidth(ImGui::GetFontSize() * 18.f);
+  if (ImGui::BeginCombo(label, activeName != nullptr ? activeName : "None")) {
+    const bool noneSelected = activeIndex < 0;
+    if (count == 0) ImGui::TextDisabled("No controllers detected.");
+    if (ImGui::Selectable("None##none", noneSelected) && !noneSelected) {
+      if (port == PAD_CHAN0) {
+        EndCapture();
+        sEditing = kEditNone;
+      }
+      PADClearPort(port);
+    }
+    if (noneSelected) ImGui::SetItemDefaultFocus();
+    for (u32 index = 0; index < count; ++index) {
+      SDL_Gamepad* pad = PADGetSDLGamepadForIndex(index);
+      const char* name = PADGetNameForControllerIndex(index);
+      ImGui::PushID(static_cast<int>(index));
+      const bool selected = static_cast<s32>(index) == activeIndex;
+      const std::string entry =
+          std::string(name != nullptr ? name : "Unknown controller") + " (" + std::to_string(index + 1) + ")";
+      if (ImGui::Selectable(entry.c_str(), selected) && !selected) {
         if (port == PAD_CHAN0) {
           EndCapture();
           sEditing = kEditNone;
         }
-        PADClearPort(port);
+        PADSetPortForIndex(index, port);
       }
-      if (noneSelected) ImGui::SetItemDefaultFocus();
-      for (u32 index = 0; index < count; ++index) {
-        SDL_Gamepad* pad = PADGetSDLGamepadForIndex(index);
-        const char* name = PADGetNameForControllerIndex(index);
-        ImGui::PushID(static_cast<int>(index));
-        const bool selected = static_cast<s32>(index) == activeIndex;
-        const std::string entry = std::string(name != nullptr ? name : "Unknown controller") + " (" +
-                                  std::to_string(index + 1) + ")";
-        if (ImGui::Selectable(entry.c_str(), selected) && !selected) {
-          if (port == PAD_CHAN0) {
-            EndCapture();
-            sEditing = kEditNone;
-          }
-          PADSetPortForIndex(index, port);
-        }
-        if (selected) ImGui::SetItemDefaultFocus();
-        if (pad != nullptr) {
-          ImGui::SetItemTooltip("SDL device %u%s", SDL_GetGamepadID(pad),
-                                SDL_IsJoystickVirtual(SDL_GetGamepadID(pad)) ? " (virtual/touch)" : "");
-        }
-        ImGui::PopID();
+      if (selected) ImGui::SetItemDefaultFocus();
+      if (pad != nullptr) {
+        ImGui::SetItemTooltip("SDL device %u%s", SDL_GetGamepadID(pad),
+                              SDL_IsJoystickVirtual(SDL_GetGamepadID(pad)) ? " (virtual/touch)" : "");
       }
-      ImGui::EndCombo();
+      ImGui::PopID();
     }
-    if (port == PAD_CHAN0) {
-      ImGui::SetItemTooltip("Controller used to play and record bindings. The choice is saved and restored on "
-                            "reconnect. Keyboard and touch remain available. 'Controller bindings for' selects "
-                            "the profile to edit, independently.");
-    } else {
-      ImGui::SetItemTooltip("Controller for this player in multiplayer. Uses the default controller mapping.");
-    }
+    ImGui::EndCombo();
   }
-  ImGui::EndGroup();
+  if (port == PAD_CHAN0) {
+    ImGui::SetItemTooltip("Controller used to play and record bindings. The choice is saved and restored on "
+                          "reconnect. Keyboard and touch remain available. 'Controller bindings for' selects "
+                          "the profile to edit, independently.");
+  } else {
+    ImGui::SetItemTooltip("This player's controller in a multiplayer match.");
+  }
 }
 
 // The player's saved presets (port_input_user_presets.h), listed once when the
 // popup opens and after each save or delete; the files aren't read per frame.
 std::vector<PortInputUserPresets::Entry> sSaved;
-bool sSavedStale = true;
 char sSaveName[PortInputUserPresets::kMaxName + 1] = {};
 std::string sPendingDelete;
 
@@ -1869,7 +1956,7 @@ const std::vector<PortInputUserPresets::Entry>& Saved() {
 void ApplySaved(const std::string& name) {
   EndCapture();
   sEditing = kEditNone;
-  PortInputUserPresets::ApplyAll(name);
+  PortInputUserPresets::ApplyAll(name, RemapPort());
   Reload();
 }
 
@@ -1939,7 +2026,7 @@ void DrawMyPresets() {
     }
     ImGui::BeginDisabled(name.empty());
     if (ImGui::Button(exists ? "Replace" : "Save")) {
-      PortInputUserPresets::SaveAll(name);
+      PortInputUserPresets::SaveAll(name, RemapPort());
       sSavedStale = true;
       ImGui::CloseCurrentPopup();
     }
@@ -1955,21 +2042,35 @@ void DrawMyPresets() {
 
 } // namespace
 
-void ApplyPreset(PortInput::Family family, std::string_view id) {
-  // The page may never have been drawn; start from the saved bindings.
-  if (sEditing == kEditNone && !sCapture.active) Reload();
+void DrawPlayerController(unsigned port, const char* label) {
+  if (port <= PAD_CHAN3) DrawPortController(port, label);
+}
+
+void ApplyPreset(PortInput::Family family, std::string_view id) { ApplyPreset(family, id, 0); }
+
+void ApplyPreset(PortInput::Family family, std::string_view id, unsigned port) {
+  // Players 2-4 have no keyboard.
+  if (port > 3 || (port != 0 && family != PortInput::Family::Pad)) return;
+  // The page may never have been drawn, or shows another player's file; start
+  // from this player's saved bindings (controls.toml, or controls_p<N>.toml).
+  if (sWorkPort != int(port) || (sEditing == kEditNone && !sCapture.active)) {
+    sEditing = kEditNone;
+    EndCapture();
+    Reload(int(port));
+  }
   // The presets set the all-controllers layer, so clear that one even
   // while a kind or model is selected.
   SView base;
   base.family = family;
   ClearOwn(base);
   if (family == PortInput::Family::Pad) {
-    PortControls::ApplyPadPresetNamed(id);
+    PortControls::ApplyPadPresetNamed(id, port);
   } else {
     PortControls::ApplyKeyPresetNamed(id);
   }
-  Reload();
+  Reload(int(port));
   ApplyBallPreset(family, id);
+  if (family == PortInput::Family::Pad && id == "remastered") ApplyRemasteredRows(int(port));
 }
 
 std::string BindingsText(PortInput::Action action, const char* separator) {
@@ -2016,17 +2117,22 @@ bool Capturing() {
   return SDL_GetTicks() - sLastDrawMs.load(std::memory_order_relaxed) < kCaptureStaleMs;
 }
 
-void Draw() {
+namespace {
+
+// The page. `embedded`: inside F1 Multiplayer, which has the player selector and their controller.
+void DrawPage(bool embedded) {
   const uint64_t now = SDL_GetTicks();
   if (sCapture.active && now - sLastDrawMs.load(std::memory_order_relaxed) >= kCaptureStaleMs) EndCapture();
   sLastDrawMs.store(now, std::memory_order_relaxed);
   // Picks up a hand edit or a deleted file, unless the page is mid-edit.
-  const uint64_t version = PortInputDevices::UserBindingsVersion();
-  if (!sLoaded || (version != sSeenVersion && sEditing == kEditNone && !sCapture.active)) {
-    sWork = *PortInputDevices::UserBindings();
-    sSeenVersion = version;
-    sLoaded = true;
+  // Another player picked on the Multiplayer page loads theirs (a capture in flight ends first).
+  if (sLoaded && EditPort() != sWorkPort) {
+    if (sCapture.active) EndCapture();
+    sEditing = kEditNone;
+    sLoaded = false;
   }
+  const uint64_t version = PortInputDevices::UserBindingsVersion(sWorkPort);
+  if (!sLoaded || (version != sSeenVersion && sEditing == kEditNone && !sCapture.active)) Reload();
   // A warp action's name is its room's, read from the disc.
   for (const PortInput::CustomActionDef& def : sWork.customActions) {
     if (def.preset == "warp") {
@@ -2040,9 +2146,16 @@ void Draw() {
                      "the defaults; Revert brings them back.");
   if (!sError.empty()) ImGui::TextColored(ImVec4(1.f, 0.4f, 0.4f, 1.f), "%s", sError.c_str());
 
-  const float selectorWidth = ImGui::GetContentRegionAvail().x;
-  DrawPlayers();
-  if (selectorWidth >= ImGui::GetFontSize() * 70.f) ImGui::SameLine();
+  if (!embedded) {
+    DrawRemapPlayer();
+    const float selectorWidth = ImGui::GetContentRegionAvail().x;
+    // Players 2-4's controllers are on the Multiplayer page.
+    DrawPortController(PAD_CHAN0, "Player 1 controller");
+    if (selectorWidth >= ImGui::GetFontSize() * 70.f) ImGui::SameLine();
+  } else if (EditPort() != 0) {
+    ImGui::TextDisabled("This player's bindings (%s), controller rows only.",
+                        PortInputDevices::UserBindingsPath(EditPort()).c_str());
+  }
 
   // The profile selector changes which controller bindings are edited, not the active pad.
   const std::vector<SDeviceEntry> pads = PadEntries();
@@ -2076,13 +2189,16 @@ void Draw() {
   DrawMyPresets();
   ImGui::SameLine();
   DrawReset(views);
-  bool menuStandard = PortOverlay::MenuStandardButtons();
-  if (ImGui::Checkbox("Separate menu buttons", &menuStandard)) PortOverlay::SetMenuStandardButtons(menuStandard);
-  ImGui::SetItemTooltip(
-      "On: menus and the map use the controller's \"Menus and map\" rows (by default A\n"
-      "confirms, B backs out, the triggers page and zoom). Start and the map button keep\n"
-      "their gameplay inputs. Keys and mouse buttons on those rows replace their\n"
-      "gameplay action there.\nOff: menus and the map follow your gameplay bindings.");
+  // Every player's: on Controls > Remap only.
+  if (!embedded) {
+    bool menuStandard = PortOverlay::MenuStandardButtons();
+    if (ImGui::Checkbox("Separate menu buttons", &menuStandard)) PortOverlay::SetMenuStandardButtons(menuStandard);
+    ImGui::SetItemTooltip(
+        "On: menus and the map use the controller's \"Menus and map\" rows (by default A\n"
+        "confirms, B backs out, the triggers page and zoom). Start and the map button keep\n"
+        "their gameplay inputs. Keys and mouse buttons on those rows replace their\n"
+        "gameplay action there.\nOff: menus and the map follow your gameplay bindings.");
+  }
   // MP2: MP1's "Point and click menus" and "Swap map finger gestures" are not here; this port
   // has no pointer menus.
   ImGui::Separator();
@@ -2098,6 +2214,21 @@ void Draw() {
     DrawEffective();
     ImGui::TreePop();
   }
+}
+
+} // namespace
+
+void Draw() { DrawPage(false); }
+
+void DrawForPlayer(unsigned port) {
+  const int p = static_cast<int>(std::min(port, 3u));
+  if (PortControls::RemapPort() != p) {
+    EndCapture();
+    sEditing = kEditNone;
+    PortControls::SetRemapPort(p);
+    sSavedStale = true;
+  }
+  DrawPage(true);
 }
 
 } // namespace PortInputRemap

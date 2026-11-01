@@ -11,6 +11,8 @@
 #include <SDL3/SDL.h>
 #include <dolphin/pad.h>
 #include "port_harness.h"
+#include "port_vpads.h"
+#include "port_controls.h"
 #include "port_console.h"
 #include "port_discord.h"
 #include "port_mouse.h"
@@ -20,6 +22,7 @@
 #include "port_photo.h"
 
 #include "port_input.h"
+#include "port_input_remap_ui.h"
 #include "port_logfile.h"
 #include "port_overlay.h"
 #include "port_touch.h"
@@ -1130,6 +1133,19 @@ void CmdMpForce(CStateManager&, const Args& args, std::string& out) {
   out += gPortForceMultiplayer ? "forced multiplayer on\n" : "forced multiplayer off\n";
 }
 
+// `mpend`: ends the running multiplayer match now, as its time or kill limit would (the match then
+// takes the end-of-match path: fade, results screen, back to the front end).
+void CmdMpEnd(CStateManager& mgr, const Args&, std::string& out) {
+  CGameMode& mode = gpGameState->GetGameMode();
+  const int type = mode.GetGameModeType();  // not IsMultiplayer: `mpforce` fakes that in campaign
+  if (type == 'SNGL' || type == 'FRND' || mode.IsGameOver()) {
+    out += "not in a running multiplayer match\n";
+    return;
+  }
+  mode.EndGame(mode.GetResultIndex(), mgr);
+  out += "match ended\n";
+}
+
 // `pads`: which connected controller drives each pad port 0-3 (the F1 page's Player rows,
 // PADSetPortForIndex/PADClearPort), and how many controllers there are.
 void CmdPads(CStateManager&, const Args&, std::string& out) {
@@ -1145,6 +1161,148 @@ void CmdPads(CStateManager&, const Args&, std::string& out) {
     } else {
       out += std::to_string(index) + " " + (name != nullptr ? name : "unknown") + "\n";
     }
+  }
+}
+
+// `padport <index> <port>` / `padport clear <port>`: what the F1 Player combos call
+// (PADSetPortForIndex / PADClearPort).
+void CmdPadPort(CStateManager&, const Args& args, std::string& out) {
+  if (args.size() == 3 && args[1] == "clear") {
+    const int port = ArgToInt(args[2], -1);
+    if (port < 0 || port > 3) {
+      Fail("usage: padport <index> <port 0-3> | padport clear <port>");
+      return;
+    }
+    PADClearPort(static_cast<u32>(port));
+    out += "cleared\n";
+  } else if (args.size() == 3) {
+    const int port = ArgToInt(args[2], -1);
+    if (port < 0 || port > 3 || ArgToInt(args[1], -1) < 0) {
+      Fail("usage: padport <index> <port 0-3> | padport clear <port>");
+      return;
+    }
+    PADSetPortForIndex(static_cast<u32>(ArgToInt(args[1], 0)), static_cast<u32>(port));
+    out += "set\n";
+  } else {
+    Fail("usage: padport <index> <port 0-3> | padport clear <port>");
+  }
+}
+
+// `padpreset <gamecube|remastered|modern|southpaw|...> [port]`: apply a pad preset to one player's
+// controller and their own pad bindings (what the F1 remap page's Presets button does for the selected
+// player: controls.toml for port 0, controls_p<N>.toml for the others). Virtual pads and
+// empty ports are reported, not silently skipped. Port 0 is the default.
+void CmdPadPreset(CStateManager&, const Args& args, std::string& out) {
+  const int port = args.size() >= 3 ? ArgToInt(args[2], -1) : 0;
+  if (args.size() < 2 || args.size() > 3 || port < 0 || port > 3) {
+    Fail("usage: padpreset <preset name> [port 0-3]");
+    return;
+  }
+  const PortControls::SPadPortInfo info = PortControls::PadPortInfo(static_cast<unsigned>(port));
+  if (info.state == PortControls::EPadPortState::kNone) {
+    out += "port " + std::to_string(port) + ": no controller, nothing to remap\n";
+    return;
+  }
+  if (info.state == PortControls::EPadPortState::kVirtual) {
+    out += "port " + std::to_string(port) + ": virtual pad (" + info.name + "), mappings ignored: no-op\n";
+    return;
+  }
+  const std::string name = Str(args[1]);
+  if (name != "gamecube" && name != "remastered" && name != "modern" && name != "southpaw") {
+    Fail("unknown pad preset");
+    return;
+  }
+  // Remap's path: the controller's mapping, plus that player's own pad rows and Morph Ball rows.
+  PortInputRemap::ApplyPreset(PortInput::Family::Pad, name, static_cast<unsigned>(port));
+  out += "port " + std::to_string(port) + " (" + info.name + "): preset " + Str(args[1]) + " applied\n";
+}
+
+// `remapport [port]`: the player the F1 remap page's Presets buttons change (its Player selector);
+// no argument prints it.
+void CmdRemapPort(CStateManager&, const Args& args, std::string& out) {
+  if (args.size() > 1) {
+    const int port = ArgToInt(args[1], -1);
+    if (port < 0 || port > 3) {
+      Fail("usage: remapport [port 0-3]");
+      return;
+    }
+    PortControls::SetRemapPort(port);
+  }
+  out += "remap port " + std::to_string(PortControls::RemapPort()) + "\n";
+}
+
+// `padmap <port> [<gc button> <native>]`: a port's GameCube buttons on its controller (Aurora's
+// mapping, what the Multiplayer page's Buttons rows edit); with a button and a native input
+// ("a", "lb", "lt", "none" or an SDL button number) binds it, swapping as the page does.
+void CmdPadMap(CStateManager&, const Args& args, std::string& out) {
+  const int port = args.size() > 1 ? ArgToInt(args[1], -1) : -1;
+  if (port < 0 || port > 3 || (args.size() != 2 && args.size() != 4)) {
+    Fail("usage: padmap <port 0-3> [<a|b|x|y|l|r|z|start|up|down|left|right> <native>]");
+    return;
+  }
+  if (args.size() == 4) {
+    const int button = PortControls::PadButtonForLabel(args[2]);
+    const long long native = PortControls::NativeForLabel(args[3]);
+    if (button < 0 || native < 0) {
+      Fail("padmap: unknown button or native input");
+      return;
+    }
+    if (!PortControls::BindPadButton(port, button, static_cast< unsigned >(native))) {
+      Fail("padmap: port " + std::to_string(port) + " has no real controller");
+      return;
+    }
+  }
+  out += "port " + std::to_string(port) + ": " + PortControls::PadButtonsText(port) + "\n";
+}
+
+// `players`: each match player's position, body yaw, aim (yaw, pitch, whether it owns the view),
+// twin stick, direct aim controls, orbit state and beam.
+void CmdPlayers(CStateManager& mgr, const Args&, std::string& out) {
+  const int count = mgr.GetNumPlayers();
+  for (int i = 0; i < count; ++i) {
+    const CPlayer* player = mgr.GetPlayer(i);
+    const CPlayerState* state = mgr.GetPlayerState(i);
+    char line[256];
+    if (player == nullptr) {
+      std::snprintf(line, sizeof(line), "p%d none\n", i + 1);
+    } else {
+      const CVector3f p = player->GetTranslation();
+      const CVector3f fwd = player->GetTransform().GetForward();
+      std::snprintf(line, sizeof(line),
+                    "p%d pos %.2f %.2f %.2f yaw %.2f aim %.2f %.2f %s twin_stick %d direct %d orbit %d "
+                    "beam %d\n",
+                    i + 1, p.GetX(), p.GetY(), p.GetZ(), std::atan2(-fwd.GetX(), fwd.GetY()) * 57.29578f,
+                    PortMouse::Yaw(i), PortMouse::Pitch(i), PortMouse::Aiming(i) ? "aiming" : "held",
+                    PortMouse::StickEnabled(i) ? 1 : 0, player->PortDirectAimControls() ? 1 : 0,
+                    static_cast< int >(player->GetOrbitState()),
+                    state != nullptr ? static_cast< int >(state->GetCurrentBeam()) : -1);
+    }
+    out += line;
+  }
+}
+
+// `padread`: what the game's PADRead returns for each port right now.
+void CmdPadRead(CStateManager&, const Args&, std::string& out) {
+  PADStatus status[PAD_MAX_CONTROLLERS]{};
+  PADRead(status);
+  for (int i = 0; i < PAD_MAX_CONTROLLERS; ++i) {
+    char line[128];
+    std::snprintf(line, sizeof(line), "port %d: err %d buttons %04x stick %d,%d sub %d,%d trig %d,%d\n", i,
+                  static_cast<int>(status[i].err), status[i].button, status[i].stickX, status[i].stickY,
+                  status[i].substickX, status[i].substickY, status[i].triggerLeft, status[i].triggerRight);
+    out += line;
+  }
+}
+
+// `vpad ...`: SDL virtual gamepads (see port_vpads.h).
+void CmdVpad(CStateManager&, const Args& args, std::string& out) {
+  std::string rest;
+  for (size_t i = 1; i < args.size(); ++i) {
+    rest += Str(args[i]) + " ";
+  }
+  std::string err;
+  if (!PortVpads::Command(rest, out, err)) {
+    Fail(err);
   }
 }
 
@@ -2774,7 +2932,7 @@ void DropUnplayableBodyCmds(CStateManager& mgr, std::string* out) {
       if (std::find(sUnplayableReported.begin(), sUnplayableReported.end(), key) ==
           sUnplayableReported.end()) {
         sUnplayableReported.push_back(key);
-        char line[192];
+        char line[256];
         std::snprintf(line, sizeof(line),
                       "u%04x: body cmd %s dropped: its PAS has no %s state (retail plays anim -1)\n",
                       key.first, entry.name, entry.name);
@@ -4245,7 +4403,7 @@ void CmdRay(CStateManager& mgr, const Args& args, std::string& out) {
   }
   dir = dir.AsNormalized();
   const CMaterialFilter filter = CMaterialFilter::MakeInclude(CMaterialList(kMT_Solid));
-  char line[192];
+  char line[256];
   CVector3f start = origin;
   float left = len;
   for (int i = 0; i < 16 && left > 0.f; ++i) {
@@ -4497,7 +4655,7 @@ void CmdGrapple(CStateManager& mgr, const Args& args, std::string& out) {
   player->Teleport(CTransform4f::LookAt(pos, pos - dir, CVector3f::Up()), mgr, true);
   player->PortRefreshOrbitCandidates();
   PortInput::Hold(PAD_TRIGGER_L, 0, 0, 0, 0, 0, 2);
-  char line[192];
+  char line[256];
   std::snprintf(line, sizeof(line),
                 "grapple u%04x at (%.1f, %.1f, %.1f)%s: player at (%.1f, %.1f, %.1f), L held from "
                 "2 updates on%s\n",
@@ -4553,7 +4711,7 @@ void CmdLock(CStateManager& mgr, const Args& args, std::string& out) {
   player->Teleport(CTransform4f::LookAt(pos, pos - dir, CVector3f::Up()), mgr, true);
   player->PortRefreshOrbitCandidates();
   PortInput::Hold(PAD_TRIGGER_L, 0, 0, 0, 0, updates, 2);
-  char line[192];
+  char line[256];
   std::snprintf(line, sizeof(line),
                 "lock u%04x orbit point (%.1f, %.1f, %.1f): player at (%.1f, %.1f, %.1f), L held "
                 "from 2 updates on\n",
@@ -5045,8 +5203,26 @@ const CommandSpec kCommands[] = {
       "                            powerbomb, dark or light\n"},
     {"mpforce", CmdMpForce,
       "mpforce <0|1>               IsMultiplayer reports true (multiplayer-only arms)\n"},
+    {"mpend", CmdMpEnd,
+      "mpend                       end the running multiplayer match now (fade, results, front end)\n"},
     {"pads", CmdPads,
       "pads                        the controller on each pad port 0-3 (players 1-4) and the controller count\n"},
+    {"padport", CmdPadPort,
+      "padport <index> <port>      give controller <index> (see `pads`) pad port 0-3; `padport clear <port>` frees it\n"},
+    {"padpreset", CmdPadPreset,
+      "padpreset <name> [port]     apply a pad preset (gamecube, remastered, modern, southpaw) to a port's controller (default 0)\n"},
+    {"remapport", CmdRemapPort,
+      "remapport [port]            the player (port 0-3) the F1 remap page's Presets change; no argument prints it\n"},
+    {"padmap", CmdPadMap,
+      "padmap <port> [<btn> <in>]  a port's GC buttons on its controller; with a button (a..z, start, up..right)\n"
+      "                            and an input (a, lb, lt, none, SDL number) binds it (swaps); Player 2-4 remap\n"},
+    {"players", CmdPlayers,
+      "players                     each player's position, yaw, aim, twin stick, direct aim, orbit, beam\n"},
+    {"padread", CmdPadRead,
+      "padread                     PADRead's status (err, buttons, sticks, triggers) for ports 0-3 right now\n"},
+    {"vpad", CmdVpad,
+      "vpad list|attach [n]|detach <i>|<i> <button|axis> <value>|<i> gyro <yaw> <pitch>  SDL virtual gamepads (MP2_VPADS=n attaches at start);\n"
+      "                            buttons a b x y back guide start ls rs lb rb up down left right (0/1), axes lx ly rx ry lt rt (-1..1)\n"},
     {"overlay", CmdOverlay,
       "overlay <page>[/<sub>]|off  open the F1 window on a page (name prefixes: `overlay video/qual`)\n"},
     {"gpuselftest", CmdGpuSelfTest,

@@ -76,7 +76,7 @@ CTransform4f InterpolateCameraTransform(const CTransform4f& previous, const CTra
 
 // MP1's MouseLookIsFree: the mouse (or stick/touch aim) owns the view right now.
 bool PortMouseLookIsFree(const CStateManager& mgr, int playerIndex) {
-  if (!PortMouse::Enabled() && !PortMouse::StickEnabled() && !PortMouse::TouchEnabled()) {
+  if (!PortMouse::DirectAim(playerIndex)) {
     return false;
   }
   const CPlayer* player = mgr.GetPlayer(playerIndex);
@@ -87,9 +87,9 @@ bool PortMouseLookIsFree(const CStateManager& mgr, int playerIndex) {
 // tick's camera to the aim the pending look travel reaches - yaw about world up, pitch about the
 // camera's own right axis. False (the tick's orientation stands) with the setting off or no
 // pending turn to show.
-bool PortPresentedLookRotation(float t, CTransform4f& rotation) {
+bool PortPresentedLookRotation(float t, CTransform4f& rotation, int playerIndex) {
   float dyaw = 0.f, dpitch = 0.f;
-  if (!PortOverlay::LookInterpolation() || !PortMouse::PresentedAimDelta(t, dyaw, dpitch)) {
+  if (!PortOverlay::LookInterpolation() || !PortMouse::PresentedAimDelta(t, dyaw, dpitch, playerIndex)) {
     return false;
   }
   const CTransform4f camRot = sCurrentCameraTransform.GetRotation();
@@ -550,7 +550,7 @@ CTransform4f CCameraManager::GetCurrentCameraTransform(const CStateManager& mgr,
       // next tick will take instead (MP1's per-frame look, `MP2_LOOK_INTERPOLATION`).
       CTransform4f latest = sCurrentCameraTransform;
       CTransform4f look = CTransform4f::Identity();
-      if (PortPresentedLookRotation(sPresentationInterpolation, look)) {
+      if (PortPresentedLookRotation(sPresentationInterpolation, look, mPlayerIndex)) {
         latest = look * latest.GetRotation();
       }
       latest.SetTranslation(presentation.GetTranslation());

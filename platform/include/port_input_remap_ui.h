@@ -14,10 +14,19 @@
 namespace PortInputRemap {
 
 void Draw();
+// The same page for player `port` (0-3) inside F1 Multiplayer, without its player and Player 1
+// controller combos; makes `port` the page's player (PortControls::SetRemapPort). Overlay thread.
+void DrawForPlayer(unsigned port);
+// The controller combo of pad port `port` (0-3): which controller that player plays with. Remap draws
+// Player 1's, the Multiplayer page all four. Overlay thread.
+void DrawPlayerController(unsigned port, const char* label);
 // Remap's Presets... button: replaces the family's own Default-profile bindings
 // with the named PortControls preset ("classic", "mouse"; "gamecube", "remastered",
 // "modern", "southpaw") and its Morph Ball rows. Overlay thread.
 void ApplyPreset(PortInput::Family family, std::string_view id);
+// The same for a player: port 0 as above; ports 1-3 (pad family only) set that port's controller
+// mapping and replace the pad rows of that player's own bindings (controls_p<N>.toml).
+void ApplyPreset(PortInput::Family family, std::string_view id, unsigned port);
 // An input capture is running: the overlay's pad navigation stays off.
 bool Capturing();
 // The inputs bound to `action` as Remap names them ("F1 or Back + Start"); empty

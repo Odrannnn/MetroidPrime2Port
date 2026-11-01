@@ -2187,7 +2187,7 @@ void CStateManager::CapturePlayerTextures() {
       const bool scanVisor = mPlayerState->GetCurrentVisor() == CPlayerState::kPV_Scan;
       {
         float px = 0.f, py = 0.f;
-        if (scanVisor && PortMouse::PointerAimPosition(px, py)) {
+        if (scanVisor && PortMouse::PointerAimPosition(px, py, static_cast< int >(i))) {
           lensX = static_cast< int >(px * 0.5f * width);
           lensY = static_cast< int >(py * 0.5f * height);
         }
@@ -4077,15 +4077,24 @@ void CStateManager::ProcessPlayerInput() {
 #ifdef TARGET_PC
 // Toggle lock-on and sticky charge (F1 > Gameplay). Edges come from the combined digital/analog
 // state, since a GameCube L passes the analog threshold and clicks on different ticks and would
-// toggle twice. There is one local player's pad, so the state machines are file statics; a second
+// toggle twice. Each pad keeps its own state machines (file statics indexed by controller); a second
 // controller that owns no player is ignored rather than allowed to reset them.
 static void ApplyHoldToggle(CFinalInput& input, CStateManager& mgr, uint controller, bool enabled) {
-  static PortHoldToggle::Toggle sLockOn;
-  static PortHoldToggle::Sticky sCharge;
-  static PortHoldToggle::Toggle sSpider;
-  static PortHoldToggle::Grace sSpiderOn;
-  static bool sPrevL = false;
-  static bool sPrevR = false;
+  static PortHoldToggle::Toggle sLockOnAll[4];
+  static PortHoldToggle::Sticky sChargeAll[4];
+  static PortHoldToggle::Toggle sSpiderAll[4];
+  static PortHoldToggle::Grace sSpiderOnAll[4];
+  static bool sPrevLAll[4] = {false, false, false, false};
+  static bool sPrevRAll[4] = {false, false, false, false};
+  if (controller >= 4) {
+    return;
+  }
+  PortHoldToggle::Toggle& sLockOn = sLockOnAll[controller];
+  PortHoldToggle::Sticky& sCharge = sChargeAll[controller];
+  PortHoldToggle::Toggle& sSpider = sSpiderAll[controller];
+  PortHoldToggle::Grace& sSpiderOn = sSpiderOnAll[controller];
+  bool& sPrevL = sPrevLAll[controller];
+  bool& sPrevR = sPrevRAll[controller];
 
   // A controller index is not a player slot: ProcessPlayerInput maps a slot's selection the other
   // way round, so it is the selection that finds the player this pad belongs to.
@@ -4115,8 +4124,9 @@ static void ApplyHoldToggle(CFinalInput& input, CStateManager& mgr, uint control
   const CPlayer::EPlayerOrbitState orbit = player->GetOrbitState();
   const bool locked = orbit == CPlayer::kOS_OrbitObject ||
                       orbit == CPlayer::kOS_ForcedOrbitObject || orbit == CPlayer::kOS_Grapple;
+  const int index = player->GetPlayerIndex();
   const PortHoldToggle::Output outL = sLockOn.Update(
-      unmorphed && PortOverlay::LockOnToggle(), heldL, pressL, locked, input.DeltaTime());
+      unmorphed && PortOverlay::LockOnToggle(index), heldL, pressL, locked, input.DeltaTime());
   if (sLockOn.Latched() || outL.held != heldL) {
     input.PortSetL(outL.held, outL.pressed);
   }
@@ -4124,7 +4134,7 @@ static void ApplyHoldToggle(CFinalInput& input, CStateManager& mgr, uint control
   const bool heldA = input.DA();
   const bool pressA = input.PA();
   const CPlayerState* const state = player->GetPlayerState();
-  const bool charge = unmorphed && PortOverlay::StickyCharge() && state != nullptr &&
+  const bool charge = unmorphed && PortOverlay::StickyCharge(index) && state != nullptr &&
                       state->GetItemAmount(CPlayerState::kIT_ChargeBeam, true) != 0;
   const PortHoldToggle::Output outA = sCharge.Update(charge, heldA, pressA, input.DeltaTime());
   if (outA.held != heldA || outA.pressed != pressA) {

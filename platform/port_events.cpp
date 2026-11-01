@@ -20,6 +20,7 @@
 #include "port_overlay.h"
 #include "port_photo.h"
 #include "port_pointer.h"
+#include "port_vpads.h"
 #include "port_prompts.h"
 #include "port_memory_log.h"
 #include "port_savestate.h"
@@ -33,6 +34,8 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <iterator>
+#include <string>
 
 namespace {
 
@@ -77,37 +80,56 @@ struct InputToken {
 // loudly rather than silently.
 constexpr size_t kMaxTokens = 512;
 
+// Parses `env` once into `tokens`; `prefix` is the pad prefix letter ('p' MP2_INPUT, 'v' MP2_VPAD_INPUT).
+void ParseScript(const char* env, char prefix, InputToken* tokens, size_t& sCount) {
+  for (const char* p = std::getenv(env); p != nullptr && *p != '\0';) {
+    const char* at = std::strchr(p, '@');
+    if (at == nullptr) {
+      break;
+    }
+    char* end = nullptr;
+    const unsigned start = static_cast< unsigned >(std::strtoul(at + 1, &end, 10));
+    unsigned length = 8;
+    if (*end == '+') {
+      length = static_cast< unsigned >(std::strtoul(end + 1, &end, 10));
+    }
+    if (sCount == kMaxTokens) {
+      std::fprintf(stderr, "[input] %s holds more than %zu tokens; the rest are ignored\n", env,
+                   kMaxTokens);
+      break;
+    }
+    InputToken& token = tokens[sCount++];
+    token.name = p;
+    token.pad = PortInputPad::SplitPad(token.name, at, prefix);
+    token.at = at;
+    token.start = start;
+    token.length = length;
+    token.fired = false;
+    p = *end == ',' ? end + 1 : end;
+  }
+}
+
 InputToken* InputScript(size_t& count) {
   static InputToken tokens[kMaxTokens];
   static size_t sCount = 0;
   static bool sParsed = false;
   if (!sParsed) {
     sParsed = true;
-    for (const char* p = std::getenv("MP2_INPUT"); p != nullptr && *p != '\0';) {
-      const char* at = std::strchr(p, '@');
-      if (at == nullptr) {
-        break;
-      }
-      char* end = nullptr;
-      const unsigned start = static_cast< unsigned >(std::strtoul(at + 1, &end, 10));
-      unsigned length = 8;
-      if (*end == '+') {
-        length = static_cast< unsigned >(std::strtoul(end + 1, &end, 10));
-      }
-      if (sCount == kMaxTokens) {
-        std::fprintf(stderr, "[input] MP2_INPUT holds more than %zu tokens; the rest are ignored\n",
-                     kMaxTokens);
-        break;
-      }
-      InputToken& token = tokens[sCount++];
-      token.name = p;
-      token.pad = PortInputPad::SplitPad(token.name, at);
-      token.at = at;
-      token.start = start;
-      token.length = length;
-      token.fired = false;
-      p = *end == ',' ? end + 1 : end;
-    }
+    ParseScript("MP2_INPUT", 'p', tokens, sCount);
+  }
+  count = sCount;
+  return tokens;
+}
+
+// MP2_VPAD_INPUT: the same tokens and clock, but the pad prefix is `v0.`-`v3.` (no prefix is vpad 0)
+// and the presses go to the SDL virtual gamepads (MP2_VPADS) instead of Aurora's pad ports.
+InputToken* VpadScript(size_t& count) {
+  static InputToken tokens[kMaxTokens];
+  static size_t sCount = 0;
+  static bool sParsed = false;
+  if (!sParsed) {
+    sParsed = true;
+    ParseScript("MP2_VPAD_INPUT", 'v', tokens, sCount);
   }
   count = sCount;
   return tokens;
@@ -287,6 +309,89 @@ void RunInputScript(unsigned frame) {
   }
 }
 
+// MP2_VPAD_INPUT="v1.A@300+10,v2.SUP@400+60,v1.DETACH@900,v1.ATTACH@1200": the MP2_INPUT names
+// (buttons, S*/C* sticks, Z, L, R, D-pad as UP/DOWN/LEFT/RIGHT) on SDL virtual gamepad N; DETACH
+// and ATTACH unplug and replug it. `v1.GYRO=<yaw>:<pitch>@300` sets that pad's gyro in rad/s (positive
+// yaw turns right, pitch looks up) and holds it until the next GYRO token. Only changes are sent to SDL.
+void RunVpadScript(unsigned frame) {
+  size_t count = 0;
+  InputToken* tokens = VpadScript(count);
+  if (count == 0) {
+    return;
+  }
+  struct Sdl {
+    const char* name;
+    const char* what;
+    double value;
+  };
+  static const Sdl kMap[] = {
+      {"A", "a", 1},      {"B", "b", 1},        {"X", "x", 1},       {"Y", "y", 1},
+      {"START", "start", 1}, {"Z", "rb", 1},    {"L", "lt", 1},      {"R", "rt", 1},
+      {"UP", "up", 1},    {"DOWN", "down", 1},  {"LEFT", "left", 1}, {"RIGHT", "right", 1},
+      {"SUP", "ly", -1},  {"SDOWN", "ly", 1},   {"SLEFT", "lx", -1}, {"SRIGHT", "lx", 1},
+      {"CUP", "ry", -1},  {"CDOWN", "ry", 1},   {"CLEFT", "rx", -1}, {"CRIGHT", "rx", 1},
+  };
+  constexpr int kN = PortInputPad::kPadCount;
+  // Wanted level per pad per SDL control (kWhats), summed over the entries and rebuilt every frame;
+  // the last sent level to diff against. Two tokens on one axis (SUP, SDOWN) add up, as MP2_INPUT's.
+  static const char* const kWhats[] = {"a",  "b",  "x",  "y",    "start", "rb", "lt",
+                                       "rt", "up", "down", "left", "right", "lx", "ly",
+                                       "rx", "ry"};
+  constexpr size_t kW = std::size(kWhats);
+  static double sent[kN][kW] = {};
+  double want[kN][kW] = {};
+  for (size_t i = 0; i < count; ++i) {
+    InputToken& token = tokens[i];
+    const unsigned start = token.start == 0 ? 1 : token.start;
+    const bool down = frame >= start && frame < start + token.length;
+    const bool fire = !token.fired && frame >= start;
+    token.fired = token.fired || fire;
+    std::string err;
+    if (fire && NameIs("DETACH", token.name, token.at)) {
+      std::fprintf(stderr, "[vpad-input] v%d DETACH at frame %u (%s)\n", token.pad, frame,
+                   PortVpads::DetachSlot(token.pad, err) ? "ok" : err.c_str());
+    } else if (fire && NameIs("ATTACH", token.name, token.at)) {
+      std::fprintf(stderr, "[vpad-input] v%d ATTACH at frame %u (%s)\n", token.pad, frame,
+                   PortVpads::AttachSlot(token.pad, err) ? "ok" : err.c_str());
+    }
+    if (fire && std::strncmp(token.name, "GYRO=", 5) == 0) {
+      char* mid = nullptr;
+      const double yaw = std::strtod(token.name + 5, &mid);
+      const double pitch = (mid != nullptr && *mid == ':') ? std::strtod(mid + 1, nullptr) : 0.0;
+      std::fprintf(stderr, "[vpad-input] v%d GYRO yaw %.3f pitch %.3f at frame %u (%s)\n", token.pad, yaw,
+                   pitch, frame, PortVpads::SetGyro(token.pad, yaw, pitch, err) ? "ok" : err.c_str());
+    }
+    for (size_t k = 0; k < std::size(kMap); ++k) {
+      if (NameIs(kMap[k].name, token.name, token.at)) {
+        if (down) {
+          for (size_t w = 0; w < kW; ++w) {
+            if (std::strcmp(kWhats[w], kMap[k].what) == 0) {
+              want[token.pad][w] += kMap[k].value;
+            }
+          }
+        }
+        if (fire) {
+          std::fprintf(stderr, "[vpad-input] v%d %s at frame %u (%.1f s)\n", token.pad, kMap[k].name,
+                       frame, Seconds());
+        }
+      }
+    }
+  }
+  for (int pad = 0; pad < kN; ++pad) {
+    if (!PortVpads::Present(pad)) {
+      std::memset(sent[pad], 0, sizeof(sent[pad])); // a replugged pad starts neutral
+      continue;
+    }
+    for (size_t w = 0; w < kW; ++w) {
+      if (want[pad][w] != sent[pad][w]) {
+        std::string err;
+        PortVpads::Set(pad, kWhats[w], want[pad][w], err);
+        sent[pad][w] = want[pad][w];
+      }
+    }
+  }
+}
+
 } // namespace
 
 namespace PortInput {
@@ -328,6 +433,10 @@ uint64_t sNextFrameDeadline = 0;
 // PADRead), but a loop iteration can run several game ticks, each with its own PADRead.
 PADStatus sPad0{};
 bool sPad0Valid = false;
+// Players 2-4's pads in a multiplayer match, read through their own controls_p<N>.toml (index =
+// port); invalid while the port is not in play, so Aurora reads that pad itself.
+PADStatus sPlayerPads[4]{};
+bool sPlayerPadValid[4]{};
 } // namespace
 
 // Called before every game tick's PADRead: re-arms pad 0 with this iteration's state. Without it
@@ -338,6 +447,9 @@ bool sPad0Valid = false;
 void PortRearmPad0() {
   if (sPad0Valid) {
     PADSetPortOverride(0, &sPad0);
+  }
+  for (u32 port = 1; port < 4; ++port) {
+    if (sPlayerPadValid[port]) PADSetPortOverride(port, &sPlayerPads[port]);
   }
 }
 
@@ -426,7 +538,11 @@ bool PortPumpEvents() {
   PortHarness::IdleCheck();
   PortTouch::BeginFrame();
   // PortMouse's travel is latched per tick (PortMouse::BeginTick, from CMain), not here.
-  RunInputScript(ScriptFrame());
+  {
+    const unsigned frame = ScriptFrame();
+    RunInputScript(frame);
+    RunVpadScript(frame);
+  }
   PortPointer::BeginFrame();
   bool mouseInput = false;
   for (const AuroraEvent* event = aurora_update(); event != nullptr && event->type != AURORA_NONE;
@@ -503,6 +619,7 @@ bool PortPumpEvents() {
   // Pad 0 is the input engine's (keyboard, mouse buttons and the controller through controls.toml),
   // read once per iteration, before the game's PADRead; Aurora still merges the console's and
   // MP2_INPUT's virtual pad on top of it.
+  PortVpads::Poll();
   PortInputDevices::PollPortActions();
   PortInputDevices::PollGyro();
   sPad0 = PortInputDevices::Poll();
@@ -517,6 +634,14 @@ bool PortPumpEvents() {
   // PollPortActions above is not gated: the F1 toggle, screenshot and the remap capture still work.
   PADBlockInput(PortOverlay::Visible());
   PADSetPortOverride(0, &sPad0);
+  // Players 2-4 (a multiplayer match): each pad through its player's own bindings, gated alike.
+  static PortInputGate::Gate<PADStatus> sPlayerGates[4];
+  for (u32 port = 1; port < 4; ++port) {
+    sPlayerPadValid[port] = PortInputDevices::PollPlayer(port, sPlayerPads[port]);
+    if (!sPlayerPadValid[port]) continue;
+    sPlayerGates[port].Apply(PortOverlay::Visible(), sPlayerPads[port]);
+    PADSetPortOverride(port, &sPlayerPads[port]);
+  }
   // A device or pack change requested since the last iteration swaps the replacement set here,
   // and the binding icons follow the input used last (both throttle themselves).
   PortTextures::Poll();

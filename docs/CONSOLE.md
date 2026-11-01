@@ -31,7 +31,13 @@ hp, hp_max, visor, beam, freecam) for scripts.
 - `combocost [0..30]`, `combomissiles [0..5]`, `beamammo [50..100]` — combo beam ammo cost, combo missile cost, Dark/Light ammo per capacity pickup (F1 Cheats, each with a Reset); no argument prints it
 - `infammo [all|missile|powerbomb|dark|light] [0|1]` — infinite ammo per counter (fire at zero, HUD shows ∞, real counts and pickups kept; F1 Cheats); no 0|1 flips
 - `mpforce <0|1>` — IsMultiplayer reports true (multiplayer-only arms)
+- `mpend` — ends the running multiplayer match now, as its time or kill limit would (fade, results screen, back to the front end)
 - `pads` — the controller on each pad port 0-3 (players 1-4: `port N: <index> <name>` or `port N: none`) and the controller count; the F1 page's Player rows set it
+- `padport <index> <port>` / `padport clear <port>` — give controller `<index>` (see `pads`) pad port 0-3, or free a port (what the F1 Player combos call)
+- `padpreset <name> [port]` — apply a pad preset (`gamecube`, `remastered`, `modern`, `southpaw`) to the controller on pad port 0-3 (default 0; what the F1 remap page's Presets button does for its Player selector). Reports `no controller` for an empty port and a no-op for a virtual pad (Aurora ignores their mappings); only port 0 gets the keyboard/mouse overlay
+- `remapport [port]` — the player (port 0-3) the F1 remap page's Player selector points at, which `padpreset` ignores (it takes its own port); no argument prints it
+- `padread` — what `PADRead` returns for ports 0-3 right now (err, buttons, sticks, triggers)
+- `vpad list|attach [n]|detach <i>|<i> <button|axis> <value>` — SDL virtual gamepads for controller-to-port tests (`MP2_VPADS=<n>`, 1-4, attaches them at start); buttons `a b x y back guide start ls rs lb rb up down left right` (0/1), axes `lx ly rx ry lt rt` (-1..1, triggers 0..1)
 - `overlay <page>[/<sub>]|off` — open the F1 window on a page (name prefixes: `overlay video/qual`)
 - `gpuselftest` — run the GPU self-test next frame; PASS/FAIL lines go to the log
 - `state save|load <slot> [hold]` — the F5/F9 save states (load 0 = undo the last load); `load ... hold` stops the simulation on the tick the room state is restored

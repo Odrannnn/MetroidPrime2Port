@@ -4009,7 +4009,7 @@ void CMorphBall::ComputeBallMovement(const CFinalInput& input, CStateManager& mg
   if (sSpringBallCooldown > 0.f) {
     sSpringBallCooldown -= dt;
   } else if ((input.ARAUp() > 0.25f ||
-              (input.DeltaTime() > 0.f && PortTouch::SpringBallRequested())) &&
+              (input.DeltaTime() > 0.f && PortTouch::SpringBallRequested(mPlayer.GetPlayerIndex()))) &&
              mBallState == kBS_Normal &&
              mPlayer.GetPlayerMovementState() == NPlayer::kMS_OnGround &&
              !mPlayer.IsMorphBallTransitioning() && IsMovementAllowed() &&
@@ -4023,7 +4023,7 @@ void CMorphBall::ComputeBallMovement(const CFinalInput& input, CStateManager& mg
                                     mPlayer.GetVelocityWR().GetZ()));
     mPlayer.SetMoveState(NPlayer::kMS_FallingMorphed, mgr);
     sSpringBallCooldown = kSpringBallCooldown;
-    PortTouch::ClearSpringBallRequest();
+    PortTouch::ClearSpringBallRequest(mPlayer.GetPlayerIndex());
   }
 #endif
   switch (mBallState) {
