@@ -70,7 +70,7 @@ end, a scripted in-game pass and every campaign area, so a first start compiles 
 shaders in the background instead of skipping draws as it meets them. Retail rows only (no
 Remastered-style rows). When aurora bumps a pipeline config version (`clear.hpp`,
 `gx/pipeline.hpp`, `rmlui/pipeline.hpp`), aurora ignores the seed and the `port_pipeline_seed`
-test fails. Re-record from empty caches (needs a GPU path, ~2 h; no mods or texture packs):
+test fails. Re-record from empty caches (needs a GPU path, ~41 min on the dev machine; no mods or texture packs):
 `python3 tools/pipeline_seed.py record`, then the `merge` line it prints. `MP2_PIPELINE_SEED=0`
 starts without the seed.
 
