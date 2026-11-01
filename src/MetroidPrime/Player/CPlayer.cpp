@@ -1132,13 +1132,15 @@ void CPlayer::UpdateDebugCamera(CStateManager& mgr) {}
 
 void CPlayer::Update(float dt, CStateManager& mgr) {
 #ifdef TARGET_PC
-  // port: the touch overlay's Ball page follows player 0's morph state (MP1's PublishWheelState).
+  // port: the touch overlay's Ball page follows player 0's morph state (MP1's PublishWheelState);
+  // Players 2-4's pads pick their Morph Ball rows from theirs.
   // A screw attack runs as a ball state (spawned state kMS_Morphed while it morphs in, spins and
   // unmorphs out) but plays as the suit: it keeps the gameplay bindings, so a remapped jump chains it.
-  if (mgr.GetPlayer(0) == this) {
+  if (GetPlayerIndex() < 4 && mgr.GetPlayer(GetPlayerIndex()) == this) {
     const bool screwAttack =
         mSpawnedMorphBallState == kMS_Morphed || mMorphBall->InScrewAttackMode();
-    PortTouch::SetMorphed(GetMorphballTransitionState() != kMS_Unmorphed && !screwAttack);
+    PortTouch::SetMorphed(GetMorphballTransitionState() != kMS_Unmorphed && !screwAttack,
+                          GetPlayerIndex());
   }
 #endif
   if (!mBeamParticleDescriptionsInitialized && NWeaponTypes::are_tokens_ready(mBeamEffectTokens)) {

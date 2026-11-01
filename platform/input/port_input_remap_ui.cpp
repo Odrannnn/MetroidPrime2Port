@@ -112,6 +112,11 @@ constexpr STouchInfo kTouchControls[] = {
 UserBindings sWork;     // what the page edits; written through on every change
 bool sLoaded = false;
 uint64_t sSeenVersion = 0; // the bindings version sWork matches
+int sWorkPort = 0;         // the player sWork is (index; 1-3 edit controls_p<N>.toml)
+
+// The player the page edits: the F1 Multiplayer page's selection. Players 2-4 keep only their
+// pad's rows (PortInputDevices::BuildProfile drops the rest).
+int EditPort() { return PortControls::RemapPort(); }
 // What the Controller column edits: "pads" (the Default profile's controller
 // bindings) or a controller profile's match ("type:..." / "guid:..."). Keyboard
 // and touch always edit the Default profile.
@@ -208,11 +213,11 @@ bool InputsFromText(const char* text, Binding& b) {
 }
 
 void Commit() {
-  if (!PortInputDevices::SetUserBindings(sWork)) {
-    sError = "Couldn't write controls.toml.";
+  if (!PortInputDevices::SetUserBindings(sWork, sWorkPort)) {
+    sError = "Couldn't write " + PortInputDevices::UserBindingsPath(sWorkPort) + ".";
   } else {
     sError.clear();
-    sSeenVersion = PortInputDevices::UserBindingsVersion();
+    sSeenVersion = PortInputDevices::UserBindingsVersion(sWorkPort);
   }
 }
 
@@ -270,7 +275,7 @@ SView MakeView(PortInput::Family family) {
     v.match = sPadDevice;
     if (const UserProfile* p = Find(sPadDevice)) v.name = p->name;
   }
-  PortInputDevices::BuildBaseProfile(v.inherited);
+  PortInputDevices::BuildBaseProfile(v.inherited, sWorkPort);
   // A kind or model sits on top of the Default profile's own overrides.
   if (!v.match.empty()) {
     if (const UserProfile* def = Find("")) PortInput::Overlay(v.inherited, *def);
@@ -350,8 +355,11 @@ void UpdateCapture() {
   using PortInput::Family;
   if (!sCapture.active) return;
   PortInput::RawState raw;
-  PortInputDevices::ReadRaw(raw);
-  if (raw.keys.test(SDL_SCANCODE_ESCAPE) || SDL_GetTicks() - sCapture.startMs > kCaptureTimeoutMs) {
+  PortInputDevices::ReadRaw(raw, sWorkPort);
+  // Another player's capture reads only their pad; Esc still cancels from the keyboard.
+  PortInput::RawState keys;
+  if (sWorkPort != 0) PortInputDevices::ReadRaw(keys);
+  if ((sWorkPort != 0 ? keys : raw).keys.test(SDL_SCANCODE_ESCAPE) || SDL_GetTicks() - sCapture.startMs > kCaptureTimeoutMs) {
     EndCapture();
     return;
   }
@@ -833,7 +841,7 @@ void DrawEffective() {
   if (!ImGui::TreeNode("Everything bound now")) return;
   ImGui::TextDisabled("The built-in controls with every profile in use on top.");
   PortInput::Profile p;
-  PortInputDevices::BuildProfile(p);
+  PortInputDevices::BuildProfile(p, sWorkPort);
   if (ImGui::BeginTable("effective", 4, ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
     for (const Binding& b : p.bindings) {
       ImGui::TableNextRow();
@@ -1704,8 +1712,9 @@ void ApplyBallPreset(PortInput::Family family, std::string_view id) {
 // Takes the saved bindings as the page's copy: a PortControls preset writes them
 // itself, and the next Commit would otherwise put the page's older copy back.
 void Reload() {
-  sWork = *PortInputDevices::UserBindings();
-  sSeenVersion = PortInputDevices::UserBindingsVersion();
+  sWorkPort = EditPort();
+  sWork = *PortInputDevices::UserBindings(sWorkPort);
+  sSeenVersion = PortInputDevices::UserBindingsVersion(sWorkPort);
   sLoaded = true;
 }
 
@@ -1803,8 +1812,8 @@ void DrawProfileOptions(const SView& v) {
   }
 }
 
-// The player the pad presets (Presets..., My presets...) write: PortControls::RemapPort(). Ports 1-3
-// get the pad mapping only; the binding table below is the input engine's per-device layer, shared.
+// The player the page edits: PortControls::RemapPort(). Ports 1-3 edit their own controls_p<N>.toml
+// (pad rows only); their Presets change only the controller's Aurora mapping.
 void DrawRemapPlayer() {
   int port = PortControls::RemapPort();
   ImGui::SetNextItemWidth(ImGui::GetFontSize() * 8.f);
@@ -1821,8 +1830,8 @@ void DrawRemapPlayer() {
     }
     ImGui::EndCombo();
   }
-  ImGui::SetItemTooltip("Whose controller the Presets and My presets buttons change. Player 1 also owns the "
-                        "keyboard and mouse; players 2-4 have a controller only.");
+  ImGui::SetItemTooltip("Whose bindings the page edits. Player 1 also owns the keyboard, mouse and touch; "
+                        "players 2-4 have a controller only.");
   const PortControls::SPadPortInfo info = PortControls::PadPortInfo(static_cast<unsigned>(PortControls::RemapPort()));
   ImGui::SameLine();
   switch (info.state) {
@@ -1837,8 +1846,9 @@ void DrawRemapPlayer() {
     break;
   }
   if (PortControls::RemapPort() != 0) {
-    ImGui::TextDisabled("Presets change this player's controller mapping. The binding table below (controls.toml) "
-                        "is Player 1's; set this player's buttons on the Multiplayer page.");
+    ImGui::TextDisabled("The bindings below are this player's (%s; controller rows only). Presets change "
+                        "their controller mapping.",
+                        PortInputDevices::UserBindingsPath(PortControls::RemapPort()).c_str());
   }
 }
 
@@ -2075,12 +2085,14 @@ void Draw() {
   if (sCapture.active && now - sLastDrawMs.load(std::memory_order_relaxed) >= kCaptureStaleMs) EndCapture();
   sLastDrawMs.store(now, std::memory_order_relaxed);
   // Picks up a hand edit or a deleted file, unless the page is mid-edit.
-  const uint64_t version = PortInputDevices::UserBindingsVersion();
-  if (!sLoaded || (version != sSeenVersion && sEditing == kEditNone && !sCapture.active)) {
-    sWork = *PortInputDevices::UserBindings();
-    sSeenVersion = version;
-    sLoaded = true;
+  // Another player picked on the Multiplayer page loads theirs (a capture in flight ends first).
+  if (sLoaded && EditPort() != sWorkPort) {
+    if (sCapture.active) EndCapture();
+    sEditing = kEditNone;
+    sLoaded = false;
   }
+  const uint64_t version = PortInputDevices::UserBindingsVersion(sWorkPort);
+  if (!sLoaded || (version != sSeenVersion && sEditing == kEditNone && !sCapture.active)) Reload();
   // A warp action's name is its room's, read from the disc.
   for (const PortInput::CustomActionDef& def : sWork.customActions) {
     if (def.preset == "warp") {

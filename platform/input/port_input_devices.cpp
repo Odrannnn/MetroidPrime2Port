@@ -58,19 +58,24 @@ using PortInput::Profile;
 
 constexpr u32 kPort = 0;
 
-// `<user>/controls.toml`, set by Initialize; "" without a user directory.
-std::string sPath;
-
-// The user's bindings (controls.toml), loaded on first use and reloaded when the file
-// changes (checked once a second), so hand edits apply without a restart. The game
-// thread polls them and the console/F1 write them, so they're published as immutable
-// snapshots under a lock.
+// A player's bindings file: `<user>/controls.toml` for Player 1, `controls_p<N>.toml` for
+// Players 2-4 in multiplayer; the path is set by Initialize, "" without a user directory.
+// Each is loaded on first use and reloaded when the file changes (checked once a second), so
+// hand edits apply without a restart. The game thread polls them and the console/F1 write
+// them, so they're published as immutable snapshots under a lock.
+struct UserFile {
+  std::string path;
+  std::shared_ptr<const PortInput::UserBindings> user = std::make_shared<const PortInput::UserBindings>();
+  uint64_t version = 0;
+  bool loaded = false;
+  std::filesystem::file_time_type time{};
+  std::chrono::steady_clock::time_point checked{};
+};
+constexpr int kUserFiles = 4;
 std::mutex sUserMutex;
-std::shared_ptr<const PortInput::UserBindings> sUser = std::make_shared<const PortInput::UserBindings>();
-uint64_t sUserVersion = 0;
-bool sUserLoaded = false;
-std::filesystem::file_time_type sUserTime{};
-std::chrono::steady_clock::time_point sUserChecked{};
+UserFile sFiles[kUserFiles];
+
+UserFile& FileFor(int port) { return sFiles[port >= 0 && port < kUserFiles ? port : 0]; }
 
 // Touch overlay controls held now (codes 0..kTouchControlCount-1, and the added
 // buttons' from kTouchCustomBase), set from Android's UI thread.
@@ -255,12 +260,12 @@ void BindMapping(Profile& p, const PADButtonMapping* buttons, u32 buttonCount, c
   }
 }
 
-void BindController(Profile& p) {
+void BindController(Profile& p, u32 port) {
   u32 buttonCount = 0;
   u32 axisCount = 0;
-  const PADButtonMapping* buttons = PADGetButtonMappings(kPort, &buttonCount);
-  const PADAxisMapping* axes = PADGetAxisMappings(kPort, &axisCount);
-  const PADDeadZones* dz = PADGetDeadZones(kPort);
+  const PADButtonMapping* buttons = PADGetButtonMappings(port, &buttonCount);
+  const PADAxisMapping* axes = PADGetAxisMappings(port, &axisCount);
+  const PADDeadZones* dz = PADGetDeadZones(port);
   // No controller on the port: bind the standard defaults anyway, so a remap page
   // shows what a pad would get (nothing reads them until one connects).
   PADDefaultMapping fallback;
@@ -317,9 +322,9 @@ bool IsKeyboardFamily(const Input& in) { return in.device == Device::Key || in.d
 // LB is the pad's beam shift under twin stick, unless it presses another PAD button: held as the
 // shift, it would turn that D-pad press into a beam. (MP1's PadButtonBoundBesidesL; MP2 has no
 // alt-button setting to check, only Aurora's mappings.)
-bool PadButtonBoundBesidesL(s32 native) {
+bool PadButtonBoundBesidesL(s32 native, u32 port) {
   u32 count = 0;
-  const PADButtonMapping* list = PADGetButtonMappings(kPort, &count);
+  const PADButtonMapping* list = PADGetButtonMappings(port, &count);
   for (u32 i = 0; list != nullptr && i < count; ++i) {
     if (list[i].nativeButton == static_cast<u32>(native) && list[i].padButton != PAD_TRIGGER_L) return true;
   }
@@ -334,8 +339,9 @@ bool PadButtonBoundBesidesL(s32 native) {
 // does not have, so only its twin-stick shifts exist: Left Shift unless a key takes it, and LB.
 // The overlay's own Beam button works inside PortTouch. As in MP1 the shifts also spring the ball
 // in morph ball (the Spring Ball action, RouteDirectActions -> PortTouch::RequestSpringBall).
-void BindBeamChords(Profile& p) {
-  if (!PortTouch::TwinStick() && !PortMouse::StickEnabled()) return;
+// Players 2-4 (port > 0) have only their pad, and only its shift, under their own twin stick.
+void BindBeamChords(Profile& p, u32 port = 0) {
+  if (port == 0 ? !PortTouch::TwinStick() && !PortMouse::StickEnabled() : !PortMouse::StickEnabled(int(port))) return;
   std::vector<Input> keyShifts;
   std::vector<Input> padShifts;
   bool lshiftTaken = false;
@@ -344,9 +350,9 @@ void BindBeamChords(Profile& p) {
       lshiftTaken = true;
     }
   }
-  if (!lshiftTaken) keyShifts.push_back(Make(Device::Key, SDL_SCANCODE_LSHIFT));
+  if (!lshiftTaken && port == 0) keyShifts.push_back(Make(Device::Key, SDL_SCANCODE_LSHIFT));
   // Also with the touch overlay on: its buttons are touch inputs, so a pad played beside it keeps LB.
-  if (!PadButtonBoundBesidesL(SDL_GAMEPAD_BUTTON_LEFT_SHOULDER)) {
+  if (!PadButtonBoundBesidesL(SDL_GAMEPAD_BUTTON_LEFT_SHOULDER, port)) {
     padShifts.push_back(NativeInput(SDL_GAMEPAD_BUTTON_LEFT_SHOULDER));
   }
 
@@ -438,7 +444,7 @@ float StickValue(s16 raw, u16 deadZone, bool useDeadZones) {
   return std::clamp(static_cast<float>(raw) / 32767.f, -1.f, 1.f);
 }
 
-uint16_t GameContexts();
+uint16_t GameContexts(int player = 0);
 
 // The mouse buttons drive the pad's gameplay rows only while the port's mouse aim holds the
 // capture (the F1 window and the port's own UI take the cursor back), and only from a neutral
@@ -467,18 +473,12 @@ unsigned SdlMouseHeld() {
   return held;
 }
 
-void FillRawState(PortInput::RawState& raw, unsigned mouseHeld, bool focused) {
-  int numKeys = 0;
-  if (const bool* keys = SDL_GetKeyboardState(&numKeys)) {
-    for (int i = 0; i < numKeys && i < PortInput::kKeyCount; ++i) {
-      if (keys[i]) raw.keys.set(static_cast<size_t>(i));
-    }
-  }
-
+// A port's controller, through its own deadzones.
+void FillPadState(PortInput::RawState& raw, u32 port) {
   PADRawState pad{};
-  if (PADGetRawState(kPort, &pad)) {
+  if (PADGetRawState(port, &pad)) {
     raw.padButtons = pad.buttons;
-    const PADDeadZones* dz = PADGetDeadZones(kPort);
+    const PADDeadZones* dz = PADGetDeadZones(port);
     const bool useDz = dz != nullptr && dz->useDeadzones;
     for (int a = 0; a < PAD_RAW_AXIS_COUNT; ++a) {
       if (a == SDL_GAMEPAD_AXIS_LEFT_TRIGGER || a == SDL_GAMEPAD_AXIS_RIGHT_TRIGGER) {
@@ -490,6 +490,16 @@ void FillRawState(PortInput::RawState& raw, unsigned mouseHeld, bool focused) {
       }
     }
   }
+}
+
+void FillRawState(PortInput::RawState& raw, unsigned mouseHeld, bool focused) {
+  int numKeys = 0;
+  if (const bool* keys = SDL_GetKeyboardState(&numKeys)) {
+    for (int i = 0; i < numKeys && i < PortInput::kKeyCount; ++i) {
+      if (keys[i]) raw.keys.set(static_cast<size_t>(i));
+    }
+  }
+  FillPadState(raw, kPort);
 
   // Explicit console harness only. Real/default/custom bindings still arbitrate the raw pad.
   PortRadial::Point simulated;
@@ -565,15 +575,16 @@ s8 StickY(float down, float up) {
   return static_cast<s8>(std::clamp(static_cast<int>(y), -127, 127));
 }
 
-// Player 0's state while the game is in play (PortTouch's PlayerInPlay), else null. The
-// title and file select are a CMFGame in the 'FRND' front-end world: that is a menu, not
-// play, so its contexts read the Menu rows (#2).
-CPlayerState* PlayerInPlay() {
+// A player's state while the game is in play (PortTouch's PlayerInPlay), else null; null too
+// for a player the match doesn't have. The title and file select are a CMFGame in the 'FRND'
+// front-end world: that is a menu, not play, so its contexts read the Menu rows (#2).
+CPlayerState* PlayerInPlay(int player = 0) {
   if (gpGameState == nullptr || PortHarness::FlowState() != 1 /* CMFGame::kFS_InGame */ ||
       gpGameState->GetGameMode().GetGameModeType() == 'FRND') {
     return nullptr;
   }
-  return gpGameState->PlayerState(0).GetPtr();
+  if (player > 0 && player >= static_cast<int>(gpGameState->GetGameMode().GetNumPlayers())) return nullptr;
+  return gpGameState->PlayerState(player).GetPtr();
 }
 
 // Menu (front end, pause screen, or anything that is not in play) or gameplay; the
@@ -582,26 +593,26 @@ CPlayerState* PlayerInPlay() {
 // Ball page need. The scan text (CStateManager::Update publishes the scan freeze) adds
 // scan text to gameplay and scan rather than switching to menu, so the held lock keeps
 // its gameplay binding (#11). MP1 also tells the map screen apart, which reads the
-// CStateManager.
-uint16_t GameContexts() {
-  const CPlayerState* state = PlayerInPlay();
+// CStateManager. Players 2-4 read their own visor and morph state; the scan text is Player 1's.
+uint16_t GameContexts(int player) {
+  const CPlayerState* state = PlayerInPlay(player);
   if (state == nullptr || PortTouch::PauseScreenOpen()) return PortInput::kCtxMenu;
   uint16_t contexts = PortInput::kCtxGameplay;
   if (state->GetCurrentVisor() == CPlayerState::kPV_Scan) {
     contexts |= PortInput::kCtxScan;
-    if (PortTouch::ScanTextUp()) contexts |= PortInput::kCtxScanText;
+    if (player == 0 && PortTouch::ScanTextUp()) contexts |= PortInput::kCtxScanText;
   }
-  if (PortTouch::Morphed()) contexts |= PortInput::kCtxMorphBall;
+  if (PortTouch::Morphed(player)) contexts |= PortInput::kCtxMorphBall;
   return contexts;
 }
 
-// A next/previous pick the game hasn't taken yet.
+// A next/previous pick the game hasn't taken yet, per player.
 using CyclePending = PortRadial::Retry;
-CyclePending sCyclePending[2]; // [0] visor, [1] beam
+CyclePending sCyclePending[4][2]; // [player][0] visor, [player][1] beam
 
 // The beam or visor the game is on or switching to; -1 out of a game.
-int CurrentPick(bool beam) {
-  const CPlayerState* state = PlayerInPlay();
+int CurrentPick(bool beam, int player = 0) {
+  const CPlayerState* state = PlayerInPlay(player);
   if (state == nullptr) return -1;
   return beam ? static_cast<int>(state->GetCurrentBeam()) : static_cast<int>(state->GetTransitioningVisor());
 }
@@ -617,18 +628,18 @@ bool OwnsPick(const CPlayerState& state, bool beam, int pick) {
 // Next/previous beam or visor: the owned one `dir` steps from the current pick, in
 // the pause screen's order (Power, Dark, Light, Annihilator; Combat, Echo, Scan, Dark),
 // as PrimeHack cycles them. -1 when there's nothing else to pick.
-int CycleTarget(bool beam, int dir) {
+int CycleTarget(bool beam, int dir, int player = 0) {
   // EBeamId / EPlayerVisor values in cycle order.
   static constexpr int kBeamOrder[] = {CPlayerState::kBI_Power, CPlayerState::kBI_Dark, CPlayerState::kBI_Light,
                                        CPlayerState::kBI_Annihilator};
   static constexpr int kVisorOrder[] = {CPlayerState::kPV_Combat, CPlayerState::kPV_Echo, CPlayerState::kPV_Scan,
                                         CPlayerState::kPV_Dark};
-  const CPlayerState* state = PlayerInPlay();
-  const int dest = CurrentPick(beam);
+  const CPlayerState* state = PlayerInPlay(player);
+  const int dest = CurrentPick(beam, player);
   if (state == nullptr || dest < 0) return -1;
   const int* order = beam ? kBeamOrder : kVisorOrder;
   // Count from a pick the game hasn't taken yet, so quick notches keep stepping.
-  const int pending = sCyclePending[beam].PendingTarget();
+  const int pending = sCyclePending[player][beam].PendingTarget();
   const int current = pending >= 0 ? pending : dest;
   int pos = 0;
   while (pos < 4 && order[pos] != current) ++pos;
@@ -642,9 +653,9 @@ int CycleTarget(bool beam, int dir) {
 
 // Starts a cycle pick, or re-sends the pending one each poll until the game has
 // taken it (a request the visor or gun ignores while still switching is dropped).
-// `beam` picks which; `target` -1 just keeps the pending one alive.
-void PushCyclePick(bool beam, int target, bool radial = false) {
-  CyclePending& p = sCyclePending[beam];
+// `beam` picks which; `target` -1 just keeps the pending one alive. Only Player 1 has the radial.
+void PushCyclePick(bool beam, int target, bool radial = false, int player = 0) {
+  CyclePending& p = sCyclePending[player][beam];
   const uint64_t now = SDL_GetTicksNS();
   if (target >= 0) {
     p.Start(target, radial, now);
@@ -657,14 +668,14 @@ void PushCyclePick(bool beam, int target, bool radial = false) {
   // accepts it, then be overwritten by that older animation. Radial retries acknowledge the
   // actual gun/current visor published by the HUD, not that transient request field.
   const int applied = p.radial ? PortRadial::Applied(beam ? PortRadial::kBeam : PortRadial::kVisor) :
-                                CurrentPick(beam);
+                                CurrentPick(beam, player);
   const int ordinary = PortRadial::DispatchRetry(p, beam ? PortRadial::kBeam : PortRadial::kVisor,
                                                 now, eligible, applied);
   if (ordinary < 0) return;
   if (beam) {
-    PortTouch::RequestBeam(ordinary);
+    PortTouch::RequestBeam(ordinary, player);
   } else {
-    PortTouch::RequestVisor(ordinary);
+    PortTouch::RequestVisor(ordinary, player);
   }
 }
 
@@ -690,7 +701,7 @@ void RouteDirectActions(const PortInput::Output& out, double nowSec) {
                    out.Value(Action::CUp) - out.Value(Action::CDown));
   const bool capture = PortRadial::Capturing();
   sConsumeRadialPoll = wasCapturing || capture; // also consume the lifecycle-cancellation poll
-  if (capture && !wasCapturing) sCyclePending[0].target = sCyclePending[1].target = -1;
+  if (capture && !wasCapturing) sCyclePending[0][0].target = sCyclePending[0][1].target = -1;
   const int radialBeam = PortRadial::Transport().TakePick(PortRadial::kBeam);
   const int radialVisor = PortRadial::Transport().TakePick(PortRadial::kVisor);
   if (radialBeam >= 0) {
@@ -711,11 +722,11 @@ void RouteDirectActions(const PortInput::Output& out, double nowSec) {
   for (int i = 0; i < 4; ++i) {
     // A direct pick replaces a pending cycle pick.
     if (!sConsumeRadialPoll && out.Pressed(kBeams[i])) {
-      sCyclePending[1].target = -1;
+      sCyclePending[0][1].target = -1;
       PortTouch::RequestBeam(i);
     }
     if (!sConsumeRadialPoll && out.Pressed(kVisors[i])) {
-      sCyclePending[0].target = -1;
+      sCyclePending[0][0].target = -1;
       PortTouch::RequestVisor(i);
     }
   }
@@ -724,6 +735,29 @@ void RouteDirectActions(const PortInput::Output& out, double nowSec) {
   const int visorDir = sConsumeRadialPoll ? 0 : out.Pressed(Action::VisorNext) ? 1 : out.Pressed(Action::VisorPrev) ? -1 : 0;
   PushCyclePick(false, visorDir != 0 ? CycleTarget(false, visorDir) : -1);
   if (out.Pressed(Action::SpringBall)) PortTouch::RequestSpringBall();
+}
+
+// RouteDirectActions for Players 2-4: their direct and next/previous beam and visor picks and
+// Spring Ball, to their own player; no radial.
+void RoutePlayerActions(const PortInput::Output& out, int player) {
+  static constexpr Action kBeams[] = {Action::BeamPower, Action::BeamIce, Action::BeamWave, Action::BeamPlasma};
+  static constexpr Action kVisors[] = {Action::VisorCombat, Action::VisorXray, Action::VisorScan,
+                                       Action::VisorThermal};
+  for (int i = 0; i < 4; ++i) {
+    if (out.Pressed(kBeams[i])) {
+      sCyclePending[player][1].target = -1;
+      PortTouch::RequestBeam(i, player);
+    }
+    if (out.Pressed(kVisors[i])) {
+      sCyclePending[player][0].target = -1;
+      PortTouch::RequestVisor(i, player);
+    }
+  }
+  const int beamDir = out.Pressed(Action::BeamNext) ? 1 : out.Pressed(Action::BeamPrev) ? -1 : 0;
+  PushCyclePick(true, beamDir != 0 ? CycleTarget(true, beamDir, player) : -1, false, player);
+  const int visorDir = out.Pressed(Action::VisorNext) ? 1 : out.Pressed(Action::VisorPrev) ? -1 : 0;
+  PushCyclePick(false, visorDir != 0 ? CycleTarget(false, visorDir, player) : -1, false, player);
+  if (out.Pressed(Action::SpringBall)) PortTouch::RequestSpringBall(0.12f, player);
 }
 
 // The port's own actions: polled every frame by PollPortActions, not with the game
@@ -755,34 +789,34 @@ u8 Trigger(float analog, bool click) {
   return static_cast<u8>(click ? std::max(v, 180L) : v);
 }
 
-void PublishLocked(PortInput::UserBindings bindings) {
-  sUser = std::make_shared<const PortInput::UserBindings>(std::move(bindings));
-  ++sUserVersion;
+void PublishLocked(UserFile& f, PortInput::UserBindings bindings) {
+  f.user = std::make_shared<const PortInput::UserBindings>(std::move(bindings));
+  ++f.version;
 }
 
-// Loads controls.toml on first use and reloads it when it changed. Call with
+// Loads a bindings file on first use and reloads it when it changed. Call with
 // sUserMutex held.
-void RefreshLocked() {
+void RefreshLocked(UserFile& f) {
   const auto now = std::chrono::steady_clock::now();
-  if (sUserLoaded && now - sUserChecked < std::chrono::seconds(1)) return;
-  sUserChecked = now;
-  if (!sUserLoaded) InstallKeyNames();
-  const bool first = !sUserLoaded;
-  sUserLoaded = true;
-  if (sPath.empty()) return;
+  if (f.loaded && now - f.checked < std::chrono::seconds(1)) return;
+  f.checked = now;
+  const bool first = !f.loaded;
+  if (first) InstallKeyNames();
+  f.loaded = true;
+  if (f.path.empty()) return;
   std::error_code ec;
-  const auto time = std::filesystem::last_write_time(sPath, ec);
+  const auto time = std::filesystem::last_write_time(f.path, ec);
   if (ec) {
     // No file (or it was deleted): no user bindings.
-    if (sUserTime != std::filesystem::file_time_type{}) {
-      sUserTime = {};
-      PublishLocked({});
+    if (f.time != std::filesystem::file_time_type{}) {
+      f.time = {};
+      PublishLocked(f, {});
     }
     return;
   }
-  if (!first && time == sUserTime) return;
-  sUserTime = time;
-  std::ifstream file(sPath, std::ios::binary);
+  if (!first && time == f.time) return;
+  f.time = time;
+  std::ifstream file(f.path, std::ios::binary);
   if (!file) return;
   // A bindings file is a few KiB; a huge one is a mistake, not a config.
   constexpr std::streamsize kMaxControlsBytes = 1 << 20;
@@ -790,21 +824,21 @@ void RefreshLocked() {
   file.read(content.data(), kMaxControlsBytes + 1);
   content.resize(static_cast< size_t >(file.gcount()));
   if (static_cast< std::streamsize >(content.size()) > kMaxControlsBytes) {
-    std::fprintf(stderr, "[input] %s is larger than 1 MiB; ignored\n", sPath.c_str());
+    std::fprintf(stderr, "[input] %s is larger than 1 MiB; ignored\n", f.path.c_str());
     return;
   }
   PortInput::UserBindings parsed;
   std::string error;
   int dropped = 0;
   if (PortInput::ParseUserBindings(content, parsed, &error, &dropped)) {
-    std::fprintf(stderr, "[input] %s loaded (%zu profiles)\n", sPath.c_str(), parsed.profiles.size());
+    std::fprintf(stderr, "[input] %s loaded (%zu profiles)\n", f.path.c_str(), parsed.profiles.size());
     if (dropped > 0) {
-      std::fprintf(stderr, "[input] %s: skipped %d beam_shift row(s)\n", sPath.c_str(), dropped);
+      std::fprintf(stderr, "[input] %s: skipped %d beam_shift row(s)\n", f.path.c_str(), dropped);
     }
-    PublishLocked(std::move(parsed));
+    PublishLocked(f, std::move(parsed));
   } else {
     // A half-finished hand edit keeps the bindings that were loaded before it.
-    std::fprintf(stderr, "[input] %s ignored, keeping the last good bindings: %s\n", sPath.c_str(), error.c_str());
+    std::fprintf(stderr, "[input] %s ignored, keeping the last good bindings: %s\n", f.path.c_str(), error.c_str());
   }
 }
 
@@ -812,32 +846,42 @@ void RefreshLocked() {
 
 void Initialize(const std::string& userDirectory) {
   std::lock_guard lock(sUserMutex);
-  sPath = userDirectory.empty() ? std::string() : userDirectory + "/controls.toml";
-  sUserLoaded = false;
+  for (int i = 0; i < kUserFiles; ++i) {
+    UserFile& f = sFiles[i];
+    if (userDirectory.empty()) {
+      f.path.clear();
+    } else {
+      f.path = userDirectory + (i == 0 ? std::string("/controls.toml") : "/controls_p" + std::to_string(i + 1) + ".toml");
+    }
+    f.loaded = false;
+  }
 }
 
-const std::string& UserBindingsPath() { return sPath; }
+const std::string& UserBindingsPath(int port) { return FileFor(port).path; }
 
-std::shared_ptr<const PortInput::UserBindings> UserBindings() {
+std::shared_ptr<const PortInput::UserBindings> UserBindings(int port) {
   std::lock_guard lock(sUserMutex);
-  RefreshLocked();
-  return sUser;
+  UserFile& f = FileFor(port);
+  RefreshLocked(f);
+  return f.user;
 }
 
-uint64_t UserBindingsVersion() {
+uint64_t UserBindingsVersion(int port) {
   std::lock_guard lock(sUserMutex);
-  RefreshLocked();
-  return sUserVersion;
+  UserFile& f = FileFor(port);
+  RefreshLocked(f);
+  return f.version;
 }
 
-bool SetUserBindings(const PortInput::UserBindings& bindings) {
+bool SetUserBindings(const PortInput::UserBindings& bindings, int port) {
   std::lock_guard lock(sUserMutex);
-  RefreshLocked();
-  if (sPath.empty()) {
-    PublishLocked(bindings);
+  UserFile& f = FileFor(port);
+  RefreshLocked(f);
+  if (f.path.empty()) {
+    PublishLocked(f, bindings);
     return false;
   }
-  const std::string tmp = sPath + ".tmp";
+  const std::string tmp = f.path + ".tmp";
   std::error_code ec;
   bool written = false;
   {
@@ -847,14 +891,14 @@ bool SetUserBindings(const PortInput::UserBindings& bindings) {
       written = static_cast<bool>(file.flush());
     }
   }
-  if (written) std::filesystem::rename(tmp, sPath, ec);
+  if (written) std::filesystem::rename(tmp, f.path, ec);
   // The bindings apply for the session either way; only the file can fail.
-  PublishLocked(bindings);
+  PublishLocked(f, bindings);
   if (!written || ec) {
     std::filesystem::remove(tmp, ec);
     return false;
   }
-  sUserTime = std::filesystem::last_write_time(sPath, ec);
+  f.time = std::filesystem::last_write_time(f.path, ec);
   return true;
 }
 
@@ -918,11 +962,11 @@ static void PublishTouchBound(const Profile& profile) {
   for (int i = 0; i < kTouchRowCodes; ++i) sTouchBallRow[i].store(uint16_t(rows[i]), std::memory_order_relaxed);
 }
 
-bool ActivePad(std::string& guid, std::string& type, std::string& name) {
+bool ActivePad(std::string& guid, std::string& type, std::string& name, int port) {
   guid.clear();
   type.clear();
   name.clear();
-  const s32 index = PADGetIndexForPort(kPort);
+  const s32 index = PADGetIndexForPort(static_cast<u32>(port));
   SDL_Gamepad* pad = index >= 0 ? PADGetSDLGamepadForIndex(static_cast<u32>(index)) : nullptr;
   if (pad == nullptr) return false;
   char buf[33] = {};
@@ -933,19 +977,30 @@ bool ActivePad(std::string& guid, std::string& type, std::string& name) {
   return true;
 }
 
-SActiveProfiles ActiveUserProfiles() {
+SActiveProfiles ActiveUserProfiles(int port) {
   std::string guid;
   std::string type;
   std::string name;
-  ActivePad(guid, type, name);
+  ActivePad(guid, type, name, port);
   SActiveProfiles active;
-  active.bindings = UserBindings();
+  active.bindings = UserBindings(port);
   active.sel = PortInput::Select(*active.bindings, guid, type);
   return active;
 }
 
-void ReadRaw(PortInput::RawState& raw) {
+void ReadRaw(PortInput::RawState& raw, int port) {
   raw = PortInput::RawState{};
+  if (port > 0) {
+    // Players 2-4 have only their pad.
+    PADRawState pad{};
+    if (PADGetRawState(static_cast<u32>(port), &pad)) {
+      raw.padButtons = pad.buttons;
+      for (int a = 0; a < PAD_RAW_AXIS_COUNT && a < PortInput::kPadAxisCount; ++a) {
+        raw.padAxes[a] = std::clamp(static_cast<float>(pad.axes[a]) / 32767.f, -1.f, 1.f);
+      }
+    }
+    return;
+  }
   int numKeys = 0;
   if (const bool* keys = SDL_GetKeyboardState(&numKeys)) {
     for (int i = 0; i < numKeys && i < PortInput::kKeyCount; ++i) {
@@ -986,11 +1041,18 @@ const Profile& BaseKeyboardProfile() {
   return sProfile;
 }
 
-static void BindMenuDefaults(Profile& p);
+static void BindMenuDefaults(Profile& p, u32 port = 0);
 
-void BuildBaseProfile(Profile& out) {
+void BuildBaseProfile(Profile& out, int port) {
   out = Profile{};
-  BindController(out);
+  if (port > 0) {
+    // Players 2-4: their pad's mapping, its beam chords under their twin stick, and the Menu rows.
+    BindController(out, static_cast<u32>(port));
+    BindBeamChords(out, static_cast<u32>(port));
+    BindMenuDefaults(out, static_cast<u32>(port));
+    return;
+  }
+  BindController(out, kPort);
   const Profile& keyboard = BaseKeyboardProfile();
   out.bindings.insert(out.bindings.end(), keyboard.bindings.begin(), keyboard.bindings.end());
   BindPortControls(out);
@@ -1015,11 +1077,20 @@ static void KeepPortMenuReachable(Profile& p) {
   Bind(p, Action::PortMenu, Make(Device::Key, SDL_SCANCODE_F1));
 }
 
-void BuildProfile(Profile& out) {
-  BuildBaseProfile(out);
-  const SActiveProfiles user = ActiveUserProfiles();
+void BuildProfile(Profile& out, int port) {
+  BuildBaseProfile(out, port);
+  const SActiveProfiles user = ActiveUserProfiles(port);
   if (user.sel.base != nullptr) PortInput::Overlay(out, *user.sel.base);
   if (user.sel.pad != nullptr) PortInput::Overlay(out, *user.sel.pad);
+  if (port > 0) {
+    // A hand-edited controls_p<N>.toml may carry keys, touch or the port's own actions: Players
+    // 2-4 play only their pad, and the port's actions and custom actions are Player 1's.
+    std::erase_if(out.bindings, [](const Binding& b) {
+      return PortInput::BindingFamily(b) != PortInput::Family::Pad || IsPortAction(b.action) ||
+             PortInput::IsCustom(b.action);
+    });
+    return;
+  }
   PublishTouchBound(out);
   // After the overlay: a controls.toml touch binding of the same action must not
   // drop the layout's own buttons. Re-read every poll, so an added one works at once.
@@ -1058,9 +1129,9 @@ static const SMenuAction* FindMenuAction(Action a, bool menu) {
   return nullptr;
 }
 
-// Port 0's pad, unless it's missing or the touch overlay's virtual one.
-static SDL_Gamepad* RealPad() {
-  const s32 index = PADGetIndexForPort(kPort);
+// A port's pad, unless it's missing or the touch overlay's virtual one.
+static SDL_Gamepad* RealPad(u32 port) {
+  const s32 index = PADGetIndexForPort(port);
   SDL_Gamepad* pad = index >= 0 ? PADGetSDLGamepadForIndex(static_cast<u32>(index)) : nullptr;
   return pad == nullptr || SDL_IsJoystickVirtual(SDL_GetGamepadID(pad)) ? nullptr : pad;
 }
@@ -1069,10 +1140,10 @@ static SDL_Gamepad* RealPad() {
 // out, the triggers page and zoom), less the buttons and axes the pad lacks (a
 // GameCube-typed pad's L/R clicks, say, so L/R fall back to the trigger click).
 // Without a pad, the standard pad's, so a remap page shows what one would get.
-static void BindMenuDefaults(Profile& p) {
+static void BindMenuDefaults(Profile& p, u32 port) {
   PADDefaultMapping def;
-  SDL_Gamepad* pad = RealPad();
-  PADGetDefaultMapping(&def, pad != nullptr ? PADGetControllerType(kPort) : PAD_TYPE_STANDARD);
+  SDL_Gamepad* pad = RealPad(port);
+  PADGetDefaultMapping(&def, pad != nullptr ? PADGetControllerType(port) : PAD_TYPE_STANDARD);
   if (pad != nullptr) {
     for (PADButtonMapping& m : def.buttons) {
       if (m.nativeButton < SDL_GAMEPAD_BUTTON_COUNT &&
@@ -1089,7 +1160,7 @@ static void BindMenuDefaults(Profile& p) {
     }
   }
   Profile standard;
-  const PADDeadZones* dz = PADGetDeadZones(kPort);
+  const PADDeadZones* dz = PADGetDeadZones(port);
   BindMapping(standard, def.buttons, PAD_BUTTON_COUNT, def.axes, PAD_AXIS_COUNT,
               dz == nullptr || dz->emulateTriggers);
   for (Binding b : standard.bindings) {
@@ -1103,7 +1174,10 @@ static void BindMenuDefaults(Profile& p) {
 
 // As in MP1, only active touch input keeps the gameplay layout in menus.
 // A saved touch setting must not disable separate bindings on desktop or a pad.
-static bool MenuButtonsActive() { return PortOverlay::MenuStandardButtons() && !PortTouch::Active(); }
+// Players 2-4 have no touch.
+static bool MenuButtonsActive(int port = 0) {
+  return PortOverlay::MenuStandardButtons() && (port > 0 || !PortTouch::Active());
+}
 
 // With the option on, menus and the map read the Menu rows instead of the gameplay
 // layout: pad bindings meant for everywhere stop applying there for the buttons
@@ -1114,9 +1188,9 @@ static bool MenuButtonsActive() { return PortOverlay::MenuStandardButtons() && !
 // of what its input and A do in gameplay; the other gameplay rows (the held lock)
 // still apply there (#11). With it off, the rows do nothing. Only the game's poll applies this, so a remap page lists the bindings
 // as saved.
-static void ApplyMenuButtons(Profile& p) {
+static void ApplyMenuButtons(Profile& p, int port = 0) {
   const auto isMenu = [](const Binding& b) { return FindMenuAction(b.action, true) != nullptr; };
-  if (!MenuButtonsActive()) {
+  if (!MenuButtonsActive(port)) {
     std::erase_if(p.bindings, isMenu);
     return;
   }
@@ -1236,7 +1310,8 @@ bool PromptAxisInput(PADAxis axis, PortInput::Family family, Input& out) {
   return PromptInputFor({PadAxisAction(axis)}, family, out);
 }
 
-PADStatus Synthesize(const PortInput::Output& out) {
+// `radial`: Player 1's radial selectors own the C-stick while they capture.
+static PADStatus SynthesizeStatus(const PortInput::Output& out, bool radial) {
   PADStatus s{};
   static constexpr unsigned kButtons[] = {PAD_BUTTON_A,    PAD_BUTTON_B,     PAD_BUTTON_X,    PAD_BUTTON_Y,
                                           PAD_TRIGGER_Z,   PAD_BUTTON_START, PAD_TRIGGER_L,   PAD_TRIGGER_R,
@@ -1252,7 +1327,7 @@ PADStatus Synthesize(const PortInput::Output& out) {
   s.stickY = StickY(out.Value(Action::MainDown), out.Value(Action::MainUp));
   s.substickX = StickX(out.Value(Action::CRight), out.Value(Action::CLeft));
   s.substickY = StickY(out.Value(Action::CDown), out.Value(Action::CUp));
-  if (PortRadial::Capturing() || sConsumeRadialPoll) s.substickX = s.substickY = 0;
+  if (radial && (PortRadial::Capturing() || sConsumeRadialPoll)) s.substickX = s.substickY = 0;
   s.triggerLeft = Trigger(std::max(out.Value(Action::LAnalog), out.Value(Action::MenuLAnalog)),
                           (s.button & PAD_TRIGGER_L) != 0);
   s.triggerRight = Trigger(std::max(out.Value(Action::RAnalog), out.Value(Action::MenuRAnalog)),
@@ -1263,12 +1338,38 @@ PADStatus Synthesize(const PortInput::Output& out) {
   return s;
 }
 
+PADStatus Synthesize(const PortInput::Output& out) { return SynthesizeStatus(out, true); }
+
+// Aurora's extended buttons, which have no engine action (nothing in the game reads them).
+static void AddExtButtons(PADStatus& status, uint32_t padButtons) {
+  static constexpr std::pair<SDL_GamepadButton, PADExtButton> kExt[] = {
+      {SDL_GAMEPAD_BUTTON_BACK, PAD_BUTTON_BACK},
+      {SDL_GAMEPAD_BUTTON_GUIDE, PAD_BUTTON_GUIDE},
+      {SDL_GAMEPAD_BUTTON_MISC1, PAD_BUTTON_MISC1},
+      {SDL_GAMEPAD_BUTTON_MISC2, PAD_BUTTON_MISC2},
+      {SDL_GAMEPAD_BUTTON_MISC3, PAD_BUTTON_MISC3},
+      {SDL_GAMEPAD_BUTTON_MISC4, PAD_BUTTON_MISC4},
+      {SDL_GAMEPAD_BUTTON_MISC5, PAD_BUTTON_MISC5},
+      {SDL_GAMEPAD_BUTTON_MISC6, PAD_BUTTON_MISC6},
+      {SDL_GAMEPAD_BUTTON_RIGHT_PADDLE1, PAD_BUTTON_RIGHT_PADDLE1},
+      {SDL_GAMEPAD_BUTTON_LEFT_PADDLE1, PAD_BUTTON_LEFT_PADDLE1},
+      {SDL_GAMEPAD_BUTTON_RIGHT_PADDLE2, PAD_BUTTON_RIGHT_PADDLE2},
+      {SDL_GAMEPAD_BUTTON_LEFT_PADDLE2, PAD_BUTTON_LEFT_PADDLE2},
+      {SDL_GAMEPAD_BUTTON_RIGHT_STICK, PAD_BUTTON_RIGHT_STICK},
+      {SDL_GAMEPAD_BUTTON_LEFT_STICK, PAD_BUTTON_LEFT_STICK},
+      {SDL_GAMEPAD_BUTTON_TOUCHPAD, PAD_BUTTON_TOUCHPAD},
+  };
+  for (const auto& [native, button] : kExt) {
+    if ((padButtons >> native) & 1u) status.extButton |= button;
+  }
+}
+
 // Twin stick aims with the right stick, so the R trigger's free look (a stand-still mode) only
 // gets in the way, most of all with Fire moved onto RT (issue #12): out of the Morph Ball, where R
 // is the Spider Ball, the controller's R trigger stops pressing R and pulling the R analog. Free
 // look on any other input (the presets' right stick click, a key) stays.
-static void ApplyTwinStickFreeAim(Profile& p, uint16_t contexts) {
-  if (!PortMouse::StickEnabled() || (contexts & PortInput::kCtxMorphBall) != 0) return;
+static void ApplyTwinStickFreeAim(Profile& p, uint16_t contexts, int player = 0) {
+  if (!PortMouse::StickEnabled(player) || (contexts & PortInput::kCtxMorphBall) != 0) return;
   const auto rTrigger = [](const Input& in) {
     if (in.device == Device::PadAxis) return in.code == SDL_GAMEPAD_AXIS_RIGHT_TRIGGER;
     return in.device == Device::PadButton &&
@@ -1341,30 +1442,44 @@ SPoll Poll(unsigned mouseHeld, bool focused) {
     RouteDirectActions(out, nowMs / 1000.0);
     r.status = Synthesize(out);
   }
-  // Aurora's extended buttons, which have no engine action (nothing in the game reads them).
-  static constexpr std::pair<SDL_GamepadButton, PADExtButton> kExt[] = {
-      {SDL_GAMEPAD_BUTTON_BACK, PAD_BUTTON_BACK},
-      {SDL_GAMEPAD_BUTTON_GUIDE, PAD_BUTTON_GUIDE},
-      {SDL_GAMEPAD_BUTTON_MISC1, PAD_BUTTON_MISC1},
-      {SDL_GAMEPAD_BUTTON_MISC2, PAD_BUTTON_MISC2},
-      {SDL_GAMEPAD_BUTTON_MISC3, PAD_BUTTON_MISC3},
-      {SDL_GAMEPAD_BUTTON_MISC4, PAD_BUTTON_MISC4},
-      {SDL_GAMEPAD_BUTTON_MISC5, PAD_BUTTON_MISC5},
-      {SDL_GAMEPAD_BUTTON_MISC6, PAD_BUTTON_MISC6},
-      {SDL_GAMEPAD_BUTTON_RIGHT_PADDLE1, PAD_BUTTON_RIGHT_PADDLE1},
-      {SDL_GAMEPAD_BUTTON_LEFT_PADDLE1, PAD_BUTTON_LEFT_PADDLE1},
-      {SDL_GAMEPAD_BUTTON_RIGHT_PADDLE2, PAD_BUTTON_RIGHT_PADDLE2},
-      {SDL_GAMEPAD_BUTTON_LEFT_PADDLE2, PAD_BUTTON_LEFT_PADDLE2},
-      {SDL_GAMEPAD_BUTTON_RIGHT_STICK, PAD_BUTTON_RIGHT_STICK},
-      {SDL_GAMEPAD_BUTTON_LEFT_STICK, PAD_BUTTON_LEFT_STICK},
-      {SDL_GAMEPAD_BUTTON_TOUCHPAD, PAD_BUTTON_TOUCHPAD},
-  };
-  for (const auto& [native, button] : kExt) {
-    if ((raw.padButtons >> native) & 1u) r.status.extButton |= button;
-  }
+  AddExtButtons(r.status, raw.padButtons);
   // MP1 also adjusts A and Escape while the scan text is up: that context needs the scan
   // soft-pause (above) and Escape is no pointer-menu key here.
   return r;
+}
+
+bool PollPlayer(int port, PADStatus& status) {
+  status = PADStatus{};
+  if (port <= 0 || port >= kUserFiles || PADGetIndexForPort(static_cast<u32>(port)) < 0) return false;
+  if (gpGameState == nullptr || static_cast<int>(gpGameState->GetGameMode().GetNumPlayers()) <= port) return false;
+  static Profile sProfiles[kUserFiles];
+  static PortInput::Runtime sRuntimes[kUserFiles];
+  static bool sInit[kUserFiles] = {};
+  Profile& profile = sProfiles[port];
+  PortInput::Runtime& runtime = sRuntimes[port];
+
+  Profile next;
+  BuildProfile(next, port);
+  ApplyMenuButtons(next, port);
+  PortInput::ApplyBallButtons(next);
+  const uint16_t contexts = GameContexts(port);
+  ApplyTwinStickFreeAim(next, contexts, port);
+  if (!sInit[port] || next != profile) {
+    profile = std::move(next);
+    runtime.SetProfile(&profile);
+    sInit[port] = true;
+  }
+
+  PortInput::RawState raw;
+  FillPadState(raw, static_cast<u32>(port));
+  const double nowMs =
+      std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();
+  const PortInput::Output& out = runtime.Poll(raw, contexts, nowMs, 0);
+  // While F1 is open the picks wait, as Player 1's do; PortPumpEvents blocks the pads.
+  if (!PortOverlay::Visible() && !PortInputRemap::Capturing()) RoutePlayerActions(out, port);
+  status = SynthesizeStatus(out, false);
+  AddExtButtons(status, raw.padButtons);
+  return true;
 }
 
 PADStatus Poll() {

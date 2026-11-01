@@ -95,11 +95,16 @@ std::atomic< bool > sDeviceXbox{false};
 
 // What the UI thread asks of the game; BeginFrame applies it on the game thread.
 std::atomic< int > sWheelState{0};
-std::atomic< bool > sMorphed{false};
+// Per player: Players 2-4's pads route their beam/visor picks, Spring Ball and Morph Ball rows
+// through these too ([0] is Player 1's, the overlay's).
+constexpr int kPlayers = 4;
+std::atomic< bool > sMorphed[kPlayers]{};
 std::atomic< bool > sScanTextUp{false};
 std::atomic<bool> sRadialTouchForeground{true};
-std::atomic< int > sPendingVisor{-1};
-std::atomic< int > sPendingBeam{-1};
+std::atomic< int > sPendingVisor[kPlayers]{-1, -1, -1, -1};
+std::atomic< int > sPendingBeam[kPlayers]{-1, -1, -1, -1};
+
+bool ValidPlayer(int player) { return player >= 0 && player < kPlayers; }
 std::atomic< bool > sBeamShift{false};
 std::atomic< bool > sTurboHeld{false};
 // The D-pad buttons the beam shift swallowed on their press, so their release is swallowed too
@@ -403,12 +408,14 @@ CPlayerState::EItemType BeamItemOf(int item) {
 // A requested visor or beam, on the game thread. The console's path (`visor`/`beam` in
 // platform/port_console.cpp), except that the scan visor's gun holster is not done: that needs
 // the CStateManager, which nothing outside src/ holds, and CPlayerGun skips drawing in the scan
-// visor regardless.
-void ApplyRequests(CPlayerState* state) {
-  const int visor = PortRadial::TakeRequest(PortRadial::kVisor,
-      sPendingVisor.exchange(-1, std::memory_order_acq_rel));
-  const int beam = PortRadial::TakeRequest(PortRadial::kBeam,
-      sPendingBeam.exchange(-1, std::memory_order_acq_rel));
+// visor regardless. Players 2-4 (`player` > 0) have no radial.
+void ApplyRequests(CPlayerState* state, int player = 0) {
+  int visor = sPendingVisor[player].exchange(-1, std::memory_order_acq_rel);
+  int beam = sPendingBeam[player].exchange(-1, std::memory_order_acq_rel);
+  if (player == 0) {
+    visor = PortRadial::TakeRequest(PortRadial::kVisor, visor);
+    beam = PortRadial::TakeRequest(PortRadial::kBeam, beam);
+  }
   if (state == nullptr) {
     return;
   }
@@ -443,7 +450,7 @@ int BuildWheelState(CPlayerState* state) {
   bits |= (visor >= 0 && visor < 4 ? visor : 0) << 8;
   bits |= (beam >= 0 && beam < 4 ? beam : 0) << 10;
   // Bit 13: morphed (published by CPlayer::Update); the Java view swaps to its Ball page.
-  if (sMorphed.load(std::memory_order_acquire)) {
+  if (sMorphed[0].load(std::memory_order_acquire)) {
     bits |= 1 << 13;
   }
   return bits;
@@ -554,6 +561,11 @@ void BeginFrame() {
   PortRadial::SetTouchContext(player && ControlsEnabled() && !OverlayVisible() && !PortMouse::UiActive() &&
                              sRadialTouchForeground.load(std::memory_order_acquire));
   ApplyRequests(player);
+  for (int p = 1; p < kPlayers; ++p) {
+    const bool inMatch =
+        player != nullptr && p < static_cast< int >(gpGameState->GetGameMode().GetNumPlayers());
+    ApplyRequests(inMatch ? gpGameState->PlayerState(p).GetPtr() : nullptr, p);
+  }
   sWheelState.store(BuildWheelState(player), std::memory_order_release);
   UpdateTurbo(Turbo());
 
@@ -611,7 +623,7 @@ void SetAimDown(bool down) { PortMouse::SetTouchAimDown(down); }
 
 // MP1's TouchSpringSwipe: the swipe both finishes the aim flick and asks CMorphBall for a Spring
 // Ball, which it does only on the ground in the ball with Spring Ball on, so elsewhere it expires.
-std::atomic< uint64_t > sSpringRequestUntilNs{0};
+std::atomic< uint64_t > sSpringRequestUntilNs[kPlayers]{};
 constexpr uint64_t kSpringRequestNs = 120'000'000;
 
 void SpringSwipe() {
@@ -620,13 +632,17 @@ void SpringSwipe() {
   RequestSpringBall(kSpringRequestNs * 1e-9f);
 }
 
-bool SpringBallRequested() { return SDL_GetTicksNS() < sSpringRequestUntilNs.load(); }
-
-void RequestSpringBall(float seconds) {
-  sSpringRequestUntilNs.store(SDL_GetTicksNS() + uint64_t(seconds * 1e9f));
+bool SpringBallRequested(int player) {
+  return ValidPlayer(player) && SDL_GetTicksNS() < sSpringRequestUntilNs[player].load();
 }
 
-void ClearSpringBallRequest() { sSpringRequestUntilNs.store(0); }
+void RequestSpringBall(float seconds, int player) {
+  if (ValidPlayer(player)) sSpringRequestUntilNs[player].store(SDL_GetTicksNS() + uint64_t(seconds * 1e9f));
+}
+
+void ClearSpringBallRequest(int player) {
+  if (ValidPlayer(player)) sSpringRequestUntilNs[player].store(0);
+}
 
 bool AimEnabled() { return Read(&Settings::aim); }
 
@@ -712,8 +728,10 @@ void SetOpacity(float percent) { SetNumber(&Settings::opacity, percent, 10.f, 10
 void SetAimSpeed(float pxPerDp) { SetNumber(&Settings::aimSpeed, pxPerDp, 0.5f, 6.f); }
 void SetAimSpeedY(float pxPerDp) { SetNumber(&Settings::aimSpeedY, pxPerDp, 0.5f, 6.f); }
 
-void SetMorphed(bool morphed) { sMorphed.store(morphed, std::memory_order_release); }
-bool Morphed() { return sMorphed.load(std::memory_order_acquire); }
+void SetMorphed(bool morphed, int player) {
+  if (ValidPlayer(player)) sMorphed[player].store(morphed, std::memory_order_release);
+}
+bool Morphed(int player) { return ValidPlayer(player) && sMorphed[player].load(std::memory_order_acquire); }
 void SetScanTextUp(bool up) { sScanTextUp.store(up, std::memory_order_release); }
 bool ScanTextUp() { return sScanTextUp.load(std::memory_order_acquire); }
 
@@ -745,9 +763,13 @@ void CycleLayout() {
 
 int WheelState() { return sWheelState.load(std::memory_order_acquire); }
 
-void RequestVisor(int visor) { sPendingVisor.store(visor, std::memory_order_release); }
+void RequestVisor(int visor, int player) {
+  if (ValidPlayer(player)) sPendingVisor[player].store(visor, std::memory_order_release);
+}
 
-void RequestBeam(int beam) { sPendingBeam.store(beam, std::memory_order_release); }
+void RequestBeam(int beam, int player) {
+  if (ValidPlayer(player)) sPendingBeam[player].store(beam, std::memory_order_release);
+}
 
 namespace {
 struct WheelIconData {

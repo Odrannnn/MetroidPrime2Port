@@ -50,7 +50,8 @@ struct SPoll {
 // The user directory, from main: controls.toml lives there. Nothing is read until first use.
 void Initialize(const std::string& userDirectory);
 // `<user>/controls.toml`, or "" when the run has no user directory (nothing is saved then).
-const std::string& UserBindingsPath();
+// `port` 1-3: Players 2-4's `<user>/controls_p<N>.toml`, the same way.
+const std::string& UserBindingsPath(int port = 0);
 
 // One poll of port 0: reads the devices, rebuilds the profile when the bindings
 // changed, runs the engine and synthesises the status. mouseHeld: the held mouse
@@ -59,6 +60,11 @@ SPoll Poll(unsigned mouseHeld, bool focused);
 // The same, reading mouseHeld and focus from SDL: pad 0's status, err always PAD_ERR_NONE.
 // Call once per loop iteration, before the game reads the pad.
 PADStatus Poll();
+// The same for Players 2-4 (`port` 1-3) in a match that has them: their own pad through their
+// own bindings (controls_p<N>.toml), with their beam and visor picks and Spring Ball sent to
+// their player. False, with nothing done, without a pad on the port or a player for it; the
+// pad then reads Aurora's own mapping.
+bool PollPlayer(int port, PADStatus& status);
 
 // Runs the port's own actions (port menu, screenshot) from their bindings; called once a
 // loop iteration from port_events.cpp, so they work while the game is paused.
@@ -88,31 +94,32 @@ float GyroCalibrationConfidence();
 // first use and reloaded when the file changes (checked at most once a second). A
 // parse error is logged and keeps the last good bindings. Thread-safe; the snapshot
 // stays valid while held.
-std::shared_ptr<const PortInput::UserBindings> UserBindings();
+// `port` 1-3 picks Players 2-4's file instead.
+std::shared_ptr<const PortInput::UserBindings> UserBindings(int port = 0);
 // Changes whenever the bindings do (a load, a reload or SetUserBindings).
-uint64_t UserBindingsVersion();
+uint64_t UserBindingsVersion(int port = 0);
 // Writes controls.toml (temp + rename) and publishes the new set; the set applies for the
 // session even when the write fails. False when there is no user directory or the write failed.
-bool SetUserBindings(const PortInput::UserBindings& bindings);
-// The user profiles that apply now: the base one and port 0's pad (GUID, then type),
+bool SetUserBindings(const PortInput::UserBindings& bindings, int port = 0);
+// The user profiles that apply now: the base one and the port's pad (GUID, then type),
 // with the snapshot they point into.
 struct SActiveProfiles {
   std::shared_ptr<const PortInput::UserBindings> bindings;
   PortInput::Selection sel;
 };
-SActiveProfiles ActiveUserProfiles();
+SActiveProfiles ActiveUserProfiles(int port = 0);
 // The touch overlay's controls (Android): whether one is held, and whether a user
 // binding reads it (then the overlay sends only the touch code, not its pad button).
 void SetTouchControl(int control, bool down);
 bool TouchControlBound(int control);
 // The Morph Ball row a stock control does in the ball now, or None.
 PortInput::Action TouchBallRow(int control);
-// Port 0's pad: its SDL GUID (32 hex digits), gamepad type string and name; false
+// The port's pad: its SDL GUID (32 hex digits), gamepad type string and name; false
 // (all empty) without one.
-bool ActivePad(std::string& guid, std::string& type, std::string& name);
-// The devices as they are, for an input capture: keys, port 0's pad (axes without
-// deadzones) and SDL's mouse buttons (code kMouseKeySlot..).
-void ReadRaw(PortInput::RawState& raw);
+bool ActivePad(std::string& guid, std::string& type, std::string& name, int port = 0);
+// The devices as they are, for an input capture: keys, the port's pad (axes without
+// deadzones) and SDL's mouse buttons (code kMouseKeySlot..). Ports 1-3 read only their pad.
+void ReadRaw(PortInput::RawState& raw, int port = 0);
 
 // A connected controller (virtual touch pads excluded): SDL GUID, gamepad type
 // string and name.
@@ -125,10 +132,11 @@ std::vector<SPadInfo> ConnectedPads();
 // The port's keyboard + mouse layout, before any user change (the Controls page's defaults).
 const PortInput::Profile& BaseKeyboardProfile();
 // The profile without the user's bindings: what each action inherits on a remap page.
-void BuildBaseProfile(PortInput::Profile& out);
+// Ports 1-3 (Players 2-4): their pad's mapping, beam chords and Menu rows only.
+void BuildBaseProfile(PortInput::Profile& out, int port = 0);
 
 // The profile with the user's bindings on top (exposed for tests and a remap UI).
-void BuildProfile(PortInput::Profile& out);
+void BuildProfile(PortInput::Profile& out, int port = 0);
 // For the button prompts: the single input of the last polled profile that presses a PAD
 // button or pushes a PAD axis from `family`, preferring one that applies in the current
 // context. False when none.

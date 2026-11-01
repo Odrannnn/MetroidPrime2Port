@@ -433,6 +433,10 @@ uint64_t sNextFrameDeadline = 0;
 // PADRead), but a loop iteration can run several game ticks, each with its own PADRead.
 PADStatus sPad0{};
 bool sPad0Valid = false;
+// Players 2-4's pads in a multiplayer match, read through their own controls_p<N>.toml (index =
+// port); invalid while the port is not in play, so Aurora reads that pad itself.
+PADStatus sPlayerPads[4]{};
+bool sPlayerPadValid[4]{};
 } // namespace
 
 // Called before every game tick's PADRead: re-arms pad 0 with this iteration's state. Without it
@@ -443,6 +447,9 @@ bool sPad0Valid = false;
 void PortRearmPad0() {
   if (sPad0Valid) {
     PADSetPortOverride(0, &sPad0);
+  }
+  for (u32 port = 1; port < 4; ++port) {
+    if (sPlayerPadValid[port]) PADSetPortOverride(port, &sPlayerPads[port]);
   }
 }
 
@@ -627,6 +634,14 @@ bool PortPumpEvents() {
   // PollPortActions above is not gated: the F1 toggle, screenshot and the remap capture still work.
   PADBlockInput(PortOverlay::Visible());
   PADSetPortOverride(0, &sPad0);
+  // Players 2-4 (a multiplayer match): each pad through its player's own bindings, gated alike.
+  static PortInputGate::Gate<PADStatus> sPlayerGates[4];
+  for (u32 port = 1; port < 4; ++port) {
+    sPlayerPadValid[port] = PortInputDevices::PollPlayer(port, sPlayerPads[port]);
+    if (!sPlayerPadValid[port]) continue;
+    sPlayerGates[port].Apply(PortOverlay::Visible(), sPlayerPads[port]);
+    PADSetPortOverride(port, &sPlayerPads[port]);
+  }
   // A device or pack change requested since the last iteration swaps the replacement set here,
   // and the binding icons follow the input used last (both throttle themselves).
   PortTextures::Poll();
