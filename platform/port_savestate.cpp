@@ -592,7 +592,7 @@ bool LoadState(CStateManager& mgr, const State& s, int slot, const std::string& 
   const CAssetId liveWorld = gpGameState->CurrentWorldAssetId();
   SwapGameState(s);
   // Rebuild the areas with the layers their objects were spawned with (as each area lists them).
-  DisarmSpawnLayers();
+  DisarmSpawnLayers(false);
   if (PortOverlay::SaveStateRoomState()) {
     ArmSpawnLayers(s.roomState, static_cast< uint32_t >(s.worldId));
   }

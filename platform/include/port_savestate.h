@@ -228,7 +228,9 @@ void NoteAreaSpawnEnd(CWorldLayerState& layers, int area);
 // True while a room restore is pending and the saved room has objects of this layer: its unload waits.
 bool LayerHeld(int area, int layer);
 void ArmSpawnLayers(const RoomState& room, uint32_t worldId);
-void DisarmSpawnLayers();
+// restoreLayers false only forgets: a new load swaps in its game state first, and an earlier
+// unfinished restore's stream bits must not be written into it.
+void DisarmSpawnLayers(bool restoreLayers = true);
 // CStateManager::AreaLoaded: true while a pending room restore is going to apply this area, whose
 // objects carry what the mailbox's relayed messages did (it would send them a second time).
 bool RoomRestoreOwnsArea(CStateManager& mgr, int area);

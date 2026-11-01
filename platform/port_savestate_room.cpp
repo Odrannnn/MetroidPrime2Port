@@ -1326,11 +1326,11 @@ void ArmSpawnLayers(const RoomState& room, uint32_t worldId) {
   }
 }
 
-void DisarmSpawnLayers() {
+void DisarmSpawnLayers(bool restoreLayers) {
   // The restore is over: put the stream's own layer flags back. The swapped bits only served the
   // rebuild; left in place they lose a layer the saved game had switched on after the room was built
   // (issue #46: the 2nd Pass layer of Battleground was off again, so its key event replayed).
-  if (gpGameState != nullptr) {
+  if (restoreLayers && gpGameState != nullptr) {
     for (const SpawnOverride& o : sOverrides) {
       if (!o.swapped) {
         continue;
