@@ -1091,7 +1091,8 @@ void CmdMpForce(CStateManager&, const Args& args, std::string& out) {
 // takes the end-of-match path: fade, results screen, back to the front end).
 void CmdMpEnd(CStateManager& mgr, const Args&, std::string& out) {
   CGameMode& mode = gpGameState->GetGameMode();
-  if (!mgr.IsMultiplayer() || mode.IsGameOver()) {
+  const int type = mode.GetGameModeType();  // not IsMultiplayer: `mpforce` fakes that in campaign
+  if (type == 'SNGL' || type == 'FRND' || mode.IsGameOver()) {
     out += "not in a running multiplayer match\n";
     return;
   }
