@@ -4,10 +4,13 @@
 #include "port_rando_world.h"
 #include "port_randomizer.h"
 
+#include "MetroidPrime/CMapWorldInfo.hpp"
 #include "MetroidPrime/CScriptMailbox.hpp"
 #include "MetroidPrime/CWorldLayerState.hpp"
 #include "MetroidPrime/Player/CGameState.hpp"
 #include "MetroidPrime/Player/CPlayerState.hpp"
+
+#include <cstring>
 
 namespace PortMapPickups {
 
@@ -17,6 +20,31 @@ constexpr int kMaxLocations = 160;
 const PortRandoWorld::Area* AreaOf(int location) {
   const PortRandoWorld::Location* loc = PortRandoWorld::LocationAt(location);
   return loc != nullptr ? PortRandoWorld::AreaAt(loc->area) : nullptr;
+}
+
+// Calls fn(area index in its MLVL, area, visited) for every counted room of `world` (0: all).
+template < typename Fn >
+void ForEachRoom(uint32_t world, Fn fn) {
+  const int count = PortRandoWorld::AreaCount();
+  int lastWorld = -1;
+  int index = 0;
+  const CMapWorldInfo* info = nullptr;
+  for (int i = 0; i < count; ++i) {
+    const PortRandoWorld::Area* area = PortRandoWorld::AreaAt(i);
+    // The flat list is every world's areas in MLVL order.
+    index = area->world == lastWorld ? index + 1 : 0;
+    const uint32_t mlvl = PortRandoWorld::WorldAt(area->world)->mlvl;
+    if (area->world != lastWorld) {
+      lastWorld = area->world;
+      CWorldState* state =
+          gpGameState != nullptr ? gpGameState->PortFindWorldState(CAssetId(mlvl)) : nullptr;
+      info = state != nullptr ? state->GetMapWorldInfo().GetPtr() : nullptr;
+    }
+    if ((world != 0 && mlvl != world) || std::strncmp(area->name, "game_end", 8) == 0) {
+      continue;
+    }
+    fn(index, *area, info != nullptr && info->IsAreaVisited(TAreaId(index)));
+  }
 }
 } // namespace
 
@@ -108,6 +136,28 @@ int CollectedCount(uint32_t world) {
     n += (world == 0 || World(i) == world) && Collected(i) ? 1 : 0;
   }
   return n;
+}
+
+int RoomCount(uint32_t world) {
+  int n = 0;
+  ForEachRoom(world, [&](int, const PortRandoWorld::Area&, bool) { ++n; });
+  return n;
+}
+
+int VisitedCount(uint32_t world) {
+  int n = 0;
+  ForEachRoom(world, [&](int, const PortRandoWorld::Area&, bool visited) { n += visited ? 1 : 0; });
+  return n;
+}
+
+std::vector< Room > UnvisitedRooms(uint32_t world) {
+  std::vector< Room > out;
+  ForEachRoom(world, [&](int index, const PortRandoWorld::Area& area, bool visited) {
+    if (!visited) {
+      out.push_back(Room{index, area.name});
+    }
+  });
+  return out;
 }
 
 } // namespace PortMapPickups

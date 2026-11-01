@@ -7,6 +7,10 @@
 #include "Kyoto/Streams/CBitStreamWriter.hpp"
 #include "rstl/algorithm.hpp"
 
+#ifdef TARGET_PC
+#include "port_overlay.h"
+#endif
+
 CMapWorldInfo::CMapWorldInfo() : mMapStationUsed(false) {}
 
 CMapWorldInfo::CMapWorldInfo(CBitStreamReader& in, const CWorldSaveGameInfo& saveInfo,
@@ -149,6 +153,12 @@ void CMapWorldInfo::SetIsMapped(TAreaId areaId, bool mapped) {
 }
 
 bool CMapWorldInfo::IsWorldVisible(TAreaId areaId, bool inDarkWorld) const {
+#ifdef TARGET_PC
+  // Reveal map: every room as a map station shows it, Dark Aether's too, without saving it.
+  if (PortOverlay::RevealMap()) {
+    return true;
+  }
+#endif
   if (IsMapped(areaId)) {
     return true;
   }
@@ -179,6 +189,12 @@ bool CMapWorldInfo::IsAreaVisible(TAreaId areaId) const {
 }
 
 bool CMapWorldInfo::IsAnythingSet() {
+#ifdef TARGET_PC
+  // Lists every world on the universe map too.
+  if (PortOverlay::RevealMap()) {
+    return true;
+  }
+#endif
   for (int i = 0; i < mVisitedAreas.size(); ++i) {
     if (mVisitedAreas[i]) {
       return true;

@@ -205,6 +205,8 @@
 {"Enhancements", "", "Hints", "Show current hint", "hints help stuck next message map marker"},
 {"Tracker", "", "Map", "Pickups on the map", "item tracker dots pickups expansions map rooms tint collected"},
 {"Tracker", "", "Map", "Show pickup kinds", "item tracker major minor expansion ring cross collected shape"},
+{"Tracker", "", "Map", "Reveal map", "reveal map station all rooms worlds universe dark aether"},
+{"Tracker", "", "", "Rooms visited", "rooms not yet visited unvisited explored count list"},
 {"Debug", "", "Cheats", "Show cheats (items, health, teleport)", "cheats debug items health teleport"},
 {"Debug", "", "Cheats", "God mode", "invincible damage health cheat"},
 {"Debug", "", "Cheats", "No Dark Aether damage", "dark world aether air atmosphere damage light suit cheat"},

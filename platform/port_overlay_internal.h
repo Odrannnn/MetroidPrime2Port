@@ -35,6 +35,7 @@ extern int sBeamAmmoPerExpansion;
 extern bool sMinimapTap;
 extern int sMapPickups;
 extern bool sMapPickupKinds;
+extern bool sRevealMap;
 extern int sPromptGlyphs;
 extern bool sIgtTimer;
 extern bool sOriginalExperience;

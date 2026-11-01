@@ -194,6 +194,11 @@ void SetMapPickups(int mode);
 // cross (`MP2_MAP_PICKUP_KINDS`).
 bool MapPickupKinds();
 void SetMapPickupKinds(bool enabled);
+// Every room of every world shows on the map as a map station shows it, in Light and Dark Aether
+// alike, and the universe map lists every world (`MP2_REVEAL_MAP`; CMapWorldInfo). Nothing is
+// saved: turning it off brings back the map the save has.
+bool RevealMap();
+void SetRevealMap(bool enabled);
 // Elevator ride (`MP2_ELEVATOR_RIDE`: original|fast|skip): Fast doubles the ride's clock, Skip ends
 // it as soon as the next world has loaded (CWorldTransManager).
 enum EElevatorRide { kElevatorRide_Original, kElevatorRide_Fast, kElevatorRide_Skip };

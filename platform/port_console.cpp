@@ -1137,12 +1137,17 @@ void CmdMpForce(CStateManager&, const Args& args, std::string& out) {
   out += gPortForceMultiplayer ? "forced multiplayer on\n" : "forced multiplayer off\n";
 }
 
-// `tracker`: the map pickups setting (F1 Tracker): off, rooms or all, and the kinds shape option.
+// `tracker`: the map pickups setting (F1 Tracker): off, rooms or all, the kinds shape option and
+// reveal map.
 void CmdTracker(CStateManager&, const Args& args, std::string& out) {
   static const char* const kModes[] = {"off", "rooms", "all"};
   for (size_t i = 1; i < args.size(); ++i) {
     if (args[i] == "kinds" && i + 1 < args.size()) {
       PortOverlay::SetMapPickupKinds(ArgToInt(args[++i], 1) != 0);
+      continue;
+    }
+    if (args[i] == "reveal" && i + 1 < args.size()) {
+      PortOverlay::SetRevealMap(ArgToInt(args[++i], 1) != 0);
       continue;
     }
     bool found = false;
@@ -1153,13 +1158,14 @@ void CmdTracker(CStateManager&, const Args& args, std::string& out) {
       }
     }
     if (!found) {
-      out += "usage: tracker [off|rooms|all] [kinds 0|1]\n";
+      out += "usage: tracker [off|rooms|all] [kinds 0|1] [reveal 0|1]\n";
       return;
     }
   }
   char line[96];
-  std::snprintf(line, sizeof(line), "map pickups %s, kinds %d\n",
-                kModes[PortMapPickups::Mode()], PortOverlay::MapPickupKinds() ? 1 : 0);
+  std::snprintf(line, sizeof(line), "map pickups %s, kinds %d, reveal %d\n",
+                kModes[PortMapPickups::Mode()], PortOverlay::MapPickupKinds() ? 1 : 0,
+                PortOverlay::RevealMap() ? 1 : 0);
   out += line;
 }
 
@@ -1193,6 +1199,36 @@ void CmdPickups(CStateManager& mgr, const Args& args, std::string& out) {
     PortMapPickups::Position(i, pos);
     std::snprintf(line, sizeof(line), "%3d %08x %-32s %8.1f %8.1f %8.1f%s\n", i, area->mrea,
                   area->name, pos[0], pos[1], pos[2], all ? (collected ? " collected" : " -") : "");
+    out += line;
+  }
+}
+
+// `visited [all]`: rooms visited in this world (all: every world, one line each), then this
+// world's rooms not yet visited (map index, MLVL name). The ending's areas are not counted.
+void CmdVisited(CStateManager& mgr, const Args& args, std::string& out) {
+  const CWorld* world = mgr.GetWorld();
+  const uint32_t current = world != nullptr ? static_cast< uint32_t >(world->IGetWorldAssetId()) : 0u;
+  char line[160];
+  if (args.size() >= 2 && args[1] == "all") {
+    std::snprintf(line, sizeof(line), "all      %d/%d visited\n", PortMapPickups::VisitedCount(0),
+                  PortMapPickups::RoomCount(0));
+    out += line;
+    for (int i = 0; i < PortRandoWorld::WorldCount(); ++i) {
+      const uint32_t id = PortRandoWorld::WorldAt(i)->mlvl;
+      std::snprintf(line, sizeof(line), "%08x %d/%d visited\n", id, PortMapPickups::VisitedCount(id),
+                    PortMapPickups::RoomCount(id));
+      out += line;
+    }
+  }
+  if (current == 0) {
+    out += "no world loaded\n";
+    return;
+  }
+  std::snprintf(line, sizeof(line), "this world %d/%d visited\n", PortMapPickups::VisitedCount(current),
+                PortMapPickups::RoomCount(current));
+  out += line;
+  for (const PortMapPickups::Room& room : PortMapPickups::UnvisitedRooms(current)) {
+    std::snprintf(line, sizeof(line), "%3d %s\n", room.index, room.name);
     out += line;
   }
 }
@@ -5289,7 +5325,9 @@ const CommandSpec kCommands[] = {
     {"mpend", CmdMpEnd,
       "mpend                       end the running multiplayer match now (fade, results, front end)\n"},
     {"tracker", CmdTracker,
-      "tracker [off|rooms|all] [kinds 0|1]  map pickups (F1 Tracker): dots, tinted rooms; kinds = shapes\n"},
+      "tracker [off|rooms|all] [kinds 0|1] [reveal 0|1]  map pickups (F1 Tracker): dots, tinted rooms; kinds = shapes; reveal = every room\n"},
+    {"visited", CmdVisited,
+      "visited [all]               rooms visited (all: per world) and this world's rooms not yet visited\n"},
     {"pickups", CmdPickups,
       "pickups [all]               this world's pickups not collected (all: every world, with state)\n"},
     {"pads", CmdPads,

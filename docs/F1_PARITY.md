@@ -97,7 +97,7 @@ Statuses:
 | Mods page | tabs.cpp:256-259 | own page: mods.cpp `DrawMods` + `DrawTexturesSection` (tabs.cpp `DrawModsTab`) | SAME (f1-frame) |
 | Cheats | Debug page, behind the "Show cheats" checkbox (debug.cpp:149-157) | Debug page behind "Show cheats (items, health, teleport)" (debug.cpp `DrawDebugTab`); `overlay cheats` and `MP2_DEBUG_TAB=Cheats` alias to Debug | SAME (f1-frame); the checkbox is not saved, as a cheat must not persist (MP1 saves it) |
 | Archipelago page | archipelago.cpp (290 lines) | — | MP1-ONLY: Archipelago has no Echoes world |
-| Tracker page | tracker.cpp (251 lines) | tracker.cpp `DrawTrackerTab`: pickups on the map (Off/Rooms/All, kinds), collected counts per world | PARTIAL (map/pickups): "Reveal map" and the visited counts are not ported |
+| Tracker page | tracker.cpp (251 lines) | tracker.cpp `DrawTrackerTab`: pickups on the map (Off/Rooms/All, kinds), Reveal map, collected and visited counts per world, this world's unvisited rooms | SAME (map/pickups) |
 | Search aliases | search.cpp:68-73 (Input, Render, Performance, Extras, States) | search.cpp `GetStartTarget`: Input, Render, Performance, Extras, States (+ Cheats) | SAME (f1-frame) (the Session, Chat, Remastered and Dread aliases are MP1-ONLY) |
 | Page-window / desktop-window switch | ui_common.cpp:51 PageLayout | ui_common.cpp:260 | SAME |
 | Touch scroll, ClearTouchHover | window.cpp:53-160 | window.cpp:36-140 | SAME |

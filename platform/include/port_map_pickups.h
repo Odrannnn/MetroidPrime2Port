@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <vector>
 
 // Pickups on the map, like MP1's: a white dot where each of the randomizer's locations
 // (PortRandoWorld: every item pickup) sits, until it is collected, or a tint on the rooms that
@@ -40,5 +41,17 @@ bool RoomHoldsPickup(uint32_t world, uint32_t area);
 // Counts for the tracker, over one world (MLVL) or every world (0).
 int Count(uint32_t world);
 int CollectedCount(uint32_t world);
+
+// Rooms visited, as the map has them (the world's CMapWorldInfo; Reveal map changes nothing here).
+// The ending's `game_end_partN` areas are not counted: they are not somewhere to explore. Over one
+// world (MLVL) or every world (0); none visited outside a game.
+int RoomCount(uint32_t world);
+int VisitedCount(uint32_t world);
+struct Room {
+  int index;        // the area's index in its MLVL
+  const char* name; // the MLVL's internal area name
+};
+// The world's rooms not visited yet, in MLVL order.
+std::vector< Room > UnvisitedRooms(uint32_t world);
 
 } // namespace PortMapPickups

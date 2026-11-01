@@ -221,6 +221,9 @@ Controls > Options:
 - `map_pickup_kinds`: Tracker > Map > Show pickup kinds (All mode: a ring for expansions and energy
   tanks, a grey cross for collected pickups; the seed's item when randomized; env
   `MP2_MAP_PICKUP_KINDS`).
+- `reveal_map`: Tracker > Map > Reveal map (every room of every world shows as a map station shows
+  it, Dark Aether's too, and the universe map lists every world; nothing is saved; default off; env
+  `MP2_REVEAL_MAP`; console `tracker reveal 0|1`; off under Original experience).
 - `fast_morph`, `spring_ball`: Enhancements > Morph Ball > Fast Morph, Spring Ball (one row; C-stick up, the Spring Ball binding on the Remap page, touch swipe up, or a gyro flick).
 - `map_invert_x`, `map_invert_y`: Map > Invert map rotate X, Invert map rotate Y (off by
   default; env `MP2_MAP_INVERT_X`, `MP2_MAP_INVERT_Y`). They flip which way the map turns on

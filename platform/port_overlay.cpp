@@ -85,6 +85,7 @@ int sBeamAmmoPerExpansion = PortOverlay::kBeamAmmoPerExpansionDefault;
 bool sMinimapTap = true;
 int sMapPickups = PortOverlay::kMapPickups_Off;
 bool sMapPickupKinds = false;
+bool sRevealMap = false;
 int sPromptGlyphs = 0;
 bool sIgtTimer = false;
 bool sOriginalExperience = false;
@@ -242,6 +243,7 @@ bool sNoDarkAetherDamage = false; // never saved, as sGodMode
 uint32_t sWorldId = 0;
 int sAreaId = -1;
 std::vector< SRoomEntry > sRooms;
+uint32_t sRoomsWorld = 0; // the asset id the entries were taken from, 0 before any world
 std::vector< SLayerEntry > sLayers;
 int sLayersArea = -1;
 std::atomic< int > sShowPage{-1};
@@ -258,7 +260,6 @@ namespace {
 
 bool sHudScaling = false;
 bool sReadEnv = false;
-uint32_t sRoomsWorld = 0; // the asset id the entries were taken from, 0 before any world
 bool sRoomsSplitLogged = false; // the Light/Dark count is logged once per world
 
 void ClearRooms() {
@@ -1088,6 +1089,17 @@ bool MapPickupKinds() {
 void SetMapPickupKinds(bool enabled) {
   ReadEnv();
   sMapPickupKinds = enabled;
+  Persist();
+}
+
+bool RevealMap() {
+  ReadEnv();
+  return !OriginalExperience() && EnvBool("MP2_REVEAL_MAP", sRevealMap);
+}
+
+void SetRevealMap(bool enabled) {
+  ReadEnv();
+  sRevealMap = enabled;
   Persist();
 }
 

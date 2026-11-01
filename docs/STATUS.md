@@ -11,7 +11,14 @@ SETTINGS.md, QOL.md item 7). `tools/rando_world.py` emits `PORT_RANDO_LOCATION_M
 locations; collected = the memory relay in that world's `CScriptMailbox` (Bomb Guardian drop: the boss's DEAD relay
 0x0C1A0062). Verified in Xvfb: new game 0/114; Dynamo Chamber dot sits under the player arrow after `tp` to the
 pickup; Rooms tint amber, dark rims (PC `CColor(uint)` byte order: use the uchar constructor). Not verified on screen:
-a collected pickup turning into a cross, a randomized seed's kinds. Not done: reveal map, unvisited-room list.
+a collected pickup turning into a cross, a randomized seed's kinds.
+
+Reveal map and rooms visited (2026-11-02): `reveal_map` (`MP2_REVEAL_MAP`, console `tracker reveal 0|1`) makes
+`CMapWorldInfo::IsWorldVisible` and `IsAnythingSet` true (TARGET_PC; nothing saved). F1 Tracker "Rooms visited" per
+world plus this world's unvisited list, console `visited [all]` (`rooms` was taken); counts are MLVL areas from
+PortRandoWorld minus the 5 `game_end_part*` (279 rooms; dark areas count as rooms). Verified in Xvfb on a Landing
+Site save: Light and Dark maps show every room with reveal on and only the visited one off (toggled live), `visited
+all` 1/279. Not verified: the universe map listing every world.
 Windows laptop not updated (unreachable).
 
 ## 2026-10-31: broad save-state sweep (every area)
