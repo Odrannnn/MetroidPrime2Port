@@ -286,6 +286,14 @@ Gyro aim needs mouse aim, twin stick or the touch controls' aim; without pointer
 camera at Sensitivity. Touch aim's Separate vertical speed and Vertical touch aim speed are
 touch.cfg's `aim_split` and `aim_speed_y` (env `MP2_TOUCH_AIM_SPLIT`, `MP2_TOUCH_AIM_SPEED_Y`).
 
+Multiplayer (Player 1-4 selector; Player 1 edits the Controls keys above):
+
+- `p2.`..`p4.` + `twin_stick`, `stick_aim_rate`, `stick_aim_split`, `stick_aim_rate_y`, `lockon_toggle`,
+  `sticky_charge`, `rapid_charge`, `auto_aim`, `lock_on_free_aim`, `gyro_aim`, `gyro_mode`,
+  `gyro_sensitivity`, `gyro_split`, `gyro_sensitivity_y`: that player's own value; a missing key follows
+  Player 1 ("same as Player 1"; Reset and Reset to Player 1 remove keys). Each player's controller is the
+  pad port assignment, not a settings key; Remap... opens Controls > Remap on that port.
+
 Video > Display:
 
 - `fullscreen`, `vsync`, `aspect`: Display > Fullscreen (F11), Vsync, Aspect ratio. `MP2_ASPECT`

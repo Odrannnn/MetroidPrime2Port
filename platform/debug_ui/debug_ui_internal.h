@@ -214,6 +214,7 @@ void DrawRandomizerTab();
 void DrawGameTab();
 void DrawModsTab();
 void DrawControlsTab();
+void DrawMultiplayerTab();
 void DrawVideoTab();
 void DrawEnhancementsTab();
 void DrawSystemTab();

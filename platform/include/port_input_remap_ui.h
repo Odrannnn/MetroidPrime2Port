@@ -14,6 +14,9 @@
 namespace PortInputRemap {
 
 void Draw();
+// The controller combo of pad port `port` (0-3): which controller that player plays with. Remap draws
+// Player 1's, the Multiplayer page all four. Overlay thread.
+void DrawPlayerController(unsigned port, const char* label);
 // Remap's Presets... button: replaces the family's own Default-profile bindings
 // with the named PortControls preset ("classic", "mouse"; "gamecube", "remastered",
 // "modern", "southpaw") and its Morph Ball rows. Overlay thread.
