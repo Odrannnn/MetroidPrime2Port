@@ -879,7 +879,7 @@ TUniqueId CPlayer::FindBestOrbitableObject(const rstl::reserved_vector< TUniqueI
             }
             bestId = act->GetUniqueId();
             pass = true;
-            #ifdef TARGET_PC
+#ifdef TARGET_PC
             const float screenX = (screenPosition.GetX() - idealX) * aimXScale;
 #else
             const float screenX = screenPosition.GetX() - idealX;
@@ -914,10 +914,10 @@ TUniqueId CPlayer::FindBestOrbitableObject(const rstl::reserved_vector< TUniqueI
                                 act)) {
           bestId = act->GetUniqueId();
           pass = true;
-          #ifdef TARGET_PC
-            const float screenX = (screenPosition.GetX() - idealX) * aimXScale;
+#ifdef TARGET_PC
+          const float screenX = (screenPosition.GetX() - idealX) * aimXScale;
 #else
-            const float screenX = screenPosition.GetX() - idealX;
+          const float screenX = screenPosition.GetX() - idealX;
 #endif
           const float screenY = screenPosition.GetY() - idealY;
           mOrbitTargetScreenDistance = screenX * screenX + screenY * screenY;
@@ -926,10 +926,10 @@ TUniqueId CPlayer::FindBestOrbitableObject(const rstl::reserved_vector< TUniqueI
       } else if (CMath::AbsF(distance - mOrbitTargetDistance) <
                      GetTweakPlayer()->GetOrbitDistanceThreshold() ||
                  mPlayerState->GetCurrentVisor() == CPlayerState::kPV_Scan) {
-        #ifdef TARGET_PC
-            const float screenX = (screenPosition.GetX() - idealX) * aimXScale;
+#ifdef TARGET_PC
+        const float screenX = (screenPosition.GetX() - idealX) * aimXScale;
 #else
-            const float screenX = screenPosition.GetX() - idealX;
+        const float screenX = screenPosition.GetX() - idealX;
 #endif
         const float screenY = screenPosition.GetY() - idealY;
         const float screenDistance = screenX * screenX + screenY * screenY;
