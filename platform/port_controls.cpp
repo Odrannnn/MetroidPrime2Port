@@ -17,20 +17,20 @@
 #include <imgui.h>
 
 #include <SDL3/SDL_gamepad.h>
+#include <SDL3/SDL_joystick.h>
 #include <SDL3/SDL_keyboard.h>
 #include <SDL3/SDL_mouse.h>
 #include <SDL3/SDL_scancode.h>
 #include <SDL3/SDL_timer.h>
 
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <iterator>
 #include <string>
 #include <vector>
 
 namespace {
-
-constexpr u32 kControlPort = PAD_CHAN0;
 
 typedef CControlMapper::EFunctionList EFunctionList;
 
@@ -95,12 +95,14 @@ s32 OtherStick(s32 axis) {
   }
 }
 
-void ApplyPadPreset(EPadPreset preset) {
-  PADRestoreDefaultMapping(kControlPort);
+// `port` is the pad port whose controller is remapped. The twin-stick switch is the
+// port-0 player's (PortMouse, keyboard/mouse port); other ports only get the mapping.
+void ApplyPadPreset(EPadPreset preset, u32 port) {
+  PADRestoreDefaultMapping(port);
   // The GameCube layouts use the C-stick; the dual-stick ones turn twin-stick
   // back on. MP2 has no pad beam shift, scan/X-ray swap or pad alt buttons
   // (MP1 PortDebug settings), so those resets are gone.
-  PortMouse::SetStickEnabled(false);
+  if (port == PAD_CHAN0) PortMouse::SetStickEnabled(false);
   switch (preset) {
   case EPadPreset::kGameCube:
     break;
@@ -120,13 +122,13 @@ void ApplyPadPreset(EPadPreset preset) {
         {SDL_GAMEPAD_BUTTON_RIGHT_STICK, PAD_TRIGGER_R},
     };
     for (const PADButtonMapping& mapping : buttons) {
-      PADSetButtonMapping(kControlPort, mapping);
+      PADSetButtonMapping(port, mapping);
     }
-    PADSetAxisMapping(kControlPort, {{-1, AXIS_SIGN_POSITIVE}, SDL_GAMEPAD_BUTTON_RIGHT_STICK, PAD_AXIS_TRIGGER_R});
+    PADSetAxisMapping(port, {{-1, AXIS_SIGN_POSITIVE}, SDL_GAMEPAD_BUTTON_RIGHT_STICK, PAD_AXIS_TRIGGER_R});
     // MP2: MP1 also gives A the east button and B the left shoulder (pad alt
     // buttons), the top face button the beam shift and swaps scan and X-ray;
     // none of those settings exist here.
-    PortMouse::SetStickEnabled(true);
+    if (port == PAD_CHAN0) PortMouse::SetStickEnabled(true);
     break;
   }
   case EPadPreset::kModern: {
@@ -142,16 +144,16 @@ void ApplyPadPreset(EPadPreset preset) {
         {SDL_GAMEPAD_BUTTON_RIGHT_STICK, PAD_TRIGGER_R},
     };
     for (const PADButtonMapping& mapping : buttons) {
-      PADSetButtonMapping(kControlPort, mapping);
+      PADSetButtonMapping(port, mapping);
     }
-    PADSetAxisMapping(kControlPort, {{-1, AXIS_SIGN_POSITIVE}, SDL_GAMEPAD_BUTTON_RIGHT_STICK, PAD_AXIS_TRIGGER_R});
+    PADSetAxisMapping(port, {{-1, AXIS_SIGN_POSITIVE}, SDL_GAMEPAD_BUTTON_RIGHT_STICK, PAD_AXIS_TRIGGER_R});
     // The right stick aims; without twin-stick it would be the C-stick.
-    PortMouse::SetStickEnabled(true);
+    if (port == PAD_CHAN0) PortMouse::SetStickEnabled(true);
     break;
   }
   case EPadPreset::kSouthpaw: {
     u32 count = 0;
-    PADAxisMapping* axes = PADGetAxisMappings(kControlPort, &count);
+    PADAxisMapping* axes = PADGetAxisMappings(port, &count);
     for (u32 i = 0; axes != nullptr && i < count; ++i) {
       axes[i].nativeAxis.nativeAxis = OtherStick(axes[i].nativeAxis.nativeAxis);
     }
@@ -384,6 +386,26 @@ void ApplyKeyPreset(EKeyPreset preset) {
 
 namespace PortControls {
 
+namespace {
+std::atomic<int> sRemapPort{0};
+}
+
+int RemapPort() { return sRemapPort.load(std::memory_order_relaxed); }
+
+void SetRemapPort(int port) { sRemapPort.store(std::clamp(port, 0, 3), std::memory_order_relaxed); }
+
+SPadPortInfo PadPortInfo(unsigned port) {
+  SPadPortInfo info;
+  const s32 index = port <= PAD_CHAN3 ? PADGetIndexForPort(port) : -1;
+  if (index < 0) return info;
+  const char* name = PADGetNameForControllerIndex(static_cast<u32>(index));
+  info.name = name != nullptr ? name : "Unknown controller";
+  SDL_Gamepad* pad = PADGetSDLGamepadForIndex(static_cast<u32>(index));
+  info.state = pad != nullptr && SDL_IsJoystickVirtual(SDL_GetGamepadID(pad)) ? EPadPortState::kVirtual
+                                                                              : EPadPortState::kReal;
+  return info;
+}
+
 // MP2: the default keyboard layout is PortInputDevices' built-in keyboard profile
 // (MakeKeyboardProfile, MP1's layout), so the defaults are that with no
 // keyboard overrides; port 0 is the only keyboard port.
@@ -392,7 +414,9 @@ void ApplyDefaultKeyBindings(unsigned port) {
   ResetKeyBindings();
 }
 
-bool ApplyKeyPresetNamed(std::string_view name) {
+bool ApplyKeyPresetNamed(std::string_view name, unsigned port) {
+  // Port 0 is the only keyboard port.
+  if (port != PAD_CHAN0) return false;
   if (name == "classic") {
     ApplyKeyPreset(EKeyPreset::kClassic);
   } else if (name == "mouse") {
@@ -405,15 +429,16 @@ bool ApplyKeyPresetNamed(std::string_view name) {
   return true;
 }
 
-bool ApplyPadPresetNamed(std::string_view name) {
+bool ApplyPadPresetNamed(std::string_view name, unsigned port) {
+  if (port > PAD_CHAN3) return false;
   if (name == "gamecube") {
-    ApplyPadPreset(EPadPreset::kGameCube);
+    ApplyPadPreset(EPadPreset::kGameCube, port);
   } else if (name == "remastered") {
-    ApplyPadPreset(EPadPreset::kRemastered);
+    ApplyPadPreset(EPadPreset::kRemastered, port);
   } else if (name == "modern") {
-    ApplyPadPreset(EPadPreset::kModern);
+    ApplyPadPreset(EPadPreset::kModern, port);
   } else if (name == "southpaw") {
-    ApplyPadPreset(EPadPreset::kSouthpaw);
+    ApplyPadPreset(EPadPreset::kSouthpaw, port);
   } else {
     return false;
   }
@@ -421,8 +446,8 @@ bool ApplyPadPresetNamed(std::string_view name) {
   return true;
 }
 
-void DrawDeadZones() {
-  if (PADDeadZones* zones = PADGetDeadZones(kControlPort)) {
+void DrawDeadZones(unsigned port) {
+  if (PADDeadZones* zones = PADGetDeadZones(port)) {
     DrawDeadZoneSliders(*zones);
   }
 }

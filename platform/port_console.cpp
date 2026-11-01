@@ -12,6 +12,7 @@
 #include <dolphin/pad.h>
 #include "port_harness.h"
 #include "port_vpads.h"
+#include "port_controls.h"
 #include "port_console.h"
 #include "port_discord.h"
 #include "port_mouse.h"
@@ -1141,6 +1142,45 @@ void CmdPadPort(CStateManager&, const Args& args, std::string& out) {
   } else {
     Fail("usage: padport <index> <port 0-3> | padport clear <port>");
   }
+}
+
+// `padpreset <gamecube|remastered|modern|southpaw|...> [port]`: apply a pad preset to one player's
+// controller (what the F1 remap page's Presets button does for the selected player). Virtual pads and
+// empty ports are reported, not silently skipped. Port 0 is the default.
+void CmdPadPreset(CStateManager&, const Args& args, std::string& out) {
+  const int port = args.size() >= 3 ? ArgToInt(args[2], -1) : 0;
+  if (args.size() < 2 || args.size() > 3 || port < 0 || port > 3) {
+    Fail("usage: padpreset <preset name> [port 0-3]");
+    return;
+  }
+  const PortControls::SPadPortInfo info = PortControls::PadPortInfo(static_cast<unsigned>(port));
+  if (info.state == PortControls::EPadPortState::kNone) {
+    out += "port " + std::to_string(port) + ": no controller, nothing to remap\n";
+    return;
+  }
+  if (info.state == PortControls::EPadPortState::kVirtual) {
+    out += "port " + std::to_string(port) + ": virtual pad (" + info.name + "), mappings ignored: no-op\n";
+    return;
+  }
+  if (!PortControls::ApplyPadPresetNamed(Str(args[1]), static_cast<unsigned>(port))) {
+    Fail("unknown pad preset");
+    return;
+  }
+  out += "port " + std::to_string(port) + " (" + info.name + "): preset " + Str(args[1]) + " applied\n";
+}
+
+// `remapport [port]`: the player the F1 remap page's Presets buttons change (its Player selector);
+// no argument prints it.
+void CmdRemapPort(CStateManager&, const Args& args, std::string& out) {
+  if (args.size() > 1) {
+    const int port = ArgToInt(args[1], -1);
+    if (port < 0 || port > 3) {
+      Fail("usage: remapport [port 0-3]");
+      return;
+    }
+    PortControls::SetRemapPort(port);
+  }
+  out += "remap port " + std::to_string(PortControls::RemapPort()) + "\n";
 }
 
 // `padread`: what the game's PADRead returns for each port right now.
@@ -5049,6 +5089,10 @@ const CommandSpec kCommands[] = {
       "pads                        the controller on each pad port 0-3 (players 1-4) and the controller count\n"},
     {"padport", CmdPadPort,
       "padport <index> <port>      give controller <index> (see `pads`) pad port 0-3; `padport clear <port>` frees it\n"},
+    {"padpreset", CmdPadPreset,
+      "padpreset <name> [port]     apply a pad preset (gamecube, remastered, modern, southpaw) to a port's controller (default 0)\n"},
+    {"remapport", CmdRemapPort,
+      "remapport [port]            the player (port 0-3) the F1 remap page's Presets change; no argument prints it\n"},
     {"padread", CmdPadRead,
       "padread                     PADRead's status (err, buttons, sticks, triggers) for ports 0-3 right now\n"},
     {"vpad", CmdVpad,

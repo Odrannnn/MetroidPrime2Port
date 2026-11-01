@@ -1709,6 +1709,13 @@ void Reload() {
   sLoaded = true;
 }
 
+bool sSavedStale = true;
+
+unsigned RemapPort() { return static_cast<unsigned>(PortControls::RemapPort()); }
+
+// True when presets can change the selected player's controller.
+bool RemapPortUsable() { return PortControls::PadPortInfo(RemapPort()).state == PortControls::EPadPortState::kReal; }
+
 // One row of preset buttons. A click replaces the family's own Default-profile
 // bindings with the preset; a kind or model's own bindings stay on top.
 void PresetRow(const SView& v, const SPreset* presets, int count) {
@@ -1717,13 +1724,16 @@ void PresetRow(const SView& v, const SPreset* presets, int count) {
   ImGui::SeparatorText(kFamilies[int(v.family)]);
   const bool pads = v.family == Family::Pad;
   // A GameCube pad has no right stick (click) for the dual-stick layouts.
-  const bool gcAdapter = pads && PADIsGCAdapter(0) != 0;
+  const bool gcAdapter = pads && PADIsGCAdapter(RemapPort()) != 0;
+  const bool otherPlayer = RemapPort() != 0;
   for (int i = 0; i < count; ++i) {
     const std::string_view id = presets[i].id;
     if (i != 0) ImGui::SameLine();
-    ImGui::BeginDisabled(gcAdapter && (id == "remastered" || id == "modern"));
+    // Players 2-4 have no keyboard, and need a real controller for the pad rows.
+    ImGui::BeginDisabled((gcAdapter && (id == "remastered" || id == "modern")) ||
+                         (otherPlayer && (!pads || !RemapPortUsable())));
     if (ImGui::Button(presets[i].name)) {
-      ApplyPreset(v.family, id);
+      ApplyPreset(v.family, id, RemapPort());
       ImGui::CloseCurrentPopup();
     }
     ImGui::EndDisabled();
@@ -1793,6 +1803,45 @@ void DrawProfileOptions(const SView& v) {
   }
 }
 
+// The player the pad presets (Presets..., My presets...) write: PortControls::RemapPort(). Ports 1-3
+// get the pad mapping only; the binding table below is the input engine's per-device layer, shared.
+void DrawRemapPlayer() {
+  int port = PortControls::RemapPort();
+  ImGui::SetNextItemWidth(ImGui::GetFontSize() * 8.f);
+  const std::string current = "Player " + std::to_string(port + 1);
+  if (ImGui::BeginCombo("Remap player", current.c_str())) {
+    for (int i = 0; i < 4; ++i) {
+      const std::string entry = "Player " + std::to_string(i + 1);
+      if (ImGui::Selectable(entry.c_str(), i == port) && i != port) {
+        EndCapture();
+        sEditing = kEditNone;
+        PortControls::SetRemapPort(i);
+        sSavedStale = true;
+      }
+    }
+    ImGui::EndCombo();
+  }
+  ImGui::SetItemTooltip("Whose controller the Presets and My presets buttons change. Player 1 also owns the "
+                        "keyboard and mouse; players 2-4 have a controller only.");
+  const PortControls::SPadPortInfo info = PortControls::PadPortInfo(static_cast<unsigned>(PortControls::RemapPort()));
+  ImGui::SameLine();
+  switch (info.state) {
+  case PortControls::EPadPortState::kNone:
+    ImGui::TextDisabled("No controller on this port; nothing to remap.");
+    break;
+  case PortControls::EPadPortState::kVirtual:
+    ImGui::TextDisabled("%s: virtual pads can't be remapped.", info.name.c_str());
+    break;
+  case PortControls::EPadPortState::kReal:
+    ImGui::TextDisabled("%s", info.name.c_str());
+    break;
+  }
+  if (PortControls::RemapPort() != 0) {
+    ImGui::TextDisabled("Presets change this player's controller mapping. The binding table below (controls.toml) "
+                        "is per controller kind and shared by every player.");
+  }
+}
+
 // One combo per pad port (PAD_CHAN0..PAD_CHAN3), the four local-multiplayer players. Choosing a
 // controller hands it to that port and takes it off its old one (Aurora's PADSetPortForIndex);
 // None clears the port (PADClearPort). The assignment is what the game reads as that player's pad.
@@ -1853,7 +1902,6 @@ void DrawPlayers() {
 // The player's saved presets (port_input_user_presets.h), listed once when the
 // popup opens and after each save or delete; the files aren't read per frame.
 std::vector<PortInputUserPresets::Entry> sSaved;
-bool sSavedStale = true;
 char sSaveName[PortInputUserPresets::kMaxName + 1] = {};
 std::string sPendingDelete;
 
@@ -1869,7 +1917,7 @@ const std::vector<PortInputUserPresets::Entry>& Saved() {
 void ApplySaved(const std::string& name) {
   EndCapture();
   sEditing = kEditNone;
-  PortInputUserPresets::ApplyAll(name);
+  PortInputUserPresets::ApplyAll(name, RemapPort());
   Reload();
 }
 
@@ -1939,7 +1987,7 @@ void DrawMyPresets() {
     }
     ImGui::BeginDisabled(name.empty());
     if (ImGui::Button(exists ? "Replace" : "Save")) {
-      PortInputUserPresets::SaveAll(name);
+      PortInputUserPresets::SaveAll(name, RemapPort());
       sSavedStale = true;
       ImGui::CloseCurrentPopup();
     }
@@ -1955,7 +2003,15 @@ void DrawMyPresets() {
 
 } // namespace
 
-void ApplyPreset(PortInput::Family family, std::string_view id) {
+void ApplyPreset(PortInput::Family family, std::string_view id) { ApplyPreset(family, id, 0); }
+
+void ApplyPreset(PortInput::Family family, std::string_view id, unsigned port) {
+  if (port != 0) {
+    // Another player: only their controller's Aurora mapping. The engine rows (controls.toml) and
+    // the ball rows are per device, left alone.
+    if (family == PortInput::Family::Pad) PortControls::ApplyPadPresetNamed(id, port);
+    return;
+  }
   // The page may never have been drawn; start from the saved bindings.
   if (sEditing == kEditNone && !sCapture.active) Reload();
   // The presets set the all-controllers layer, so clear that one even
@@ -2040,6 +2096,7 @@ void Draw() {
                      "the defaults; Revert brings them back.");
   if (!sError.empty()) ImGui::TextColored(ImVec4(1.f, 0.4f, 0.4f, 1.f), "%s", sError.c_str());
 
+  DrawRemapPlayer();
   const float selectorWidth = ImGui::GetContentRegionAvail().x;
   DrawPlayers();
   if (selectorWidth >= ImGui::GetFontSize() * 70.f) ImGui::SameLine();
