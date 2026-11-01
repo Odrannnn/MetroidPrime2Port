@@ -267,3 +267,16 @@ game ignores SIGPIPE, the copier ignores SIGTERM/SIGHUP, and Aurora logs through
   that touches them, keep the deletion (`git rm`). Their units and `Kyoto/Streams/CLZOSupport.cpp` stay
   NonMatching in `configure.py` (keep that too), so the matching build links the original objects. The port
   decodes with `src/Kyoto/Streams/CLZOSupportPort.cpp` (MIT, checked byte-identical on every disc chunk).
+
+## Motion watch (`[motion]` log lines)
+
+`platform/port_motion_watch.cpp` keeps the player's last 20 `CGameCollision::MovePlayer` ticks and writes
+them to stderr (and so the port log) when Samus moves more than 2 units in one tick, ends a tick faster than
+60 units/s, or starts a tick more than 2 units from where the previous one ended (a jump outside the mover).
+A dump is a header line (`[motion] <reason>: tick N moved … speed … gap …`) then one `[motion]` line per
+tick: update frame index, area id, mover (`groundNew`, `ball`, `air`), movement state (`ms`), morph state
+(`mb`), non-player colliders, position and velocity before and after, the impulse fed to the mover, `gap`,
+`warp`/`cine` tags and `kb=` knockbacks (`Class#uid`, direction, power, from `CStateManager::ApplyKnockBack`)
+received since the previous tick. At most one dump per 2 s and 20 per run. `CPlayer::Teleport` (console
+`tp`/`goto`, save-state load, room warps) sets the `warp` tag and is not dumped; a rebuilt player or a
+rewound update clock restarts the ring. Normal play writes nothing.

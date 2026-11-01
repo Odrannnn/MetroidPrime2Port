@@ -29,6 +29,10 @@
 #include "WorldFormat/COBBTree.hpp"
 #include "WorldFormat/COBBTreeGroup.hpp"
 #include "rstl/math.hpp"
+
+#ifdef TARGET_PC
+#include "port_motion_watch.h"
+#endif
 #include "rstl/optional_object.hpp"
 
 #include <float.h>
@@ -963,13 +967,25 @@ void CGameCollision::Move(CStateManager& mgr, CPhysicsActor& actor, float dt,
 
 void CGameCollision::MovePlayer(CStateManager& mgr, CPhysicsActor& actor, float dt,
                                 const rstl::reserved_vector< TUniqueId, 1024 >* colliderList) {
+#ifdef TARGET_PC
+  PortMotionWatch::TickScope motionWatch(mgr, TCastToPtr< CPlayer >(actor), colliderList);
+#endif
   actor.SetAngularEnabled(true);
   actor.AddMotionState(actor.PredictAngularMotion(dt));
   if (actor.IsStandardCollider()) {
+#ifdef TARGET_PC
+    motionWatch.Set(PortMotionWatch::Branch::Ball);
+#endif
     MoveAndCollide(mgr, actor, dt, CBallFilter(actor), colliderList);
   } else if (actor.GetMaterialList().HasMaterial(kMT_GroundCollider)) {
+#ifdef TARGET_PC
+    motionWatch.Set(PortMotionWatch::Branch::GroundNew);
+#endif
     CGroundMovement::MoveGroundCollider_New(mgr, actor, dt, colliderList);
   } else {
+#ifdef TARGET_PC
+    motionWatch.Set(PortMotionWatch::Branch::Air);
+#endif
     MoveAndCollide(mgr, actor, dt, CBallFilter(actor), colliderList);
   }
   actor.SetAngularEnabled(false);

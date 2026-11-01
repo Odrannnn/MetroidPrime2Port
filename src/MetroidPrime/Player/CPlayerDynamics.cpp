@@ -42,6 +42,10 @@
 #include "MetroidPrime/SFX/SamusJump_MP.h"
 #include "MetroidPrime/SFX/SamusMorphball.h"
 
+#ifdef TARGET_PC
+#include "port_motion_watch.h"
+#endif
+
 static const CMaterialList BallTransitionInclude = CMaterialList(kMT_Solid);
 static const CMaterialList BallTransitionExclude =
     CMaterialList(kMT_ProjectilePassthrough, kMT_Player, kMT_Character, kMT_CameraPassthrough);
@@ -1100,6 +1104,9 @@ void CPlayer::BombJump(const CVector3f& position, CStateManager& mgr) {
 
 void CPlayer::Teleport(const CTransform4f& transform, CStateManager& mgr,
                        const bool resetBallCamera) {
+#ifdef TARGET_PC
+  PortMotionWatch::NoteWarp();
+#endif
   CVector3f direction = transform.GetForward();
   direction.SetZ(0.f);
   CPhysicsActor::Stop();
