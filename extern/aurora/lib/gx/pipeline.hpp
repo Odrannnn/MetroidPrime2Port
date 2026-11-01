@@ -41,7 +41,11 @@ static_assert(std::has_unique_object_representations_v<PipelineConfig>);
 
 constexpr bool pipeline_config_compatible(const PipelineConfig& config, bool lightmapBinding) noexcept {
   const auto& shader = config.shaderConfig;
-  return shader.pbr == 0 || shader.pbrLightmapAttr == GX_VA_NULL || lightmapBinding;
+  // A cached row from another build at the same version can name a shadow pass this one doesn't
+  // know, or one whose shader has no vs_shadow: its pipeline would abort the game in Dawn.
+  const bool shadowPassOk =
+      config.shadowPass == 0 || (config.shadowPass <= 2 && shader.shadow && shader.lineMode == 0);
+  return shadowPassOk && (shader.pbr == 0 || shader.pbrLightmapAttr == GX_VA_NULL || lightmapBinding);
 }
 
 wgpu::RenderPipeline create_pipeline([[maybe_unused]] const PipelineConfig& config);
