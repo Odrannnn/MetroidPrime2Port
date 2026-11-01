@@ -212,6 +212,11 @@ What a save keeps of each enemy (the `kTagFields` block) is in `docs/SAVESTATE_S
 prefix is pad 0 as before, and warp tokens stay pad 0. A pad is connected and idle (the front end
 counts `DeviceIsPresent`) once any entry names it. Parser test: `port_input_pad_tests`.
 
+`MP2_VPAD_INPUT` is the same timeline for the SDL virtual pads (`v0.`-`v3.` prefixes, MP2_INPUT syntax
+and names, game-update frame clock; set `MP2_VPADS=<n>`): `v1.SLEFT@600+60`, `v0.A@900+4`. Names map
+to the Xbox layout (Z=rb, L/R=lt/rt, C stick=right stick, D-pad=dpad). `v1.DETACH@3000` and
+`v1.ATTACH@3600` unplug/replug that pad (a replugged pad is neutral). Logged as `[vpad-input]`.
+
 ## Area regression sweep (any world, shards, START-free)
 
     USERDIR=/tmp/opencode/u_a10 tools/sweep_areas.sh            # TAG/SHARDS/DWELL/COUNT to taste

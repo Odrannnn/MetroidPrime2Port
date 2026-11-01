@@ -7,9 +7,9 @@ namespace PortInputPad {
 constexpr int kPadCount = 4;
 
 // `name` points at the start of one entry (up to its '@' at `at`). Strips a `p<0-3>.` or `p<0-3>:`
-// prefix (either case) and returns the pad; anything else leaves `name` alone and returns 0.
-inline int SplitPad(const char*& name, const char* at) {
-  if (at - name > 3 && (name[0] == 'p' || name[0] == 'P') && name[1] >= '0' &&
+// prefix (either case; `prefix` is 'v' for MP2_VPAD_INPUT) and returns the pad; anything else leaves `name` alone and returns 0.
+inline int SplitPad(const char*& name, const char* at, char prefix = 'p') {
+  if (at - name > 3 && (name[0] == prefix || name[0] == prefix - 32) && name[1] >= '0' &&
       name[1] < '0' + kPadCount && (name[2] == '.' || name[2] == ':')) {
     const int pad = name[1] - '0';
     name += 3;

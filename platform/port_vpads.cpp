@@ -100,6 +100,49 @@ void Poll() {
   std::fprintf(stderr, "[vpad] attached %d virtual gamepads\n", n);
 }
 
+bool Set(int slot, const std::string& what, double value, std::string& err) {
+  if (slot < 0 || slot >= kMax || sJoy[slot] == nullptr) {
+    err = "vpad " + std::to_string(slot) + " not attached";
+    return false;
+  }
+  for (const SName& b : kButtons) {
+    if (what == b.name) {
+      SDL_SetJoystickVirtualButton(sJoy[slot], b.id, value != 0);
+      return true;
+    }
+  }
+  for (const SName& a : kAxes) {
+    if (what == a.name) {
+      const bool trigger = a.id == SDL_GAMEPAD_AXIS_LEFT_TRIGGER || a.id == SDL_GAMEPAD_AXIS_RIGHT_TRIGGER;
+      const double v = std::min(std::max(value, trigger ? 0.0 : -1.0), 1.0);
+      // A trigger spans the whole axis range and rests at its minimum.
+      SDL_SetJoystickVirtualAxis(sJoy[slot], a.id,
+                                 static_cast<Sint16>(trigger ? v * 65535.0 - 32768.0 : v * 32767.0));
+      return true;
+    }
+  }
+  err = "unknown button/axis '" + what + "'";
+  return false;
+}
+
+bool Present(int slot) { return slot >= 0 && slot < kMax && sIds[slot] != 0; }
+
+bool AttachSlot(int slot, std::string& err) {
+  if (slot < 0 || slot >= kMax || sIds[slot] != 0) {
+    err = "bad or already attached slot";
+    return false;
+  }
+  return Attach(slot, err);
+}
+
+bool DetachSlot(int slot, std::string& err) {
+  if (slot < 0 || slot >= kMax) {
+    err = "bad slot";
+    return false;
+  }
+  return Detach(slot, err);
+}
+
 bool Command(const std::string& args, std::string& out, std::string& err) {
   std::istringstream in(args);
   std::string first;
@@ -139,32 +182,13 @@ bool Command(const std::string& args, std::string& out, std::string& err) {
     out += "detached vpad " + std::to_string(slot) + "\n";
     return true;
   }
-  if (sJoy[slot] == nullptr) {
-    err = "vpad " + std::to_string(slot) + " not attached";
-    return false;
-  }
   double value = 1;
   in >> value;
-  for (const SName& b : kButtons) {
-    if (what == b.name) {
-      SDL_SetJoystickVirtualButton(sJoy[slot], b.id, value != 0);
-      out += "ok\n";
-      return true;
-    }
+  if (!Set(slot, what, value, err)) {
+    return false;
   }
-  for (const SName& a : kAxes) {
-    if (what == a.name) {
-      const bool trigger = a.id == SDL_GAMEPAD_AXIS_LEFT_TRIGGER || a.id == SDL_GAMEPAD_AXIS_RIGHT_TRIGGER;
-      const double v = std::min(std::max(value, trigger ? 0.0 : -1.0), 1.0);
-      // A trigger spans the whole axis range and rests at its minimum.
-      SDL_SetJoystickVirtualAxis(sJoy[slot], a.id,
-                                 static_cast<Sint16>(trigger ? v * 65535.0 - 32768.0 : v * 32767.0));
-      out += "ok\n";
-      return true;
-    }
-  }
-  err = "unknown button/axis '" + what + "'";
-  return false;
+  out += "ok\n";
+  return true;
 }
 
 } // namespace PortVpads

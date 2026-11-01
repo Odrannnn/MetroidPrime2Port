@@ -14,4 +14,10 @@ void Poll();
 // Returns false and sets `err` on bad input.
 bool Command(const std::string& args, std::string& out, std::string& err);
 
+// One button or axis of virtual pad `slot` (the `vpad <i> <name> <value>` names).
+bool Set(int slot, const std::string& what, double value, std::string& err);
+bool Present(int slot);
+bool AttachSlot(int slot, std::string& err);
+bool DetachSlot(int slot, std::string& err);
+
 } // namespace PortVpads
