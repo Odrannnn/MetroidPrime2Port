@@ -1203,8 +1203,8 @@ int main(int argc, char** argv) {
   // 720p by default, as the Prime 1 port: 16:9 unless the aspect setting is 4:3. The render mode
   // follows the setting (PortOverlay::ApplyAspect); Aurora upscales to the window either way.
   const bool widescreen = PortOverlay::AspectMode() != PortOverlay::kAspect_4_3;
-  // The pipeline cache seed (tools/pipeline_seed.py): desktop builds carry it inside the executable
-  // (MP_EMBED_RESOURCES); other builds have none and Aurora starts from the cache alone.
+  // The pipeline cache seed (tools/pipeline_seed.py), built into the executable on desktop and
+  // Android alike (CMakeLists.txt); a build without it starts from the cache alone.
   const std::span<const uint8_t> embeddedSeed = PortEmbedded::Find("initial_pipeline_cache.db");
   AuroraConfig config = {
       .appName = kAppName,

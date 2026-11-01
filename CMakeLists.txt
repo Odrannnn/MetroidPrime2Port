@@ -1141,6 +1141,24 @@ elseif(NOT ANDROID)
             "${CMAKE_CURRENT_SOURCE_DIR}/textures"
             "$<TARGET_FILE_DIR:metroid_prime2_port>/textures"
         COMMENT "Copying texture replacements next to the executable")
+elseif(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/assets/initial_pipeline_cache.db")
+    # Android: the APK carries the textures, but the seed is still embedded. Lazy mode merges it and
+    # queues each area's recorded pipelines when the game prefetches that area.
+    find_package(Python3 COMPONENTS Interpreter REQUIRED)
+    set(MP_EMBED_SEED "${CMAKE_CURRENT_SOURCE_DIR}/assets/initial_pipeline_cache.db")
+    set(MP_EMBED_SOURCE "${CMAKE_CURRENT_BINARY_DIR}/generated/port_embedded_data.cpp")
+    add_custom_command(
+        OUTPUT "${MP_EMBED_SOURCE}"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/generated"
+        COMMAND Python3::Interpreter "${CMAKE_CURRENT_SOURCE_DIR}/tools/embed_resources.py"
+            "${MP_EMBED_SOURCE}" --file "${MP_EMBED_SEED}" initial_pipeline_cache.db
+        DEPENDS "${MP_EMBED_SEED}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/embed_resources.py"
+        COMMENT "Embedding the pipeline cache seed"
+        VERBATIM)
+    target_sources(metroid_prime2_port PRIVATE "${MP_EMBED_SOURCE}")
+    # Gates only the table in port_embedded.cpp; with no textures/ entries, textures still come
+    # from the unpacked APK assets (main.cpp checks PortEmbedded::Under("textures/")).
+    target_compile_definitions(metroid_prime2_port PRIVATE MP_EMBED_RESOURCES)
 endif()
 
 # Install rules (desktop only): the executable, and for Linux menus and software centres the desktop
