@@ -129,6 +129,24 @@ Each needs MP2 game-side hooks found fresh; a row with no possible MP2 backend i
     and map frames filling a wide window are our own (`a3dbfec15`, `CGuiFrame::SetSpreadPanel`), not
     an MP1 port. Phone verification pending for all of it.
 
+27. **Range `e3d8c8940..7eda62884`** (user 2026-11-01). Already taken: `31a614420 1a4faab94
+    e515e1d6b 5c64b3265 94e47b082 503e0e936 a6c092e90 cc3485d7f d57a819a2`; `23f68dc64` came from MP2.
+    - **s27a core**: 2048 object slots, 11 index + 5 version id bits (`e1f85fc89`, `e7b97f6a4`;
+      regenerates the entity schema, old save states stop loading); pipeline cache refuses rows
+      whose shadow pass the shader lacks (`e560a42ee`); adaptive/non-60 Hz clocks (`733b09e03`,
+      audit against our `sim_adaptive`); Windows in-process log copy fallback (`898c9b458`);
+      Aurora shader-anchor checks (`6effecb93`).
+    - **s27b input**: Aim Lock-On nearest the crosshair (`7fca0ee79`); Dodge (`87b0a7e43
+      5dff869f3`); Grapple binding/toggle, Spider Ball toggle, Shoot While Grappling (`35c2c420c
+      ddf94f1ff 31ffa6430 559266ef8 31f1a0dc3`, #243); hand on cannon (`976e914eb de9281a79`);
+      empty lock frees the pointer (`bfaa241d6`).
+    - **s27c small**: per-visor crosshair toggles mapped to Echoes' visors (`486f7a0df 2d2ba0a5e`);
+      morph ball bars option (`535ccd192`); console `freeze` (`aee3e53ac`); `[motion]` dumps
+      (`105f65deb`); Android settings top band (`5d83055aa`).
+    - Skipped: Remastered/PBR/effects, third person, Dread suits, Archipelago/rando, `34899e497`
+      (Remastered particles), `005ae8a6e` (we have infinite ammo), artifact cheats `904552326
+      0dadb6af9`, `881e1e899` (Frigate), `09ea6ad2d` (Trilogy corner layout; check ours if seen).
+
 Skipped from this range: Phazon Beam cheat and stacked beam rate (MP1 items), mods page/import
 fixes (wait for package 8), decomp matches.
 
@@ -137,9 +155,9 @@ set differs; the approach can be reused), Archipelago, MP1 randomizer logic.
 
 ## Status
 
-All packages above (1-26) are merged; the dated per-merge log moved verbatim to
+Packages 1-26 are merged; 27 is in progress; the dated per-merge log moved verbatim to
 `docs/history/MP1_SYNC-to-2026-10-29.md`. MP1 was last reviewed through `e3d8c8940`
-(2026-10-29); take later MP1 commits by `git -C ../MetroidPrimePort log --no-merges e3d8c8940..HEAD`.
+(2026-10-29), then through `7eda62884` (2026-11-01, package 27); take later commits by `git -C ../MetroidPrimePort log --no-merges 7eda62884..HEAD`.
 
 Still unrun/unverified per that log (no device or hardware available then):
 
