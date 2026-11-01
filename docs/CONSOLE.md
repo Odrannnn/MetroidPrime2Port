@@ -39,6 +39,7 @@ hp, hp_max, visor, beam, freecam) for scripts.
 - `padmap <port> [<btn> <in>]` — a port's GameCube buttons on its controller's Aurora mapping; with a button (`a`..`z`, `start`, `up`..`right`) and an input (`a`, `lb`, `lt`, `none`, an SDL number) binds it, swapping with the button that had it
 - `players` — each player's position, yaw, aim, twin stick, direct aim, orbit and beam
 - `padread` — what `PADRead` returns for ports 0-3 right now (err, buttons, sticks, triggers)
+- `touchctl <touch name|code> 0|1` — hold or release a touch overlay control as its button would, code only: a stock one (face buttons, pills, Start) presses its fixed GameCube action past any pad preset; `turbo`/`tturbo` hold Turbo
 - `vpad list|attach [n]|detach <i>|<i> <button|axis> <value>` — SDL virtual gamepads for controller-to-port tests (`MP2_VPADS=<n>`, 1-4, attaches them at start); buttons `a b x y back guide start ls rs lb rb up down left right` (0/1), axes `lx ly rx ry lt rt` (-1..1, triggers 0..1)
 - `overlay <page>[/<sub>]|off` — open the F1 window on a page (name prefixes: `overlay video/qual`)
 - `gpuselftest` — run the GPU self-test next frame; PASS/FAIL lines go to the log

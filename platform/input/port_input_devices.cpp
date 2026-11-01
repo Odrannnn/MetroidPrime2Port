@@ -559,8 +559,10 @@ void FillRawState(PortInput::RawState& raw, unsigned mouseHeld, bool focused) {
     }
   }
 
-  // MP1 also sets its beam shift, turbo and map-tap codes here; PortTouch does those itself.
+  // MP1 also sets its beam shift and map-tap codes here; PortTouch does those itself.
   raw.touch = TouchBits(sTouchControls);
+  // Turbo's pulse is a stock code (A past every remap); PortTouch times it.
+  if (PortTouch::TurboDown()) raw.touch.set(PortInput::kTouchTurboCode);
 }
 
 // Aurora's stick conversion: x/256 truncated, y negated (SDL's y points down).
@@ -1082,9 +1084,9 @@ static void KeepPortMenuReachable(Profile& p) {
 void BuildProfile(Profile& out, int port) {
   BuildBaseProfile(out, port);
   const SActiveProfiles user = ActiveUserProfiles(port);
-  if (user.sel.base != nullptr) PortInput::Overlay(out, *user.sel.base);
-  if (user.sel.pad != nullptr) PortInput::Overlay(out, *user.sel.pad);
   if (port > 0) {
+    if (user.sel.base != nullptr) PortInput::Overlay(out, *user.sel.base);
+    if (user.sel.pad != nullptr) PortInput::Overlay(out, *user.sel.pad);
     // A hand-edited controls_p<N>.toml may carry keys, touch or the port's own actions: Players
     // 2-4 play only their pad, and the port's actions and custom actions are Player 1's.
     std::erase_if(out.bindings, [](const Binding& b) {
@@ -1093,6 +1095,9 @@ void BuildProfile(Profile& out, int port) {
     });
     return;
   }
+  if (user.sel.base != nullptr) PortInput::Overlay(out, PortInput::WithoutStockTouch(*user.sel.base));
+  if (user.sel.pad != nullptr) PortInput::Overlay(out, PortInput::WithoutStockTouch(*user.sel.pad));
+  PortInput::BindStockTouch(out);
   PublishTouchBound(out);
   // After the overlay: a controls.toml touch binding of the same action must not
   // drop the layout's own buttons. Re-read every poll, so an added one works at once.

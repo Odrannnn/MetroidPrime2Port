@@ -737,12 +737,57 @@ void TestBallButtons() {
   BlockRowInputs(e, [](const Binding& b) { return b.action == Action::MenuA; }, kCtxMap, true);
   REQUIRE(e.bindings[0].blocked == kCtxMap && e.bindings[1].blocked == 0 && e.bindings[2].blocked == 0);
 }
+
+// The stock touch buttons: fixed actions a user binding can't take or clear.
+void TestStockTouch() {
+  REQUIRE(StockTouchInput(In(Device::Touch, 4)) && StockTouchInput(In(Device::Touch, 22)));
+  REQUIRE(StockTouchInput(In(Device::Touch, 33)));
+  REQUIRE(!StockTouchInput(In(Device::Touch, 10)) && !StockTouchInput(In(Device::Touch, 20)));
+  REQUIRE(!StockTouchInput(In(Device::Touch, 40)) && !StockTouchInput(In(Device::Touch, 64)));
+  REQUIRE(!StockTouchInput(In(Device::PadButton, 4)));
+
+  // A binding with a stock code anywhere in it goes; Visor, the Morph Ball rows
+  // and added buttons stay.
+  UserProfile user;
+  user.replace = true;
+  user.bindings.push_back(Bind(Action::PadA, {In(Device::Touch, 4)}));
+  user.bindings.push_back(Bind(Action::PadY, {In(Device::Touch, 32), In(Device::Touch, 5)}));
+  user.bindings.push_back(Bind(Action::PadX, {In(Device::Touch, 10)}));
+  user.bindings.push_back(Bind(Action::BallBomb, {In(Device::Touch, 40)}));
+  user.bindings.push_back(Bind(Action::PadY, {In(Device::Touch, 64)}));
+  const UserProfile kept = WithoutStockTouch(user);
+  REQUIRE(kept.replace && kept.bindings.size() == 3);
+  REQUIRE((kept.bindings[0] == user.bindings[2]) && (kept.bindings[2] == user.bindings[4]));
+
+  // After even a replacing overlay, touch B and LB jump in every context, L locks
+  // with its analog, and Turbo's pulse presses A.
+  Profile p;
+  Overlay(p, kept);
+  BindStockTouch(p);
+  Runtime runtime;
+  runtime.SetProfile(&p);
+  RawState raw;
+  raw.touch.set(4);
+  REQUIRE(runtime.Poll(raw, kCtxGameplay, 1000).Held(Action::PadB));
+  REQUIRE(!runtime.Last().Held(Action::PadA));
+  raw.touch.reset();
+  raw.touch.set(22);
+  REQUIRE(runtime.Poll(raw, kCtxMenu, 1016).Held(Action::PadB));
+  raw.touch.reset();
+  raw.touch.set(7);
+  REQUIRE(runtime.Poll(raw, kCtxGameplay, 1032).Held(Action::PadL));
+  REQUIRE(runtime.Last().Value(Action::LAnalog) == 1.f);
+  raw.touch.reset();
+  raw.touch.set(kTouchTurboCode);
+  REQUIRE(runtime.Poll(raw, kCtxGameplay, 1048).Held(Action::PadA));
+}
 } // namespace
 
 int main() {
   TestCustomActions();
   TestBallButtons();
   TestTouchButtons();
+  TestStockTouch();
   TestDuplicateBindings();
   TestFamilyEditing();
   TestInputText();

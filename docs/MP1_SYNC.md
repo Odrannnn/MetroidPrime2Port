@@ -161,6 +161,11 @@ Each needs MP2 game-side hooks found fresh; a row with no possible MP2 backend i
     `a74355f2f 5047a0b01 559301f5c`, from-MP2 `8a58764bf 112ae170d e971467ac`, `951a93f5a` (we have
     the boosts), `6fb5e0871` (done in `703cf3c85`), `67d13d552` (MP1 seed; ours has pipeline_use),
     `96529013d` release.
+29. **Range `96529013d..b6b6f60e8`** (2026-11-01). Taken: `b6b6f60e8` stock touch buttons press fixed
+    GameCube actions (`kTouchStockControls`, bound after the user overlay; their Remap rows are gone):
+    they pressed the virtual pad, which port 0's preset remaps (Remastered: touch B dead, START = map).
+    Turbo's pulse is touch code 33 (A) for the same reason. Console `touchctl` holds a touch code;
+    `touchctl b 1` jumps on a new game. Skipped: `c3d086188` (third-person shoulder).
 
 Skipped from this range: Phazon Beam cheat and stacked beam rate (MP1 items), mods page/import
 fixes (wait for package 8), decomp matches.
@@ -170,9 +175,9 @@ set differs; the approach can be reused), Archipelago, MP1 randomizer logic.
 
 ## Status
 
-Packages 1-28 are merged; the dated per-merge log moved verbatim to
+Packages 1-29 are merged; the dated per-merge log moved verbatim to
 `docs/history/MP1_SYNC-to-2026-10-29.md`. MP1 was last reviewed through `e3d8c8940`
-(2026-10-29), then through `96529013d` (2026-11-01, package 28); take later commits by `git -C ../MetroidPrimePort log --no-merges 96529013d..HEAD`.
+(2026-10-29), then through `b6b6f60e8` (2026-11-01, package 29); take later commits by `git -C ../MetroidPrimePort log --no-merges b6b6f60e8..HEAD`.
 
 Still unrun/unverified per that log (no device or hardware available then):
 

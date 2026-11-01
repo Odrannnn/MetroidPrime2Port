@@ -23,6 +23,8 @@
 
 #include "port_input.h"
 #include "port_input_remap_ui.h"
+#include "port_input_bindings.h"
+#include "input/port_input_devices.h"
 #include "port_logfile.h"
 #include "port_overlay.h"
 #include "port_touch.h"
@@ -1292,6 +1294,25 @@ void CmdPadRead(CStateManager&, const Args&, std::string& out) {
                   status[i].substickX, status[i].substickY, status[i].triggerLeft, status[i].triggerRight);
     out += line;
   }
+}
+
+// `touchctl <touch name|code> 0|1`: holds or releases a touch overlay control as its button
+// would, code only (a stock one presses its fixed GameCube action, kTouchStockControls);
+// `turbo`/`tturbo` hold Turbo (PortTouch pulses A while the setting is on).
+void CmdTouchCtl(CStateManager&, const Args& args, std::string& out) {
+  PortInput::Input in;
+  if (args.size() != 3 || !PortInput::InputFromText("touch:" + Str(args[1]), in) ||
+      in.device != PortInput::Device::Touch) {
+    Fail("usage: touchctl <touch name|code> 0|1");
+    return;
+  }
+  const bool down = ArgToInt(args[2], 0) != 0;
+  if (in.code == 27 || in.code == 28) {
+    PortTouch::SetTurboFire(down);
+  } else {
+    PortInputDevices::SetTouchControl(in.code, down);
+  }
+  out += "touch " + Str(args[1]) + " (" + std::to_string(in.code) + ") " + (down ? "down" : "up") + "\n";
 }
 
 // `vpad ...`: SDL virtual gamepads (see port_vpads.h).
@@ -5220,6 +5241,8 @@ const CommandSpec kCommands[] = {
       "players                     each player's position, yaw, aim, twin stick, direct aim, orbit, beam\n"},
     {"padread", CmdPadRead,
       "padread                     PADRead's status (err, buttons, sticks, triggers) for ports 0-3 right now\n"},
+    {"touchctl", CmdTouchCtl,
+      "touchctl <touch name|code> 0|1  hold/release a touch overlay control, code only (stock ones press their GameCube action)\n"},
     {"vpad", CmdVpad,
       "vpad list|attach [n]|detach <i>|<i> <button|axis> <value>|<i> gyro <yaw> <pitch>  SDL virtual gamepads (MP2_VPADS=n attaches at start);\n"
       "                            buttons a b x y back guide start ls rs lb rb up down left right (0/1), axes lx ly rx ry lt rt (-1..1)\n"},

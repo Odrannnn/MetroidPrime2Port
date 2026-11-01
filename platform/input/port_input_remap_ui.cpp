@@ -71,37 +71,21 @@ constexpr const char* kFamilies[] = {"Keyboard & mouse", "Controller", "Touch"};
 
 // The touch controls Record can't reach (the overlay hides while F1 is open), as
 // "touch:" names and the editor's labels. The sticks, D-pad and menu button
-// aren't remappable, so they're left out.
+// aren't remappable, nor are the face buttons and pills
+// (PortInput::kTouchStockControls: fixed GameCube actions), so they're left out.
 struct STouchInfo {
   const char* name;
   const char* label;
 };
 constexpr STouchInfo kTouchControls[] = {
-    {"a", "A"},
-    {"b", "B"},
-    {"x", "X"},
-    {"y", "Y"},
-    {"l", "L"},
-    {"r", "R"},
-    {"z", "Z"},
     {"visor", "Visor"},
     {"beam", "Beam"},
-    {"start", "Start"},
     {"map", "Map"},
     {"eye", "Hide controls"},
     {"turbo", "Turbo (not in this port yet)"},
-    {"jump", "Twin stick: Jump"},
-    {"fire", "Twin stick: Fire"},
-    {"morph", "Twin stick: Morph"},
     {"missile", "Twin stick: Missile"},
-    {"lt", "Twin stick: LT Lock"},
-    {"lb", "Twin stick: LB Jump"},
-    {"rt", "Twin stick: RT Fire"},
-    {"rb", "Twin stick: RB Missile"},
-    {"tz", "Twin stick: Map (Z)"},
     {"tturbo", "Twin stick: Turbo (not in this port yet)"},
     {"beam_shift", "Twin stick: Beam (held, not in this port yet)"},
-    {"map_tap", "Minimap tap"},
     {"bbomb", "Morph Ball: Bomb"},
     {"bboost", "Morph Ball: Boost"},
     {"bpbomb", "Morph Ball: Power Bomb"},

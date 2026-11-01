@@ -1158,6 +1158,30 @@ std::vector<TouchButton> ParseTouchButtons(std::string_view layout) {
   return out;
 }
 
+bool StockTouchInput(const Input& in) {
+  if (in.device != Device::Touch) return false;
+  return std::any_of(std::begin(kTouchStockControls), std::end(kTouchStockControls),
+                     [&](const TouchStockControl& c) { return c.control == in.code; });
+}
+
+UserProfile WithoutStockTouch(const UserProfile& user) {
+  UserProfile out = user;
+  std::erase_if(out.bindings, [](const Binding& b) {
+    return std::any_of(b.inputs.begin(), b.inputs.begin() + b.count, StockTouchInput);
+  });
+  return out;
+}
+
+void BindStockTouch(Profile& profile) {
+  for (const TouchStockControl& c : kTouchStockControls) {
+    Binding b;
+    b.action = c.action;
+    b.inputs[0] = Input{Device::Touch, 0, 50, uint16_t(c.control)};
+    b.count = 1;
+    profile.bindings.push_back(b);
+  }
+}
+
 void BindTouchButtons(Profile& profile, std::string_view layout) {
   for (const TouchButton& button : ParseTouchButtons(layout)) {
     Binding b;

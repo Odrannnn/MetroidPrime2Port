@@ -114,13 +114,12 @@ std::atomic< bool > sMenuBackPressed{false};
 // (and a press that reached the pad before the shift still releases there). UI thread only.
 bool sDpadShifted[4] = {};
 // Turbo's own A presses (game thread only).
-bool sTurboDown = false;
+std::atomic< bool > sTurboDown{false}; // set by BeginFrame, read by the input poll
 uint64_t sTurboStartNs = 0; // 0 = not running
 
 std::mutex sPadMutex;
 PortTouchPad::Pad sPad;
 
-constexpr int kButtonA = 0; // SDL_GAMEPAD_BUTTON_SOUTH
 constexpr int kDpadUp = 11; // SDL_GAMEPAD_BUTTON_DPAD_UP; then down, left, right
 constexpr int kInGame = 1;  // CMFGame::kFS_InGame
 constexpr int kPaused = 2;  // CMFGame::kFS_Paused
@@ -460,15 +459,13 @@ int BuildWheelState(CPlayerState* state) {
 }
 
 // Turbo: while the button is held (and the setting is on), A goes down for two ticks' time and
-// up for two, as MP1's turbo fire mashes it.
+// up for two, as MP1's turbo fire mashes it. The input engine reads it (TurboDown) as a stock
+// touch code bound to GameCube A, not the virtual pad, whose A a pad preset may remap.
 void UpdateTurbo(bool enabled) {
   const bool held =
       enabled && sTurboHeld.load(std::memory_order_acquire) && PortHarness::FlowState() == kInGame;
   if (!held) {
-    if (sTurboDown) {
-      PadButton(kButtonA, false);
-      sTurboDown = false;
-    }
+    sTurboDown.store(false, std::memory_order_release);
     sTurboStartNs = 0;
     return;
   }
@@ -476,11 +473,7 @@ void UpdateTurbo(bool enabled) {
   if (sTurboStartNs == 0) {
     sTurboStartNs = now;
   }
-  const bool down = ((now - sTurboStartNs) / kTurboHalfNs) % 2 == 0;
-  if (down != sTurboDown) {
-    PadButton(kButtonA, down);
-    sTurboDown = down;
-  }
+  sTurboDown.store(((now - sTurboStartNs) / kTurboHalfNs) % 2 == 0, std::memory_order_release);
 }
 
 bool SDLCALL RadialLifecycleWatch(void*, SDL_Event* event) {
@@ -958,6 +951,7 @@ bool WheelIcon(int wheel, int item, std::vector< uint32_t >& out) {
 void SetBeamShift(bool held) { sBeamShift.store(held, std::memory_order_release); }
 
 void SetTurboFire(bool held) { sTurboHeld.store(held, std::memory_order_release); }
+bool TurboDown() { return sTurboDown.load(std::memory_order_acquire); }
 
 void SetMenuBack(bool held) {
   if (held) {
