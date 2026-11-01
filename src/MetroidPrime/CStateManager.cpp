@@ -4078,7 +4078,10 @@ void CStateManager::ProcessPlayerInput() {
 static void ApplyHoldToggle(CFinalInput& input, CStateManager& mgr, uint controller, bool enabled) {
   static PortHoldToggle::Toggle sLockOn;
   static PortHoldToggle::Sticky sCharge;
+  static PortHoldToggle::Toggle sSpider;
+  static PortHoldToggle::Grace sSpiderOn;
   static bool sPrevL = false;
+  static bool sPrevR = false;
 
   // A controller index is not a player slot: ProcessPlayerInput maps a slot's selection the other
   // way round, so it is the selection that finds the player this pad belongs to.
@@ -4122,6 +4125,29 @@ static void ApplyHoldToggle(CFinalInput& input, CStateManager& mgr, uint control
   const PortHoldToggle::Output outA = sCharge.Update(charge, heldA, pressA, input.DeltaTime());
   if (outA.held != heldA || outA.pressed != pressA) {
     input.PortSetA(outA.held, outA.pressed);
+  }
+
+  // Toggle Spider Ball: R clings to a track until the next press. Away from a track a press is a
+  // plain hold, and the damage that knocks the ball off keeps the latch for its duration.
+  const bool heldR = input.DR() || input.DRTrigger();
+  const bool pressR = heldR && !sPrevR;
+  sPrevR = heldR;
+  const CMorphBall* const ball = player->GetMorphBall();
+  const bool morphed = enabled && mgr.GetGameState() == CStateManager::kGS_Running &&
+                       player->GetMorphballTransitionState() == CPlayer::kMS_Morphed;
+  const bool spider = morphed && PortOverlay::SpiderToggle() && ball != nullptr;
+  const bool onTrack =
+      spider && sSpiderOn.Update(ball->GetBallState() == CMorphBall::kBS_Spider ||
+                                     ball->GetBallState() == CMorphBall::kBS_SpiderBoost ||
+                                     (sSpider.Latched() && ball->PortDamageTimer() > 0.f),
+                                 input.DeltaTime());
+  if (!spider) {
+    sSpiderOn.Reset();
+  }
+  const PortHoldToggle::Output outR =
+      sSpider.Update(spider, heldR, pressR, onTrack, input.DeltaTime());
+  if (sSpider.Latched() || outR.held != heldR) {
+    input.PortSetR(outR.held, outR.pressed);
   }
 }
 #endif

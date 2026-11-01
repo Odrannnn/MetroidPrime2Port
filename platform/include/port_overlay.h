@@ -294,6 +294,10 @@ bool LockOnToggle();
 void SetLockOnToggle(bool enabled);
 // Aim Lock-On: lock onto the target nearest the crosshair instead of the retail pick, which
 // prefers a nearer target (CPlayer::FindBestOrbitableObject). Off under Original Experience.
+// Toggle Spider Ball: an R press on a Spider Ball track clings until the next press. Off under
+// Original Experience.
+bool SpiderToggle();
+void SetSpiderToggle(bool enabled);
 bool AimLockOn();
 void SetAimLockOn(bool enabled);
 bool StickyCharge();

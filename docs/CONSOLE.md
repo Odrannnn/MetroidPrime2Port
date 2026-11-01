@@ -69,6 +69,7 @@ hp, hp_max, visor, beam, freecam) for scripts.
 - `springball <0|1>` — spring ball: C-stick up in Morph Ball bomb-jumps (needs Bombs)
 - `lockon <0|1>` — toggle lock-on: an L press latches until the next press
 - `dodge` — a press of the Dodge action: the player takes it within 0.12 s if on the ground and strafing, so hold the strafe first (e.g. `press sx:127 0`, locked on `press l+sx:127 0`); locked on it dashes as a jump tap does, otherwise straight sideways; off under Original Experience
+- `spidertoggle [0|1]` — an R press holds the spider ball on its track until the next (`spider_toggle`)
 - `aimlockon [0|1]` — lock-on picks the target nearest the crosshair (`aim_lock_on`)
 - `sticky <0|1>` — sticky charge: a long A hold keeps charging after the release
 - `pointeraim [on|off|<x> <y>] pointer aim (the F1 row), or place its pointer (-1..1)`

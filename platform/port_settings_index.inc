@@ -23,6 +23,7 @@
 {"Controls", "Options", "Quick setup", "Use twin-stick controller", "twin stick dual sticks right stick aim controller gamepad remastered preset layout quick setup"},
 {"Controls", "Options", "On-screen prompts", "Button glyphs", "prompt glyphs xbox playstation switch nintendo gamecube keyboard icons buttons"},
 {"Controls", "Options", "Buttons", "Toggle Lock-On", "lock on target latch hold l trigger"},
+{"Controls", "Options", "Buttons", "Toggle Spider Ball", "spider ball track cling latch hold r"},
 {"Controls", "Options", "Buttons", "Aim Lock-On", "lock on target nearest crosshair aim priority"},
 {"Controls", "Options", "Buttons", "Sticky Charge", "charge beam hold a"},
 {"Controls", "Options", "Buttons", "Remastered charge (rapid fire)", "rapid fire charge beam power"},

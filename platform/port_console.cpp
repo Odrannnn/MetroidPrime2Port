@@ -1663,6 +1663,12 @@ void CmdLockOn(CStateManager&, const Args& args, std::string& out) {
   out += enabled ? "toggle lock-on on\n" : "toggle lock-on off\n";
 }
 
+void CmdSpiderToggle(CStateManager&, const Args& args, std::string& out) {
+  const bool enabled = args.size() < 2 ? !PortOverlay::SpiderToggle() : ArgToInt(args[1], 1) != 0;
+  PortOverlay::SetSpiderToggle(enabled);
+  out += enabled ? "toggle spider ball on\n" : "toggle spider ball off\n";
+}
+
 void CmdAimLockOn(CStateManager&, const Args& args, std::string& out) {
   const bool enabled = args.size() < 2 ? !PortOverlay::AimLockOn() : ArgToInt(args[1], 1) != 0;
   PortOverlay::SetAimLockOn(enabled);
@@ -5080,6 +5086,8 @@ const CommandSpec kCommands[] = {
       "lockon <0|1>                toggle lock-on: an L press latches until the next press\n"},
     {"dodge", CmdDodge,
       "dodge                      a Dodge press (sideways dash, locked on or not; needs a strafe held)\n"},
+    {"spidertoggle", CmdSpiderToggle,
+      "spidertoggle [0|1]         an R press holds the spider ball on its track until the next (spider_toggle)\n"},
     {"aimlockon", CmdAimLockOn,
       "aimlockon [0|1]            lock-on picks the target nearest the crosshair (aim_lock_on)\n"},
     {"sticky", CmdSticky,

@@ -169,6 +169,11 @@ Controls > Options:
   applies the Remastered layout to all controllers (Remap > Presets...), replacing your own
   controller bindings; greyed out with a GameCube adapter.
 - `lockon_toggle`: Buttons > Toggle Lock-On; env `MP2_LOCK_ON_TOGGLE`.
+- `spider_toggle`: Buttons > Toggle Spider Ball (default off, off under Original Experience; env
+  `MP2_SPIDER_TOGGLE`): an R press on a Spider Ball track clings until the next press; leaving the
+  track (more than 0.15 s) or the morph ball ending lets go. Away from a track, R works as usual.
+  Grapple key, Toggle Grapple and Shoot While Grappling (MP1 #243) are not ported: Echoes grapples
+  with the fire button at a grapple point and never holsters the cannon for it.
 - `aim_lock_on`: Buttons > Aim Lock-On (default off, off under Original Experience; env
   `MP2_AIM_LOCK_ON`): lock-on picks the target nearest the crosshair, measured as an angle (screen x
   weighed by the aspect ratio) with line of sight still required. Retail prefers a target nearer the

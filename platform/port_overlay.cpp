@@ -98,6 +98,7 @@ float sSpringFlickRate = PortOverlay::kSpringFlickRateDefault;
 bool sQuickResume = true;
 bool sLockOnToggle = false;
 bool sAimLockOn = false;
+bool sSpiderToggle = false;
 bool sStickyCharge = false;
 bool sAutoAim = true;
 bool sPointerAim = false;
@@ -1167,6 +1168,20 @@ bool LockOnToggle() {
 void SetLockOnToggle(bool enabled) {
   ReadEnv();
   sLockOnToggle = enabled;
+  Persist();
+}
+
+bool SpiderToggle() {
+  ReadEnv();
+  if (OriginalExperience()) {
+    return false;
+  }
+  return EnvBool("MP2_SPIDER_TOGGLE", sSpiderToggle);
+}
+
+void SetSpiderToggle(bool enabled) {
+  ReadEnv();
+  sSpiderToggle = enabled;
   Persist();
 }
 

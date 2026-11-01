@@ -70,6 +70,9 @@ void DrawControlsOptions() {
   Changed(ImGui::Checkbox("Toggle Lock-On", &sLockOnToggle));
   ItemHelp("Press L once to lock on, scan or grapple, and again to let go. With no target, L works "
            "as usual.");
+  Changed(ImGui::Checkbox("Toggle Spider Ball", &sSpiderToggle));
+  ItemHelp("Press R once to cling to a Spider Ball track, and again to let go. Leaving the track "
+           "lets go by itself. Away from a track, R works as usual.");
   Changed(ImGui::Checkbox("Aim Lock-On", &sAimLockOn));
   ItemHelp("Lock onto the target nearest the crosshair. The original prefers a nearer target even "
            "when it is off to the side. Scanning works as usual.");

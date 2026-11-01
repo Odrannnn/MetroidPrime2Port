@@ -87,6 +87,10 @@ public:
   void SetDamageTimer(float time);
   float GetCloseToCollisionTime() const { return mCloseToCollisionTime; }
   void SetDisableSpiderBallTime(float time);
+#ifdef TARGET_PC
+  // Damage keeps the spider ball off its track for this long (Toggle Spider Ball).
+  float PortDamageTimer() const { return mDamageTimer; }
+#endif
   void TakeDamage(float damage);
 
   const CCollidableSphere& GetCollidableSphere() const { return mCollisionSphere; }
