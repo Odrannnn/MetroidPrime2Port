@@ -1675,7 +1675,7 @@ void ResetSection(const SView& v) {
   if (ImGui::Button("Reset")) {
     ClearOwn(v);
     if (layout && v.family == Family::Keyboard) PortControls::ApplyKeyPresetNamed(kKeyPresets[0].id);
-    if (layout && v.family == Family::Pad) PortControls::ApplyPadPresetNamed(kPadPresets[0].id);
+    if (layout && v.family == Family::Pad) PortControls::ApplyPadPresetNamed(kPadPresets[0].id, unsigned(EditPort()));
     ImGui::CloseCurrentPopup();
   }
   ImGui::PopID();
@@ -1711,12 +1711,14 @@ void ApplyBallPreset(PortInput::Family family, std::string_view id) {
 
 // Takes the saved bindings as the page's copy: a PortControls preset writes them
 // itself, and the next Commit would otherwise put the page's older copy back.
-void Reload() {
-  sWorkPort = EditPort();
+void Reload(int port) {
+  sWorkPort = port;
   sWork = *PortInputDevices::UserBindings(sWorkPort);
   sSeenVersion = PortInputDevices::UserBindingsVersion(sWorkPort);
   sLoaded = true;
 }
+
+void Reload() { Reload(EditPort()); }
 
 bool sSavedStale = true;
 
@@ -2014,25 +2016,26 @@ void DrawPlayerController(unsigned port, const char* label) {
 void ApplyPreset(PortInput::Family family, std::string_view id) { ApplyPreset(family, id, 0); }
 
 void ApplyPreset(PortInput::Family family, std::string_view id, unsigned port) {
-  if (port != 0) {
-    // Another player: only their controller's Aurora mapping. The engine rows (controls.toml) and
-    // the ball rows are per device, left alone.
-    if (family == PortInput::Family::Pad) PortControls::ApplyPadPresetNamed(id, port);
-    return;
+  // Players 2-4 have no keyboard.
+  if (port > 3 || (port != 0 && family != PortInput::Family::Pad)) return;
+  // The page may never have been drawn, or shows another player's file; start
+  // from this player's saved bindings (controls.toml, or controls_p<N>.toml).
+  if (sWorkPort != int(port) || (sEditing == kEditNone && !sCapture.active)) {
+    sEditing = kEditNone;
+    EndCapture();
+    Reload(int(port));
   }
-  // The page may never have been drawn; start from the saved bindings.
-  if (sEditing == kEditNone && !sCapture.active) Reload();
   // The presets set the all-controllers layer, so clear that one even
   // while a kind or model is selected.
   SView base;
   base.family = family;
   ClearOwn(base);
   if (family == PortInput::Family::Pad) {
-    PortControls::ApplyPadPresetNamed(id);
+    PortControls::ApplyPadPresetNamed(id, port);
   } else {
     PortControls::ApplyKeyPresetNamed(id);
   }
-  Reload();
+  Reload(int(port));
   ApplyBallPreset(family, id);
 }
 

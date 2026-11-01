@@ -22,6 +22,7 @@
 #include "port_photo.h"
 
 #include "port_input.h"
+#include "port_input_remap_ui.h"
 #include "port_logfile.h"
 #include "port_overlay.h"
 #include "port_pointer.h"
@@ -1145,7 +1146,8 @@ void CmdPadPort(CStateManager&, const Args& args, std::string& out) {
 }
 
 // `padpreset <gamecube|remastered|modern|southpaw|...> [port]`: apply a pad preset to one player's
-// controller (what the F1 remap page's Presets button does for the selected player). Virtual pads and
+// controller and their own pad bindings (what the F1 remap page's Presets button does for the selected
+// player: controls.toml for port 0, controls_p<N>.toml for the others). Virtual pads and
 // empty ports are reported, not silently skipped. Port 0 is the default.
 void CmdPadPreset(CStateManager&, const Args& args, std::string& out) {
   const int port = args.size() >= 3 ? ArgToInt(args[2], -1) : 0;
@@ -1162,10 +1164,13 @@ void CmdPadPreset(CStateManager&, const Args& args, std::string& out) {
     out += "port " + std::to_string(port) + ": virtual pad (" + info.name + "), mappings ignored: no-op\n";
     return;
   }
-  if (!PortControls::ApplyPadPresetNamed(Str(args[1]), static_cast<unsigned>(port))) {
+  const std::string name = Str(args[1]);
+  if (name != "gamecube" && name != "remastered" && name != "modern" && name != "southpaw") {
     Fail("unknown pad preset");
     return;
   }
+  // Remap's path: the controller's mapping, plus that player's own pad rows and Morph Ball rows.
+  PortInputRemap::ApplyPreset(PortInput::Family::Pad, name, static_cast<unsigned>(port));
   out += "port " + std::to_string(port) + " (" + info.name + "): preset " + Str(args[1]) + " applied\n";
 }
 

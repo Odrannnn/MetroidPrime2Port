@@ -21,8 +21,8 @@ void DrawPlayerController(unsigned port, const char* label);
 // with the named PortControls preset ("classic", "mouse"; "gamecube", "remastered",
 // "modern", "southpaw") and its Morph Ball rows. Overlay thread.
 void ApplyPreset(PortInput::Family family, std::string_view id);
-// The same for a player: port 0 as above; ports 1-3 (pad family only) write just that controller's
-// pad mapping (PortControls::ApplyPadPresetNamed), not the per-device engine rows.
+// The same for a player: port 0 as above; ports 1-3 (pad family only) set that port's controller
+// mapping and replace the pad rows of that player's own bindings (controls_p<N>.toml).
 void ApplyPreset(PortInput::Family family, std::string_view id, unsigned port);
 // An input capture is running: the overlay's pad navigation stays off.
 bool Capturing();
