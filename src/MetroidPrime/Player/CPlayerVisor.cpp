@@ -537,7 +537,7 @@ void CPlayerVisor::DrawScanEffect(const CStateManager& mgr,
   // the pointer is held at the centre and so is the window.
   float pointerX = 0.f;
   float pointerY = 0.f;
-  const bool portPointer = PortMouse::PointerAimPosition(pointerX, pointerY);
+  const bool portPointer = PortMouse::PointerAimPosition(pointerX, pointerY, static_cast< int >(mPlayerIndex));
   // The window's centre in pixels from the view's centre (+y down).
   const float portShiftX = portPointer ? pointerX * 0.5f * static_cast< float >(vpWidth) : 0.f;
   const float portShiftY = portPointer ? pointerY * 0.5f * static_cast< float >(vpHeight) : 0.f;

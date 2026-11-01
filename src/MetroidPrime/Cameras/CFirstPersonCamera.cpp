@@ -141,13 +141,13 @@ void CFirstPersonCamera::UpdateTransform(CStateManager& mgr, float dt) {
   sPortLockPitchHeld = portLockPitch;
   if ((PortMouse::Enabled() || PortMouse::StickEnabled() || PortMouse::TouchEnabled()) &&
       !portLockPitch) {
-    if (PortMouse::Aiming() && PortMouse::Initialized()) {
-      const float aimYaw = PortMouse::Yaw();
-      const float aimPitch = PortMouse::Pitch();
+    if (PortMouse::Aiming(player->GetPlayerIndex()) && PortMouse::Initialized(player->GetPlayerIndex())) {
+      const float aimYaw = PortMouse::Yaw(player->GetPlayerIndex());
+      const float aimPitch = PortMouse::Pitch(player->GetPlayerIndex());
       lookDir = CVector3f(sinf(-aimYaw) * cosf(aimPitch), cosf(-aimYaw) * cosf(aimPitch),
                           sinf(aimPitch));
     } else {
-      PortMouse::Synchronize(lookDir.GetX(), lookDir.GetY(), lookDir.GetZ());
+      PortMouse::Synchronize(lookDir.GetX(), lookDir.GetY(), lookDir.GetZ(), player->GetPlayerIndex());
     }
   }
 #endif
@@ -198,7 +198,7 @@ void CFirstPersonCamera::UpdateTransform(CStateManager& mgr, float dt) {
         !player->IsInFreeLook() && mPitchId == kInvalidUniqueId
 #ifdef TARGET_PC
         // The mouse is not a stick: do not drag the view down for a jump or a fall.
-        && !(PortMouse::Aiming() && PortMouse::Initialized())
+        && !(PortMouse::Aiming(player->GetPlayerIndex()) && PortMouse::Initialized(player->GetPlayerIndex()))
 #endif
     ) {
       if (player->GetJumpCameraTimer() > 0.f) {
@@ -232,9 +232,9 @@ void CFirstPersonCamera::UpdateTransform(CStateManager& mgr, float dt) {
 #ifdef TARGET_PC
   if (portLockPitch) {
     // The aim follows the held view, so releasing the lock hands it back without a snap.
-    PortMouse::Synchronize(lookDir.GetX(), lookDir.GetY(), lookDir.GetZ());
+    PortMouse::Synchronize(lookDir.GetX(), lookDir.GetY(), lookDir.GetZ(), player->GetPlayerIndex());
     gunXf = CTransform4f::LookAt(CVector3f::Zero(), lookDir);
-  } else if (PortMouse::Aiming() && PortMouse::Initialized()) {
+  } else if (PortMouse::Aiming(player->GetPlayerIndex()) && PortMouse::Initialized(player->GetPlayerIndex())) {
     // Pixel deltas get no controller-style easing, and the gun-follow basis lands in the same
     // tick as the camera, so the view is immediate and the shot goes where the crosshair is.
     gunXf = CTransform4f::LookAt(CVector3f::Zero(), lookDir);

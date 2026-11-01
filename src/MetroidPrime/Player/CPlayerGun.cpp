@@ -2866,7 +2866,7 @@ void CPlayerGun::HandleBeamChange(const CFinalInput& input, CStateManager& mgr) 
 #ifdef TARGET_PC
   // The disc picks beams with the C-stick, which twin stick aims with (issue #15); beams then
   // come from the port's direct picks (LB + D-pad, the radial, keys), through PortTouch.
-  const bool stickPicks = !PortMouse::StickOwnsCStick();
+  const bool stickPicks = !PortMouse::StickOwnsCStick(player->GetPlayerIndex());
   for (int i = 0; stickPicks && i < 4; ++i) {
 #else
   for (int i = 0; i < 4; ++i) {

@@ -1027,7 +1027,7 @@ void CPlayer::UpdateGunTransform(const CVector3f& position, CStateManager& mgr) 
   float pointerY = 0.f;
   mGun->PortSetPointerAimPoint(false, CVector3f::Zero());
   if (mGun->GetGunHolsterState() == CPlayerGunBase::kGHS_Drawn &&
-      PortMouse::PointerAimPosition(pointerX, pointerY) && (pointerX != 0.f || pointerY != 0.f) &&
+      PortMouse::PointerAimPosition(pointerX, pointerY, mPlayerIndex) && (pointerX != 0.f || pointerY != 0.f) &&
       (MouseAimAllowed(mgr) || PortLockFreeAim(mgr))) {
     const CFirstPersonCamera* cam = mCameraManager->GetFirstPersonCamera();
     // The view's own transform: the crosshair is drawn from it.
@@ -2549,7 +2549,7 @@ void CPlayer::ProcessInput(const CFinalInput& input, CStateManager& mgr) {
 #ifdef TARGET_PC
   // Twin-stick aim reads the C-stick here and applies it in Think (see UpdateMouseAim), unless a
   // key on it is picking a beam (PortMouse::StickOwnsCStick).
-  const bool stickAims = PortMouse::StickOwnsCStick();
+  const bool stickAims = PortMouse::StickOwnsCStick(mPlayerIndex);
   mPortLookX = stickAims ? input.GetAnalogRightX() : 0.f;
   mPortLookY = stickAims ? input.GetAnalogRightY() : 0.f;
 #endif
@@ -2950,7 +2950,7 @@ bool CPlayer::PortAimCrosshairsOpen() const {
       PortOverlay::CrosshairStyle() == PortOverlay::kCrosshairStyle_Classic) {
     return false;
   }
-  return PortMouse::Aiming() && PortOverlay::AimCrosshair();
+  return PortMouse::Aiming(mPlayerIndex) && PortOverlay::AimCrosshair();
 }
 
 bool CPlayer::PortLockFreeAim(const CStateManager& mgr) const {
@@ -2978,14 +2978,14 @@ void CPlayer::UpdateMouseAim(CStateManager& mgr, float dt) {
   // Pointer aim's settings live in the overlay, which PortMouse is built without.
   PortMouse::SetPointerAim(direct && PortOverlay::PointerAim(),
                            PortOverlay::PointerAimBox() / 100.f,
-                           PortOverlay::PointerAimTurn() * (PortMouse::kPi / 180.f));
+                           PortOverlay::PointerAimTurn() * (PortMouse::kPi / 180.f), mPlayerIndex);
   // Photo mode owns the pointer grab (PortPhoto::Frame), and the free camera owns the view.
   if (!direct || PortPhoto::Active()) {
     return;
   }
   const bool allowed = MouseAimAllowed(mgr);
   if (PortMouse::StickEnabled() && !PortRadial::Capturing()) {
-    PortMouse::AddStickAim(mPortLookX, mPortLookY, dt);
+    PortMouse::AddStickAim(mPortLookX, mPortLookY, dt, mPlayerIndex);
   }
   // While something else owns the view - a lock-on, the morph ball, a cinematic - track the
   // camera direction instead, so engaging the mouse again does not snap the aim.
@@ -3000,11 +3000,11 @@ void CPlayer::UpdateMouseAim(CStateManager& mgr, float dt) {
   const bool scanPointHold = mOrbitState == kOS_OrbitPoint &&
                              mgr.GetPlayerState()->GetCurrentVisor() == CPlayerState::kPV_Scan;
   if (!PortMouse::UpdateAim(true, !allowed, forward.GetX(), forward.GetY(), forward.GetZ(), dt,
-                            PortLockFreeAim(mgr), scanPointHold)) {
+                            PortLockFreeAim(mgr), scanPointHold, mPlayerIndex)) {
     return;
   }
 
-  CTransform4f xf = CTransform4f::RotateZ(CRelAngle::FromRadians(PortMouse::Yaw()));
+  CTransform4f xf = CTransform4f::RotateZ(CRelAngle::FromRadians(PortMouse::Yaw(mPlayerIndex)));
   xf.SetTranslation(GetTransform().GetTranslation());
   SetTransform(xf);
 }

@@ -234,7 +234,7 @@ void SetStickEnabled(bool enabled);
 // Under mouse aim a keyboard key held on a C-stick direction (the mouse-and-keyboard preset's
 // 1-4) gives it back for that poll: the key picks a beam and does not aim, as in MP1.
 // PortInputDevices sets the key state each poll.
-bool StickOwnsCStick();
+bool StickOwnsCStick(int player = 0);
 void SetKeyboardCStickHeld(bool held);
 float StickAimRate();
 void SetStickAimRate(float pixelsPerSecond);
@@ -244,7 +244,8 @@ void SetStickAimSplit(bool enabled);
 float StickAimRateY();
 void SetStickAimRateY(float pixelsPerSecond);
 // Feeds a normalised right-stick vector (-1..1, x right, y up) for one tick.
-void AddStickAim(float x, float y, float dt);
+// Fed to `player`'s aim only (the pad port's player in a match).
+void AddStickAim(float x, float y, float dt, int player = 0);
 // Touch aim: the Android overlay's drag-to-aim, a third source alongside the mouse and the
 // stick. `PortTouch` decides when it is on (its own MP2_TOUCH_AIM switch, or the active
 // layout) and calls SetTouchEnabled; like twin-stick it works with or without mouse aim. The
@@ -293,6 +294,10 @@ void SetPhotoCapture(bool want);
 // Photo mode ends: release the grab and give SetCapture back to the aim.
 void EndPhotoCapture();
 bool TakePhotoLook(float& yawDegrees, float& pitchDegrees);
+// Aim state is per player (the pad port's player in a match): the functions below that take
+// `player` default to 0, which single player and every caller without a player use. The mouse,
+// touch and gyro feed player 0 only; a player above 0 follows its own pad's twin stick only. The
+// settings (sensitivity, rates, source switches) stay global.
 // Gyro aim on the pointer (MP1's PollGyro pointer branch): yaw (right) and pitch (up) in rad/s
 // over dt seconds; `sweep` radians of pad turn move the pointer across the screen, and the
 // vertical travel is scaled by `scaleY` (the gyro's vertical over horizontal sensitivity).
@@ -306,7 +311,7 @@ void AddGyroCamera(float yaw, float pitch, float dt, float sensitivity, float se
 void SetGyroDrivesAim(bool drives);
 // The Reset aim binding: the next UpdateAim recentres the pointer under pointer aim, otherwise
 // levels the view (pitch 0); `both` does both.
-void RequestResetAim(bool both);
+void RequestResetAim(bool both, int player = 0);
 // Latches the pending travel for the tick about to run (MP1's per-tick latch): called beside
 // PortTiming::BeginTick in CMain, so a frame that runs no tick (the cap off) loses nothing.
 void BeginTick();
@@ -315,7 +320,7 @@ void BeginTick();
 // touch and gyro travel shows fully; the stick's share shows `fraction` of it, as the next tick
 // would integrate it (MP1's issue #128 lag), and pointer aim's edge turn runs `fraction` of a
 // tick from the presented pointer. False when the last tick did not apply the aim.
-bool PresentedAimDelta(float fraction, float& dyaw, float& dpitch);
+bool PresentedAimDelta(float fraction, float& dyaw, float& dpitch, int player = 0);
 // Called every tick, from CPlayer::UpdateMouseAim. `active` means a pointer source may own the
 // aim right now (first person, not morphed, not in a cinematic, not locked on); `locked` keeps
 // the aim glued to the camera direction (x, y, z) instead of turning the player under it.
@@ -328,35 +333,35 @@ bool PresentedAimDelta(float fraction, float& dyaw, float& dpitch);
 // `pointerHold`: under pointer aim, a lock that keeps the pointer where it is instead of
 // re-centring it (the Scan Visor's point orbit, CPlayer::UpdateMouseAim).
 bool UpdateAim(bool active, bool locked, float x, float y, float z, float dt = 0.f,
-               bool pointerLock = false, bool pointerHold = false);
+               bool pointerLock = false, bool pointerHold = false, int player = 0);
 // Pointer aim: CPlayer pushes the F1 settings here every tick (this file is built without the
 // overlay). box is the dead box as a fraction of the half-screen (0.2..0.95), turnRate the edge
 // turn in radians per second. It needs a direct source (mouse, twin stick or touch aim) on.
-void SetPointerAim(bool enabled, float box, float turnRate);
-bool PointerAimEnabled();
+void SetPointerAim(bool enabled, float box, float turnRate, int player = 0);
+bool PointerAimEnabled(int player = 0);
 // The last UpdateAim left a pointer free under a lock (lock-on free aim).
-bool LockFreeAimActive();
+bool LockFreeAimActive(int player = 0);
 // The pointer (x right, y down, -1..1) and whether it is free this tick: pointer aim is on and
 // the last UpdateAim applied it. Outside that the pointer is centred and the aim is retail's.
-bool PointerAimPosition(float& x, float& y);
+bool PointerAimPosition(float& x, float& y, int player = 0);
 // The console's `pointeraim <x> <y>` (MP1's PortDebug::SetPointerAimPosition): moves the pointer
 // there from the centre, clamped to -1..1. A tick that does not leave it free re-centres it.
-void SetPointerAimPosition(float x, float y);
+void SetPointerAimPosition(float x, float y, int player = 0);
 // The console holds a pointer it placed there (free, the view not turned) until it is placed at 0 0.
-void SetPointerAimHold(bool hold);
-void Synchronize(float x, float y, float z);
+void SetPointerAimHold(bool hold, int player = 0);
+void Synchronize(float x, float y, float z, int player = 0);
 // The console's `aim <yaw_deg> <pitch_deg>`: place the aim outright instead of turning it from
 // travel, which is the only way a run with no stick can aim at a low target. yawDeg is the
 // view's heading in the world's own terms (0 = +y, 90 = +x, as `face` reads it); pitchDeg is
 // +up, so a negative pitch looks down. It arms a direct source (mouse aim) the rest of the run,
 // so CPlayer::UpdateMouseAim is the one that turns the body and CFirstPersonCamera reads the
 // pitch. A tick that has something else owning the view resynchronises and drops it.
-void SetAimAngles(float yawDeg, float pitchDeg);
+void SetAimAngles(float yawDeg, float pitchDeg, int player = 0);
 void Reset();
-bool Aiming();
-bool Initialized();
-float Yaw();
-float Pitch();
+bool Aiming(int player = 0);
+bool Initialized(int player = 0);
+float Yaw(int player = 0);
+float Pitch(int player = 0);
 float Sensitivity();
 void SetSensitivity(float radiansPerPixel);
 // MP1's "Separate vertical speed": vertical mouse counts turn at SensitivityY (rad per count);
