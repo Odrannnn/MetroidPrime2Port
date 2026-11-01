@@ -52,10 +52,15 @@ struct TEditorId {
 };
 CHECK_SIZEOF(TEditorId, 0x4)
 
-// Retail packs 10 index bits and 6 version bits; the port has 11 and 5, so 2048 object slots
-// fit in the same 16 bits. Index 2047 + version 31 is 0xFFFF (kInvalidUniqueId), never allocated.
+// Retail packs 10 index bits and 6 version bits (the matching build keeps that); the port has 11 and
+// 5, so 2048 object slots fit in the same 16 bits. Index 2047 + version 31 is 0xFFFF
+// (kInvalidUniqueId), never allocated.
 enum {
+#ifdef TARGET_PC
   kUniqueIdIndexBits = 11,
+#else
+  kUniqueIdIndexBits = 10,
+#endif
   kUniqueIdVersionBits = 16 - kUniqueIdIndexBits,
   kUniqueIdIndexMask = (1 << kUniqueIdIndexBits) - 1,
   kUniqueIdVersionMask = (1 << kUniqueIdVersionBits) - 1,
