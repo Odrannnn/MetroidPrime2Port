@@ -422,6 +422,11 @@ bool CinemaBars();
 // reticle in combat and the seeker ring it shares; the lock-on reticle and the scan box stay. On
 // by default; Original experience keeps them. Read by CCompoundTargetReticle::DrawSeeker.
 bool SecondaryCrosshairs();
+// Whether the aiming crosshair (and Trilogy's aiming cursor) shows in a visor (a
+// CPlayerState::EPlayerVisor). Combat and Scan follow the game; Dark and Echo can be turned off
+// (`crosshair_dark`, `crosshair_echo`, env `MP2_CROSSHAIR_DARK`/`MP2_CROSSHAIR_ECHO`, off by
+// default). On under Original experience. Read by CCompoundTargetReticle.
+bool CrosshairInVisor(int visor);
 // Full-screen Dark Visor (`dark_visor_full`, env `MP2_DARK_VISOR_FULL`): the visor reveals and
 // highlights over the whole view, as the game's own split-screen does, instead of the lens
 // (FRME_DarkVisorMask) inside the tweak frame. Off by default; Original experience keeps the lens.

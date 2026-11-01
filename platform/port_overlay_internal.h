@@ -74,6 +74,8 @@ extern bool sHideHelmet;
 extern bool sHideVisorEffects;
 extern bool sCinemaBars;
 extern bool sSecondaryCrosshairs;
+extern bool sCrosshairDark;
+extern bool sCrosshairEcho;
 extern bool sDarkVisorFull;
 extern int sDarkVisorStatic;
 extern bool sInfiniteBeamAmmo;

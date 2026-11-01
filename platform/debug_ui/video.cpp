@@ -200,6 +200,11 @@ void DrawVideoDisplay() {
   ImGui::SetItemTooltip("The scan visor's window and edges are what a visor effect draws here.");
   Changed(ImGui::Checkbox("Cutscene black bars", &sCinemaBars));
   ImGui::SetItemTooltip("Off lets a cutscene fill the screen instead of the game's letterbox.");
+  Changed(ImGui::Checkbox("Crosshair in Dark Visor", &sCrosshairDark));
+  ImGui::SetItemTooltip("Off hides the aiming crosshair in the Dark Visor. On under Original experience.");
+  ImGui::SameLine();
+  Changed(ImGui::Checkbox("Crosshair in Echo Visor", &sCrosshairEcho));
+  ImGui::SetItemTooltip("Off hides the aiming crosshair in the Echo Visor. On under Original experience.");
   Changed(ImGui::Checkbox("Secondary crosshairs", &sSecondaryCrosshairs));
   ImGui::SetItemTooltip("Off hides the next-target reticle; the lock-on reticle and the scan box stay.");
   // Applied by CCameraManager::UpdateCameras: the first-person camera takes its FOV when it is
