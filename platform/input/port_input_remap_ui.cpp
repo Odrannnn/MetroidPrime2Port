@@ -1815,7 +1815,7 @@ void DrawProfileOptions(const SView& v) {
 }
 
 // The player the page edits: PortControls::RemapPort(). Ports 1-3 edit their own controls_p<N>.toml
-// (pad rows only); their Presets change only the controller's Aurora mapping.
+// (pad rows only). F1 Multiplayer embeds the page with its own player selector instead.
 void DrawRemapPlayer() {
   int port = PortControls::RemapPort();
   ImGui::SetNextItemWidth(ImGui::GetFontSize() * 8.f);
@@ -1848,8 +1848,7 @@ void DrawRemapPlayer() {
     break;
   }
   if (PortControls::RemapPort() != 0) {
-    ImGui::TextDisabled("The bindings below are this player's (%s; controller rows only). Presets change "
-                        "their controller mapping.",
+    ImGui::TextDisabled("The bindings below are this player's (%s; controller rows only).",
                         PortInputDevices::UserBindingsPath(PortControls::RemapPort()).c_str());
   }
 }
@@ -2083,7 +2082,10 @@ bool Capturing() {
   return SDL_GetTicks() - sLastDrawMs.load(std::memory_order_relaxed) < kCaptureStaleMs;
 }
 
-void Draw() {
+namespace {
+
+// The page. `embedded`: inside F1 Multiplayer, which has the player selector and their controller.
+void DrawPage(bool embedded) {
   const uint64_t now = SDL_GetTicks();
   if (sCapture.active && now - sLastDrawMs.load(std::memory_order_relaxed) >= kCaptureStaleMs) EndCapture();
   sLastDrawMs.store(now, std::memory_order_relaxed);
@@ -2109,11 +2111,16 @@ void Draw() {
                      "the defaults; Revert brings them back.");
   if (!sError.empty()) ImGui::TextColored(ImVec4(1.f, 0.4f, 0.4f, 1.f), "%s", sError.c_str());
 
-  DrawRemapPlayer();
-  const float selectorWidth = ImGui::GetContentRegionAvail().x;
-  // Players 2-4's controllers are on the Multiplayer page.
-  DrawPortController(PAD_CHAN0, "Player 1 controller");
-  if (selectorWidth >= ImGui::GetFontSize() * 70.f) ImGui::SameLine();
+  if (!embedded) {
+    DrawRemapPlayer();
+    const float selectorWidth = ImGui::GetContentRegionAvail().x;
+    // Players 2-4's controllers are on the Multiplayer page.
+    DrawPortController(PAD_CHAN0, "Player 1 controller");
+    if (selectorWidth >= ImGui::GetFontSize() * 70.f) ImGui::SameLine();
+  } else if (EditPort() != 0) {
+    ImGui::TextDisabled("This player's bindings (%s), controller rows only.",
+                        PortInputDevices::UserBindingsPath(EditPort()).c_str());
+  }
 
   // The profile selector changes which controller bindings are edited, not the active pad.
   const std::vector<SDeviceEntry> pads = PadEntries();
@@ -2147,13 +2154,16 @@ void Draw() {
   DrawMyPresets();
   ImGui::SameLine();
   DrawReset(views);
-  bool menuStandard = PortOverlay::MenuStandardButtons();
-  if (ImGui::Checkbox("Separate menu buttons", &menuStandard)) PortOverlay::SetMenuStandardButtons(menuStandard);
-  ImGui::SetItemTooltip(
-      "On: menus and the map use the controller's \"Menus and map\" rows (by default A\n"
-      "confirms, B backs out, the triggers page and zoom). Start and the map button keep\n"
-      "their gameplay inputs. Keys and mouse buttons on those rows replace their\n"
-      "gameplay action there.\nOff: menus and the map follow your gameplay bindings.");
+  // Every player's: on Controls > Remap only.
+  if (!embedded) {
+    bool menuStandard = PortOverlay::MenuStandardButtons();
+    if (ImGui::Checkbox("Separate menu buttons", &menuStandard)) PortOverlay::SetMenuStandardButtons(menuStandard);
+    ImGui::SetItemTooltip(
+        "On: menus and the map use the controller's \"Menus and map\" rows (by default A\n"
+        "confirms, B backs out, the triggers page and zoom). Start and the map button keep\n"
+        "their gameplay inputs. Keys and mouse buttons on those rows replace their\n"
+        "gameplay action there.\nOff: menus and the map follow your gameplay bindings.");
+  }
   // MP2: MP1's "Point and click menus" and "Swap map finger gestures" are not here; this port
   // has no pointer menus.
   ImGui::Separator();
@@ -2169,6 +2179,21 @@ void Draw() {
     DrawEffective();
     ImGui::TreePop();
   }
+}
+
+} // namespace
+
+void Draw() { DrawPage(false); }
+
+void DrawForPlayer(unsigned port) {
+  const int p = static_cast<int>(std::min(port, 3u));
+  if (PortControls::RemapPort() != p) {
+    EndCapture();
+    sEditing = kEditNone;
+    PortControls::SetRemapPort(p);
+    sSavedStale = true;
+  }
+  DrawPage(true);
 }
 
 } // namespace PortInputRemap

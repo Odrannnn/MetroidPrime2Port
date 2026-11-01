@@ -220,16 +220,8 @@ void DrawMultiplayerTab() {
   PortInputRemap::DrawPlayerController(static_cast<unsigned>(p), "Controller##mp");
   ItemHelp("The controller this player plays with. Choosing one already used by another player "
            "moves it here.");
-  if (ImGui::Button(p == 0 ? "Remap...##mp" : "Presets...##mp")) {
-    PortControls::SetRemapPort(p);
-    PortOverlay::ShowPage("Controls/Remap");
-  }
-  ItemHelp(p == 0 ? "Opens Controls > Remap on this player's controller."
-                  : "Opens Controls > Remap for this player's controller presets (GameCube, Remastered, "
-                    "Modern, Southpaw) and My presets.");
   if (p > 0) {
-    // The Remap page's binding table is Player 1's (the input engine); another player's pad is
-    // read through its Aurora mapping, set here.
+    // The controller's own Aurora mapping, under this player's bindings (Remap below).
     ImGui::SeparatorText("Buttons");
     PortControls::DrawPadButtons(static_cast<unsigned>(p));
   }
@@ -250,6 +242,10 @@ void DrawMultiplayerTab() {
   DrawStickRows(p);
   DrawButtonRows(p);
   DrawGyroRows(p);
+
+  // This player's Controls > Remap (beams, visors, chords, contexts, presets).
+  ImGui::SeparatorText("Remap");
+  PortInputRemap::DrawForPlayer(static_cast<unsigned>(p));
   ImGui::PopID();
 }
 

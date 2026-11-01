@@ -14,6 +14,9 @@
 namespace PortInputRemap {
 
 void Draw();
+// The same page for player `port` (0-3) inside F1 Multiplayer, without its player and Player 1
+// controller combos; makes `port` the page's player (PortControls::SetRemapPort). Overlay thread.
+void DrawForPlayer(unsigned port);
 // The controller combo of pad port `port` (0-3): which controller that player plays with. Remap draws
 // Player 1's, the Multiplayer page all four. Overlay thread.
 void DrawPlayerController(unsigned port, const char* label);
