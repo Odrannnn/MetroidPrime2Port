@@ -754,6 +754,10 @@ if(AURORA_SDL3_TARGET)
     add_test(NAME port_scope_macho
         COMMAND ${Python3_EXECUTABLE} -I ${CMAKE_CURRENT_SOURCE_DIR}/tests/port_scope_macho_test.py)
     set_tests_properties(port_scope_macho PROPERTIES TIMEOUT 60 LABELS port SKIP_RETURN_CODE 77)
+    # The pipeline cache seed holds only current, retail rows (tools/pipeline_seed.py check).
+    add_test(NAME port_pipeline_seed
+        COMMAND ${Python3_EXECUTABLE} -I ${CMAKE_CURRENT_SOURCE_DIR}/tools/pipeline_seed.py check)
+    set_tests_properties(port_pipeline_seed PROPERTIES TIMEOUT 60 LABELS port)
     # Every command in the console's table is documented in docs/CONSOLE.md.
     add_test(NAME port_console_docs
         COMMAND ${Python3_EXECUTABLE} -I ${CMAKE_CURRENT_SOURCE_DIR}/tests/port_console_docs.py
@@ -1102,6 +1106,13 @@ if(MP_EMBED_RESOURCES)
     string(JOIN "\n" MP_EMBED_LIST ${MP_EMBED_INPUTS})
     set(MP_EMBED_LIST_FILE "${CMAKE_CURRENT_BINARY_DIR}/generated/port_embedded_inputs.txt")
     file(CONFIGURE OUTPUT "${MP_EMBED_LIST_FILE}" CONTENT "${MP_EMBED_LIST}\n" @ONLY)
+    # The pipeline cache seed (tools/pipeline_seed.py) rides along; the port_pipeline_seed test checks it.
+    # Absent (a first recording builds the binary that makes it), the build embeds textures only.
+    set(MP_EMBED_SEED "")
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/assets/initial_pipeline_cache.db")
+        set(MP_EMBED_SEED "${CMAKE_CURRENT_SOURCE_DIR}/assets/initial_pipeline_cache.db")
+        set(MP_EMBED_SEED_ARGS --file "${MP_EMBED_SEED}" initial_pipeline_cache.db)
+    endif()
     set(MP_EMBED_SOURCE "${CMAKE_CURRENT_BINARY_DIR}/generated/port_embedded_data.cpp")
     add_custom_command(
         OUTPUT "${MP_EMBED_SOURCE}"
@@ -1109,9 +1120,10 @@ if(MP_EMBED_RESOURCES)
         COMMAND Python3::Interpreter "${CMAKE_CURRENT_SOURCE_DIR}/tools/embed_resources.py"
             "${MP_EMBED_SOURCE}"
             --dir "${CMAKE_CURRENT_SOURCE_DIR}/textures" textures
-        DEPENDS ${MP_EMBED_INPUTS} "${MP_EMBED_LIST_FILE}"
+            ${MP_EMBED_SEED_ARGS}
+        DEPENDS ${MP_EMBED_INPUTS} "${MP_EMBED_LIST_FILE}" "${MP_EMBED_SEED}"
             "${CMAKE_CURRENT_SOURCE_DIR}/tools/embed_resources.py"
-        COMMENT "Embedding textures"
+        COMMENT "Embedding textures and the pipeline cache seed"
         VERBATIM)
     target_sources(metroid_prime2_port PRIVATE "${MP_EMBED_SOURCE}")
     target_compile_definitions(metroid_prime2_port PRIVATE MP_EMBED_RESOURCES)

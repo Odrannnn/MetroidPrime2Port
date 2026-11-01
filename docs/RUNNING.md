@@ -5,6 +5,9 @@ Commands; the run scripts below start their own `Xvfb` (default `:86`, `-screen 
 so a hand-started one (`pgrep -x Xvfb` + `xdpyinfo` to check) is only for a bare binary, as in the
 `gdb` boot below.
 
+`MP2_PIPELINE_SEED=0` skips the embedded `initial_pipeline_cache.db` seed (set it when recording
+a cache: `tools/pipeline_seed.py record`); otherwise a fresh `MP2_CACHE_PATH` logs `Seeded pipeline cache from ...`.
+
 ## Boot under gdb (from build-port-link)
 
     DISPLAY=:86 SDL_VIDEODRIVER=x11 MESA_VK_WSI_DEBUG=sw SDL_AUDIODRIVER=dummy \

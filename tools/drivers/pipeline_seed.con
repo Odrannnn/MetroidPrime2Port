@@ -1,0 +1,86 @@
+# tools/pipeline_seed.py record: the in-game states a sweep never sets up (every beam and visor, charge,
+# missiles, the morph ball with bombs and boost, the pause menus). New game, Temple Grounds start.
+# The @f lines run at game updates; the @<secs> tail runs while the game is paused.
+@f300 god 1; give powerBeam 1; give darkBeam 1; give lightBeam 1; give annihilatorBeam 1; give chargeBeam 1; give superMissile 1; give darkburst 1; give sunburst 1; give sonicBoom 1; give combatVisor 1; give scanVisor 1; give darkVisor 1; give echoVisor 1
+@f302 give variaSuit 1; give darkSuit 1; give lightSuit 1; give morphBall 1; give boostBall 1; give spiderBall 1; give morphBallBombs 1; give grappleBeam 1; give spaceJumpBoots 1; give gravityBoost 1; give seekerLauncher 1; give screwAttack 1
+@f304 give missile 50; give powerbomb 8; give darkAmmo 250; give lightAmmo 250; give energyTanks 4; heal; refill
+@f400 beam power; visor combat
+@f406 press a 4
+@f418 beam power; visor scan
+@f424 press a 4
+@f436 beam power; visor dark
+@f442 press a 4
+@f454 beam power; visor echo
+@f460 press a 4
+@f472 visor combat; press a 70
+@f572 press b 4
+@f588 beam dark; visor combat
+@f594 press a 4
+@f606 beam dark; visor scan
+@f612 press a 4
+@f624 beam dark; visor dark
+@f630 press a 4
+@f642 beam dark; visor echo
+@f648 press a 4
+@f660 visor combat; press a 70
+@f760 press b 4
+@f776 beam light; visor combat
+@f782 press a 4
+@f794 beam light; visor scan
+@f800 press a 4
+@f812 beam light; visor dark
+@f818 press a 4
+@f830 beam light; visor echo
+@f836 press a 4
+@f848 visor combat; press a 70
+@f948 press b 4
+@f964 beam annihilator; visor combat
+@f970 press a 4
+@f982 beam annihilator; visor scan
+@f988 press a 4
+@f1000 beam annihilator; visor dark
+@f1006 press a 4
+@f1018 beam annihilator; visor echo
+@f1024 press a 4
+@f1036 visor combat; press a 70
+@f1136 press b 4
+@f1152 beam power; press a+b 6
+@f1182 press x 4
+@f1242 press b 4
+@f1282 press a 50
+@f1362 press x 4
+@f1422 press l 30
+@f1462 press y 4
+@f1502 press start 4
+@150 screenshot
+@156 press r 6
+@157 stick 0 0
+@160 screenshot
+@166 press r 6
+@167 stick 0 0
+@170 screenshot
+@176 press r 6
+@177 stick 0 0
+@180 screenshot
+@186 press l 6
+@187 stick 0 0
+@190 screenshot
+@196 press l 6
+@197 stick 0 0
+@200 screenshot
+@206 press l 6
+@207 stick 0 0
+@210 screenshot
+@216 press down 6
+@217 stick 0 0
+@222 press a 6
+@223 stick 0 0
+@228 press b 6
+@229 stick 0 0
+@234 press down 6
+@235 stick 0 0
+@240 press a 6
+@241 stick 0 0
+@246 press b 6
+@247 stick 0 0
+@252 screenshot
