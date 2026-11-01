@@ -218,11 +218,11 @@ int ApplyRoomState(CStateManager& mgr, const RoomState& room, RoomApplyProgress&
                    bool force = false);
 
 // Spawn layers, game thread. CGameArea::VerifyTokenList calls NoteAreaSpawn{Begin,End} around
-// listing the layers an area spawns: Begin swaps in the recorded bits of an armed area, End puts
-// the live ones back. ArmSpawnLayers (a state load, right after its game state is installed) arms
+// listing the layers an area spawns: Begin swaps in the recorded bits of an armed area, End only logs
+// (the swapped bits serve the rebuild). ArmSpawnLayers (a state load, right after its game state is installed) arms
 // each recorded area of world `worldId` (the area spawns with the recorded layers that the loaded
-// stream also has on; the swapped bits stay in the world's layer state). DisarmSpawnLayers forgets
-// whatever is still armed.
+// stream also has on; the swapped bits stay in the world's layer state until the restore ends). DisarmSpawnLayers
+// puts the stream's layer bits back and forgets whatever is still armed.
 void NoteAreaSpawnBegin(CWorldLayerState& layers, int area);
 void NoteAreaSpawnEnd(CWorldLayerState& layers, int area);
 // True while a room restore is pending and the saved room has objects of this layer: its unload waits.

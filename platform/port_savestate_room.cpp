@@ -1326,7 +1326,23 @@ void ArmSpawnLayers(const RoomState& room, uint32_t worldId) {
   }
 }
 
-void DisarmSpawnLayers() { sOverrides.clear(); }
+void DisarmSpawnLayers() {
+  // The restore is over: put the stream's own layer flags back. The swapped bits only served the
+  // rebuild; left in place they lose a layer the saved game had switched on after the room was built
+  // (issue #46: the 2nd Pass layer of Battleground was off again, so its key event replayed).
+  if (gpGameState != nullptr) {
+    for (const SpawnOverride& o : sOverrides) {
+      if (!o.swapped) {
+        continue;
+      }
+      CWorldLayerState* layers = gpGameState->StateForWorld(static_cast< CAssetId >(o.world)).GetLayerState().GetPtr();
+      if (layers != nullptr && o.area >= 0 && o.area < static_cast< int >(layers->GetAreaLayers().size())) {
+        SetLayerMask(*layers, o.area, o.live);
+      }
+    }
+  }
+  sOverrides.clear();
+}
 
 void NoteGenerated(CStateManager& mgr, uint16_t uid) { NoteFor(mgr, RawId(uid)).generated = true; }
 
