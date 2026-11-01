@@ -1123,7 +1123,12 @@ void CmdPads(CStateManager&, const Args&, std::string& out) {
 // (PADSetPortForIndex / PADClearPort).
 void CmdPadPort(CStateManager&, const Args& args, std::string& out) {
   if (args.size() == 3 && args[1] == "clear") {
-    PADClearPort(static_cast<u32>(ArgToInt(args[2], 0)));
+    const int port = ArgToInt(args[2], -1);
+    if (port < 0 || port > 3) {
+      Fail("usage: padport <index> <port 0-3> | padport clear <port>");
+      return;
+    }
+    PADClearPort(static_cast<u32>(port));
     out += "cleared\n";
   } else if (args.size() == 3) {
     const int port = ArgToInt(args[2], -1);
