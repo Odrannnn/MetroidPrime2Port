@@ -140,11 +140,14 @@ Each needs MP2 game-side hooks found fresh; a row with no possible MP2 backend i
       5dff869f3`); Grapple binding/toggle, Spider Ball toggle, Shoot While Grappling (`35c2c420c
       ddf94f1ff 31ffa6430 559266ef8 31f1a0dc3`, #243); hand on cannon (`976e914eb de9281a79`);
       empty lock frees the pointer (`bfaa241d6`).
-      DONE (2026-11-01, branch `sync/s27b-input`, not merged): all five ported; grapple key, Toggle Grapple
+      DONE (2026-11-01, merged `9e62d3b56`): all five ported; grapple key, Toggle Grapple
       and Shoot While Grappling skipped (Echoes grapples with the fire button), Spider toggle + Grace helper only.
     - **s27c small**: per-visor crosshair toggles mapped to Echoes' visors (`486f7a0df 2d2ba0a5e`);
       morph ball bars option (`535ccd192`); console `freeze` (`aee3e53ac`); `[motion]` dumps
       (`105f65deb`); Android settings top band (`5d83055aa`).
+      DONE (2026-11-01, merged `1b8b590a3`): Dark/Echo crosshair toggles (not seen on screen: needs a
+      target in view), ball bars verified on screen, `freeze`, `[motion]` (single player); Android
+      Java/JNI not compiled or tested.
     - Skipped: Remastered/PBR/effects, third person, Dread suits, Archipelago/rando, `34899e497`
       (Remastered particles), `005ae8a6e` (we have infinite ammo), artifact cheats `904552326
       0dadb6af9`, `881e1e899` (Frigate), `09ea6ad2d` (Trilogy corner layout; check ours if seen).
@@ -157,7 +160,7 @@ set differs; the approach can be reused), Archipelago, MP1 randomizer logic.
 
 ## Status
 
-Packages 1-26 are merged; 27 is in progress; the dated per-merge log moved verbatim to
+Packages 1-27 are merged; the dated per-merge log moved verbatim to
 `docs/history/MP1_SYNC-to-2026-10-29.md`. MP1 was last reviewed through `e3d8c8940`
 (2026-10-29), then through `7eda62884` (2026-11-01, package 27); take later commits by `git -C ../MetroidPrimePort log --no-merges 7eda62884..HEAD`.
 
