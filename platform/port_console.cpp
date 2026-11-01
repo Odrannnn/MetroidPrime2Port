@@ -1087,6 +1087,18 @@ void CmdMpForce(CStateManager&, const Args& args, std::string& out) {
   out += gPortForceMultiplayer ? "forced multiplayer on\n" : "forced multiplayer off\n";
 }
 
+// `mpend`: ends the running multiplayer match now, as its time or kill limit would (the match then
+// takes the end-of-match path: fade, results screen, back to the front end).
+void CmdMpEnd(CStateManager& mgr, const Args&, std::string& out) {
+  CGameMode& mode = gpGameState->GetGameMode();
+  if (!mgr.IsMultiplayer() || mode.IsGameOver()) {
+    out += "not in a running multiplayer match\n";
+    return;
+  }
+  mode.EndGame(mode.GetResultIndex(), mgr);
+  out += "match ended\n";
+}
+
 // `pads`: which connected controller drives each pad port 0-3 (the F1 page's Player rows,
 // PADSetPortForIndex/PADClearPort), and how many controllers there are.
 void CmdPads(CStateManager&, const Args&, std::string& out) {
@@ -4980,6 +4992,8 @@ const CommandSpec kCommands[] = {
       "                            powerbomb, dark or light\n"},
     {"mpforce", CmdMpForce,
       "mpforce <0|1>               IsMultiplayer reports true (multiplayer-only arms)\n"},
+    {"mpend", CmdMpEnd,
+      "mpend                       end the running multiplayer match now (fade, results, front end)\n"},
     {"pads", CmdPads,
       "pads                        the controller on each pad port 0-3 (players 1-4) and the controller count\n"},
     {"overlay", CmdOverlay,

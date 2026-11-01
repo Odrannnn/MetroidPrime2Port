@@ -30,6 +30,7 @@ hp, hp_max, visor, beam, freecam) for scripts.
 - `combocost [0..30]`, `combomissiles [0..5]`, `beamammo [50..100]` — combo beam ammo cost, combo missile cost, Dark/Light ammo per capacity pickup (F1 Cheats, each with a Reset); no argument prints it
 - `infammo [all|missile|powerbomb|dark|light] [0|1]` — infinite ammo per counter (fire at zero, HUD shows ∞, real counts and pickups kept; F1 Cheats); no 0|1 flips
 - `mpforce <0|1>` — IsMultiplayer reports true (multiplayer-only arms)
+- `mpend` — ends the running multiplayer match now, as its time or kill limit would (fade, results screen, back to the front end)
 - `pads` — the controller on each pad port 0-3 (players 1-4: `port N: <index> <name>` or `port N: none`) and the controller count; the F1 page's Player rows set it
 - `overlay <page>[/<sub>]|off` — open the F1 window on a page (name prefixes: `overlay video/qual`)
 - `gpuselftest` — run the GPU self-test next frame; PASS/FAIL lines go to the log
