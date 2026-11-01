@@ -1203,6 +1203,9 @@ int main(int argc, char** argv) {
   // 720p by default, as the Prime 1 port: 16:9 unless the aspect setting is 4:3. The render mode
   // follows the setting (PortOverlay::ApplyAspect); Aurora upscales to the window either way.
   const bool widescreen = PortOverlay::AspectMode() != PortOverlay::kAspect_4_3;
+  // The pipeline cache seed (tools/pipeline_seed.py): desktop builds carry it inside the executable
+  // (MP_EMBED_RESOURCES); other builds have none and Aurora starts from the cache alone.
+  const std::span<const uint8_t> embeddedSeed = PortEmbedded::Find("initial_pipeline_cache.db");
   AuroraConfig config = {
       .appName = kAppName,
       .userPath = EnvOrFallback("MP2_USER_PATH", appPaths.user),
@@ -1220,6 +1223,11 @@ int main(int argc, char** argv) {
       .windowHeight = 720u,
       .mem1Size = MEM1_DEFAULT_SIZE,
       .mem2Size = ARAM_DEFAULT_SIZE,
+      // An embedded seed wins over a stale initial_pipeline_cache.db beside the executable.
+      .pipelineCacheSeedData = embeddedSeed.data(),
+      .pipelineCacheSeedSize = embeddedSeed.size(),
+      // MP2_PIPELINE_SEED=0: start from an empty cache (tools/pipeline_seed.py record runs with it).
+      .pipelineCacheNoSeed = !port::EnvFlag("MP2_PIPELINE_SEED", true),
   };
 #if !defined(__ANDROID__)
   // The window icon, for a bare binary that no desktop entry describes. Android takes its icon

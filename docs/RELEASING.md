@@ -63,6 +63,17 @@ else. The app id is `org.metroidprime2.port`.
 `versionName`/`versionCode` in `android/app/build.gradle`, plus a `<release version=… date=…>`
 entry (newest first) in `packaging/io.github.odrannnn.metroidprime2port.metainfo.xml`.
 
+## Pipeline cache seed
+
+Desktop builds embed `assets/initial_pipeline_cache.db`: the pipeline configs of the front
+end, a scripted in-game pass and every campaign area, so a first start compiles the game's
+shaders in the background instead of skipping draws as it meets them. Retail rows only (no
+Remastered-style rows). When aurora bumps a pipeline config version (`clear.hpp`,
+`gx/pipeline.hpp`, `rmlui/pipeline.hpp`), aurora ignores the seed and the `port_pipeline_seed`
+test fails. Re-record from empty caches (needs a GPU path, ~2 h; no mods or texture packs):
+`python3 tools/pipeline_seed.py record`, then the `merge` line it prints. `MP2_PIPELINE_SEED=0`
+starts without the seed.
+
 ## Release checklist
 
 1. Bump the version (above), commit, `git push origin port`.

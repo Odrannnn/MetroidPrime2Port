@@ -348,6 +348,7 @@ Video > Quality and Frame rate:
   saved).
 - `per_pixel_lighting`: Quality > Per-pixel lighting (Aurora lights per pixel); env
   `MP2_PER_PIXEL_LIGHTING`.
+- `MP2_PIPELINE_SEED=0` ignores the embedded pipeline cache seed (docs/RELEASING.md).
 - Pipeline memory (env only, not saved; `platform/port_memory_log.cpp`): `MP2_PIPELINE_LAZY=0|1`
   builds pipelines when first drawn instead of all at startup (default on for Android, where a
   low-RAM device - `isLowRamDevice()` or under 4 GiB - is also named in the startup line; off on
