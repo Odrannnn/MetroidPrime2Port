@@ -166,7 +166,7 @@ public:
   void UpdateChargeState(float dt, CStateManager& mgr);
 #ifdef TARGET_PC
   bool PortRadialReady() const;
-  void PortStartRapidCharge();
+  void PortStartRapidCharge(CStateManager& mgr);
   bool PortRapidChargeShot(float dt, CStateManager& mgr);
   bool PortScopedRapidCharge() const;
   float PortChargeAnimStart(float retail) const;

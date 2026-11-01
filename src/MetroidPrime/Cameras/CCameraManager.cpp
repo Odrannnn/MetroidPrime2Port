@@ -76,7 +76,7 @@ CTransform4f InterpolateCameraTransform(const CTransform4f& previous, const CTra
 
 // MP1's MouseLookIsFree: the mouse (or stick/touch aim) owns the view right now.
 bool PortMouseLookIsFree(const CStateManager& mgr, int playerIndex) {
-  if (!PortMouse::Enabled() && !PortMouse::StickEnabled() && !PortMouse::TouchEnabled()) {
+  if (!PortMouse::DirectAim(playerIndex)) {
     return false;
   }
   const CPlayer* player = mgr.GetPlayer(playerIndex);

@@ -1472,7 +1472,8 @@ struct GyroPort {
 };
 GyroPort sGyro[kGyroPorts];
 
-// The gyro settings one port reads. Global for now; a per-port lookup replaces the body here.
+// The gyro settings one port reads: aim, mode and sensitivity are the port's player's (a match
+// pairs port N with player N), the rest Player 1's.
 struct GyroSettings {
   bool aim;
   int source;
@@ -1487,17 +1488,17 @@ struct GyroSettings {
   bool cursorCamera;
   bool pointerAim;
 };
-GyroSettings SettingsFor(int /*port*/) {
+GyroSettings SettingsFor(int port) {
   GyroSettings g;
-  g.aim = PortOverlay::GyroAim();
+  g.aim = PortOverlay::GyroAim(port);
   g.source = PortOverlay::GyroSource();
   g.space = PortOverlay::GyroSpace();
   g.autoCalibrate = PortOverlay::GyroAutoCalibrate();
   g.smoothing = PortOverlay::GyroSmoothing();
   g.tightening = PortOverlay::GyroTightening();
-  g.mode = PortOverlay::GyroMode();
-  g.sensitivity = PortOverlay::GyroSensitivity();
-  g.sensitivityY = PortOverlay::GyroSplit() ? PortOverlay::GyroSensitivityY() : g.sensitivity;
+  g.mode = PortOverlay::GyroMode(port);
+  g.sensitivity = PortOverlay::GyroSensitivity(port);
+  g.sensitivityY = PortOverlay::GyroSensitivityYEffective(port);
   g.cursorAngle = PortOverlay::GyroCursorAngle();
   g.cursorCamera = PortOverlay::GyroCursorCamera();
   g.pointerAim = PortOverlay::PointerAim();
@@ -1722,7 +1723,7 @@ void PollGyroPort(int port, uint64_t nowNs) {
     st.lastNs = 0;
     return;
   }
-  if (aim && !PortMouse::Enabled() && !PortMouse::StickEnabled() && !PortMouse::TouchEnabled() && !flick) {
+  if (aim && !PortMouse::DirectAim(port) && !flick) {
     st.status = "needs mouse aim, twin stick or touch controls";
     st.calibrating = false;
     st.lastNs = 0;
@@ -1755,8 +1756,7 @@ void PollGyroPort(int port, uint64_t nowNs) {
       sFlickArmed = true;
     }
   }
-  if (!aim ||
-      (!PortMouse::Enabled() && !PortMouse::StickEnabled() && !PortMouse::TouchEnabled())) {
+  if (!aim || !PortMouse::DirectAim(port)) {
     if (!aim) {
       st.status = "flick only";
     } else {

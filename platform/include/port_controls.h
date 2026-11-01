@@ -18,8 +18,8 @@ bool ApplyKeyPresetNamed(std::string_view name, unsigned port = 0);
 // The Controls page's controller preset button: "gamecube", "remastered",
 // "modern" or "southpaw". Saves. False for any other name.
 // `port` is the pad port (0-3, players 1-4) whose controller is remapped; the twin-stick
-// switch it may set belongs to port 0 only. Aurora ignores mappings of a virtual pad and
-// of an empty port (still returns true: use PadPortInfo to tell the caller).
+// switch it sets is that player's (PortMouse::SetPlayerStickEnabled). Aurora ignores mappings
+// of a virtual pad and of an empty port (still returns true: use PadPortInfo to tell the caller).
 bool ApplyPadPresetNamed(std::string_view name, unsigned port = 0);
 // The stick deadzone and trigger click-point sliders of the Controller settings
 // page (nothing when no controller is on that port).

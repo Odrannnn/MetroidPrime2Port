@@ -109,9 +109,31 @@ Slot sSlots[kSlots];
 
 Slot& SlotFor(int player) { return sSlots[player < 0 || player >= kSlots ? 0 : player]; }
 
+// A match's other players (slots 1-3) may override Player 1's twin-stick settings field by
+// field; an unset field follows Player 1, so setups from before per-player settings keep working.
+template <typename T>
+struct PlayerValue {
+  T value{};
+  bool set = false;
+};
+struct PlayerStick {
+  PlayerValue<bool> enabled;
+  PlayerValue<float> rate;
+  PlayerValue<bool> split;
+  PlayerValue<float> rateY;
+};
+PlayerStick sPlayerStick[kSlots]; // [0] unused: Player 1 is the global settings
+
+template <typename T>
+T ForPlayer(int player, PlayerValue<T> PlayerStick::*field, T p1) {
+  if (player <= 0 || player >= kSlots) return p1;
+  const PlayerValue<T>& v = sPlayerStick[player].*field;
+  return v.set ? v.value : p1;
+}
+
 // Slot 0 follows every source; the others only a pad's right stick, and only with twin stick on.
 bool SlotLive(int player, bool anySourceOn) {
-  return player == 0 ? anySourceOn : sStickEnabled;
+  return player == 0 ? anySourceOn : PortMouse::StickEnabled(player);
 }
 
 void ClearPendingTravel(Slot& s) {
@@ -268,15 +290,21 @@ void SetEnabled(bool enabled) {
   }
 }
 
-bool StickEnabled() {
+bool StickEnabled(int player) {
   ReadEnv();
-  return sStickEnabled;
+  return ForPlayer(player, &PlayerStick::enabled, sStickEnabled);
+}
+
+bool DirectAim(int player) {
+  ReadEnv();
+  // Mouse and touch are Player 1's; the others aim directly only with their own twin stick.
+  return player <= 0 ? sEnabled || sStickEnabled || sTouchEnabled.load() : StickEnabled(player);
 }
 
 bool StickOwnsCStick(int player) {
   ReadEnv();
   // The keyboard's C-stick is player 0's.
-  return sStickEnabled && !(player == 0 && sEnabled && sKeyboardCStickHeld);
+  return StickEnabled(player) && !(player == 0 && sEnabled && sKeyboardCStickHeld);
 }
 
 void SetKeyboardCStickHeld(bool held) { sKeyboardCStickHeld = held; }
@@ -289,9 +317,9 @@ void SetStickEnabled(bool enabled) {
   }
 }
 
-float StickAimRate() {
+float StickAimRate(int player) {
   ReadEnv();
-  return sStickAimRate;
+  return ForPlayer(player, &PlayerStick::rate, sStickAimRate);
 }
 
 void SetStickAimRate(float pixelsPerSecond) {
@@ -301,9 +329,9 @@ void SetStickAimRate(float pixelsPerSecond) {
   }
 }
 
-bool StickAimSplit() {
+bool StickAimSplit(int player) {
   ReadEnv();
-  return sStickAimSplit;
+  return ForPlayer(player, &PlayerStick::split, sStickAimSplit);
 }
 
 void SetStickAimSplit(bool enabled) {
@@ -311,9 +339,9 @@ void SetStickAimSplit(bool enabled) {
   sStickAimSplit = enabled;
 }
 
-float StickAimRateY() {
+float StickAimRateY(int player) {
   ReadEnv();
-  return sStickAimRateY;
+  return ForPlayer(player, &PlayerStick::rateY, sStickAimRateY);
 }
 
 void SetStickAimRateY(float pixelsPerSecond) {
@@ -323,8 +351,68 @@ void SetStickAimRateY(float pixelsPerSecond) {
   }
 }
 
+bool PlayerStickSet(int player, StickKey key) {
+  if (player <= 0 || player >= kSlots) return false;
+  const PlayerStick& p = sPlayerStick[player];
+  switch (key) {
+  case kStick_Enabled: return p.enabled.set;
+  case kStick_Rate: return p.rate.set;
+  case kStick_Split: return p.split.set;
+  case kStick_RateY: return p.rateY.set;
+  }
+  return false;
+}
+
+void ClearPlayerStick(int player) {
+  if (player <= 0 || player >= kSlots) return;
+  sPlayerStick[player] = PlayerStick{};
+}
+
+void ClearPlayerStick(int player, StickKey key) {
+  if (player <= 0 || player >= kSlots) return;
+  PlayerStick& p = sPlayerStick[player];
+  switch (key) {
+  case kStick_Enabled: p.enabled = {}; break;
+  case kStick_Rate: p.rate = {}; break;
+  case kStick_Split: p.split = {}; break;
+  case kStick_RateY: p.rateY = {}; break;
+  }
+}
+
+void SetPlayerStickEnabled(int player, bool enabled) {
+  if (player <= 0) {
+    SetStickEnabled(enabled);
+  } else if (player < kSlots) {
+    sPlayerStick[player].enabled = {enabled, true};
+  }
+}
+
+void SetPlayerStickAimRate(int player, float pixelsPerSecond) {
+  if (player <= 0) {
+    SetStickAimRate(pixelsPerSecond);
+  } else if (player < kSlots && std::isfinite(pixelsPerSecond) && pixelsPerSecond > 0.f) {
+    sPlayerStick[player].rate = {pixelsPerSecond, true};
+  }
+}
+
+void SetPlayerStickAimSplit(int player, bool enabled) {
+  if (player <= 0) {
+    SetStickAimSplit(enabled);
+  } else if (player < kSlots) {
+    sPlayerStick[player].split = {enabled, true};
+  }
+}
+
+void SetPlayerStickAimRateY(int player, float pixelsPerSecond) {
+  if (player <= 0) {
+    SetStickAimRateY(pixelsPerSecond);
+  } else if (player < kSlots && std::isfinite(pixelsPerSecond) && pixelsPerSecond > 0.f) {
+    sPlayerStick[player].rateY = {pixelsPerSecond, true};
+  }
+}
+
 void AddStickAim(float x, float y, float dt, int player) {
-  if (!sStickEnabled || sUiActive || dt <= 0.f || !std::isfinite(x) || !std::isfinite(y)) {
+  if (!StickEnabled(player) || sUiActive || dt <= 0.f || !std::isfinite(x) || !std::isfinite(y)) {
     return;
   }
   if (x * x + y * y < 0.04f) {
@@ -333,9 +421,10 @@ void AddStickAim(float x, float y, float dt, int player) {
   // Keep the stick's own pixels/second tuning independent of mouse sensitivity. Store
   // mouse-equivalent counts so pointer, gyro-camera routing and presentation can still
   // aggregate sources without rescaling the mouse, touch or gyro contributions.
-  const float dx = AimPixelsAsCounts(x * sStickAimRate * dt, sSensitivity);
+  const float rate = StickAimRate(player);
+  const float dx = AimPixelsAsCounts(x * rate * dt, sSensitivity);
   // The aim's dy is screen-down positive, the stick's y is up positive.
-  const float dy = AimPixelsAsCounts(-y * (sStickAimSplit ? sStickAimRateY : sStickAimRate) * dt,
+  const float dy = AimPixelsAsCounts(-y * (StickAimSplit(player) ? StickAimRateY(player) : rate) * dt,
                                     sSensitivity);
   // Same thread as the latch (see sPendingMutex), but PresentedAimDelta reads both under the lock.
   Slot& s = SlotFor(player);
@@ -781,7 +870,7 @@ void SetPointerAimPosition(float x, float y, int player) {
 void SetPointerAimHold(bool hold, int player) { SlotFor(player).debugHold = hold; }
 
 void Synchronize(float x, float y, float z, int player) {
-  if (player == 0 ? Enabled() : StickEnabled()) {
+  if (player == 0 ? Enabled() : StickEnabled(player)) {
     SlotFor(player).aim.Synchronize(x, y, z);
   }
 }

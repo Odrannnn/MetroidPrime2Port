@@ -2955,14 +2955,14 @@ bool CPlayer::PortAimCrosshairsOpen() const {
 
 bool CPlayer::PortLockFreeAim(const CStateManager& mgr) const {
   // Scan locks and grapples still aim through the centre.
-  return PortOverlay::LockOnFreeAim() && PortDirectAimControls() &&
+  return PortOverlay::LockOnFreeAim(mPlayerIndex) && PortDirectAimControls() &&
          (mOrbitState == kOS_OrbitObject || mOrbitState == kOS_OrbitPoint ||
           mOrbitState == kOS_OrbitCarcass || mOrbitState == kOS_ForcedOrbitObject) &&
          mgr.GetPlayerState()->GetCurrentVisor() != CPlayerState::kPV_Scan;
 }
 
 bool CPlayer::PortDirectAimControls() const {
-  if (!PortMouse::Enabled() && !PortMouse::StickEnabled() && !PortMouse::TouchEnabled()) {
+  if (!PortMouse::DirectAim(mPlayerIndex)) {
     return false;
   }
   const CCameraManager* cameras = mCameraManager;
@@ -2973,8 +2973,7 @@ bool CPlayer::PortDirectAimControls() const {
 }
 
 void CPlayer::UpdateMouseAim(CStateManager& mgr, float dt) {
-  const bool direct =
-      PortMouse::Enabled() || PortMouse::StickEnabled() || PortMouse::TouchEnabled();
+  const bool direct = PortMouse::DirectAim(mPlayerIndex);
   // Pointer aim's settings live in the overlay, which PortMouse is built without.
   PortMouse::SetPointerAim(direct && PortOverlay::PointerAim(),
                            PortOverlay::PointerAimBox() / 100.f,
@@ -2984,7 +2983,7 @@ void CPlayer::UpdateMouseAim(CStateManager& mgr, float dt) {
     return;
   }
   const bool allowed = MouseAimAllowed(mgr);
-  if (PortMouse::StickEnabled() && !PortRadial::Capturing()) {
+  if (PortMouse::StickEnabled(mPlayerIndex) && !PortRadial::Capturing()) {
     PortMouse::AddStickAim(mPortLookX, mPortLookY, dt, mPlayerIndex);
   }
   // While something else owns the view - a lock-on, the morph ball, a cinematic - track the
@@ -3018,7 +3017,7 @@ void CPlayer::ComputeFreeLook(const CFinalInput& input, CStateManager& mgr) {
 #ifdef TARGET_PC
   // Twin-stick consumes the C-stick: it aims through PortMouse, so letting the game's free
   // look read it too would turn the view twice.
-  if (PortMouse::StickEnabled()) {
+  if (PortMouse::StickEnabled(mPlayerIndex)) {
     lookLeft = lookRight = lookUp = lookDown = 0.f;
   }
 #endif

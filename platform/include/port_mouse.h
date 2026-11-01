@@ -228,21 +228,35 @@ bool Enabled();
 void SetEnabled(bool enabled);
 // Twin-stick: the game feeds the right stick here through AddStickAim, so the stick aims
 // through the same state as the mouse. Works with or without mouse aim.
-bool StickEnabled();
+// `player` 1-3 (a match's other players) read their own override, else Player 1's value.
+bool StickEnabled(int player = 0);
 void SetStickEnabled(bool enabled);
+// Whether `player`'s view follows the platform aim: for Player 1 any of mouse, twin stick and
+// touch; the others have only their own twin stick.
+bool DirectAim(int player = 0);
 // Twin stick takes the C-stick for aim, so the game's C-stick beam picks ignore it (issue #15).
 // Under mouse aim a keyboard key held on a C-stick direction (the mouse-and-keyboard preset's
 // 1-4) gives it back for that poll: the key picks a beam and does not aim, as in MP1.
 // PortInputDevices sets the key state each poll.
 bool StickOwnsCStick(int player = 0);
 void SetKeyboardCStickHeld(bool held);
-float StickAimRate();
+float StickAimRate(int player = 0);
 void SetStickAimRate(float pixelsPerSecond);
 // Separate vertical speed: with the split on, the stick's up and down use StickAimRateY instead.
-bool StickAimSplit();
+bool StickAimSplit(int player = 0);
 void SetStickAimSplit(bool enabled);
-float StickAimRateY();
+float StickAimRateY(int player = 0);
 void SetStickAimRateY(float pixelsPerSecond);
+// Per-player overrides (settings.cfg `p2.twin_stick=` etc.). Player 0's setters set the global
+// value; for players 1-3 they set that player's override.
+enum StickKey { kStick_Enabled, kStick_Rate, kStick_Split, kStick_RateY };
+bool PlayerStickSet(int player, StickKey key);
+void ClearPlayerStick(int player);
+void ClearPlayerStick(int player, StickKey key);
+void SetPlayerStickEnabled(int player, bool enabled);
+void SetPlayerStickAimRate(int player, float pixelsPerSecond);
+void SetPlayerStickAimSplit(int player, bool enabled);
+void SetPlayerStickAimRateY(int player, float pixelsPerSecond);
 // Feeds a normalised right-stick vector (-1..1, x right, y up) for one tick.
 // Fed to `player`'s aim only (the pad port's player in a match).
 void AddStickAim(float x, float y, float dt, int player = 0);

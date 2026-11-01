@@ -148,6 +148,111 @@ constexpr SettingKey BoolKey(const char* key) {
           "0"};
 }
 
+// p<N>.<key>: player N-1's override of a PortOverlay::PlayerSetting (see port_overlay.h). Written
+// only while set; an empty value clears it, so the player follows Player 1 again.
+enum PlayerValueKind { kPlayerBool, kPlayerInt, kPlayerFloat };
+
+template < int Player, PortOverlay::PlayerSetting Key, PlayerValueKind Kind, int Min = 0, int Max = 0 >
+void ReadPlayerSetting(const std::string& value) {
+  PlayerOverride& o = sPlayerSettings[Player][Key];
+  if (Trim(value).empty()) {
+    o = {};
+    return;
+  }
+  float parsed = 0.f;
+  if (Kind == kPlayerBool) {
+    parsed = ParseBool(value) ? 1.f : 0.f;
+  } else if (Kind == kPlayerInt) {
+    int i = 0;
+    if (!ParseInt(value, i) || i < Min || i > Max)
+      return;
+    parsed = float(i);
+  } else if (!ParseFloat(value, parsed) || parsed < PortOverlay::kGyroSensitivityMin ||
+             parsed > PortOverlay::kGyroSensitivityMax) {
+    return;
+  }
+  o = {parsed, true};
+}
+
+template < int Player, PortOverlay::PlayerSetting Key, PlayerValueKind Kind >
+void WritePlayerSetting(std::ostream& out) {
+  const PlayerOverride& o = sPlayerSettings[Player][Key];
+  if (!o.set)
+    return;
+  if (Kind == kPlayerFloat)
+    out << o.value;
+  else
+    out << int(o.value);
+}
+
+template < int Player, PortOverlay::PlayerSetting Key, PlayerValueKind Kind, int Min = 0, int Max = 0 >
+constexpr SettingKey PlayerKey(const char* key, const char* sampleA, const char* sampleB) {
+  return {key, ReadPlayerSetting< Player, Key, Kind, Min, Max >,
+          WritePlayerSetting< Player, Key, Kind >, true, sampleA, sampleB};
+}
+
+// p<N>.twin_stick and the stick rates: PortMouse keeps those overrides.
+template < int Player, PortMouse::StickKey Key >
+void ReadPlayerStick(const std::string& value) {
+  if (Trim(value).empty()) {
+    PortMouse::ClearPlayerStick(Player, Key);
+    return;
+  }
+  if (Key == PortMouse::kStick_Enabled || Key == PortMouse::kStick_Split) {
+    (Key == PortMouse::kStick_Enabled ? PortMouse::SetPlayerStickEnabled
+                                      : PortMouse::SetPlayerStickAimSplit)(Player, ParseBool(value));
+    return;
+  }
+  float parsed = 0.f;
+  if (ParseFloat(value, parsed) && parsed >= 50.f && parsed <= 10000.f) {
+    (Key == PortMouse::kStick_Rate ? PortMouse::SetPlayerStickAimRate
+                                   : PortMouse::SetPlayerStickAimRateY)(Player, parsed);
+  }
+}
+
+template < int Player, PortMouse::StickKey Key >
+void WritePlayerStick(std::ostream& out) {
+  if (!PortMouse::PlayerStickSet(Player, Key))
+    return;
+  switch (Key) {
+  case PortMouse::kStick_Enabled: WriteBool(out, PortMouse::StickEnabled(Player)); break;
+  case PortMouse::kStick_Rate: out << PortMouse::StickAimRate(Player); break;
+  case PortMouse::kStick_Split: WriteBool(out, PortMouse::StickAimSplit(Player)); break;
+  case PortMouse::kStick_RateY: out << PortMouse::StickAimRateY(Player); break;
+  }
+}
+
+template < int Player, PortMouse::StickKey Key >
+constexpr SettingKey PlayerStickKey(const char* key, const char* sampleA, const char* sampleB) {
+  return {key, ReadPlayerStick< Player, Key >, WritePlayerStick< Player, Key >, true, sampleA,
+          sampleB};
+}
+
+// Every per-player key of player N (2-4), as p<N>.<Player 1's key>.
+#define PLAYER_SETTING_KEYS(N)                                                                     \
+  PlayerStickKey< N - 1, PortMouse::kStick_Enabled >("p" #N ".twin_stick", "1", "0"),              \
+      PlayerStickKey< N - 1, PortMouse::kStick_Rate >("p" #N ".stick_aim_rate", "900", "1200"),    \
+      PlayerStickKey< N - 1, PortMouse::kStick_Split >("p" #N ".stick_aim_split", "1", "0"),       \
+      PlayerStickKey< N - 1, PortMouse::kStick_RateY >("p" #N ".stick_aim_rate_y", "900", "1200"), \
+      PlayerKey< N - 1, PortOverlay::kPlayer_LockOnToggle, kPlayerBool >("p" #N ".lockon_toggle",  \
+                                                                         "1", "0"),                \
+      PlayerKey< N - 1, PortOverlay::kPlayer_StickyCharge, kPlayerBool >("p" #N ".sticky_charge",  \
+                                                                         "1", "0"),                \
+      PlayerKey< N - 1, PortOverlay::kPlayer_RapidCharge, kPlayerBool >("p" #N ".rapid_charge",    \
+                                                                        "1", "0"),                 \
+      PlayerKey< N - 1, PortOverlay::kPlayer_AutoAim, kPlayerBool >("p" #N ".auto_aim", "1", "0"), \
+      PlayerKey< N - 1, PortOverlay::kPlayer_LockOnFreeAim, kPlayerBool >(                         \
+          "p" #N ".lock_on_free_aim", "1", "0"),                                                   \
+      PlayerKey< N - 1, PortOverlay::kPlayer_GyroAim, kPlayerBool >("p" #N ".gyro_aim", "1", "0"), \
+      PlayerKey< N - 1, PortOverlay::kPlayer_GyroMode, kPlayerInt, PortOverlay::kGyroModeMin,      \
+                 PortOverlay::kGyroModeMax >("p" #N ".gyro_mode", "2", "1"),                       \
+      PlayerKey< N - 1, PortOverlay::kPlayer_GyroSensitivity, kPlayerFloat >(                      \
+          "p" #N ".gyro_sensitivity", "2", "1"),                                                   \
+      PlayerKey< N - 1, PortOverlay::kPlayer_GyroSplit, kPlayerBool >("p" #N ".gyro_split", "1",   \
+                                                                      "0"),                        \
+      PlayerKey< N - 1, PortOverlay::kPlayer_GyroSensitivityY, kPlayerFloat >(                     \
+          "p" #N ".gyro_sensitivity_y", "2", "1")
+
 // A key that is one int in [Min, Max]: anything else is ignored.
 template < int* Value, int Min, int Max >
 constexpr SettingKey IntKey(const char* key, const char* sampleA, const char* sampleB) {
@@ -610,6 +715,10 @@ const SettingKey kSettingKeys[] = {
        }
      },
      true, "keep_depth", "unmonitored_fence,validation"},
+    // A match's players 2-4, after Player 1's keys they override.
+    PLAYER_SETTING_KEYS(2),
+    PLAYER_SETTING_KEYS(3),
+    PLAYER_SETTING_KEYS(4),
     {"disc_path", [](const std::string& value) { sDiscPath = value; },
      [](std::ostream& out) { out << sDiscPath; }, true, "/a/disc.iso", "/b/disc.iso"},
     // Last, as in MP1: the game's options blob (PortOverlay::SyncGameOptions).

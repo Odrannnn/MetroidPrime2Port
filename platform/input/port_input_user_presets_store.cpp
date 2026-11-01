@@ -116,7 +116,7 @@ Layout Capture(Family family, const std::string& name, u32 kPort) {  // kPort: t
   l.family = family;
   l.name = name;
   if (family == Family::Touch) return l; // bindings only
-  l.twinStick = PortMouse::StickEnabled();
+  l.twinStick = PortMouse::StickEnabled(static_cast<int>(kPort));
   if (family == Family::Pad) {
     u32 n = 0;
     if (const PADButtonMapping* b = PADGetButtonMappings(kPort, &n))
@@ -140,12 +140,12 @@ Layout Capture(Family family, const std::string& name, u32 kPort) {  // kPort: t
 }
 
 // The same writes as the built-in presets (port_controls.cpp), from the snapshot.
-// `kPort` is the pad port the pad mapping goes to; ports other than 0 get the pad mapping only
-// (the twin-stick switch, keyboard and settings are the port-0 player's).
+// `kPort` is the pad port the pad mapping goes to; ports other than 0 get the pad mapping
+// and their player's twin-stick switch (keyboard and settings stay the port-0 player's).
 void Restore(const Layout& l, u32 kPort) {
   if (l.family == Family::Touch) return;
   if (kPort != PAD_CHAN0 && l.family != Family::Pad) return;
-  if (kPort == PAD_CHAN0) PortMouse::SetStickEnabled(l.twinStick);
+  PortMouse::SetPlayerStickEnabled(static_cast<int>(kPort), l.twinStick);
   if (l.family == Family::Pad) {
     // An empty snapshot (a hand-edited file) keeps the controller's mappings as they are.
     if (!l.padButtons.empty() || !l.padAxes.empty()) PADRestoreDefaultMapping(kPort);

@@ -1264,7 +1264,7 @@ void CPlayer::UpdateAimTarget(CStateManager& mgr) {
     mAimTargetTimer = 0.f;
 #ifdef TARGET_PC
     // Port: with auto-aim off (F1), aim only at a locked or orbited target, as MP1 does.
-  } else if (!PortOverlay::AutoAim()) {
+  } else if (!PortOverlay::AutoAim(mPlayerIndex)) {
     SetAimTarget(kInvalidUniqueId);
     mAimTargetTimer = 0.f;
     if (mOrbitState == kOS_OrbitObject || mOrbitState == kOS_ForcedOrbitObject) {

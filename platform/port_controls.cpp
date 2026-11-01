@@ -95,14 +95,14 @@ s32 OtherStick(s32 axis) {
   }
 }
 
-// `port` is the pad port whose controller is remapped. The twin-stick switch is the
-// port-0 player's (PortMouse, keyboard/mouse port); other ports only get the mapping.
+// `port` is the pad port whose controller is remapped; the twin-stick switch is that port's
+// player's (port 0 sets the global one, other ports their p2-p4 override).
 void ApplyPadPreset(EPadPreset preset, u32 port) {
   PADRestoreDefaultMapping(port);
   // The GameCube layouts use the C-stick; the dual-stick ones turn twin-stick
   // back on. MP2 has no pad beam shift, scan/X-ray swap or pad alt buttons
   // (MP1 PortDebug settings), so those resets are gone.
-  if (port == PAD_CHAN0) PortMouse::SetStickEnabled(false);
+  PortMouse::SetPlayerStickEnabled(port, false);
   switch (preset) {
   case EPadPreset::kGameCube:
     break;
@@ -128,7 +128,7 @@ void ApplyPadPreset(EPadPreset preset, u32 port) {
     // MP2: MP1 also gives A the east button and B the left shoulder (pad alt
     // buttons), the top face button the beam shift and swaps scan and X-ray;
     // none of those settings exist here.
-    if (port == PAD_CHAN0) PortMouse::SetStickEnabled(true);
+    PortMouse::SetPlayerStickEnabled(port, true);
     break;
   }
   case EPadPreset::kModern: {
@@ -148,7 +148,7 @@ void ApplyPadPreset(EPadPreset preset, u32 port) {
     }
     PADSetAxisMapping(port, {{-1, AXIS_SIGN_POSITIVE}, SDL_GAMEPAD_BUTTON_RIGHT_STICK, PAD_AXIS_TRIGGER_R});
     // The right stick aims; without twin-stick it would be the C-stick.
-    if (port == PAD_CHAN0) PortMouse::SetStickEnabled(true);
+    PortMouse::SetPlayerStickEnabled(port, true);
     break;
   }
   case EPadPreset::kSouthpaw: {

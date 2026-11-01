@@ -4114,8 +4114,9 @@ static void ApplyHoldToggle(CFinalInput& input, CStateManager& mgr, uint control
   const CPlayer::EPlayerOrbitState orbit = player->GetOrbitState();
   const bool locked = orbit == CPlayer::kOS_OrbitObject ||
                       orbit == CPlayer::kOS_ForcedOrbitObject || orbit == CPlayer::kOS_Grapple;
+  const int index = player->GetPlayerIndex();
   const PortHoldToggle::Output outL = sLockOn.Update(
-      unmorphed && PortOverlay::LockOnToggle(), heldL, pressL, locked, input.DeltaTime());
+      unmorphed && PortOverlay::LockOnToggle(index), heldL, pressL, locked, input.DeltaTime());
   if (sLockOn.Latched() || outL.held != heldL) {
     input.PortSetL(outL.held, outL.pressed);
   }
@@ -4123,7 +4124,7 @@ static void ApplyHoldToggle(CFinalInput& input, CStateManager& mgr, uint control
   const bool heldA = input.DA();
   const bool pressA = input.PA();
   const CPlayerState* const state = player->GetPlayerState();
-  const bool charge = unmorphed && PortOverlay::StickyCharge() && state != nullptr &&
+  const bool charge = unmorphed && PortOverlay::StickyCharge(index) && state != nullptr &&
                       state->GetItemAmount(CPlayerState::kIT_ChargeBeam, true) != 0;
   const PortHoldToggle::Output outA = sCharge.Update(charge, heldA, pressA, input.DeltaTime());
   if (outA.held != heldA || outA.pressed != pressA) {
