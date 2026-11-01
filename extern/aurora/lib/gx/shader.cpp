@@ -36,6 +36,17 @@ using namespace std::string_view_literals;
 namespace {
 constexpr Module Log{"aurora::gfx::gx"};
 
+// Position of a mandatory anchor in the generated WGSL. A missing one means the text it patches changed under
+// us; abort naming it rather than let replace/insert(npos) throw inside the noexcept source builder.
+// last = search from the end (rfind).
+size_t find_anchor(const std::string& source, std::string_view what, bool last = false) {
+  const size_t at = last ? source.rfind(what) : source.find(what);
+  if (at == std::string::npos) {
+    Log.fatal("shader source: anchor not found: '{}'", what);
+  }
+  return at;
+}
+
 // The inventory visor kinds (36: Remastered's coloured coverage glass 4c37625c, 37: the visor backlight 17dd0a37).
 // The scalar expressions the shader emits, over the lets it declares: inv_ba = BCLR.a, inv_da = DIFC.a, inv_c = COVG,
 // inv_b = BCLR.rgb x DIFC.rgb (per channel), inv_a = the opacity. Exported (inventory_visor_expr) so the tests run
@@ -2780,8 +2791,7 @@ R"""(      // Encoded as Remastered's sRGB swapchain does it: the exact piecewis
                                 "\n      if (pbr_kind > 25.5 && pbr_kind < 26.5) {\n          pbr_alpha = pbr_lma;\n      }"s
                               : ""s) + decalAlpha);
   if (config.pbrKind == 34 && screen) {
-    const size_t at = source.find("      // A model fading (w of the light scale)");
-    assert(at != std::string::npos);
+    const size_t at = find_anchor(source, "      // A model fading (w of the light scale)");
     source.insert(at, R"""(
       if (pbr_kind > 33.5 && pbr_kind < 34.5) {
           // Kind 34, Remastered's 788360de / 4c37625c with the material's MFC0 feature off (every current
@@ -2799,21 +2809,18 @@ R"""(      // Encoded as Remastered's sRGB swapchain does it: the exact piecewis
   if (inventory) {
     // The incandescence ICMC (rgb only; its alpha is not DMGI) is added linearly after the exposure scaling.
     // DMGI is CCH2.y = 1 on all three inventory materials and is not carried: the bounded default 1.
-    const size_t out = source.find("      let pbr_out = max(pbr_lo + pbr_glow, vec3f(0.0));");
-    assert(out != std::string::npos);
+    const size_t out = find_anchor(source, "      let pbr_out = max(pbr_lo + pbr_glow, vec3f(0.0));");
     source.insert(out, R"""(      pbr_glow += ubuf.pbr_model_incan.rgb;
 )""");
     if (config.pbrKind == 36) {
       // Kind 36 coverage C scales the foreground after the port's tone curve, so C = 0 leaves the scene
       // unchanged whatever the global tone (a toe/offset cannot inject a nonzero foreground). o0 = (lit + ICMC) C
       // of the source is not exact through the port tone; C is applied once, here.
-      const size_t at = source.find("      // A model fading (w of the light scale)");
-      assert(at != std::string::npos);
+      const size_t at = find_anchor(source, "      // A model fading (w of the light scale)");
       source.insert(at, "      pbr_tm *= inv_c;\n");
     }
     if (config.pbrKind == 36 && screen) {
-      const size_t at = source.find("      // A model fading (w of the light scale)");
-      assert(at != std::string::npos);
+      const size_t at = find_anchor(source, "      // A model fading (w of the light scale)");
       source.insert(at, fmt::format(R"""(
       if (pbr_kind > 35.5 && pbr_kind < 36.5) {{
           // Kind 36, Remastered's 4c37625c with MFC0 on (O2: One / InvSrc1Color): the scene keeps
@@ -2826,20 +2833,19 @@ R"""(      // Encoded as Remastered's sRGB swapchain does it: the exact piecewis
                                     InvWeightExpr));
     }
     // DIFC alpha is explicit: no generic model fade.
-    const size_t fade = source.find("      // A model fading (w of the light scale)");
-    const size_t fadeEnd = source.find("      // Encoded as Remastered's sRGB swapchain");
-    assert(fade != std::string::npos && fadeEnd != std::string::npos && fade < fadeEnd);
+    const size_t fade = find_anchor(source, "      // A model fading (w of the light scale)");
+    const size_t fadeEnd = find_anchor(source, "      // Encoded as Remastered's sRGB swapchain");
+    assert(fade < fadeEnd);
     source.erase(fade, fadeEnd - fade);
   }
   if (!lit || costTest == 2) {
     // The uniform block has no lights then.
-    const size_t begin = source.find("// pbr-lights-begin");
-    const size_t end = source.find("// pbr-lights-end");
+    const size_t begin = find_anchor(source, "// pbr-lights-begin");
+    const size_t end = find_anchor(source, "// pbr-lights-end");
     source.erase(begin, end - begin);
   }
   const auto cut = [&](std::string_view what, std::string_view with) {
-    const size_t at = source.find(what);
-    assert(at != std::string::npos);
+    const size_t at = find_anchor(source, what);
     source.replace(at, what.size(), with);
   };
   // A baked lightmap (GX_AURORA_SET_PBR_LIGHTMAP) replaces the diffuse ambient: its level L0 in layer 0 and the
@@ -2963,7 +2969,7 @@ void add_cut_caster(std::string& source, const ShaderConfig& config) {
     return;
   }
   std::string vs = source.substr(vsAt, vsEnd - vsAt);
-  vs.replace(vs.find("fn vs_main("), 11, "fn vs_shadow_cut(");
+  vs.replace(find_anchor(vs, "fn vs_main("), 11, "fn vs_shadow_cut(");
   vs += "\n    var shadow_pos = vec4f(mv_pos, 1.0) * ubuf.shadow_caster[imm.serial];"
         "\n    shadow_pos.z = max(shadow_pos.z, 0.0);"
         // As vs_shadow: an actor's caster[0] holds its height weight in column 3, so w is pinned to 1.
@@ -3036,8 +3042,7 @@ void apply_texture_vertex_fetch(std::string& source) {
   replaceAll("&abuf", "abuf");
   // The only word read: the storage version's arrayLength guard becomes the texture's extent.
   constexpr std::string_view guard = "  if (word_idx < arrayLength(p)) {\n    return p[word_idx];\n  }\n  return 0u;\n";
-  const size_t wordAt = source.find(guard);
-  assert(wordAt != std::string::npos);
+  const size_t wordAt = find_anchor(source, guard);
   source.replace(wordAt, guard.size(),
                  "  let dims = textureDimensions(p);\n"
                  "  if (word_idx < dims.x * dims.y) {\n"
@@ -4144,8 +4149,7 @@ fn vf_apply_hdr(c: vec4f, fog: vec4f, w: f32) -> vec4f {
       // The volumetric fog in the light before the tone curve, as Remastered's shaders fog it.
       // The pass-through light is already display-referred, so it is only dimmed.
       const std::string_view what = "let pbr_out = max(pbr_lo + pbr_glow, vec3f(0.0));";
-      const size_t at = pbr.find(what);
-      assert(at != std::string::npos);
+      const size_t at = find_anchor(pbr, what);
       pbr.replace(at, what.size(),
                   fmt::format("var pbr_out = max(pbr_lo + pbr_glow, vec3f(0.0));"
                               "\n      let pbr_vf = {};"
@@ -4734,16 +4738,14 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4f {{{6}{5}
   if (clamp_storage_loads() && !gfx::g_vertexFetchTexture) {
     constexpr std::string_view guard =
         "  if (word_idx < arrayLength(p)) {\n    return p[word_idx];\n  }\n  return 0u;\n";
-    const size_t at = shaderSource.find(guard);
-    assert(at != std::string::npos);
+    const size_t at = find_anchor(shaderSource, guard);
     shaderSource.replace(at, guard.size(), "  return p[min(word_idx, arrayLength(p) - 1u)];\n");
   }
   add_cut_caster(shaderSource, config);
   if (config.drawId) {
     // The draw serial as the colour, 8 bits a channel, whatever the shading came to (it can still discard).
     constexpr std::string_view tail = "    return prev;\n}";
-    const size_t at = shaderSource.rfind(tail);
-    assert(at != std::string::npos);
+    const size_t at = find_anchor(shaderSource, tail, true);
     shaderSource.replace(at, tail.size(),
                          "    return vec4f(f32(imm.serial & 255u), f32((imm.serial >> 8u) & 255u), "
                          "f32((imm.serial >> 16u) & 255u), 255.0) / 255.0;\n}");
@@ -4754,8 +4756,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4f {{{6}{5}
     // row, 4-9 the receiver box planes, 10 (opacity, fade start height, 1/fade range, layer), 11 (up, normal
     // threshold). Vec4 k of the uniform is column k % 4 of matrix k / 4.
     constexpr std::string_view tail = "    return prev;\n}";
-    const size_t at = shaderSource.rfind(tail);
-    assert(at != std::string::npos);
+    const size_t at = find_anchor(shaderSource, tail, true);
     shaderSource.replace(at, tail.size(), R"WGSL(    let dc_dx = dpdx(in.dc_pos);
     let dc_dy = dpdy(in.dc_pos);
     var dc_n = normalize(cross(dc_dx, dc_dy));

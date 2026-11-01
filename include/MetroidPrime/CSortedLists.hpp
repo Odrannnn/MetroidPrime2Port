@@ -33,11 +33,11 @@ struct SNode {
 CHECK_SIZEOF(SNode, 0x2c)
 
 struct SSortedList {
-  short mIds[1024]; // Node indices, without TUniqueId version bits.
+  short mIds[kMaxObjects]; // Node indices, without TUniqueId version bits.
   int mSize;
 
   SSortedList() : mSize(0) {
-    for (int i = 0; i < 1024; ++i) {
+    for (int i = 0; i < kMaxObjects; ++i) {
       mIds[i] = -1;
     }
   }
@@ -63,16 +63,16 @@ public:
                                ESortedLists otherMaxA, ESortedLists otherMinB,
                                ESortedLists otherMaxB, const CAABox& box) const;
   short ConstructIntersectionArray(const CAABox& box) const;
-  void BuildNearList(rstl::reserved_vector< TUniqueId, 1024 >& nearListOut, const CAABox& box,
+  void BuildNearList(rstl::reserved_vector< TUniqueId, kMaxObjects >& nearListOut, const CAABox& box,
                      const CMaterialFilter& filter, const CActor* actor) const;
-  void BuildNearList(rstl::reserved_vector< TUniqueId, 1024 >& nearListOut, const CActor& actor,
+  void BuildNearList(rstl::reserved_vector< TUniqueId, kMaxObjects >& nearListOut, const CActor& actor,
                      const CAABox& box) const;
-  void BuildNearList(rstl::reserved_vector< TUniqueId, 1024 >& nearListOut, const CVector3f& pos,
+  void BuildNearList(rstl::reserved_vector< TUniqueId, kMaxObjects >& nearListOut, const CVector3f& pos,
                      const CVector3f& dir, float magnitude, const CMaterialFilter& filter,
                      const CActor* actor) const;
 
 private:
-  SNode mNodes[1024];
+  SNode mNodes[kMaxObjects];
   SSortedList mSortedLists[6];
 };
 CHECK_SIZEOF(CSortedListManager, 0xe018)

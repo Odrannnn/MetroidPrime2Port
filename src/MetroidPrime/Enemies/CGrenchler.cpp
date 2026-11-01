@@ -2270,7 +2270,7 @@ void CGrenchler::ResolveCollision(CStateManager& mgr) {
   CAABox motionVolume = GetMotionVolume(0.f);
   CAreaCollisionCache cache(motionVolume);
   CGameCollision::BuildAreaCollisionCache(mgr, cache);
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildColliderList(nearList, *this, motionVolume);
   CGameCollision::CollisionFailsafe(mgr, cache, *this, *GetCollisionPrimitive(), nearList, 0.f, 0,
                                     0.f);
@@ -3950,7 +3950,7 @@ void CGrenchler::UpdateBeamTrace(CStateManager& mgr) {
   if (mEffectC.mTraceState != 1) {
     static const CMaterialFilter skPlayerFilter =
         CMaterialFilter::MakeInclude(CMaterialList(kMT_Player));
-    rstl::reserved_vector< TUniqueId, 1024 > nearList;
+    rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
     mgr.BuildNearList(nearList, mBeamAttack.mHornXf.GetTranslation(), direction,
                       mEffectC.mBeamLength, skPlayerFilter, nullptr);
     TUniqueId hitId = kInvalidUniqueId;
@@ -3991,7 +3991,7 @@ void CGrenchler::UpdateBeamTrace(CStateManager& mgr) {
     origins[1] = mBeamAttack.mHornXf.GetTranslation() + sideB * 3.f;
     origins[2] = mBeamAttack.mHornXf.GetTranslation();
     for (int i = 0; i < 3; ++i) {
-      rstl::reserved_vector< TUniqueId, 1024 > nearList;
+      rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
       mgr.BuildNearList(nearList, origins[i], direction, mEffectC.mBeamLength, skSolidFilter,
                         nullptr);
       TUniqueId hitId = kInvalidUniqueId;

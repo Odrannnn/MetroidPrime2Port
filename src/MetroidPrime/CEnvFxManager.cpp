@@ -775,7 +775,7 @@ void CEnvFxManager::UpdateBlockedGrids(CStateManager& mgr, EEnvFxType type,
   mLastBlockedGridIdx = -1;
   mEnableSplash = false;
 
-  rstl::reserved_vector< TUniqueId, 1024 > blockList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > blockList;
   bool blockListBuilt = false;
   int blockedGrids = 0;
   for (int i = 0; i < mGrids.size(); ++i) {
@@ -801,7 +801,7 @@ void CEnvFxManager::UpdateBlockedGrids(CStateManager& mgr, EEnvFxType type,
               BuildBlockObjectList(blockList, mgr);
               blockListBuilt = true;
             }
-            for (rstl::reserved_vector< TUniqueId, 1024 >::const_iterator it = blockList.begin();
+            for (rstl::reserved_vector< TUniqueId, kMaxObjects >::const_iterator it = blockList.begin();
                  it != blockList.end(); ++it) {
               const CScriptTrigger* trigger =
                   TCastToConstPtr< CScriptTrigger >(mgr.GetObjectById(*it));
@@ -836,7 +836,7 @@ void CEnvFxManager::UpdateBlockedGrids(CStateManager& mgr, EEnvFxType type,
               BuildBlockObjectList(blockList, mgr);
               blockListBuilt = true;
             }
-            for (rstl::reserved_vector< TUniqueId, 1024 >::const_iterator it = blockList.begin();
+            for (rstl::reserved_vector< TUniqueId, kMaxObjects >::const_iterator it = blockList.begin();
                  it != blockList.end(); ++it) {
               const CScriptTrigger* trigger =
                   TCastToConstPtr< CScriptTrigger >(mgr.GetObjectById(*it));
@@ -1436,7 +1436,7 @@ void CEnvFxManager::StopRainSounds() { mRainSoundsStopped = true; }
 
 void CEnvFxManager::PlayRainSounds() { mRainSoundsStopped = false; }
 
-void CEnvFxManager::BuildBlockObjectList(rstl::reserved_vector< TUniqueId, 1024 >& list,
+void CEnvFxManager::BuildBlockObjectList(rstl::reserved_vector< TUniqueId, kMaxObjects >& list,
                                          CStateManager& mgr) {
   const CObjectList& objects = mgr.GetObjectListById(kOL_All);
   for (int index = objects.GetFirstObjectIndex(); index != -1;

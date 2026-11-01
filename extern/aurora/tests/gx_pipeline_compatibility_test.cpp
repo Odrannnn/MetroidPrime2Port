@@ -18,3 +18,19 @@ TEST(GXPipelineCompatibility, PbrLightmapRequiresSupportedBinding) {
     }
   }
 }
+
+TEST(GXPipelineCompatibility, ShadowPassRequiresShadowShader) {
+  aurora::gx::PipelineConfig config{};
+  EXPECT_TRUE(aurora::gx::pipeline_config_compatible(config, true));
+  config.shadowPass = 1;
+  EXPECT_FALSE(aurora::gx::pipeline_config_compatible(config, true));
+  config.shaderConfig.shadow = true;
+  EXPECT_TRUE(aurora::gx::pipeline_config_compatible(config, true));
+  config.shadowPass = 2;
+  EXPECT_TRUE(aurora::gx::pipeline_config_compatible(config, true));
+  config.shadowPass = 3;
+  EXPECT_FALSE(aurora::gx::pipeline_config_compatible(config, true));
+  config.shadowPass = 1;
+  config.shaderConfig.lineMode = 1;
+  EXPECT_FALSE(aurora::gx::pipeline_config_compatible(config, true));
+}

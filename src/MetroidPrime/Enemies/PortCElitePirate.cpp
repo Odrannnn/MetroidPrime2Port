@@ -470,7 +470,7 @@ void CElitePirate::UpdatePushBack(CStateManager& mgr, float dt) {
   CAABox box = CAABox::MakeMaxInvertedBox();
   box.AccumulateBounds(from);
   box.AccumulateBounds(to);
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildNearList(nearList, box, filter, this);
   if (!CGameCollision::RayDynamicLineOfSightTest(mgr, from, delta, len, filter, nearList, this)) {
     MoveInOneFrameOR(pushBack, dt);

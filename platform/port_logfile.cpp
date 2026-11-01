@@ -340,11 +340,10 @@ void AttachParentConsole() {
   SetStdHandle(STD_ERROR_HANDLE, reinterpret_cast< HANDLE >(_get_osfhandle(_fileno(stderr))));
 }
 
-int RunCopy(const char* pipe, const char* file, const char* terminal) {
-  const HANDLE in = ParseHandle(pipe);
-  const HANDLE out = ParseHandle(file);
+namespace {
+void CopyPipe(HANDLE in, HANDLE out, HANDLE terminal) {
   static Terminal console;
-  console.handle = terminal != nullptr ? ParseHandle(terminal) : nullptr;
+  console.handle = terminal;
   std::thread consoleThread;
   if (console.handle != nullptr && console.handle != INVALID_HANDLE_VALUE) {
     consoleThread = std::thread([] { console.Run(); });
@@ -382,6 +381,15 @@ int RunCopy(const char* pipe, const char* file, const char* terminal) {
     console.ready.notify_one();
     consoleThread.join();
   }
+}
+} // namespace
+
+int RunCopy(const char* pipe, const char* file, const char* terminal, const char* ready) {
+  if (const HANDLE event = ParseHandle(ready); event != nullptr) {
+    SetEvent(event);
+    CloseHandle(event);
+  }
+  CopyPipe(ParseHandle(pipe), ParseHandle(file), ParseHandle(terminal));
   return 0;
 }
 #endif
@@ -432,32 +440,51 @@ void Start(const std::string& userDirectory) {
                        DUPLICATE_SAME_ACCESS)) {
     terminal = nullptr;
   }
+  // The copier signals this once it runs. It can fail to start where the game itself starts
+  // (Windows 7 with VxKex not extending child processes stops it at load).
+  const HANDLE ready = CreateEventW(&inherit, TRUE, FALSE, nullptr);
   wchar_t exe[4096];
   const DWORD exeSize = GetModuleFileNameW(nullptr, exe, 4096);
   std::wstring command = L"\"" + std::wstring(exe, exeSize) + L"\" --log-copy " +
                          std::to_wstring(reinterpret_cast< uintptr_t >(readEnd)) + L" " +
                          std::to_wstring(reinterpret_cast< uintptr_t >(file)) + L" " +
-                         std::to_wstring(reinterpret_cast< uintptr_t >(terminal));
+                         std::to_wstring(reinterpret_cast< uintptr_t >(terminal)) + L" " +
+                         std::to_wstring(reinterpret_cast< uintptr_t >(ready));
   STARTUPINFOW startup{};
   startup.cb = sizeof(startup);
   PROCESS_INFORMATION process{};
-  const bool launched = exeSize > 0 && exeSize < 4096 &&
-                        CreateProcessW(nullptr, command.data(), nullptr, nullptr, TRUE,
-                                       DETACHED_PROCESS, nullptr, nullptr, &startup, &process);
-  CloseHandle(readEnd);
-  CloseHandle(file);
-  if (terminal != nullptr) {
-    CloseHandle(terminal);
+  bool launched = ready != nullptr && exeSize > 0 && exeSize < 4096 &&
+                  CreateProcessW(nullptr, command.data(), nullptr, nullptr, TRUE, DETACHED_PROCESS,
+                                 nullptr, nullptr, &startup, &process);
+  if (launched) {
+    const HANDLE waits[] = {ready, process.hProcess};
+    if (WaitForMultipleObjects(2, waits, FALSE, 5000) != WAIT_OBJECT_0) {
+      // Dead, or held up by a loader error box: copy on a thread of this process instead,
+      // which keeps everything but the last lines before a crash.
+      TerminateProcess(process.hProcess, 1);
+      launched = false;
+    }
+    CloseHandle(process.hThread);
+    CloseHandle(process.hProcess);
   }
-  if (!launched) {
-    CloseHandle(writeEnd);
-    fail("cannot start the log copier for");
-    return;
+  if (ready != nullptr) {
+    CloseHandle(ready);
   }
-  CloseHandle(process.hThread);
-  CloseHandle(process.hProcess);
-  std::fflush(stdout);
-  std::fflush(stderr);
+  if (launched) {
+    CloseHandle(readEnd);
+    CloseHandle(file);
+    if (terminal != nullptr) {
+      CloseHandle(terminal);
+    }
+  } else {
+    for (const HANDLE handle : {readEnd, file, terminal}) {
+      if (handle != nullptr) {
+        SetHandleInformation(handle, HANDLE_FLAG_INHERIT, 0);
+      }
+    }
+    std::thread([readEnd, file, terminal] { CopyPipe(readEnd, file, terminal); }).detach();
+  }
+  const bool copierInProcess = !launched;
   const int pipeFd = _open_osfhandle(reinterpret_cast< intptr_t >(writeEnd), _O_WRONLY | _O_BINARY);
   if (pipeFd < 0) {
     CloseHandle(writeEnd);
@@ -480,6 +507,9 @@ void Start(const std::string& userDirectory) {
   SetStdHandle(STD_ERROR_HANDLE, reinterpret_cast< HANDLE >(_get_osfhandle(_fileno(stderr))));
   sStarted = true;
   std::fprintf(stderr, "port: writing the log to %s\n", sPath.c_str());
+  if (copierInProcess) {
+    std::fprintf(stderr, "port: the log copier did not start; a crash may lose the last lines\n");
+  }
 #elif defined(__ANDROID__)
   const char* external = SDL_GetAndroidExternalStoragePath();
   sPath = (external != nullptr && external[0] != '\0')

@@ -602,7 +602,7 @@ void CSplitterMainChassis::FindBestDodgeDirection(CStateManager& mgr, float) {
   }
   const CVector3f pos = GetTranslation();
   const CAABox box(pos - CVector3f(50.f, 50.f, 50.f), pos + CVector3f(50.f, 50.f, 50.f));
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildNearList(nearList, box, CMaterialFilter::MakeInclude(CMaterialList(kMT_Projectile)),
                     nullptr);
   for (int i = 0; i < nearList.size(); ++i) {

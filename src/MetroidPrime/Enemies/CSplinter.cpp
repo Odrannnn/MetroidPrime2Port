@@ -1254,7 +1254,7 @@ void CSplinter::RecoverCollision(CStateManager& mgr) {
   CAABox bounds = GetMotionVolume(0.f);
   CAreaCollisionCache cache(bounds);
   CGameCollision::BuildAreaCollisionCache(mgr, cache);
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildColliderList(nearList, *this, bounds);
   CGameCollision::CollisionFailsafe(mgr, cache, *this, *GetCollisionPrimitive(), nearList, 0.f, 0,
                                     0.f);

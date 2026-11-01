@@ -229,7 +229,7 @@ void CScattershotProjectile::CheckPlayerHit(CStateManager& mgr) {
 // @ fn_10_324
 CRayCastResult CScattershotProjectile::Sweep(
     const CVector3f& from, const CVector3f& to,
-    const rstl::reserved_vector< TUniqueId, 1024 >& nearList, CStateManager& mgr) const {
+    const rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList, CStateManager& mgr) const {
   CRayCastResult best;
   const CVector3f delta = to - from;
   if (!delta.CanBeNormalized()) { // 0x000003EC
@@ -321,7 +321,7 @@ void CScattershotProjectile::CheckNewShots(CStateManager& mgr) {
     CAABox box = CAABox::MakeMaxInvertedBox();
     box.AccumulateBounds(shot.mPos);
     box.AccumulateBounds(shot.mTarget);
-    rstl::reserved_vector< TUniqueId, 1024 > nearList;
+    rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
     mgr.BuildNearList(nearList, box, SolidFilter(), this);
     const CRayCastResult result = Sweep(shot.mPos, shot.mTarget, nearList, mgr);
     if (result.IsValid()) {

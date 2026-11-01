@@ -706,7 +706,7 @@ void CSwampBossStage1::TongueRayCheck(CStateManager& mgr, const CVector3f& tip) 
   dir.Normalize();
   // rodata data_50C: the tongue only collides with the player.
   const CMaterialFilter filter = CMaterialFilter::MakeInclude(CMaterialList(kMT_Player));
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildNearList(nearList, xc0c_tonguePos, dir, length, filter, nullptr);
   CVector3f side0(dir.GetY(), -dir.GetX(), 0.f);
   CVector3f side1(-dir.GetY(), dir.GetX(), 0.f);

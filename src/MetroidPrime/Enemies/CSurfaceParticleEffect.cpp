@@ -212,14 +212,14 @@ void CSurfaceParticleEffect::GatherCollisionSurfaces(
     }
   }
 
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildNearList(nearList, bounds,
                     CMaterialFilter::MakeExclude(
                         CMaterialList(sNearListExcludeMaterial0, sNearListExcludeMaterial1,
                                       sNearListExcludeMaterial2, sNearListExcludeMaterial3,
                                       sNearListExcludeMaterial4)),
                     this);
-  for (rstl::reserved_vector< TUniqueId, 1024 >::const_iterator it = nearList.begin();
+  for (rstl::reserved_vector< TUniqueId, kMaxObjects >::const_iterator it = nearList.begin();
        it != nearList.end(); ++it) {
     if (*it == mIgnoredCollisionId) {
       continue;

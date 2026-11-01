@@ -88,7 +88,7 @@ void CScriptRiftPortal::UpdateProjectiles(CStateManager& mgr, float dt) {
   }
 
   static CMaterialFilter filter = CMaterialFilter::MakeInclude(CMaterialList(kMT_Projectile));
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildNearList(nearList, mBounds, filter, nullptr);
 
   const CVector3f center =

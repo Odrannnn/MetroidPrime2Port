@@ -69,8 +69,8 @@ void CLightComboProjectile::Think(float dt, CStateManager& mgr) {
       const CMaterialFilter occluderFilter = CMaterialFilter::MakeIncludeExclude(
           CMaterialList(kMT_Solid), CMaterialList(kMT_ProjectilePassthrough, kMT_CollisionActor));
 
-      rstl::reserved_vector< TUniqueId, 1024 > nearList;
-      rstl::reserved_vector< TUniqueId, 1024 > occluderList;
+      rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
+      rstl::reserved_vector< TUniqueId, kMaxObjects > occluderList;
       mgr.BuildNearList(nearList, *touchBounds, targetFilter, nullptr);
       if (nearList.size() == 0) {
         RequestRayResets(mgr, false, false);

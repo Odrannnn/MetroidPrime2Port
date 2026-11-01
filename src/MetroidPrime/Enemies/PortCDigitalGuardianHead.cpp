@@ -510,12 +510,12 @@ void CDigitalGuardianHead::x12818_(CStateManager& mgr, float dt) {
 // 0xEA0, the bombs) only; every CBomb in it is moved to pos.
 // @ fn_14_126C8
 void CDigitalGuardianHead::x126C8_(CStateManager& mgr, const CVector3f& pos, float half) {
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   const CVector3f center = pos;
   const CAABox box(CVector3f(center.GetX() - half, center.GetY() - half, center.GetZ() - half),
                    CVector3f(center.GetX() + half, center.GetY() + half, center.GetZ() + half));
   mgr.BuildNearList(nearList, box, CMaterialFilter::MakeInclude(CMaterialList(kMT_Bomb)), this);
-  for (rstl::reserved_vector< TUniqueId, 1024 >::iterator it = nearList.begin();
+  for (rstl::reserved_vector< TUniqueId, kMaxObjects >::iterator it = nearList.begin();
        it != nearList.end(); ++it) {
     if (CBomb* bomb = TCastToPtr< CBomb >(mgr.ObjectById(*it))) {
       bomb->SetTranslation(center);

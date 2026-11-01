@@ -653,7 +653,7 @@ public:
   void UpdateOrbitableObjects(CStateManager& mgr);
   TUniqueId FindBestOrbitableObject(const rstl::reserved_vector< TUniqueId, 64 >& objects,
                                     EPlayerZoneInfo zone, CStateManager& mgr);
-  void FindOrbitableObjects(const rstl::reserved_vector< TUniqueId, 1024 >& candidates,
+  void FindOrbitableObjects(const rstl::reserved_vector< TUniqueId, kMaxObjects >& candidates,
                             rstl::reserved_vector< TUniqueId, 64 >& objects, EPlayerZoneInfo zone,
                             EPlayerZoneType type, CStateManager& mgr, bool onScreenTest);
   bool WithinOrbitScreenBox(const CVector3f& screenPosition, EPlayerZoneInfo zone,
@@ -825,7 +825,7 @@ private:
   TReservedAverage< CVector3f, 10 > mAimTargetAverage;           // 0x61c
   CVector3f mAssistedTargetAim;                                  // 0x698
   float mAimTargetTimer;                                         // 0x6a4
-  rstl::reserved_vector< TUniqueId, 1024 > mAimCandidates;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > mAimCandidates;
   int mAimCandidateIndex;
   int mAimCandidateRefreshFrames;
   float mAimTargetDistance;

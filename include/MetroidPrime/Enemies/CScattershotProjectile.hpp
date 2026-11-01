@@ -54,7 +54,7 @@ public:
 private:
   void CheckPlayerHit(CStateManager& mgr);               // fn_10_2C
   CRayCastResult Sweep(const CVector3f& from, const CVector3f& to,
-                       const rstl::reserved_vector< TUniqueId, 1024 >& nearList,
+                       const rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList,
                        CStateManager& mgr) const;         // fn_10_324
   bool CanHit(const CActor& actor) const;                 // fn_10_B78
   void CheckNewShots(CStateManager& mgr);                 // fn_10_1C08

@@ -1056,7 +1056,7 @@ void CRezbit::UpdateDeflectSfx(float dt) {
 void CRezbit::DeflectMissiles(CStateManager& mgr) {
   const CVector3f center = GetAimPosition(mgr, 0.f);
   const CMaterialFilter filter = CMaterialFilter::MakeInclude(CMaterialList(kMT_Projectile));
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildNearList(nearList,
                     CAABox(center - mData.missileDeflectRadius * CVector3f::One(),
                            center + mData.missileDeflectRadius * CVector3f::One()),
@@ -1069,7 +1069,7 @@ void CRezbit::DeflectMissiles(CStateManager& mgr) {
   }
 
   const float radiusSq = mData.missileDeflectRadius * mData.missileDeflectRadius;
-  for (rstl::reserved_vector< TUniqueId, 1024 >::const_iterator it = nearList.begin();
+  for (rstl::reserved_vector< TUniqueId, kMaxObjects >::const_iterator it = nearList.begin();
        it != nearList.end(); ++it) {
     CGameProjectile* projectile = TCastToPtr< CGameProjectile >(mgr.ObjectById(*it));
     if (!projectile ||

@@ -113,10 +113,10 @@ private:
 
   CVector3f ApplyColliders();
   CVector3f AvoidGeometry(const CTransform4f& xf,
-                          const rstl::reserved_vector< TUniqueId, 1024 >& nearList,
+                          const rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList,
                           CStateManager& mgr);
   CVector3f AvoidGeometryFull(const CTransform4f& xf,
-                              const rstl::reserved_vector< TUniqueId, 1024 >& nearList,
+                              const rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList,
                               CStateManager& mgr);
   static bool DetectCollision(const CVector3f& from, const CVector3f& to, float radius,
                               float& distance, const CStateManager& mgr, int controllerIdx);
@@ -135,7 +135,7 @@ private:
   void UpdateUsingSpline(float dt, CStateManager& mgr);
   // Collision-search helpers whose original names remain unresolved.
   bool fn_801a67a4(float radius, const CVector3f& from, const CVector3f& direction,
-                   const rstl::reserved_vector< TUniqueId, 1024 >& nearList, CVector3f& result,
+                   const rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList, CVector3f& result,
                    CStateManager& mgr);
   bool fn_801a6b20(const CVector3f& from, const CVector3f& direction, CVector3f& result,
                    CStateManager& mgr);

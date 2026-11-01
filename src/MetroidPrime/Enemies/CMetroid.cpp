@@ -1021,7 +1021,7 @@ void CMetroid::RestoreSolidCollision(CStateManager& mgr) {
     }
   }
   if (mRestoreCharacterCollision) {
-    rstl::reserved_vector< TUniqueId, 1024 > nearList;
+    rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
     const CMaterialFilter nearFilter =
         CMaterialFilter::MakeInclude(CMaterialList(kMT_Solid, kMT_Player, kMT_Character));
     const float radius = mLoopAttackDistance * GetModelData()->GetScale().GetY();
@@ -1458,7 +1458,7 @@ void CMetroid::SetupExitFaceHugDirection(CActor* actor, CStateManager& mgr,
     CVector3f start = actor->GetTranslation();
     start.SetZ(GetTranslation().GetZ());
     TUniqueId hitId = kInvalidUniqueId;
-    rstl::reserved_vector< TUniqueId, 1024 > nearList;
+    rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
     mgr.BuildNearList(nearList, start, rayDirection, length, filter, this);
     const CRayCastResult result =
         mgr.RayWorldIntersection(hitId, start, rayDirection, length, filter, nearList);

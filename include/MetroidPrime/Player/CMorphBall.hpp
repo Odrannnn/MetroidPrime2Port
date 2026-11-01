@@ -346,7 +346,7 @@ private:
   float mBoostDamageScale;
   float mDisableSpiderBallTime;
   rstl::optional_object< CVector3f > mSpiderBoostDirection;
-  rstl::reserved_vector< TUniqueId, 1024 > mBoostDamagedObjects;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > mBoostDamagedObjects;
   float mBoostTrailFadeTimer;
   bool mInHalfPipeMode : 1;
   bool mInHalfPipeModeInAir : 1;

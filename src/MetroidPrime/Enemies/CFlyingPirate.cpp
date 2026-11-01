@@ -555,7 +555,7 @@ void CFlyingPirate::CheckForProjectiles(CStateManager& mgr) {
     const CVector3f extent(5.f, 5.f, 5.f);
     const CAABox box(playerPos - extent, playerPos + extent);
     mShotAt = false;
-    rstl::reserved_vector< TUniqueId, 1024 > nearList;
+    rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
     mgr.BuildNearList(nearList, box, CMaterialFilter::MakeInclude(CMaterialList(kMT_Projectile)),
                       nullptr);
     for (int i = 0; i < nearList.size(); ++i) {
@@ -598,7 +598,7 @@ CVector3f CFlyingPirate::AvoidActors(CStateManager& mgr) {
   CVector3f separation = CVector3f::Zero();
   const CVector3f extent(8.f, 8.f, 8.f);
   const CAABox box(GetTranslation() - extent, GetTranslation() + extent);
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildNearList(nearList, box, CMaterialFilter::MakeInclude(CMaterialList(kMT_Character)),
                     this);
   for (int i = 0; i < nearList.size(); ++i) {

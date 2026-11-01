@@ -483,7 +483,7 @@ bool CSpacePirate::HasTargetingPoint(CStateManager& mgr, const CTriggerData& dat
   const CVector3f center = GetTranslation();
   const CAABox bounds(center - CVector3f(margin, margin, margin),
                       center + CVector3f(margin, margin, margin));
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildNearList(nearList, bounds, CMaterialFilter::MakeExclude(CMaterialList(kMT_Solid)),
                      nullptr);
   for (uint i = 0; i < nearList.size(); ++i) {
@@ -580,7 +580,7 @@ int CSpacePirate::GetStrafeDir(CStateManager& mgr, float dist) {
   const CVector3f startPoint = canStrafeLeft ? center : center - dist * right;
   const float length = canStrafeLeft && canStrafeRight ? 2.f * dist : dist;
   const CMaterialFilter filter = CMaterialFilter::MakeInclude(CMaterialList(kMT_Solid));
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildNearList(nearList, startPoint, right, length, filter, this);
   if (canStrafeLeft) {
     canStrafeLeft = CGameCollision::RayDynamicLineOfSightTest(mgr, startPoint, right, dist, filter,

@@ -51,7 +51,7 @@ CVector3f CSteeringBehaviors::Separation(const CPhysicsActor& actor, const CVect
 }
 
 CVector3f CSteeringBehaviors::Alignment(const CPhysicsActor& actor,
-                                        rstl::reserved_vector< TUniqueId, 1024 >& list,
+                                        rstl::reserved_vector< TUniqueId, kMaxObjects >& list,
                                         const CStateManager& mgr) const {
   CVector3f direction = CVector3f::Zero();
   if (!list.empty()) {
@@ -69,7 +69,7 @@ CVector3f CSteeringBehaviors::Alignment(const CPhysicsActor& actor,
 }
 
 CVector3f CSteeringBehaviors::Cohesion(const CPhysicsActor& actor,
-                                       rstl::reserved_vector< TUniqueId, 1024 >& list,
+                                       rstl::reserved_vector< TUniqueId, kMaxObjects >& list,
                                        float dampingRadius, const CStateManager& mgr) const {
   CVector3f destination = CVector3f::Zero();
   if (!list.empty()) {

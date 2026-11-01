@@ -61,7 +61,7 @@ SandBossChargeBeam::~SandBossChargeBeam() {} // fn_55_108E4 / fn_55_10C18
 // last-resolved field (retail 0x3F6). The near list and the static-geometry test are unused.
 CRayCastResult SandBossChargeBeam::RayCollisionCheckWithWorld(
     TUniqueId& idOut, const CVector3f& start, const CVector3f& end, float magnitude,
-    rstl::reserved_vector< TUniqueId, 1024 >&, CStateManager& mgr, EStaticGeometryTest) {
+    rstl::reserved_vector< TUniqueId, kMaxObjects >&, CStateManager& mgr, EStaticGeometryTest) {
   idOut = kInvalidUniqueId;
   SetLastResolvedObject(kInvalidUniqueId);
   CRayCastResult result;
@@ -901,7 +901,7 @@ void CSandBoss::Helper5C6C(CStateManager& mgr, const CVector3f& dir) {
   const CVector3f mouth = locatorXf.GetTranslation();
   const float range = GetModelData()->GetScale().GetY() * 5.f;
   const CVector3f extent(range, range, range);
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildNearList(nearList, CAABox(mouth - extent, mouth + extent),
                     CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Bomb), CMaterialList()),
                     this);
@@ -920,7 +920,7 @@ void CSandBoss::Helper5E5C(CStateManager& mgr) {
   const CVector3f mouth = locatorXf.GetTranslation();
   const float range = GetModelData()->GetScale().GetY() * 5.f;
   const CVector3f extent(range, range, range);
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildNearList(nearList, CAABox(mouth - extent, mouth + extent),
                     CMaterialFilter::MakeIncludeExclude(CMaterialList(kMT_Bomb), CMaterialList()),
                     this);

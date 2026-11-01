@@ -18,8 +18,10 @@ namespace aurora::gx {
 
 wgpu::RenderPipeline create_pipeline(const PipelineConfig& config) {
   if (!pipeline_config_compatible(config, webgpu::g_lightmapBinding)) {
-    Log.error("Refusing GX pipeline with PBR lightmap attribute {}: lightmap binding is unsupported",
-              config.shaderConfig.pbrLightmapAttr);
+    Log.error("Refusing GX pipeline: shadow pass {} (shader shadow {}), PBR lightmap attribute {} (lightmap "
+              "binding {})",
+              config.shadowPass, static_cast<int>(config.shaderConfig.shadow), config.shaderConfig.pbrLightmapAttr,
+              webgpu::g_lightmapBinding);
     return {};
   }
 

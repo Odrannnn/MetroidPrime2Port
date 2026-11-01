@@ -215,7 +215,7 @@ void CProjectedShadow::Render(const CStateManager& mgr) const {
                            bounds.GetMaxPoint());
   CGX::SetTexCoordGen(GX_TEXCOORD0, GX_TG_MTX3x4, GX_TG_POS, GX_TEXMTX0, false, GX_PTTEXMTX0);
   if (mProjectOnActors) {
-    rstl::reserved_vector< TUniqueId, 1024 > nearList;
+    rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
     mgr.BuildNearList(nearList, queryBounds, CMaterialFilter::GetPassEverything(), nullptr);
     for (AUTO(it, nearList.begin()); it != nearList.end(); ++it) {
       const CActor* actor = static_cast< const CActor* >(mgr.GetObjectById(*it));

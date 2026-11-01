@@ -453,7 +453,7 @@ void CCommandoPirate::WarpIn(CStateManager& mgr, EStateMsg msg, float dt) {
       const CAABox bounds(GetTranslation() - extent, GetTranslation() + extent);  // 0x000092D4..0x00009308
       const CMaterialFilter filter =
           CMaterialFilter::MakeInclude(CMaterialList(kMT_Solid, kMT_Player, kMT_Character));  // 0x00009238..0x000092C4
-      rstl::reserved_vector< TUniqueId, 1024 > nearList;
+      rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
       mgr.BuildNearList(nearList, bounds, filter, this);               // 0x00009320
       if (!CGameCollision::DetectDynamicCollisionBoolean(*GetCollisionPrimitive(), GetTransform(),
                                                          nearList, mgr)) {  // 0x00009330..0x0000934C

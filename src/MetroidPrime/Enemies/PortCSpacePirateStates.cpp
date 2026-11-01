@@ -106,7 +106,7 @@ void CSpacePirate::WarpIn(CStateManager& mgr, EStateMsg msg, float dt) {
       const CAABox bounds(GetTranslation() - extent, GetTranslation() + extent);
       const CMaterialFilter filter =
           CMaterialFilter::MakeInclude(CMaterialList(kMT_Solid, kMT_Player, kMT_Character));
-      rstl::reserved_vector< TUniqueId, 1024 > nearList;
+      rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
       mgr.BuildNearList(nearList, bounds, filter, this);
       // A clear box (0x735C-0x7360) moves the warp point to 1 (0x7364-0x736C) and puts back
       // Character/Solid/Target (0x21/0x3b/0x28, 0x7374-0x7380); Orbit waits for Deactivate.
@@ -854,7 +854,7 @@ bool CSpacePirate::CantJumpBack(CStateManager& mgr, const CVector3f& dir, float 
     return false;
   }
   const CMaterialFilter filter = CMaterialFilter::MakeInclude(CMaterialList(kMT_Solid));
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildNearList(nearList, center, dir, dist, filter, this);
   return CGameCollision::RayDynamicLineOfSightTest(mgr, center, dir, dist, filter, nearList, nullptr);
 }

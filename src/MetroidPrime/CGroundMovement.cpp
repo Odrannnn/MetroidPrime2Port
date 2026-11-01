@@ -49,7 +49,7 @@ void CGroundMovement::CheckFalling(CPhysicsActor& actor, CStateManager& mgr, flo
 
 void CGroundMovement::MoveGroundCollider(
     CStateManager& mgr, CPhysicsActor& actor, float dt,
-    const rstl::reserved_vector< TUniqueId, 1024 >* colliderList) {
+    const rstl::reserved_vector< TUniqueId, kMaxObjects >* colliderList) {
   CMotionState oldState = actor.GetMotionState();
   if (IsUser(0)) {
     actor.SetMotionState(oldState);
@@ -63,7 +63,7 @@ void CGroundMovement::MoveGroundCollider(
   float deltaMag = newState.GetTranslation().Magnitude();
   CCollisionInfoList collisionList;
   TUniqueId idDetect = kInvalidUniqueId;
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   const CMaterialFilter& filter = actor.GetMaterialFilter();
   CAABox motionVolume = actor.GetMotionVolume(dt);
   actor.MoveCollisionPrimitive(newState.GetTranslation());
@@ -145,7 +145,7 @@ void CGroundMovement::MoveGroundCollider(
 
 bool CGroundMovement::ResolveUpDown(CAreaCollisionCache& cache, CStateManager& mgr,
                                     CPhysicsActor& actor, const CMaterialFilter& filter,
-                                    const rstl::reserved_vector< TUniqueId, 1024 >& nearList,
+                                    const rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList,
                                     float stepUp, float stepDown, float& resolved,
                                     CCollisionInfoList& list) {
   float zExtent = stepDown;
@@ -205,7 +205,7 @@ bool CGroundMovement::ResolveUpDown(CAreaCollisionCache& cache, CStateManager& m
 
 bool CGroundMovement::MoveGroundColliderZ(CAreaCollisionCache& cache, CStateManager& mgr,
                                           CPhysicsActor& actor, const CMaterialFilter& filter,
-                                          const rstl::reserved_vector< TUniqueId, 1024 >& nearList,
+                                          const rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList,
                                           float amount, float& resolved, CCollisionInfoList& list,
                                           TUniqueId& idOut) {
   actor.MoveCollisionPrimitive(CVector3f(0.f, 0.f, amount));
@@ -261,7 +261,7 @@ bool CGroundMovement::MoveGroundColliderZ(CAreaCollisionCache& cache, CStateMana
 
 bool CGroundMovement::MoveGroundColliderXY(CAreaCollisionCache& cache, CStateManager& mgr,
                                            CPhysicsActor& actor, const CMaterialFilter& filter,
-                                           const rstl::reserved_vector< TUniqueId, 1024 >& nearList,
+                                           const rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList,
                                            float dt) {
   bool didCollide = false;
   bool isPlayer = actor.GetMaterialList().HasMaterial(kMT_Player);
@@ -426,8 +426,8 @@ bool CGroundMovement::RemoveNormalComponent(const CVector3f& normal, CVector3f& 
 
 void CGroundMovement::MoveGroundCollider_New(
     CStateManager& mgr, CPhysicsActor& actor, float dt,
-    const rstl::reserved_vector< TUniqueId, 1024 >* colliderList) {
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+    const rstl::reserved_vector< TUniqueId, kMaxObjects >* colliderList) {
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   CAABox motionVolume = actor.GetMotionVolume(dt);
   if (colliderList != nullptr) {
     nearList = *colliderList;
@@ -733,7 +733,7 @@ void CGroundMovement::MoveGroundCollider_New(
 
 CMaterialList
 CGroundMovement::MoveObjectAnalytical(CStateManager& mgr, CPhysicsActor& actor, float dt,
-                                      const rstl::reserved_vector< TUniqueId, 1024 >& nearList,
+                                      const rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList,
                                       CCollisionCache& cache, const SMovementOptions& options,
                                       SMoveObjectResult& result) {
   CMaterialList materials;

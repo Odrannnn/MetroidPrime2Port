@@ -770,7 +770,7 @@ void CDarkSamus::SpawnMeleePulse(CStateManager& mgr) {
   const CMaterialFilter filter = CMaterialFilter::MakeIncludeExclude(
       CMaterialList(kMT_Solid, kMT_Platform),
       CMaterialList(kMT_Character, kMT_Player, kMT_ProjectilePassthrough));
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildNearList(nearList, start, CVector3f::Down(), 20.f, filter, nullptr);
   TUniqueId hitId = kInvalidUniqueId;
   const CRayCastResult hit =

@@ -1239,14 +1239,14 @@ bool CMorphBall::BallCloseToCollision(const CStateManager& mgr, float distance,
   const CCollidableSphere prim(
       CSphere(mPlayer.GetTranslation() + CVector3f(0.f, 0.f, GetBallRadius()), distance),
       CMaterialList(CloseToCollisionMaterial1, CloseToCollisionMaterial2));
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildColliderList(nearList, mPlayer, prim.CalculateLocalAABox());
 
   if (CGameCollision::DetectStaticCollisionBoolean(mgr, prim, CTransform4f::Identity(), filter)) {
     return true;
   }
 
-  for (rstl::reserved_vector< TUniqueId, 1024 >::const_iterator id = nearList.begin();
+  for (rstl::reserved_vector< TUniqueId, kMaxObjects >::const_iterator id = nearList.begin();
        id != nearList.end(); ++id) {
     if (const CPhysicsActor* const actor =
             TCastToConstPtr< CPhysicsActor >(mgr.GetObjectById(*id))) {
@@ -2237,7 +2237,7 @@ void CMorphBall::ComputeBoostBallMovement(const CFinalInput& input, CStateManage
     box.AccumulateBounds(localBox.GetMaxPoint() + delta);
   }
 
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildNearList(
       nearList, box,
       CMaterialFilter::MakeInclude(CMaterialList(BoostNearListMaterial1, BoostNearListMaterial2)),
@@ -2248,7 +2248,7 @@ void CMorphBall::ComputeBoostBallMovement(const CFinalInput& input, CStateManage
                  "[ball] pass: speed %.2f weapon %d damage %.1f radius %.2f near %d ->", speed,
                  int(damage.GetWeaponMode().GetRawType()), damage.GetDamage(),
                  damage.GetRadius(), int(nearList.size()));
-    for (rstl::reserved_vector< TUniqueId, 1024 >::const_iterator dbg = nearList.begin();
+    for (rstl::reserved_vector< TUniqueId, kMaxObjects >::const_iterator dbg = nearList.begin();
          dbg != nearList.end(); ++dbg) {
       std::fprintf(stderr, " %04x", dbg->Value());
     }
@@ -2266,7 +2266,7 @@ void CMorphBall::ComputeBoostBallMovement(const CFinalInput& input, CStateManage
     nearList.erase(rstl::find(nearList.begin(), nearList.end(), hitId));
   }
 
-  for (rstl::reserved_vector< TUniqueId, 1024 >::iterator it = nearList.begin();
+  for (rstl::reserved_vector< TUniqueId, kMaxObjects >::iterator it = nearList.begin();
        it != nearList.end(); ++it) {
     const TUniqueId id = *it;
     CEntity* ent = mgr.ObjectById(id);
@@ -2314,14 +2314,14 @@ void CMorphBall::ApplyScrewAttackDamage(float dt, CStateManager& mgr) {
   const CAABox bounds(ballPos - CVector3f(radius, radius, radius),
                       ballPos + CVector3f(radius, radius, radius));
   const CSphere sphere(ballPos, radius);
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   const CMaterialFilter filter = CMaterialFilter::MakeIncludeExclude(
       CMaterialList(ScrewAttackIncludeMaterial1, ScrewAttackIncludeMaterial2,
                     ScrewAttackIncludeMaterial3, ScrewAttackIncludeMaterial4),
       CMaterialList(ScrewAttackExcludeMaterial1, ScrewAttackExcludeMaterial2));
   mgr.BuildNearList(nearList, bounds, filter, &mPlayer);
 
-  for (rstl::reserved_vector< TUniqueId, 1024 >::const_iterator it = nearList.begin();
+  for (rstl::reserved_vector< TUniqueId, kMaxObjects >::const_iterator it = nearList.begin();
        it != nearList.end(); ++it) {
     const TUniqueId uid = *it;
     bool applyDamage = true;
@@ -2589,14 +2589,14 @@ void CMorphBall::UpdateDeathBall(float dt, CStateManager& mgr) {
   const CVector3f ballPos = GetBallPosition();
   const CAABox bounds(ballPos - CVector3f(radius, radius, radius),
                       ballPos + CVector3f(radius, radius, radius));
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   const CMaterialFilter filter = CMaterialFilter::MakeIncludeExclude(
       CMaterialList(DeathBallIncludeMaterial1, DeathBallIncludeMaterial2, DeathBallIncludeMaterial3,
                     DeathBallIncludeMaterial4),
       CMaterialList(DeathBallExcludeMaterial1, DeathBallExcludeMaterial2));
   mgr.BuildNearList(nearList, bounds, filter, &mPlayer);
 
-  for (rstl::reserved_vector< TUniqueId, 1024 >::const_iterator id = nearList.begin();
+  for (rstl::reserved_vector< TUniqueId, kMaxObjects >::const_iterator id = nearList.begin();
        id != nearList.end(); ++id) {
     const TUniqueId uid = *id;
     rstl::vector< rstl::pair< TUniqueId, float > >::iterator cooldown =
@@ -3509,7 +3509,7 @@ bool CMorphBall::FindClosestSpiderBallWaypoint(CStateManager& mgr, const CVector
   surfaceId = kInvalidUniqueId;
   float minDist = 2.1f;
   bool ret = false;
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   const CMaterialFilter nearFilter = CMaterialFilter::MakeExclude(
       CMaterialList(SpiderNearListExcludeMaterial1, SpiderNearListExcludeMaterial2,
                     SpiderNearListExcludeMaterial3, SpiderNearListExcludeMaterial4));
@@ -3517,7 +3517,7 @@ bool CMorphBall::FindClosestSpiderBallWaypoint(CStateManager& mgr, const CVector
                     ballCenter + CVector3f(2.1f, 2.1f, 2.1f));
   mgr.BuildNearList(nearList, aabb, nearFilter, nullptr);
 
-  for (rstl::reserved_vector< TUniqueId, 1024 >::iterator surfaceIt = nearList.begin();
+  for (rstl::reserved_vector< TUniqueId, kMaxObjects >::iterator surfaceIt = nearList.begin();
        surfaceIt != nearList.end(); ++surfaceIt) {
     if (const CScriptSpiderBallAttractionSurface* const surface =
             TCastToConstPtr< CScriptSpiderBallAttractionSurface >(mgr.GetObjectById(*surfaceIt))) {
@@ -3552,7 +3552,7 @@ bool CMorphBall::FindClosestSpiderBallWaypoint(CStateManager& mgr, const CVector
     }
   }
 
-  for (rstl::reserved_vector< TUniqueId, 1024 >::iterator waypointIt = nearList.begin();
+  for (rstl::reserved_vector< TUniqueId, kMaxObjects >::iterator waypointIt = nearList.begin();
        waypointIt != nearList.end(); ++waypointIt) {
     if (const CScriptSpiderBallWaypoint* waypoint =
             TCastToConstPtr< CScriptSpiderBallWaypoint >(mgr.GetObjectById(*waypointIt))) {

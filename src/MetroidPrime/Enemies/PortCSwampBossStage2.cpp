@@ -653,7 +653,7 @@ void CSwampBossStage2::UpdateWater(CStateManager& mgr, const CVector3f& pos,
       xf.SetTranslation(CVector3f(pos.GetX(), pos.GetY(), splashZ));
       const CAABox bounds(CVector3f(pos.GetX() - 1.f, pos.GetY() - 1.f, splashZ - 1.f),
                           CVector3f(pos.GetX() + 1.f, pos.GetY() + 1.f, splashZ + 1.f));
-      rstl::reserved_vector< TUniqueId, 1024 > nearList;
+      rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
       // rodata data_41C: the include filter the probe gathers nearby objects with.
       const CMaterialFilter nearFilter(CMaterialList((u64(1) << 32) | 0x31u), CMaterialList(),
                                        CMaterialFilter::kFT_Include);

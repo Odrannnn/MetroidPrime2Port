@@ -2051,7 +2051,7 @@ CVector3f CSporbBase::PredictAimOffset(float height, CStateManager& mgr,
     const float distance = (predicted - from).Magnitude();
     const CVector3f direction = (predicted - from).AsNormalized();
     TUniqueId hitId = kInvalidUniqueId;
-    rstl::reserved_vector< TUniqueId, 1024 > nearList;
+    rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
     mgr.BuildNearList(nearList, from, direction, distance, filter, this);
     const CRayCastResult result =
         mgr.RayWorldIntersection(hitId, from, direction, distance, filter, nearList);

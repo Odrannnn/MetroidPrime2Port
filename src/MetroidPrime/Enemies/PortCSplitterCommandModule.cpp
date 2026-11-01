@@ -543,9 +543,9 @@ void CSplitterBeamEffect::PreRender(CStateManager& mgr) {
                                                  GetOtherBounds());
 
   // 0x113FC-0x1151C: every actor near the box.
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildNearList(nearList, nearBox, CMaterialFilter::GetPassEverything(), nullptr);
-  for (rstl::reserved_vector< TUniqueId, 1024 >::const_iterator it = nearList.begin();
+  for (rstl::reserved_vector< TUniqueId, kMaxObjects >::const_iterator it = nearList.begin();
        it != nearList.end(); ++it) {
     // 0x1142C-0x1143C: the near list holds actors; no type check.
     const CActor* actor = static_cast< const CActor* >(mgr.GetObjectById(*it));

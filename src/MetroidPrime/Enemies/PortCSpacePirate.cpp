@@ -889,7 +889,7 @@ void CSpacePirate::CheckForProjectiles(CStateManager& mgr) {
   const CAABox bounds(xbb4_ - extent, xbb4_ + extent);
   x8f7_27_inProjectilePath = false;
   int arm = 1;
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildNearList(nearList, bounds, CMaterialFilter::MakeInclude(CMaterialList(kMT_Projectile)),
                     nullptr);
   for (int i = 0; i < nearList.size() && !x8f7_27_inProjectilePath; ++i) {

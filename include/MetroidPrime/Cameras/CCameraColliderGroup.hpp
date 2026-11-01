@@ -21,7 +21,7 @@ public:
   void TeleportColliders(CVector3f position);
   void UpdateCollidersDistances(float xMag, float zMag, float angleOffset);
   void UpdateColliders(const CTransform4f& xf, const CVector3f& lookPosition, int count,
-                       float tolerance, const rstl::reserved_vector< TUniqueId, 1024 >& nearList,
+                       float tolerance, const rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList,
                        CStateManager& mgr);
   CVector3f CalculateCollidersCentroid() const;
   CAABox CalculateCollidersBoundingBox() const;

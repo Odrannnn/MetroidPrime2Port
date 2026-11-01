@@ -45,7 +45,7 @@ void CSimpleShadow::Calculate(const CAABox& bounds, const CTransform4f& xf,
 
   CRayCastResult closestResult = result;
   if (height > 0.1f + halfHeight) {
-    rstl::reserved_vector< TUniqueId, 1024 > nearList;
+    rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
     mgr.BuildNearList(nearList, position, direction, mMaxObjHeight,
                       CMaterialFilter::MakeInclude(CMaterialList(kMT_Platform)), nullptr);
     TUniqueId id = kInvalidUniqueId;

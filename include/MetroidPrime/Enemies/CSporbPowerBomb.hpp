@@ -36,7 +36,7 @@ public:
   // CGameProjectile
   CRayCastResult RayCollisionCheckWithWorld(TUniqueId& idOut, const CVector3f& start,
                                             const CVector3f& end, float magnitude,
-                                            rstl::reserved_vector< TUniqueId, 1024 >& nearList,
+                                            rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList,
                                             CStateManager& mgr,
                                             EStaticGeometryTest staticTest) override;
   void ResolveCollisionWithActor(const CRayCastResult& result, CActor& actor,

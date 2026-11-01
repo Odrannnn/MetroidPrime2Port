@@ -23,7 +23,7 @@ CSortedListManager::CSortedListManager() { Reset(); }
 
 void CSortedListManager::Reset() {
   const SNode node;
-  for (uint i = 0; i < 1024; ++i) {
+  for (uint i = 0; i < kMaxObjects; ++i) {
     mNodes[i] = node;
   }
 
@@ -275,7 +275,7 @@ short CSortedListManager::ConstructIntersectionArray(const CAABox& box) const {
   }
 }
 
-void CSortedListManager::BuildNearList(rstl::reserved_vector< TUniqueId, 1024 >& nearListOut,
+void CSortedListManager::BuildNearList(rstl::reserved_vector< TUniqueId, kMaxObjects >& nearListOut,
                                        const CAABox& box, const CMaterialFilter& filter,
                                        const CActor* actor) const {
   for (short id = ConstructIntersectionArray(box); id != -1;) {
@@ -289,7 +289,7 @@ void CSortedListManager::BuildNearList(rstl::reserved_vector< TUniqueId, 1024 >&
   }
 }
 
-void CSortedListManager::BuildNearList(rstl::reserved_vector< TUniqueId, 1024 >& nearListOut,
+void CSortedListManager::BuildNearList(rstl::reserved_vector< TUniqueId, kMaxObjects >& nearListOut,
                                        const CActor& actor, const CAABox& box) const {
   const CMaterialFilter& filter = actor.GetMaterialFilter();
   const CMaterialList& materials = actor.GetMaterialList();
@@ -305,7 +305,7 @@ void CSortedListManager::BuildNearList(rstl::reserved_vector< TUniqueId, 1024 >&
   }
 }
 
-void CSortedListManager::BuildNearList(rstl::reserved_vector< TUniqueId, 1024 >& nearListOut,
+void CSortedListManager::BuildNearList(rstl::reserved_vector< TUniqueId, kMaxObjects >& nearListOut,
                                        const CVector3f& pos, const CVector3f& dir, float magnitude,
                                        const CMaterialFilter& filter, const CActor* actor) const {
   const float length = magnitude != 0.f ? magnitude : 8000.f;

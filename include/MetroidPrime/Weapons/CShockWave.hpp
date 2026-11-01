@@ -84,7 +84,7 @@ private:
   float mTimeSinceHitPlayer;
   bool mHitPlayerInAir;
   bool mHitPlayer;
-  rstl::reserved_vector< TUniqueId, 1024 > mHitIds;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > mHitIds;
   rstl::optional_object< TToken< CElectricDescription > > mElectricDesc;
   TUniqueId mLightId;
 };

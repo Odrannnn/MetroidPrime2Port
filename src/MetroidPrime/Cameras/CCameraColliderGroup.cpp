@@ -47,7 +47,7 @@ void CCameraColliderGroup::UpdateCollidersDistances(float xMag, float zMag, floa
 
 void CCameraColliderGroup::UpdateColliders(const CTransform4f& xf, const CVector3f& lookPosition,
                                            int count, float tolerance,
-                                           const rstl::reserved_vector< TUniqueId, 1024 >& nearList,
+                                           const rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList,
                                            CStateManager& mgr) {
   if (mColliderIterator < mColliders.size()) {
     const float inverseTolerance = 1.f / tolerance;

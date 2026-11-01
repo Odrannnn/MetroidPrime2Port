@@ -1645,7 +1645,7 @@ void CPlayerGun::Update(float dt, CStateManager& mgr) {
     const CVector3f direction = mGunWorldXf.GetForward().AsNormalized();
     const CVector3f offset = -(0.5f * direction);
     const CVector3f position = mGunWorldXf.GetTranslation() + offset;
-    rstl::reserved_vector< TUniqueId, 1024 > nearList;
+    rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
     CAABox bounds = CAABox::MakeMaxInvertedBox();
     bounds.AccumulateBounds(position);
     bounds.AccumulateBounds(position + 3.5f * direction);
@@ -1727,14 +1727,14 @@ void CPlayerGun::Update(float dt, CStateManager& mgr) {
       absorbXf.AddTranslation(player->GetCameraManager()->GetGlobalCameraTranslation(mgr, true));
       if (absorbXf.GetForward().GetZ() > 0.35f) {
         const float radius = gpTweakPlayerGun->GetPhazonShotAbsorbRadius();
-        rstl::reserved_vector< TUniqueId, 1024 > nearList;
+        rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
         CAABox bounds(CVector3f(-radius, 0.f, -radius), CVector3f(radius, 0.f, radius));
         bounds = bounds.GetTransformedAABox(absorbXf);
         mgr.BuildNearList(nearList, bounds,
                           CMaterialFilter::MakeInclude(CMaterialList(kMT_Projectile)), player);
         const float radiusSquared = radius * radius;
         bool absorbed = false;
-        for (rstl::reserved_vector< TUniqueId, 1024 >::const_iterator it = nearList.begin();
+        for (rstl::reserved_vector< TUniqueId, kMaxObjects >::const_iterator it = nearList.begin();
              it != nearList.end(); ++it) {
           CGameProjectile* projectile =
               TCastToPtr< CGameProjectile >(const_cast< CEntity* >(mgr.GetObjectById(*it)));
@@ -2194,13 +2194,13 @@ void CPlayerGun::UpdateSeeker(float dt, CStateManager& mgr) {
       if (targetId == kInvalidUniqueId) {
         const CTransform4f xf =
             mPointBlankWorldSurface ? mElbowWorldXf : mGunWorldXf * mBeamLocalXf;
-        rstl::reserved_vector< TUniqueId, 1024 > nearList;
+        rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
         CAABox bounds(CVector3f(-1.f, 0.f, -1.f), CVector3f(1.f, 100.f, 1.f));
         bounds = bounds.GetTransformedAABox(xf);
         mgr.BuildNearList(nearList, bounds, skSeekerTargetFilter, player);
         if (!nearList.empty()) {
           const CGameCamera* camera = player->GetCameraManager()->GetFirstPersonCamera();
-          for (rstl::reserved_vector< TUniqueId, 1024 >::const_iterator it = nearList.begin();
+          for (rstl::reserved_vector< TUniqueId, kMaxObjects >::const_iterator it = nearList.begin();
                it != nearList.end(); ++it) {
             CActor* target = TCastToPtr< CActor >(const_cast< CEntity* >(mgr.GetObjectById(*it)));
             if (!target) {

@@ -329,7 +329,7 @@ CVector3f CBallCamera::ApplyColliders() {
 }
 
 CVector3f CBallCamera::AvoidGeometryFull(const CTransform4f& xf,
-                                         const rstl::reserved_vector< TUniqueId, 1024 >& nearList,
+                                         const rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList,
                                          CStateManager& mgr) {
   mSmallColliders.UpdateColliders(xf, GetPlayer(mgr).GetBallPosition(), 1, 4.f, nearList, mgr);
   mMediumColliders.UpdateColliders(xf, GetPlayer(mgr).GetBallPosition(), 3, 4.f, nearList, mgr);
@@ -338,7 +338,7 @@ CVector3f CBallCamera::AvoidGeometryFull(const CTransform4f& xf,
 }
 
 CVector3f CBallCamera::AvoidGeometry(const CTransform4f& xf,
-                                     const rstl::reserved_vector< TUniqueId, 1024 >& nearList,
+                                     const rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList,
                                      CStateManager& mgr) {
   switch (mAvoidGeomCycle) {
   case 0:
@@ -376,7 +376,7 @@ bool CBallCamera::DetectCollision(const CVector3f& from, const CVector3f& to, fl
     bounds.AccumulateBounds(to);
     bounds = CAABox(bounds.GetMinPoint() - CVector3f(margin, margin, margin),
                     bounds.GetMaxPoint() + CVector3f(margin, margin, margin));
-    rstl::reserved_vector< TUniqueId, 1024 > nearList;
+    rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
     mgr.BuildColliderList(nearList, *mgr.GetPlayer(controllerIdx), bounds);
     CAreaCollisionCache cache(bounds);
     CGameCollision::BuildAreaCollisionCache(mgr, cache);
@@ -458,7 +458,7 @@ bool CBallCamera::fn_801a6b20(const CVector3f& from, const CVector3f& direction,
 }
 
 bool CBallCamera::fn_801a67a4(float radius, const CVector3f& from, const CVector3f& direction,
-                              const rstl::reserved_vector< TUniqueId, 1024 >& nearList,
+                              const rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList,
                               CVector3f& result, CStateManager& mgr) {
   const CTransform4f negativeRotation =
       CQuaternion::ZRotation(CRelAngle::FromRadians(-skAvoidStepAngle.AsRadians()))
@@ -536,7 +536,7 @@ CVector3f CBallCamera::FindDesiredPosition(float distance, float elevation, CVec
     const CAABox bounds(ballPos.GetX() - distance, ballPos.GetY() - distance,
                         ballPos.GetZ() - constrainedElevation, ballPos.GetX() + distance,
                         ballPos.GetY() + distance, ballPos.GetZ() + constrainedElevation);
-    rstl::reserved_vector< TUniqueId, 1024 > nearList;
+    rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
     const CActor* ignored = TCastToConstPtr< CActor >(mgr.GetObjectById(mCollisionActorId));
     mgr.BuildNearList(nearList, bounds, skLineOfSightFilter, ignored);
     found = fn_801a67a4(minSeekDistance, eyePos, desiredOffset, nearList, resultOffset, mgr);
@@ -583,7 +583,7 @@ CVector3f CBallCamera::FindDesiredPosition(float distance, float elevation, CVec
         const CAABox bounds(ballPos.GetX() - distance, ballPos.GetY() - distance,
                             ballPos.GetZ() - constrainedElevation, ballPos.GetX() + distance,
                             ballPos.GetY() + distance, ballPos.GetZ() + constrainedElevation);
-        rstl::reserved_vector< TUniqueId, 1024 > nearList;
+        rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
         const CActor* ignored = TCastToConstPtr< CActor >(mgr.GetObjectById(mCollisionActorId));
         mgr.BuildNearList(nearList, bounds, skLineOfSightFilter, ignored);
         found = fn_801a67a4(minSeekDistance, eyePos, desiredOffset, nearList, resultOffset, mgr);
@@ -910,7 +910,7 @@ const bool CBallCamera::ShouldResetSpline(CStateManager& mgr) const {
 
 void CBallCamera::BuildSpline(CStateManager& mgr) {
   const CVector3f ballPos = GetPlayer(mgr).GetBallPosition();
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   TUniqueId intersectId = kInvalidUniqueId;
   const CVector3f down(0.f, 0.f, -1.f);
   mgr.BuildNearList(nearList, ballPos, down, 20.f, skLineOfSightFilter, nullptr);
@@ -1100,7 +1100,7 @@ bool CBallCamera::fn_801a39d0(float distance, float dt, CVector3f& position, CSt
   const CAABox bounds(GetTranslation() - CVector3f(8.f, 8.f, 8.f),
                       GetTranslation() + CVector3f(8.f, 8.f, 8.f));
   const CMaterialFilter filter = CMaterialFilter::MakeInclude(CMaterialList(kMT_Pillar));
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildNearList(nearList, bounds, filter, this);
 
   const CVector3f ballPos = GetPlayer(mgr).GetBallPosition();
@@ -1278,7 +1278,7 @@ void CBallCamera::UpdateUsingColliders(float dt, CStateManager& mgr) {
   }
 
   mCollidersAABB = mLargeColliders.CalculateCollidersBoundingBox();
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildNearList(nearList, mCollidersAABB, skLineOfSightFilter,
                     TCastToConstPtr< CActor >(mgr.GetObjectById(mCollisionActorId)));
 
@@ -1463,7 +1463,7 @@ void CBallCamera::UpdateUsingColliders(float dt, CStateManager& mgr) {
     finalPos.SetZ(oldPos.GetZ());
     const float ceilingZ = 5.f + player->GetLastSpaceJumpPosition().GetZ();
     float targetZ = ceilingZ;
-    rstl::reserved_vector< TUniqueId, 1024 > blockers;
+    rstl::reserved_vector< TUniqueId, kMaxObjects > blockers;
     TUniqueId hitId = kInvalidUniqueId;
     CVector3f forward(GetTransform().GetForward().ToVec2f(), 0.f);
     if (forward.CanBeNormalized()) {
@@ -1899,7 +1899,7 @@ void CBallCamera::CheckFailSafe(float dt, CStateManager& mgr) {
   const float rayLength = cameraToBall.Magnitude();
   cameraToBall.Normalize();
 
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildNearList(nearList, GetTranslation(), cameraToBall, rayLength, skLineOfSightFilter,
                     nullptr);
   const CRayCastResult hit = mgr.RayWorldIntersection(
@@ -2434,7 +2434,7 @@ void CBallCamera::OverrideCameraInfo(CStateManager& mgr) {
 }
 
 bool CBallCamera::SplineIntersectTest(CMaterialList& intersectMaterial, CStateManager& mgr) const {
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   const CMaterialList include(kMT_Solid, kMT_Floor, kMT_Wall);
   const CMaterialList exclude(kMT_ProjectilePassthrough, kMT_Player, kMT_Character,
                               kMT_CameraPassthrough);

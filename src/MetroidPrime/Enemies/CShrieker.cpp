@@ -598,7 +598,7 @@ void CShrieker::DeflectMissiles(CStateManager& mgr) {
   const CVector3f center = GetAimPosition(mgr, 0.f) + mData.mMissileDeflectionOffset;
   const CMaterialFilter filter =
       CMaterialFilter::MakeInclude(CMaterialList(DeflectProjectileMaterial));
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildNearList(nearList,
                     CAABox(center - mData.mMissileDeflectionRadius * CVector3f::One(),
                            center + mData.mMissileDeflectionRadius * CVector3f::One()),
@@ -611,7 +611,7 @@ void CShrieker::DeflectMissiles(CStateManager& mgr) {
   }
 
   const float radiusSq = mData.mMissileDeflectionRadius * mData.mMissileDeflectionRadius;
-  for (rstl::reserved_vector< TUniqueId, 1024 >::const_iterator it = nearList.begin();
+  for (rstl::reserved_vector< TUniqueId, kMaxObjects >::const_iterator it = nearList.begin();
        it != nearList.end(); ++it) {
     CGameProjectile* projectile = TCastToPtr< CGameProjectile >(mgr.ObjectById(*it));
     if (!projectile ||
@@ -664,7 +664,7 @@ void CShrieker::DeflectMissiles(CStateManager& mgr) {
 // @ fn_69_220C
 void CShrieker::DetectPlayer(CStateManager& mgr) {
   const CVector3f position = GetTranslation();
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   const CMaterialFilter filter = CMaterialFilter::MakeInclude(CMaterialList(DetectPlayerMaterial));
   mgr.BuildNearList(nearList,
                     CAABox(position - mDetectionRadius * CVector3f::One(),
@@ -681,7 +681,7 @@ void CShrieker::DetectPlayer(CStateManager& mgr) {
   const float rustleRadiusSq = mData.mRustleDetectionRadius * mData.mRustleDetectionRadius;
   const float morphballRadiusSq = mData.mMorphballDetectionRadius * mData.mMorphballDetectionRadius;
   const float detectionHeight = mData.mDetectionHeight;
-  for (rstl::reserved_vector< TUniqueId, 1024 >::const_iterator it = nearList.begin();
+  for (rstl::reserved_vector< TUniqueId, kMaxObjects >::const_iterator it = nearList.begin();
        it != nearList.end(); ++it) {
     const CPlayer* player = TCastToPtr< CPlayer >(mgr.ObjectById(*it));
     if (!player) {
@@ -733,11 +733,11 @@ void CShrieker::ApplyMeleeDamage(CStateManager& mgr) {
       CMaterialList(TriggerMaterial, ImmovableMaterial, DamageSolidMaterial,
                     NonSolidDamageableMaterial),
       CMaterialList(ProjectileMaterial, PowerBombMaterial));
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildNearList(nearList,
                     CAABox(center - radius * CVector3f::One(), center + radius * CVector3f::One()),
                     filter, this);
-  for (rstl::reserved_vector< TUniqueId, 1024 >::const_iterator it = nearList.begin();
+  for (rstl::reserved_vector< TUniqueId, kMaxObjects >::const_iterator it = nearList.begin();
        it != nearList.end(); ++it) {
     if (rstl::find(mDamagedIds.begin(), mDamagedIds.end(), *it) == mDamagedIds.end()) {
       if (CActor* actor = TCastToPtr< CActor >(mgr.ObjectById(*it))) {
@@ -1246,7 +1246,7 @@ bool CShrieker::ShouldDodge(CStateManager& mgr, const CTriggerData&) const {
           const CMaterialFilter filter =
               CMaterialFilter::MakeInclude(CMaterialList(DodgeSolidMaterial));
           if (mgr.RayCollideWorld(from, to, filter, this)) {
-            rstl::reserved_vector< TUniqueId, 1024 > nearList;
+            rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
             mgr.BuildNearList(
                 nearList,
                 CAABox(to - mCheckRadius * CVector3f::One(), to + mCheckRadius * CVector3f::One()),

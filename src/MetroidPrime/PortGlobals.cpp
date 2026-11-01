@@ -141,7 +141,7 @@
 // `size:0x4`, and the `sth` is the only halfword store of the three.
 //
 // TUniqueId has no one-argument constructor, so 0xFFFF is spelled the way the
-// layout computes it: (0x3F << 10) | 0x3FF.
+// layout computes it: (kUniqueIdVersionMask << kUniqueIdIndexBits) | kUniqueIdIndexMask.
 //
 // Note that kInvalidUniqueId has two declarations in the tree with the same link
 // name and different C++ types: `const TUniqueId` in TGameTypes.hpp and
@@ -150,7 +150,7 @@
 // same, and the C spelling cannot be changed - that file is a Matching REL unit.
 // This definition satisfies both.
 const TEditorId kInvalidEditorId = TEditorId(0xFFFFFFFFu);
-const TUniqueId kInvalidUniqueId = TUniqueId(0x3F, 0x3FF);
+const TUniqueId kInvalidUniqueId = TUniqueId(kUniqueIdVersionMask, kUniqueIdIndexMask);
 const TAreaId kInvalidAreaId = TAreaId(-1);
 
 // kInvalidPlayerIndex = `.sdata2:0x8041B750` (`lbl_8041B750` in symbols.txt), size:0x8 gap,

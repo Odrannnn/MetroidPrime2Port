@@ -87,7 +87,7 @@ void CLightBeam::Fire(const TCachedToken< CWeaponDescription >& projectile, bool
 
     const CMaterialFilter rayFilter = CMaterialFilter::MakeIncludeExclude(
         CMaterialList(kMT_Solid), CMaterialList(kMT_ProjectilePassthrough));
-    rstl::reserved_vector< TUniqueId, 1024 > nearList;
+    rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
     if (aimTarget == kInvalidUniqueId) {
       CAABox box(CVector3f(-51.3f, 0.f, -27.f), CVector3f(51.3f, 246.f, 27.f));
       box = box.GetTransformedAABox(cameraXf);

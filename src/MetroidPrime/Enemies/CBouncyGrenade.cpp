@@ -294,9 +294,9 @@ void CBouncyGrenade::Explode(CStateManager& mgr, TUniqueId uid) {
     const CAABox bounds(pos - extent, pos + extent);
     const CMaterialFilter filter =
         CMaterialFilter::MakeInclude(CMaterialList(kMT_Character, kMT_Player));
-    rstl::reserved_vector< TUniqueId, 1024 > nearList;
+    rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
     mgr.BuildNearList(nearList, bounds, filter, nullptr);
-    for (rstl::reserved_vector< TUniqueId, 1024 >::const_iterator it = nearList.begin();
+    for (rstl::reserved_vector< TUniqueId, kMaxObjects >::const_iterator it = nearList.begin();
          it != nearList.end(); ++it) {
       bool isNearParent = *it == mParentId;
       if (const CCollisionActor* actor =

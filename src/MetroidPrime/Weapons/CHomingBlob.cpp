@@ -113,7 +113,7 @@ void CHomingBlob::Render(const CStateManager& mgr) const {
 
 void CHomingBlob::Think(float dt, CStateManager& mgr) {
   mElapsedTime += dt;
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildNearList(nearList, mCollisionBounds, GetMaterialFilter(), this);
   CGameCollision::UpdateCollisionCache(mgr, *mCollisionCache, nearList,
                                        CGameCollision::kCUP_KeepNearListIds);
@@ -328,7 +328,7 @@ void CHomingBlob::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
       const CAABox searchBounds(
           center - CVector3f(mTargetSearchRadius, mTargetSearchRadius, mTargetSearchRadius),
           center + CVector3f(mTargetSearchRadius, mTargetSearchRadius, mTargetSearchRadius));
-      rstl::reserved_vector< TUniqueId, 1024 > nearList;
+      rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
       const CActor* owner = TCastToConstPtr< CActor >(mgr.GetObjectById(GetOwnerId()));
       mgr.BuildNearList(nearList, searchBounds,
                         CMaterialFilter::MakeIncludeExclude(
