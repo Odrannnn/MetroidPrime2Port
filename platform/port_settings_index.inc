@@ -113,9 +113,7 @@
 {"Controls", "Remap", "Remap", "Turbo (presses/s)", "turbo rapid fire autofire"},
 {"Controls", "Remap", "Remap", "Scale", "scale axis sensitivity"},
 {"Controls", "Remap", "Remap", "Invert", "invert flip reverse axis"},
-#if defined(__ANDROID__)
 {"Multiplayer", "", "Controller", "Controller", "player 2 3 4 local multiplayer split screen pad assign port"},
-{"Multiplayer", "", "Controller", "Remap...", "player multiplayer remap bindings port"},
 {"Multiplayer", "", "Controller", "Reset to Player 1", "player multiplayer overrides defaults reset"},
 {"Multiplayer", "", "Stick aim", "Twin stick (right stick aims)", "player multiplayer right stick dual analog"},
 {"Multiplayer", "", "Stick aim", "Stick aim speed", "player multiplayer right stick speed sensitivity"},
@@ -130,6 +128,7 @@
 {"Multiplayer", "", "Gyro aim", "Gyro sensitivity", "player multiplayer gyro speed"},
 {"Multiplayer", "", "Gyro aim", "Separate vertical speed", "player multiplayer gyro vertical split"},
 {"Multiplayer", "", "Gyro aim", "Vertical gyro sensitivity", "player multiplayer gyro vertical speed"},
+#if defined(__ANDROID__)
 {"Video", "Display", "Display", "Fullscreen (hide the status and navigation bars)", "full screen immersive window"},
 #else
 {"Video", "Display", "Display", "Fullscreen (F11)", "full screen window"},
