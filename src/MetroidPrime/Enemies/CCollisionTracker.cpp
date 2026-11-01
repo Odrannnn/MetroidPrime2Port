@@ -600,7 +600,7 @@ CCollisionTracker::CCollisionTracker(const TLockedToken< CGenDescription >& desc
 , mParticleSystem(rs_new CElementGen(desc, CElementGen::kMOT_One, CElementGen::kOSF_One))
 , mModel(*desc->mPMDL, -0.2f, 0.2f, CVector3f(0.25f, 0.f, 0.f), CVector3f::Zero(),
          CVector3f(-0.25f, 0.f, 0.f))
-, mCollisionCache(rs_new CCollisionCache(CAABox::MakeNullBox(), 2, 2, uid.value & 0x3ff))
+, mCollisionCache(rs_new CCollisionCache(CAABox::MakeNullBox(), 2, 2, uid.value & kUniqueIdIndexMask))
 , mLightId(kInvalidUniqueId)
 , mParticleAssetId(CToken(desc).GetTag().GetId())
 , mParticleEmissionRateScalar(1.f)

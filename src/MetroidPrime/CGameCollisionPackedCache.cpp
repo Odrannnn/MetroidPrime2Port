@@ -110,7 +110,7 @@ void CGameCollision::BuildCollisionCache(const CStateManager& mgr, CCollisionCac
 void CGameCollision::UpdateCollisionCache(const CStateManager& mgr, CCollisionCache& cache,
                                           rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList,
                                           ECacheUpdatePolicy policy) {
-  uchar status[1024];
+  uchar status[kMaxObjects];
   memset(status, 0, nearList.size());
   CCollisionCacheIterator iterator;
 

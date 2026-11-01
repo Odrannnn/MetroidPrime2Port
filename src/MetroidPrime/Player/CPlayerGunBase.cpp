@@ -146,7 +146,7 @@ void CPlayerGunBase::CreateGunLight(CStateManager& mgr) {
     mgr.AddObject(rs_new CGameLight(mLightId, kInvalidAreaId, false, rstl::string_l(""), mTransform,
                                     mPlayerUniqueId,
                                     CLight::BuildDirectional(CVector3f::Forward(), CColor::Black()),
-                                    mLightId.Value() & 0x3ff, 0, 0.f));
+                                    mLightId.Value() & kUniqueIdIndexMask, 0, 0.f));
   }
 }
 
