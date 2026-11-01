@@ -358,7 +358,7 @@ def collect():
     dock_virtual = sldr_prop("Dock", "isVirtual")
     worlds, areas, docks, teleporters, locations = [], [], [], [], []
     dock_locks, lock_totals = {}, []
-    obstacles, obstacle_totals, skipped, dock_pos, loc_pos = [], [], {}, {}, {}
+    obstacles, obstacle_totals, skipped, dock_pos, loc_pos, loc_relay = [], [], {}, {}, {}, {}
     excluded_hits = set()
     for pk in ed.load_paks(iso):
         if not SINGLE_PLAYER_PAKS.search(pk.path):
@@ -391,6 +391,14 @@ def collect():
                         elif t4 == "PCKP":
                             add_pickup(locations, excluded_hits, a["iname"], gi, layer, eid, props, False)
                             loc_pos[gi, eid] = struct.unpack(">3f", editor(props, XFRM)[:12])
+                by_eid = {e[2]: e for e in ents}
+                for layer, t4, eid, conns, props in ents:
+                    if t4 == "PCKP":
+                        # The MRLY a pickup's Arrived activates, and which connects back to it: the
+                        # world mailbox holds its editor id once the pickup is taken.
+                        loc_relay[gi, eid] = next((t for st, m, t in conns if st == "ARRV" and m == "ACTV"
+                                                   and by_eid.get(t, ("", ""))[1] == "MRLY"
+                                                   and any(tt == eid for _s, _m, tt in by_eid[t][3])), 0)
                 locks, gates = classify_locks(f"{name} {a['iname']}", ents, layer_on[a["index"]], dock_number)
                 totals[0] += len(locks)
                 totals[1] += sum(lk["shield"] != "None" for lk in locks.values())
@@ -407,6 +415,17 @@ def collect():
                             props = rm.pickup_props(body)
                             add_pickup(locations, excluded_hits, a["iname"], gi, -1, eid, props, True)
                             loc_pos[gi, eid] = struct.unpack(">3f", editor(props, XFRM)[:12])
+                            # A generated drop has no relay of its own: use the MRLY that the Dead of
+                            # whatever starts a GENR activates (the Bomb Guardian's "Swap North Gates").
+                            # Only GENRs on the drop's layer (editor id bits 26-31) that spawn objects
+                            # missing from the layers (generated templates).
+                            genrs = [e[2] for e in ents if e[1] == "GENR" and e[2] >> 26 == eid >> 26
+                                     and any(st == "GRNT" and t not in by_eid for st, _m, t in e[3])]
+                            loc_relay[gi, eid] = next((t for e in ents for st, m, g in e[3]
+                                                       if st == "DEAD" and g in genrs
+                                                       for st2, m2, t in e[3]
+                                                       if st2 == "DEAD" and m2 == "ACTV"
+                                                       and by_eid.get(t, ("", ""))[1] == "MRLY"), 0)
                 area_docks = [(di, dock_pos[gi, di]) for di in range(len(a["docks"])) if (gi, di) in dock_pos]
                 area_locs = [(eid, loc_pos[gi, eid]) for g, _l, eid, *_ in locations if g == gi]
                 for layer, eid, kind, needs, p, label in classify_obstacles(ents, layer_on[a["index"]], skipped):
@@ -431,7 +450,7 @@ def collect():
         sys.exit(f"[rando_world] obstacles per world {obstacle_totals}, expected {EXPECTED_OBSTACLES}")
     print("obstacles per world " + str(obstacle_totals) + "; not listed: " +
           ", ".join(f"{k} {v}" for k, v in sorted(skipped.items())))
-    return worlds, areas, docks, teleporters, locations, dock_locks, obstacles, dock_pos, loc_pos
+    return worlds, areas, docks, teleporters, locations, dock_locks, obstacles, dock_pos, loc_pos, loc_relay
 
 
 def dump_obstacles(worlds, areas, docks, locations, dock_locks, obstacles, dock_pos, loc_pos, names):
@@ -467,7 +486,7 @@ def add_pickup(locations, excluded_hits, area_name, area, layer, eid, props, gen
 
 
 def main():
-    worlds, areas, docks, teleporters, locations, dock_locks, obstacles, dock_pos, loc_pos = collect()
+    worlds, areas, docks, teleporters, locations, dock_locks, obstacles, dock_pos, loc_pos, loc_relay = collect()
     names = {v: k for k, v in rm.item_names().items()}
     keys = {(worlds[areas[a][0]][0], areas[a][1], eid) for a, _l, eid, *_ in locations}
     if len(keys) != len(locations):
@@ -526,6 +545,11 @@ def main():
               " capacity, item name)"]
     lines += [f'PORT_RANDO_LOCATION({a}, {l}, 0x{e:08X}u, {i}, {am}, {c}, "{names.get(i, i)}")'
               for a, l, e, i, am, c in locations]
+    lines += ["#endif", "#ifdef PORT_RANDO_LOCATION_MAP",
+              "// PORT_RANDO_LOCATION_MAP(memory relay editor id (0: none, a generated pickup), x, y, z);"
+              " one row per PORT_RANDO_LOCATION, same order"]
+    lines += [f"PORT_RANDO_LOCATION_MAP(0x{loc_relay.get((a, e), 0):08X}u, "
+              + ", ".join(f"{v:.2f}f" for v in loc_pos[a, e]) + ")" for a, _l, e, *_ in locations]
     lines += ["#endif", "#ifdef PORT_RANDO_OBSTACLE",
               "// PORT_RANDO_OBSTACLE(area, layer, layer on by default, editor id (0: a per-area spider",
               "//   track row), kind, needs (any one of; 0 = not derived), x, y, z, nearest dock, its",

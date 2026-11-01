@@ -40,6 +40,14 @@ const Location kLocations[] = {
 #include "port_rando_world.inc"
 #undef PORT_RANDO_LOCATION
 };
+const LocationMap kLocationMaps[] = {
+#define PORT_RANDO_LOCATION_MAP(relay, x, y, z) {relay, x, y, z},
+#include "port_rando_world.inc"
+#undef PORT_RANDO_LOCATION_MAP
+};
+static_assert(sizeof(kLocationMaps) / sizeof(kLocationMaps[0]) ==
+                  sizeof(kLocations) / sizeof(kLocations[0]),
+              "one map row per location");
 
 const Obstacle kObstacles[] = {
 #define PORT_RANDO_OBSTACLE(area, layer, layerDefault, id, kind, needs, x, y, z, dock, dockDistance, \
@@ -73,6 +81,7 @@ const Dock* DockAt(int index) { return At(kDocks, index); }
 const DockLock* DockLockAt(int index) { return At(kDockLocks, index); }
 const Teleporter* TeleporterAt(int index) { return At(kTeleporters, index); }
 const Location* LocationAt(int index) { return At(kLocations, index); }
+const LocationMap* LocationMapAt(int index) { return At(kLocationMaps, index); }
 int ObstacleCount() { return CountOf(kObstacles); }
 const Obstacle* ObstacleAt(int index) { return At(kObstacles, index); }
 

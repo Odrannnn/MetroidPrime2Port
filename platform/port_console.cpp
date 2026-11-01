@@ -27,6 +27,8 @@
 #include "input/port_input_devices.h"
 #include "port_logfile.h"
 #include "port_overlay.h"
+#include "port_map_pickups.h"
+#include "port_rando_world.h"
 #include "port_touch.h"
 #include "port_pointer.h"
 #include "port_save.h"
@@ -1133,6 +1135,66 @@ void CmdInfiniteAmmo(CStateManager&, const Args& args, std::string& out) {
 void CmdMpForce(CStateManager&, const Args& args, std::string& out) {
   gPortForceMultiplayer = args.size() < 2 ? !gPortForceMultiplayer : ArgToInt(args[1], 1) != 0;
   out += gPortForceMultiplayer ? "forced multiplayer on\n" : "forced multiplayer off\n";
+}
+
+// `tracker`: the map pickups setting (F1 Tracker): off, rooms or all, and the kinds shape option.
+void CmdTracker(CStateManager&, const Args& args, std::string& out) {
+  static const char* const kModes[] = {"off", "rooms", "all"};
+  for (size_t i = 1; i < args.size(); ++i) {
+    if (args[i] == "kinds" && i + 1 < args.size()) {
+      PortOverlay::SetMapPickupKinds(ArgToInt(args[++i], 1) != 0);
+      continue;
+    }
+    bool found = false;
+    for (int m = 0; m < 3; ++m) {
+      if (args[i] == kModes[m]) {
+        PortOverlay::SetMapPickups(m);
+        found = true;
+      }
+    }
+    if (!found) {
+      out += "usage: tracker [off|rooms|all] [kinds 0|1]\n";
+      return;
+    }
+  }
+  char line[96];
+  std::snprintf(line, sizeof(line), "map pickups %s, kinds %d\n",
+                kModes[PortMapPickups::Mode()], PortOverlay::MapPickupKinds() ? 1 : 0);
+  out += line;
+}
+
+// `pickups [all]`: this world's pickups not collected (all: every world's, collected too), one per
+// line: location index, MREA, area name, position, and with `all` whether it is collected.
+void CmdPickups(CStateManager& mgr, const Args& args, std::string& out) {
+  const bool all = args.size() >= 2 && args[1] == "all";
+  const CWorld* world = mgr.GetWorld();
+  const uint32_t current = world != nullptr ? static_cast< uint32_t >(world->IGetWorldAssetId()) : 0u;
+  if (!all && current == 0) {
+    out += "no world loaded\n";
+    return;
+  }
+  const uint32_t scope = all ? 0u : current;
+  char line[192];
+  std::snprintf(line, sizeof(line), "%d/%d collected\n", PortMapPickups::CollectedCount(scope),
+                PortMapPickups::Count(scope));
+  out += line;
+  const int count = PortRandoWorld::LocationCount();
+  for (int i = 0; i < count; ++i) {
+    if (!all && PortMapPickups::World(i) != current) {
+      continue;
+    }
+    const bool collected = PortMapPickups::Collected(i);
+    if (collected && !all) {
+      continue;
+    }
+    const PortRandoWorld::Location* loc = PortRandoWorld::LocationAt(i);
+    const PortRandoWorld::Area* area = PortRandoWorld::AreaAt(loc->area);
+    float pos[3];
+    PortMapPickups::Position(i, pos);
+    std::snprintf(line, sizeof(line), "%3d %08x %-32s %8.1f %8.1f %8.1f%s\n", i, area->mrea,
+                  area->name, pos[0], pos[1], pos[2], all ? (collected ? " collected" : " -") : "");
+    out += line;
+  }
 }
 
 // `mpend`: ends the running multiplayer match now, as its time or kill limit would (the match then
@@ -5226,6 +5288,10 @@ const CommandSpec kCommands[] = {
       "mpforce <0|1>               IsMultiplayer reports true (multiplayer-only arms)\n"},
     {"mpend", CmdMpEnd,
       "mpend                       end the running multiplayer match now (fade, results, front end)\n"},
+    {"tracker", CmdTracker,
+      "tracker [off|rooms|all] [kinds 0|1]  map pickups (F1 Tracker): dots, tinted rooms; kinds = shapes\n"},
+    {"pickups", CmdPickups,
+      "pickups [all]               this world's pickups not collected (all: every world, with state)\n"},
     {"pads", CmdPads,
       "pads                        the controller on each pad port 0-3 (players 1-4) and the controller count\n"},
     {"padport", CmdPadPort,

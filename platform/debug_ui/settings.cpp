@@ -344,6 +344,9 @@ const SettingKey kSettingKeys[] = {
     IntKey< &sPromptGlyphs, PortOverlay::kPromptGlyphs_Auto, PortOverlay::kPromptGlyphs_Keyboard >(
         "prompt_glyphs", "0", "5"),
     BoolKey< &sMinimapTap >("minimap_tap"),
+    IntKey< &sMapPickups, PortOverlay::kMapPickups_Off, PortOverlay::kMapPickups_All >(
+        "map_pickups", "0", "2"),
+    BoolKey< &sMapPickupKinds >("map_pickup_kinds"),
     BoolKey< &sIgtTimer >("igt_timer"),
     IntKey< &sLanguage, 0, PortOverlay::kLanguageMax >("language", "0", "6"),
     IntKey< &sHintDelay, PortOverlay::kHintDelayMin, PortOverlay::kHintDelayMax >("hint_delay", "0",

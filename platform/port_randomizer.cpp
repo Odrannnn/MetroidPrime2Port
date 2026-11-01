@@ -582,6 +582,27 @@ bool ApplyPickup(uint32_t worldAssetId, uint32_t areaAssetId, uint32_t entityId,
   }
 }
 
+bool Placed(uint32_t worldAssetId, uint32_t areaAssetId, uint32_t entityId, int& itemType,
+            int& capacity) {
+  EnsureLoaded();
+  try {
+    State& state = GetState();
+    if (!state.enabled)
+      return false;
+    char key[32];
+    FormatLocationKey(worldAssetId, areaAssetId, entityId, key, sizeof(key));
+    const auto it = state.placements.find(key);
+    if (it == state.placements.end())
+      return false;
+    itemType = it->second.itemType;
+    if (it->second.hasCapacity)
+      capacity = it->second.capacity;
+    return true;
+  } catch (...) {
+    return false;
+  }
+}
+
 // The game's own wording for the pickup memo; the rest are the enumerator split at its capitals.
 static std::string DisplayName(int itemType) {
   switch (itemType) {

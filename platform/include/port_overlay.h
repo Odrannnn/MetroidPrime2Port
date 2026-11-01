@@ -185,6 +185,15 @@ const char* PromptGlyphs();
 // Tap or click on the HUD minimap opens the map screen (default on; MP2_MINIMAP_TAP).
 bool MinimapTap();
 void SetMinimapTap(bool enabled);
+// Pickups on the map (`MP2_MAP_PICKUPS`: off|rooms|all; PortMapPickups): All draws a dot where each
+// item pickup sits until it is collected, Rooms tints the rooms that still hold one.
+enum EMapPickups { kMapPickups_Off, kMapPickups_Rooms, kMapPickups_All };
+int MapPickups();
+void SetMapPickups(int mode);
+// The dots tell a major item (filled) from a minor one (ring), and a collected pickup stays as a
+// cross (`MP2_MAP_PICKUP_KINDS`).
+bool MapPickupKinds();
+void SetMapPickupKinds(bool enabled);
 // Elevator ride (`MP2_ELEVATOR_RIDE`: original|fast|skip): Fast doubles the ride's clock, Skip ends
 // it as soon as the next world has loaded (CWorldTransManager).
 enum EElevatorRide { kElevatorRide_Original, kElevatorRide_Fast, kElevatorRide_Skip };

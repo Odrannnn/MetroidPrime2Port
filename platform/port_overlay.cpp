@@ -83,6 +83,8 @@ int sComboBeamCost = PortOverlay::kComboBeamCostMax;
 int sComboMissileCost = PortOverlay::kComboMissileCostMax;
 int sBeamAmmoPerExpansion = PortOverlay::kBeamAmmoPerExpansionDefault;
 bool sMinimapTap = true;
+int sMapPickups = PortOverlay::kMapPickups_Off;
+bool sMapPickupKinds = false;
 int sPromptGlyphs = 0;
 bool sIgtTimer = false;
 bool sOriginalExperience = false;
@@ -1050,6 +1052,42 @@ bool MinimapTap() {
 void SetMinimapTap(bool enabled) {
   ReadEnv();
   sMinimapTap = enabled;
+  Persist();
+}
+
+int MapPickups() {
+  ReadEnv();
+  if (OriginalExperience()) {
+    return kMapPickups_Off;
+  }
+  const char* env = port::EnvString("MP2_MAP_PICKUPS");
+  if (env != nullptr && std::strcmp(env, "off") == 0) {
+    return kMapPickups_Off;
+  }
+  if (env != nullptr && std::strcmp(env, "rooms") == 0) {
+    return kMapPickups_Rooms;
+  }
+  if (env != nullptr && std::strcmp(env, "all") == 0) {
+    return kMapPickups_All;
+  }
+  return EnvIntIn("MP2_MAP_PICKUPS", sMapPickups, kMapPickups_Off, kMapPickups_All);
+}
+
+void SetMapPickups(int mode) {
+  ReadEnv();
+  sMapPickups = std::clamp(mode, static_cast< int >(kMapPickups_Off),
+                           static_cast< int >(kMapPickups_All));
+  Persist();
+}
+
+bool MapPickupKinds() {
+  ReadEnv();
+  return EnvBool("MP2_MAP_PICKUP_KINDS", sMapPickupKinds);
+}
+
+void SetMapPickupKinds(bool enabled) {
+  ReadEnv();
+  sMapPickupKinds = enabled;
   Persist();
 }
 

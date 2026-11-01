@@ -62,6 +62,14 @@ struct Location {
   const char* itemName;
 };
 
+// Parallel to Location: where the pickup sits and the memory relay it activates when collected
+// (which the world's mailbox keeps, so a reload knows it is gone). The Bomb Guardian's
+// generated MorphBallBombs has none; its relay is the one the boss's death activates.
+struct LocationMap {
+  uint32_t relay;
+  float x, y, z; // world space
+};
+
 // Things inside a room that need an item (tools/rando_world.py, classify_obstacles). Only the
 // requirement is read from the disc; which of the area's docks and locations an obstacle cuts off
 // is not, and is left to hand-written rules.
@@ -120,6 +128,7 @@ const Dock* DockAt(int index);
 const DockLock* DockLockAt(int index); // same index as DockAt
 const Teleporter* TeleporterAt(int index);
 const Location* LocationAt(int index);
+const LocationMap* LocationMapAt(int index); // same index as LocationAt
 int ObstacleCount();
 const Obstacle* ObstacleAt(int index);
 // The vanilla EItemType that grants one ObstacleNeed bit, else -1.

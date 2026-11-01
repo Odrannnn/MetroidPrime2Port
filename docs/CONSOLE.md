@@ -32,6 +32,8 @@ hp, hp_max, visor, beam, freecam) for scripts.
 - `infammo [all|missile|powerbomb|dark|light] [0|1]` — infinite ammo per counter (fire at zero, HUD shows ∞, real counts and pickups kept; F1 Cheats); no 0|1 flips
 - `mpforce <0|1>` — IsMultiplayer reports true (multiplayer-only arms)
 - `mpend` — ends the running multiplayer match now, as its time or kill limit would (fade, results screen, back to the front end)
+- `tracker [off|rooms|all] [kinds 0|1]` — map pickups (F1 Tracker, `map_pickups`/`map_pickup_kinds`): off; rooms tints rooms that still hold a pickup; all draws a white dot per pickup not collected; kinds 1: an expansion or energy tank is a ring, a major item a solid dot, a collected pickup a grey cross. Prints the current mode
+- `pickups [all]` — this world's pickups not yet collected (location, kind, area, position); all: every world, each with its collected state and the totals
 - `pads` — the controller on each pad port 0-3 (players 1-4: `port N: <index> <name>` or `port N: none`) and the controller count; the F1 page's Player rows set it
 - `padport <index> <port>` / `padport clear <port>` — give controller `<index>` (see `pads`) pad port 0-3, or free a port (what the F1 Player combos call)
 - `padpreset <name> [port]` — apply a pad preset (`gamecube`, `remastered`, `modern`, `southpaw`) to the controller on pad port 0-3 (default 0; what the F1 remap page's Presets button does for its Player selector). Reports `no controller` for an empty port and a no-op for a virtual pad (Aurora ignores their mappings); only port 0 gets the keyboard/mouse overlay

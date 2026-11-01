@@ -21,6 +21,23 @@
 #include <math.h>
 #include <stdlib.h>
 
+#ifdef TARGET_PC
+#include "Kyoto/Graphics/CGX.hpp"
+#include "MetroidPrime/IGameArea.hpp"
+#include "port_map_pickups.h"
+#include "port_rando_world.h"
+#include "port_overlay.h"
+
+namespace {
+// Rooms mode: true when the area still holds a pickup not collected.
+bool PortRoomHoldsPickup(const IWorld& world, int areaIdx) {
+  const IGameArea* area = world.IGetAreaAlways(TAreaId(areaIdx));
+  return area != nullptr &&
+         PortMapPickups::RoomHoldsPickup(world.IGetWorldAssetId(), area->IGetAreaAssetId());
+}
+} // namespace
+#endif
+
 struct CMapObjectSortInfoGreaterThan {
   CMapObjectSortInfoGreaterThan() {}
   bool operator()(const CMapWorld::CMapObjectSortInfo& a,
@@ -431,6 +448,16 @@ void CMapWorld::DrawAreas(
       finalSurface = CColor::Lerp(finalSurface, flashColor, pulse);
       finalOutline = CColor::Lerp(finalOutline, flashColor, pulse);
     }
+#ifdef TARGET_PC
+    if (PortMapPickups::Mode() == PortOverlay::kMapPickups_Rooms &&
+        PortRoomHoldsPickup(parms.GetWorld(), areaIdx)) {
+      // Amber half way, alpha kept.
+      const CColor amber(static_cast< uchar >(0xff), static_cast< uchar >(0xb0),
+                         static_cast< uchar >(0x30));
+      finalSurface = CColor::Lerp(finalSurface, amber, 0.5f).WithAlphaOf(finalSurface.GetAlpha());
+      finalOutline = CColor::Lerp(finalOutline, amber, 0.5f).WithAlphaOf(finalOutline.GetAlpha());
+    }
+#endif
     finalSurface = finalSurface.WithAlphaModulatedBy(worldAlpha);
     finalOutline = finalOutline.WithAlphaModulatedBy(worldAlpha);
     const CTransform4f modelView =
@@ -555,8 +582,132 @@ void CMapWorld::DrawAreas(
       lastArea = areaIdx;
     }
   }
+#ifdef TARGET_PC
+  if (PortMapPickups::Mode() == PortOverlay::kMapPickups_All) {
+    DrawPortPickups(parms, bfsInfos, darkWorldBlend);
+  }
+#endif
   CGraphics::SetAmbientColor(CColor::White());
 }
+
+#ifdef TARGET_PC
+// Map pickups' All mode: a white dot with a dark rim on every pickup not collected, in the areas
+// the map draws (PortMapPickups). With pickup kinds on, a minor item is a ring instead of a dot and
+// a collected pickup a grey cross. Map objects sort after everything else, so drawing the dots
+// last keeps retail's order. Dark and light world dots fade with their areas.
+void CMapWorld::DrawPortPickups(
+    const CMapWorldDrawParms& parms,
+    const rstl::vector< CMapAreaBFSInfo, rstl::locked_cache_allocator >& bfsInfos,
+    float darkWorldBlend) const {
+  const IWorld& world = parms.GetWorld();
+  const CAssetId worldId = world.IGetWorldAssetId();
+  const CMapWorldInfo& mwInfo = parms.GetMapWorldInfo();
+  const CTransform4f& modelXf = parms.GetPlaneProjectionTransform();
+  // Faces the camera and scales with the map like the retail icons.
+  const CTransform4f billboard(parms.GetCameraTransform().BuildMatrix3f() *
+                                   CMatrix3f::Scale(parms.GetObjectScale()),
+                               CVector3f::Zero());
+  static const int kSegments = 12;
+  static const float kRadius = 1.3f;
+  static const float kRimRadius = 1.7f;
+  // A minor item's ring keeps the dot's outline with a rim-coloured hole.
+  static const float kHoleRadius = 0.7f;
+  // The cross's bars: half length and half width, then the rim's.
+  static const float kBarLength = 1.4f;
+  static const float kBarWidth = 0.3f;
+  static const float kRimBarLength = 1.8f;
+  static const float kRimBarWidth = 0.7f;
+  static const float kHalfSqrt2 = 0.70710678f;
+  const unsigned char* kinds = PortOverlay::MapPickupKinds() ? PortMapPickups::Kinds() : nullptr;
+  bool setUp = false;
+  const int count = PortRandoWorld::LocationCount();
+  for (int i = 0; i < count; ++i) {
+    if (PortMapPickups::World(i) != worldId) {
+      continue;
+    }
+    const int areaIdx = world.IGetAreaId(PortMapPickups::Area(i)).Value();
+    if (areaIdx < 0 || areaIdx >= static_cast< int >(GetNumAreas())) {
+      continue;
+    }
+    const bool collected = PortMapPickups::Collected(i);
+    if (collected && kinds == nullptr) {
+      continue;
+    }
+    bool drawn = false;
+    for (int j = 0; j < bfsInfos.size() && !drawn; ++j) {
+      drawn = bfsInfos[j].GetAreaIndex() == areaIdx;
+    }
+    CMapArea* area = drawn ? GetMapArea(areaIdx) : nullptr;
+    if (area == nullptr ||
+        !area->GetIsVisibleToAutoMapper(mwInfo.IsWorldVisible(areaIdx, area->IsInDarkWorld()),
+                                        mwInfo.IsAreaVisible(areaIdx))) {
+      continue;
+    }
+    const float worldAlpha = area->IsInDarkWorld() ? darkWorldBlend : 1.f - darkWorldBlend;
+    if (close_enough(worldAlpha, 0.f)) {
+      continue;
+    }
+    const float alpha = worldAlpha * parms.GetAlpha();
+    // The uchar constructor: CColor(uint) keeps the GameCube byte order, which reads reversed here.
+    const uchar grey = collected ? 0x80 : 0xff;
+    const uchar dark = 0x20;
+    const CColor color = CColor(grey, grey, grey).WithAlphaOf(alpha);
+    const CColor rim = CColor(dark, dark, dark).WithAlphaOf(alpha);
+    if (!setUp) {
+      CGX::SetChanCtrl(CGX::Channel0, false, GX_SRC_REG, GX_SRC_VTX, GX_LIGHT_NULL, GX_DF_NONE,
+                       GX_AF_NONE);
+      CGraphics::SetTevOp(kTS_Stage0, CGraphics::kEnvPassthru);
+      setUp = true;
+    }
+    float local[3];
+    PortMapPickups::Position(i, local);
+    const CVector3f pos =
+        area->GetAreaPostTranslate(world) + CVector3f(local[0], local[1], local[2]);
+    gpRender->SetModelMatrix(modelXf * CTransform4f::Translate(pos) * billboard);
+    // A dark rim first, so the mark also reads on the pale explored rooms.
+    if (collected) {
+      for (int pass = 0; pass < 2; ++pass) {
+        const float length = pass == 0 ? kRimBarLength : kBarLength;
+        const float width = pass == 0 ? kRimBarWidth : kBarWidth;
+        for (int bar = 0; bar < 2; ++bar) {
+          // Along (1, 1) or (1, -1), turned 45 degrees.
+          const float side = bar == 0 ? 1.f : -1.f;
+          const float ax = length * kHalfSqrt2;
+          const float az = side * length * kHalfSqrt2;
+          const float wx = -side * width * kHalfSqrt2;
+          const float wz = width * kHalfSqrt2;
+          CGraphics::StreamBegin(kP_TriangleStrip);
+          CGraphics::StreamColor(pass == 0 ? rim : color);
+          // Counter-clockwise in x/z like the dots' fans, or culling drops the bar.
+          CGraphics::StreamVertex(-ax + wx, 0.f, -az + wz);
+          CGraphics::StreamVertex(-ax - wx, 0.f, -az - wz);
+          CGraphics::StreamVertex(ax + wx, 0.f, az + wz);
+          CGraphics::StreamVertex(ax - wx, 0.f, az - wz);
+          CGraphics::StreamEnd();
+        }
+      }
+      continue;
+    }
+    const bool ring = kinds != nullptr && kinds[i] == PortMapPickups::kK_Minor;
+    for (int pass = 0; pass < (ring ? 3 : 2); ++pass) {
+      const float radius = pass == 0 ? kRimRadius : pass == 1 ? kRadius : kHoleRadius;
+      CGraphics::StreamBegin(kP_TriangleFan);
+      CGraphics::StreamColor(pass == 1 ? color : rim);
+      CGraphics::StreamVertex(0.f, 0.f, 0.f);
+      for (int k = 0; k <= kSegments; ++k) {
+        const float angle = k * (M_2PIF / kSegments);
+        CGraphics::StreamVertex(radius * CMath::FastCosR(angle), 0.f,
+                                radius * CMath::FastSinR(angle));
+      }
+      CGraphics::StreamEnd();
+    }
+  }
+  if (setUp) {
+    // Put back the state the retail map draws expect.
+    CMapArea::CMapAreaSurface::SetupGXMaterial();
+  }
+}
+#endif
 
 void CMapWorld::RecalculateWorldSphere(const CMapWorldInfo& mwInfo, const IWorld& wld) const {
   rstl::vector< CVector2f > coords;

@@ -35,6 +35,7 @@ const DebugPage kDebugPages[] = {
     {"Multiplayer", DrawMultiplayerTab},
     {"Video", DrawVideoTab},
     {"Enhancements", DrawEnhancementsTab},
+    {"Tracker", DrawTrackerTab},
     {"Mods", DrawModsTab},
     // Randomizer page hidden for now (DrawRandomizerTab).
     {"Save states", DrawSaveStatesTab},

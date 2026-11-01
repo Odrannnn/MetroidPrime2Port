@@ -20,6 +20,10 @@ const char* StatusText();
 // Logs a location in dump mode, or applies its placement when enabled.
 bool ApplyPickup(uint32_t worldAssetId, uint32_t areaAssetId, uint32_t entityId,
                  int& itemType, int& capacity, int& amount);
+// The seed's item at a location, without dump logging (the map's pickup kinds): true, with
+// itemType and capacity set, when the seed places it; else both are left alone.
+bool Placed(uint32_t worldAssetId, uint32_t areaAssetId, uint32_t entityId, int& itemType,
+            int& capacity);
 // For a location the seed places: true, and `out` is the text to show on pickup (the seed's first
 // hud_text, else "<display name> acquired!", with spaced names, not the ItemName). False for an unplaced location or when disabled.
 bool AcquisitionText(uint32_t worldAssetId, uint32_t areaAssetId, uint32_t entityId, int itemType,

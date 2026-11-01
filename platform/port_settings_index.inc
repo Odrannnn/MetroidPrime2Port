@@ -203,6 +203,8 @@
 {"Enhancements", "", "Hints", "Hints", "hints help enable disable toggle"},
 {"Enhancements", "", "Hints", "Hint delay", "hints help wait timer minutes scan"},
 {"Enhancements", "", "Hints", "Show current hint", "hints help stuck next message map marker"},
+{"Tracker", "", "Map", "Pickups on the map", "item tracker dots pickups expansions map rooms tint collected"},
+{"Tracker", "", "Map", "Show pickup kinds", "item tracker major minor expansion ring cross collected shape"},
 {"Debug", "", "Cheats", "Show cheats (items, health, teleport)", "cheats debug items health teleport"},
 {"Debug", "", "Cheats", "God mode", "invincible damage health cheat"},
 {"Debug", "", "Cheats", "No Dark Aether damage", "dark world aether air atmosphere damage light suit cheat"},

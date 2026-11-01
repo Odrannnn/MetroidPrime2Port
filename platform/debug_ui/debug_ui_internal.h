@@ -222,6 +222,7 @@ void DrawControlsTab();
 void DrawMultiplayerTab();
 void DrawVideoTab();
 void DrawEnhancementsTab();
+void DrawTrackerTab();
 void DrawSystemTab();
 
 } // namespace PortDebug

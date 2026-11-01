@@ -18,6 +18,17 @@ public:
   void SendMsgs(const TAreaId& areaId, CStateManager& mgr);
   void AddMsg(const TEditorId& id);
   void RemoveMsg(const TEditorId& id);
+#ifdef TARGET_PC
+  // Port: whether the memory relay's message is kept (the map's pickup dots).
+  bool HasMsg(const TEditorId& id) const {
+    for (int i = 0; i < mRelays.size(); ++i) {
+      if (mRelays[i] == id) {
+        return true;
+      }
+    }
+    return false;
+  }
+#endif
 
 private:
   rstl::reserved_vector< TEditorId, 512 > mRelays;

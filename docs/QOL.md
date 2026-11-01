@@ -65,8 +65,11 @@ plan, not a promise of order - the list is reordered as the port's own walls mov
    marker, boot prompt; platform/README.md); **region conversion** of imported saves exists (`platform/port_save_convert.cpp`, used by the F1 Saves import); **slot-level copy/erase** would have to reproduce the front
    end's option shuffling; raw-image cards are **import only**. Dolphin card-folder discovery is in the F1 Saves page (README).
 6. **Photo mode / free camera**: done (`platform/port_photo.cpp`, `platform/debug_ui/photo.cpp`, `platform/port_freecam.cpp`). Photo mode is a mode over the free camera, as MP1's: sim frozen, HUD/cannon/helmet/visor effects hidden, ImGui panel (FOV, roll, show Samus, speed, size, Capture, Hide, Exit; a compact bar when hidden), toasts, Android touch (left half moves, right half looks; untested off-device). Pad: A capture, B/Start exit, Y panel, X+d-pad zoom, d-pad roll. Keys: F8 (rebindable), H panel, P/click capture, Esc exit, wheel FOV, right mouse looks. Not ported: the pause-menu entry (no clean hook in `CPauseScreen`). The `freecam` console command stays the plain camera.
-7. **Map and tracker** (MP1's `port_map_marks.cpp`, `port_tracker.cpp`): reveal the map, item and scan
-   tracking. MP2's map is a different format (`CMapWorld`/`CMapArea`), so this is a rewrite.
+7. **Map and tracker** (MP1's `port_map_marks.cpp`, `port_tracker.cpp`): pickups on the map done
+   (`platform/port_map_pickups.cpp`, drawn in `CMapWorld::DrawPortPickups`; F1 Tracker page, settings
+   `map_pickups` Off/Rooms/All and `map_pickup_kinds`, console `tracker`/`pickups`). Positions and memory
+   relays come from `tools/rando_world.py` (all 114 locations); collected = relay in the world's mailbox.
+   Not done: reveal map, an unvisited-room list, scan tracking.
 8. **Remastered assets** (MP1's `port_remastered_*`): import models/effects from a Metroid Prime
    Remastered dump. Very large; MP2's asset formats are its own.
 9. **Archipelago**: an MP1 feature with no MP2 design yet. Discord Rich Presence (`platform/port_discord.cpp`),

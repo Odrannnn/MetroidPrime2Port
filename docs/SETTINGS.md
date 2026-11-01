@@ -215,6 +215,12 @@ Controls > Options:
   prompts; env `MP2_PROMPT_GLYPHS` 0-5, and `MP2_TEXTURE_DEVICE` still wins).
 - `minimap_tap`: Options > Menus > Tap minimap for map (a tap or click on the HUD minimap opens the
   map screen; default on; env `MP2_MINIMAP_TAP`; console `minimap`, `maptap`).
+- `map_pickups`: Tracker > Map > Pickups on the map (0 off, 1 rooms: tint the map rooms that still
+  hold a pickup, 2 all: a white dot per pickup not collected; default off; env `MP2_MAP_PICKUPS`
+  off/rooms/all; console `tracker`; off under Original experience).
+- `map_pickup_kinds`: Tracker > Map > Show pickup kinds (All mode: a ring for expansions and energy
+  tanks, a grey cross for collected pickups; the seed's item when randomized; env
+  `MP2_MAP_PICKUP_KINDS`).
 - `fast_morph`, `spring_ball`: Enhancements > Morph Ball > Fast Morph, Spring Ball (one row; C-stick up, the Spring Ball binding on the Remap page, touch swipe up, or a gyro flick).
 - `map_invert_x`, `map_invert_y`: Map > Invert map rotate X, Invert map rotate Y (off by
   default; env `MP2_MAP_INVERT_X`, `MP2_MAP_INVERT_Y`). They flip which way the map turns on

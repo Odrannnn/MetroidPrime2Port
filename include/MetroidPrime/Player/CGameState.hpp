@@ -136,6 +136,17 @@ public:
   SPreviousGameResults& PreviousGameResults() { return mPreviousGameResults; } // Guessed name
   int GetGameModeType() const { return mPreviousGameResults.mGameMode; }       // name inferred
   CWorldState& StateForWorld(CAssetId worldId);
+#ifdef TARGET_PC
+  // Port: the world's state if the game has one, without adding it (the map's pickup tracker).
+  CWorldState* PortFindWorldState(CAssetId worldId) {
+    for (int i = 0; i < mWorldStates.size(); ++i) {
+      if (mWorldStates[i].GetWorldAssetId() == worldId) {
+        return &mWorldStates[i];
+      }
+    }
+    return nullptr;
+  }
+#endif
   CWorldState& CurrentWorldState();
   rstl::ncrc_ptr< CWorldTransManager >& WorldTransitionManager();
   CAssetId CurrentWorldAssetId() const;

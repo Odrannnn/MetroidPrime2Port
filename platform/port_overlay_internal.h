@@ -33,6 +33,8 @@ extern int sComboBeamCost;
 extern int sComboMissileCost;
 extern int sBeamAmmoPerExpansion;
 extern bool sMinimapTap;
+extern int sMapPickups;
+extern bool sMapPickupKinds;
 extern int sPromptGlyphs;
 extern bool sIgtTimer;
 extern bool sOriginalExperience;

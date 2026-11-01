@@ -159,6 +159,11 @@ private:
   void DrawAreas(const CMapWorldDrawParms& parms, int selArea,
                  const rstl::vector< CMapAreaBFSInfo, rstl::locked_cache_allocator >& bfsInfos,
                  float darkWorldBlend, bool inMapScreen) const;
+#ifdef TARGET_PC
+  void DrawPortPickups(const CMapWorldDrawParms& parms,
+                       const rstl::vector< CMapAreaBFSInfo, rstl::locked_cache_allocator >& bfsInfos,
+                       float darkWorldBlend) const;
+#endif
   void ClearTraversedFlags() const;
 
   rstl::vector< CMapAreaData > mAreas;
