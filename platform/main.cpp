@@ -1050,8 +1050,8 @@ static void PortCrashAfterReport(int sig, const void* faultAddress) {
 
 int main(int argc, char** argv) {
 #if defined(_WIN32)
-  if ((argc == 4 || argc == 5) && std::strcmp(argv[1], "--log-copy") == 0) {
-    return PortLogFile::RunCopy(argv[2], argv[3], argc == 5 ? argv[4] : nullptr);
+  if (argc == 6 && std::strcmp(argv[1], "--log-copy") == 0) {
+    return PortLogFile::RunCopy(argv[2], argv[3], argv[4], argv[5]);
   }
   PortLogFile::AttachParentConsole();
 #endif

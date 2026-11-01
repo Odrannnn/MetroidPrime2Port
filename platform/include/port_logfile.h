@@ -32,10 +32,10 @@ void Write(const std::string& line);
 void WriteRaw(const char* data, size_t size);
 
 #if defined(_WIN32)
-// The copying process Start launches on Windows (`--log-copy <pipe> <file> [<terminal>]`, the
+// The copying process Start launches on Windows (`--log-copy <pipe> <file> <terminal> <ready>`, the
 // handles' values): copies the pipe into the file and, as it is, into the terminal until the game
-// has gone. main calls it first, before anything else starts.
-int RunCopy(const char* pipe, const char* file, const char* terminal);
+// has gone; it signals the ready event first. main calls it first, before anything else starts.
+int RunCopy(const char* pipe, const char* file, const char* terminal, const char* ready);
 // The exe is a console-subsystem or GUI one that may not own a console; started from a terminal,
 // print to that one. Left alone when stderr already goes somewhere.
 void AttachParentConsole();
