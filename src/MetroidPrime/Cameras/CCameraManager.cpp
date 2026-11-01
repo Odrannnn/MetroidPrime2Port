@@ -871,7 +871,7 @@ bool CCameraManager::CheckSplineCollision(const CMotionSpline& spline, int mode,
   }
 
   TUniqueId hitId = kInvalidUniqueId;
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   int count = int(1.f + spline.GetLength() / step);
   switch (mode) {
   case 0: {

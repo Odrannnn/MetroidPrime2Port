@@ -1057,20 +1057,20 @@ static EMaterialTypes skFlockMaterial = kMT_Character;
 // @ fn_47_2E2C
 void CParasite::DoFlockingBehavior(CStateManager& mgr) {
   CVector3f upVec = GetTransform().GetUp();
-  rstl::reserved_vector< TUniqueId, 1024 > parasiteList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > parasiteList;
   float radius = mParasiteSearchRadius;
   const CVector3f position = GetTranslation();
   CAABox aabb(position - CVector3f(radius, radius, radius),
               position + CVector3f(radius, radius, radius));
   if ((mThinkCounter % 6) == 0) {
-    rstl::reserved_vector< TUniqueId, 1024 > nearList;
+    rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
     nearList.clear();
     static const CMaterialFilter filter =
         CMaterialFilter::MakeInclude(CMaterialList(skFlockMaterial));
     CParasite* closestParasite = nullptr;
     float minDistSq = 2.f + mParasiteSeparationDist * mParasiteSeparationDist;
     mgr.BuildNearList(nearList, aabb, filter, nullptr);
-    for (rstl::reserved_vector< TUniqueId, 1024 >::iterator it = nearList.begin();
+    for (rstl::reserved_vector< TUniqueId, kMaxObjects >::iterator it = nearList.begin();
          it != nearList.end(); ++it) {
       if (CParasite* parasite = TCastToPtr< CParasite >(mgr.ObjectById(*it))) {
         if (parasite->GetUniqueId() != GetUniqueId() && parasite->GetAlive()) {

@@ -1695,7 +1695,7 @@ void CScriptSpecialFunction::ThinkObjectFollowObject(float dt, CStateManager& mg
 }
 
 void CScriptSpecialFunction::ThinkChaffTarget(float dt, CStateManager& mgr) {
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   const CVector3f offset(5.f, 5.f, 5.f);
   const CAABox box(GetTranslation() - offset, GetTranslation() + offset);
   mgr.BuildNearList(nearList, box, CMaterialFilter::MakeInclude(CMaterialList(kMT_Projectile)),

@@ -420,32 +420,32 @@ public:
   bool RayCollideWorld(const CVector3f& start, const CVector3f& end, const CMaterialFilter& filter,
                        const CActor* damagee);
   bool RayCollideWorld(const CVector3f& start, const CVector3f& end,
-                       const rstl::reserved_vector< TUniqueId, 1024 >& nearList,
+                       const rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList,
                        const CMaterialFilter& filter, const CActor* ignoreActor) const;
   // Prime-correlated names; selected-build ray and damage-visibility behavior.
   const bool RayCollideWorldInternal(const CVector3f& start, const CVector3f& end,
                                      const CMaterialFilter& filter,
-                                     const rstl::reserved_vector< TUniqueId, 1024 >& nearList,
+                                     const rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList,
                                      const CActor* ignoreActor) const;
   const bool MultiRayCollideWorld(const CMRay& ray, const CMaterialFilter& filter) const;
   const bool TestRayDamage(const CVector3f& position, const CActor& damagee,
-                           const rstl::reserved_vector< TUniqueId, 1024 >& nearList) const;
+                           const rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList) const;
   CRayCastResult
   RayWorldIntersection(TUniqueId& idOut, const CVector3f& position, const CVector3f& direction,
                        float length, const CMaterialFilter& filter,
-                       const rstl::reserved_vector< TUniqueId, 1024 >& nearList) const;
+                       const rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList) const;
   // Original name from the Wii SEL exports.
   void DoCollisionResponse(const CCollisionResponseData& data, const CRayCastResult& result,
                            TUniqueId id, const CDamageInfo& damage, bool unknown);
   CRayCastResult RayStaticIntersection(const CVector3f& position, const CVector3f& direction,
                                        float length, const CMaterialFilter& filter) const;
-  void BuildNearList(rstl::reserved_vector< TUniqueId, 1024 >& nearList, const CVector3f& position,
+  void BuildNearList(rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList, const CVector3f& position,
                      const CVector3f& direction, float length, const CMaterialFilter& filter,
                      const CActor* ignoreActor) const;
-  void BuildNearList(rstl::reserved_vector< TUniqueId, 1024 >& nearList, const CAABox& bounds,
+  void BuildNearList(rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList, const CAABox& bounds,
                      const CMaterialFilter& filter, const CActor* ignoreActor) const;
   // Guessed name, correlated with Prime's actor-filtered near-list wrapper.
-  void BuildColliderList(rstl::reserved_vector< TUniqueId, 1024 >& nearList, const CActor& actor,
+  void BuildColliderList(rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList, const CActor& actor,
                          const CAABox& bounds) const;
 
   TEditorId GetEditorIdForUniqueId(TUniqueId) const;
@@ -635,7 +635,7 @@ public:
 
 public:
   ushort mNextFreeIndex;
-  rstl::reserved_vector< ushort, 1024 > mObjectIndexArray;                // x0x4
+  rstl::reserved_vector< ushort, kMaxObjects > mObjectIndexArray;                // x0x4
   rstl::reserved_vector< rstl::auto_ptr< CObjectList >, 8 > mObjectLists; // 0x808
   rstl::reserved_vector< CObjectList*, 8 > mDynamicObjectLists;
   rstl::reserved_vector< rstl::auto_ptr< CFilteredObjectList >, 6 > mFilteredObjectLists;

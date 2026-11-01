@@ -69,7 +69,7 @@ void CAnnihilatorProjectile::GatherTargetCandidates(
     CStateManager& mgr, rstl::vector< STargetCandidate >& candidates, const CActor& source,
     const CTransform4f& xf, TUniqueId owner, const CGameCamera* projection, float projectileSpeed,
     float projectileTurnRate, float radius, float height, float turnTestDistance) {
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   CAABox box(CVector3f(-radius, 0.f, -radius), CVector3f(radius, height, radius));
   box = box.GetTransformedAABox(source.GetTransform());
   mgr.BuildNearList(nearList, box, kTargetFilter, &source);

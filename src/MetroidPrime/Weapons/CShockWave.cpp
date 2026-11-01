@@ -168,7 +168,7 @@ rstl::optional_object< CAABox > CShockWave::GetTouchBounds() const {
 }
 
 bool CShockWave::WasAlreadyDamaged(TUniqueId uid) const {
-  for (rstl::reserved_vector< TUniqueId, 1024 >::const_iterator it = mHitIds.begin();
+  for (rstl::reserved_vector< TUniqueId, kMaxObjects >::const_iterator it = mHitIds.begin();
        it != mHitIds.end(); ++it) {
     if (*it == uid) {
       return true;

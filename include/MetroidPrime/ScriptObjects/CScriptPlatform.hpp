@@ -92,8 +92,8 @@ public:
   void SetActorRotateId(TUniqueId id) { mActorRotateId = id; } // Guessed name.
   float GetMotionDuration() const { return mMotionDuration; }  // Guessed name
 
-  typedef rstl::reserved_vector< ushort, 1024 > TMovedList;
-  typedef rstl::reserved_vector< TUniqueId, 1024 > TNearList;
+  typedef rstl::reserved_vector< ushort, kMaxObjects > TMovedList;
+  typedef rstl::reserved_vector< TUniqueId, kMaxObjects > TNearList;
   static bool IsInMovedList(TUniqueId id, const TMovedList& moved);
   void DragSlaves(CStateManager& mgr, TMovedList& moved);
   void DragSlave(CStateManager& mgr, TMovedList& moved, const SRiders& slave);

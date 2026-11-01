@@ -49,12 +49,12 @@ public:
                             const rstl::optional_object< CVector3f >& origin);
   static void CollisionFailsafe(const CStateManager& mgr, CAreaCollisionCache& cache,
                                 CPhysicsActor& actor, const CCollisionPrimitive& primitive,
-                                const rstl::reserved_vector< TUniqueId, 1024 >& nearList, float dt,
+                                const rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList, float dt,
                                 uint failsafeTicks, float impulseScale);
   static void MovePlayer(CStateManager& mgr, CPhysicsActor& actor, float dt,
-                         const rstl::reserved_vector< TUniqueId, 1024 >* nearList);
+                         const rstl::reserved_vector< TUniqueId, kMaxObjects >* nearList);
   static void Move(CStateManager& mgr, CPhysicsActor& actor, float dt,
-                   const rstl::reserved_vector< TUniqueId, 1024 >* nearList);
+                   const rstl::reserved_vector< TUniqueId, kMaxObjects >* nearList);
   static void CollideWithStaticBodyNoRot(CPhysicsActor& actor, const CMaterialList& material,
                                          const CMaterialList& otherMaterial,
                                          const CUnitVector3f& normal, float restitution,
@@ -96,12 +96,12 @@ public:
       CCollisionInfo& collision, double& distance);
   static bool DetectDynamicCollision(const CCollisionPrimitive& primitive,
                                      const CTransform4f& transform,
-                                     const rstl::reserved_vector< TUniqueId, 1024 >& nearList,
+                                     const rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList,
                                      TUniqueId& idOut, CCollisionInfoList& collisions,
                                      const CStateManager& mgr);
   static bool
   DetectDynamicCollisionBoolean(const CCollisionPrimitive& primitive, const CTransform4f& transform,
-                                const rstl::reserved_vector< TUniqueId, 1024 >& nearList,
+                                const rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList,
                                 const CStateManager& mgr);
   // Guessed overload identities for Echoes's per-actor collision adapters.
   static bool DetectDynamicCollision(const CCollisionPrimitive& primitive,
@@ -116,30 +116,30 @@ public:
                                            CCollisionInfo& collision, double& distance);
   static bool DetectDynamicCollisionMoving(const CCollisionPrimitive& primitive,
                                            const CTransform4f& transform,
-                                           const rstl::reserved_vector< TUniqueId, 1024 >& nearList,
+                                           const rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList,
                                            const CVector3f& direction, TUniqueId& idOut,
                                            CCollisionInfo& collision, double& distance,
                                            const CStateManager& mgr);
   static bool DetectCollision_Cached_Moving(
       const CStateManager& mgr, CAreaCollisionCache& cache, const CCollisionPrimitive& primitive,
       const CTransform4f& transform, const CMaterialFilter& filter,
-      const rstl::reserved_vector< TUniqueId, 1024 >& nearList, const CVector3f& direction,
+      const rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList, const CVector3f& direction,
       TUniqueId& idOut, CCollisionInfo& collision, double& distance);
   static bool DetectCollision_Cached(const CStateManager& mgr, CAreaCollisionCache& cache,
                                      const CCollisionPrimitive& primitive,
                                      const CTransform4f& transform, const CMaterialFilter& filter,
-                                     const rstl::reserved_vector< TUniqueId, 1024 >& nearList,
+                                     const rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList,
                                      TUniqueId& idOut, CCollisionInfoList& collisions);
   static bool
   DetectCollisionBoolean_Cached(const CStateManager& mgr, CAreaCollisionCache& cache,
                                 const CCollisionPrimitive& primitive, const CTransform4f& transform,
                                 const CMaterialFilter& filter,
-                                const rstl::reserved_vector< TUniqueId, 1024 >& nearList);
+                                const rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList);
   static void MakeCollisionCallbacks(CStateManager& mgr, CPhysicsActor& actor, const TUniqueId& id,
                                      const CCollisionInfoList& collisions);
   static bool DetectCollisionBoolean(const CStateManager& mgr, const CCollisionPrimitive& primitive,
                                      const CTransform4f& transform, const CMaterialFilter& filter,
-                                     const rstl::reserved_vector< TUniqueId, 1024 >& nearList);
+                                     const rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList);
   static void BuildAreaCollisionCache(const CStateManager& mgr, CAreaCollisionCache& cache);
 
   static CRayCastResult RayStaticIntersection(const CStateManager& mgr, const CVector3f& position,
@@ -154,16 +154,16 @@ public:
   static bool RayDynamicLineOfSightTest(const CStateManager& mgr, const CVector3f& position,
                                         const CVector3f& direction, float length,
                                         const CMaterialFilter& filter,
-                                        const rstl::reserved_vector< TUniqueId, 1024 >& nearList,
+                                        const rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList,
                                         const CActor* ignoreActor);
   static CRayCastResult
   RayDynamicIntersection(const CStateManager& mgr, TUniqueId& idOut, const CVector3f& position,
                          const CVector3f& direction, float length, const CMaterialFilter& filter,
-                         const rstl::reserved_vector< TUniqueId, 1024 >& nearList);
+                         const rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList);
   static CRayCastResult
   RayWorldIntersection(const CStateManager& mgr, TUniqueId& idOut, const CVector3f& position,
                        const CVector3f& direction, float length, const CMaterialFilter& filter,
-                       const rstl::reserved_vector< TUniqueId, 1024 >& nearList);
+                       const rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList);
 
   // Echoes's packed cache is a separate interface from the legacy area cache above.
   // Guessed names for the native keep/remove near-list policy.
@@ -171,13 +171,13 @@ public:
 
   static void MoveAndCollide(CStateManager& mgr, CPhysicsActor& actor, float dt,
                              const ICollisionFilter& collisionFilter,
-                             const rstl::reserved_vector< TUniqueId, 1024 >* nearList);
+                             const rstl::reserved_vector< TUniqueId, kMaxObjects >* nearList);
   static rstl::optional_object< CVector3f >
   FindNonIntersectingVector(const CStateManager& mgr, CPhysicsActor& actor,
                             const CCollisionPrimitive& primitive);
   static void CollisionFailsafe(const CStateManager& mgr, CCollisionCache& cache,
                                 CPhysicsActor& actor, const CCollisionPrimitive& primitive,
-                                const rstl::reserved_vector< TUniqueId, 1024 >& nearList,
+                                const rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList,
                                 float dtFraction, uint failsafeTicks, float impulseScale);
   static bool DetectStaticCollision_Cached_Moving(const CStateManager& mgr, CCollisionCache& cache,
                                                   const CCollisionPrimitive& primitive,
@@ -197,25 +197,25 @@ public:
   static bool DetectCollision_Cached_Moving(
       const CStateManager& mgr, CCollisionCache& cache, const CCollisionPrimitive& primitive,
       const CTransform4f& transform, const CMaterialFilter& filter,
-      const rstl::reserved_vector< TUniqueId, 1024 >& nearList, const CVector3f& direction,
+      const rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList, const CVector3f& direction,
       CCollisionInfo& collision, double& distance);
   static bool DetectCollision_Cached(const CStateManager& mgr, CCollisionCache& cache,
                                      const CCollisionPrimitive& primitive,
                                      const CTransform4f& transform, const CMaterialFilter& filter,
-                                     const rstl::reserved_vector< TUniqueId, 1024 >& nearList,
+                                     const rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList,
                                      TUniqueId& idOut, CCollisionInfoList& collisions);
   static bool
   DetectCollisionBoolean_Cached(const CStateManager& mgr, CCollisionCache& cache,
                                 const CCollisionPrimitive& primitive, const CTransform4f& transform,
                                 const CMaterialFilter& filter,
-                                const rstl::reserved_vector< TUniqueId, 1024 >& nearList);
+                                const rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList);
   static bool CacheActorGeometry(const CStateManager& mgr, CCollisionCache& cache,
                                  const CEntity* entity);
   static void UpdateCollisionCache(const CStateManager& mgr, CCollisionCache& cache,
-                                   rstl::reserved_vector< TUniqueId, 1024 >& nearList,
+                                   rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList,
                                    ECacheUpdatePolicy policy);
   static void BuildCollisionCache(const CStateManager& mgr, CCollisionCache& cache,
-                                  rstl::reserved_vector< TUniqueId, 1024 >& nearList,
+                                  rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList,
                                   ECacheUpdatePolicy policy);
   static void BuildCollisionCache(const CStateManager& mgr, CCollisionCache& cache,
                                   const CMaterialFilter& filter);

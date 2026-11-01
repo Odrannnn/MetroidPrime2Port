@@ -267,7 +267,7 @@ CProjectileTouchResult CGameProjectile::CanCollideWith(CActor& actor, CStateMana
 CRayCastResult
 CGameProjectile::RayCollisionCheckWithWorld(TUniqueId& idOut, const CVector3f& start,
                                             const CVector3f& end, float magnitude,
-                                            rstl::reserved_vector< TUniqueId, 1024 >& nearList,
+                                            rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList,
                                             CStateManager& mgr, EStaticGeometryTest staticTest) {
   idOut = kInvalidUniqueId;
   mPendingDamagee = kInvalidUniqueId;
@@ -295,7 +295,7 @@ CGameProjectile::RayCollisionCheckWithWorld(TUniqueId& idOut, const CVector3f& s
     bestMagnitude = worldResult.GetTime();
     result = worldResult;
   }
-  for (rstl::reserved_vector< TUniqueId, 1024 >::iterator it = nearList.begin();
+  for (rstl::reserved_vector< TUniqueId, kMaxObjects >::iterator it = nearList.begin();
        it != nearList.end(); ++it) {
     if (CActor* actor = static_cast< CActor* >(mgr.ObjectById(*it))) {
       const CProjectileTouchResult touch = CanCollideWith(*actor, mgr);
@@ -460,7 +460,7 @@ CRayCastResult CGameProjectile::DoCollisionCheck(TUniqueId& idOut, CStateManager
   CRayCastResult result = CRayCastResult::MakeInvalid();
   if (mActive) {
     const CVector3f delta = GetTranslation() - mPreviousPos;
-    rstl::reserved_vector< TUniqueId, 1024 > nearList;
+    rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
     mgr.BuildNearList(nearList, GetProjectileBounds(),
                       CMaterialFilter::MakeExclude(CMaterialList(kMT_ProjectilePassthrough)), this);
     const EStaticGeometryTest staticTest =

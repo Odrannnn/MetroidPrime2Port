@@ -1092,9 +1092,9 @@ bool CDarkSamus::AnyIncomingMissiles(CStateManager& mgr, const CTriggerData&) co
   const CVector3f& pos = GetTranslation();
   const CVector3f max(pos.GetX() + 100.f, pos.GetY() + 100.f, pos.GetZ() + 100.f);
   const CVector3f min(pos.GetX() - 100.f, pos.GetY() - 100.f, pos.GetZ() - 100.f);
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildNearList(nearList, CAABox(min, max), CMaterialFilter(), this);
-  for (rstl::reserved_vector< TUniqueId, 1024 >::const_iterator it = nearList.begin();
+  for (rstl::reserved_vector< TUniqueId, kMaxObjects >::const_iterator it = nearList.begin();
        it != nearList.end(); ++it) {
     // The retail casts the entry and hands it to fn_10_1B9B0, which answers false for a
     // null projectile (the `mr.` test at 0x0001B9C0), so the cast's result is used as it is.
@@ -2686,9 +2686,9 @@ void CDarkSamus::ReflectProjectiles(CStateManager& mgr) {
   const CVector3f& pos = GetTranslation();
   const CVector3f max(pos.GetX() + 100.f, pos.GetY() + 100.f, pos.GetZ() + 100.f);
   const CVector3f min(pos.GetX() + -100.f, pos.GetY() + -100.f, pos.GetZ() + -100.f);
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildNearList(nearList, CAABox(min, max), CMaterialFilter(), this);
-  for (rstl::reserved_vector< TUniqueId, 1024 >::iterator it = nearList.begin();
+  for (rstl::reserved_vector< TUniqueId, kMaxObjects >::iterator it = nearList.begin();
        it != nearList.end(); ++it) {
     CEnergyProjectile* proj = TCastToPtr< CEnergyProjectile >(mgr.ObjectById(*it));
     if (!CanReflectProjectile(mgr, proj, -1)) {
@@ -3893,7 +3893,7 @@ void CDarkSamus::SweepBeamRay(CStateManager& mgr, const CVector3f& dir, float le
   static const CMaterialFilter skFilter = CMaterialFilter::MakeInclude(
       CMaterialList(kMT_Player, kMT_Platform)); // 0x0000BE88
   const CVector3f gunPos = mGunLctrXf.GetTranslation();
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildNearList(nearList, gunPos, dir, length, skFilter, nullptr);
   TUniqueId hit = kInvalidUniqueId;
   CGameCollision::RayDynamicIntersection(mgr, hit, gunPos, dir, length, skFilter, nearList);
@@ -4357,7 +4357,7 @@ int CDarkSamus::ClassifyLineToPlayer(CStateManager& mgr) const {
   for (int i = 0; i < 3; ++i) {
     const CVector3f origin = GetTranslation() + CVector3f(0.f, 0.f, heights[i]);
     const CVector3f start = origin + back * dir;
-    rstl::reserved_vector< TUniqueId, 1024 > nearList;
+    rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
     mgr.BuildNearList(nearList, start, dir.AsNormalized(), length, filter, nullptr);
     TUniqueId hitId = kInvalidUniqueId;
     const CRayCastResult result =
@@ -4901,7 +4901,7 @@ void CDarkSamus::RunCollisionFailsafe(CStateManager& mgr) {
   const CAABox motionVolume = GetMotionVolume(0.f);
   CAreaCollisionCache cache(motionVolume);
   CGameCollision::BuildAreaCollisionCache(mgr, cache);
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildColliderList(nearList, *this, motionVolume);
   CGameCollision::CollisionFailsafe(mgr, cache, *this, *GetCollisionPrimitive(), nearList, 0.f, 0,
                                     0.f);
@@ -5197,9 +5197,9 @@ void CDarkSamus::ApplyDashStuckBlast(CStateManager& mgr) {
   const CVector3f max(pos.GetX() + radius, pos.GetY() + radius, pos.GetZ() + radius);
   const CVector3f min(pos.GetX() + -radius, pos.GetY() + -radius, pos.GetZ() + -radius);
   const CAABox box(min, max);
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildNearList(nearList, box, filter, this);
-  for (rstl::reserved_vector< TUniqueId, 1024 >::iterator it = nearList.begin();
+  for (rstl::reserved_vector< TUniqueId, kMaxObjects >::iterator it = nearList.begin();
        it != nearList.end(); ++it) {
     // The near list holds actors only; retail passes the entity on as one.
     CActor* actor = static_cast< CActor* >(mgr.ObjectById(*it));
@@ -5225,7 +5225,7 @@ void CDarkSamus::ApplyDashStuckBlast(CStateManager& mgr) {
 // @ fn_10_16048
 float CDarkSamus::GetDashPathClearance(
     CStateManager& mgr, const CVector3f& dest,
-    const rstl::reserved_vector< TUniqueId, 1024 >& nearList) const {
+    const rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList) const {
   const CVector3f& pos = GetTranslation();
   const CVector3f delta(dest.GetX() - pos.GetX(), dest.GetY() - pos.GetY(), 0.f);
   const float length = delta.Magnitude();
@@ -5349,7 +5349,7 @@ float CDarkSamus::PickDash(CStateManager& mgr, float* weights, const CVector3f* 
   const CVector3f boxMin(pos.GetX() + -reach, pos.GetY() + -reach, pos.GetZ() + -2.f);
   const CMaterialFilter filter = CMaterialFilter::MakeIncludeExclude(
       CMaterialList(kMT_Solid, kMT_AIBlock), CMaterialList(kMT_Player, kMT_AIPassthrough));
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildNearList(nearList, CAABox(boxMin, boxMax), filter, this);
 
   for (int i = 0; i < 8; ++i) {

@@ -102,7 +102,7 @@ void CBeamProjectile::UpdateFx(const CTransform4f& xf, float dt, CStateManager& 
                      .GetTransformedAABox(xf);
 
   TUniqueId collideId = kInvalidUniqueId;
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildNearList(nearList, mWorldBounds,
                     CMaterialFilter::MakeExclude(CMaterialList(kMT_ProjectilePassthrough)), this);
 

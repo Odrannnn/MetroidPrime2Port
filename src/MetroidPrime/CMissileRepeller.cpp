@@ -37,7 +37,7 @@ void CMissileRepeller::Update(CStateManager& mgr, const CActor& actor, float dt)
 
   const CVector3f center = actor.GetAimPosition(mgr, 0.f) + mOffset;
   const CMaterialFilter filter = CMaterialFilter::MakeInclude(CMaterialList(kMT_Projectile));
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildNearList(
       nearList, CAABox(center - mRadius * CVector3f::One(), center + mRadius * CVector3f::One()),
       filter, &actor);
@@ -49,7 +49,7 @@ void CMissileRepeller::Update(CStateManager& mgr, const CActor& actor, float dt)
   }
 
   const float radiusSq = mRadius * mRadius;
-  for (rstl::reserved_vector< TUniqueId, 1024 >::const_iterator it = nearList.begin();
+  for (rstl::reserved_vector< TUniqueId, kMaxObjects >::const_iterator it = nearList.begin();
        it != nearList.end(); ++it) {
     CGameProjectile* projectile = TCastToPtr< CGameProjectile >(mgr.ObjectById(*it));
     if (!projectile ||

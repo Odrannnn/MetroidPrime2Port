@@ -96,10 +96,10 @@ float CDarkSamus::GetIncomingProjectileDistance(CStateManager& mgr) const {
   const CVector3f& pos = GetTranslation();
   const CVector3f max(pos.GetX() + 100.f, pos.GetY() + 100.f, pos.GetZ() + 100.f);
   const CVector3f min(pos.GetX() + -100.f, pos.GetY() + -100.f, pos.GetZ() + -100.f);
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildNearList(nearList, CAABox(min, max), CMaterialFilter(), this);
   float best = 3.4028235e38f; // lbl_10_rodata_554
-  for (rstl::reserved_vector< TUniqueId, 1024 >::const_iterator it = nearList.begin();
+  for (rstl::reserved_vector< TUniqueId, kMaxObjects >::const_iterator it = nearList.begin();
        it != nearList.end(); ++it) {
     const CEnergyProjectile* proj = TCastToConstPtr< CEnergyProjectile >(mgr.ObjectById(*it));
     if (!CanReflectProjectile(mgr, proj, -1)) { // 0x0001BD58

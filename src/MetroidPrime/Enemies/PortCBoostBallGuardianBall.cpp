@@ -700,12 +700,12 @@ void CBoostBallGuardianBall::ContactSweep(float dt, CStateManager& mgr) {
   box.AccumulateBounds(local.GetMinPoint() + motion);
   box.AccumulateBounds(local.GetMaxPoint() + motion);
 
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildNearList(nearList, box,
                     CMaterialFilter::MakeInclude(CMaterialList(
                         kMT_Solid, kMT_NonSolidDamageable)), // lbl_30_data_C18, lbl_30_data_C1C
                     this);
-  for (rstl::reserved_vector< TUniqueId, 1024 >::iterator it = nearList.begin();
+  for (rstl::reserved_vector< TUniqueId, kMaxObjects >::iterator it = nearList.begin();
        it != nearList.end(); ++it) {
     if (*it == mOwnerId) {
       nearList.erase(it); // fn_30_14C54
@@ -738,7 +738,7 @@ void CBoostBallGuardianBall::ContactSweep(float dt, CStateManager& mgr) {
     }
   }
 
-  for (rstl::reserved_vector< TUniqueId, 1024 >::iterator it = nearList.begin();
+  for (rstl::reserved_vector< TUniqueId, kMaxObjects >::iterator it = nearList.begin();
        it != nearList.end(); ++it) {
     const CScriptDamageableTrigger* trigger =
         TCastToConstPtr< CScriptDamageableTrigger >(mgr.GetObjectById(*it));
@@ -868,7 +868,7 @@ bool CBoostBallGuardianBall::IsPathClear(CStateManager& mgr, const CVector3f& di
   const CMaterialFilter filter(CMaterialList(kMT_Solid, kMT_NonSolidDamageable),  // C24, C28
                                CMaterialList(kMT_Character, kMT_CollisionActor),  // C2C, C30
                                CMaterialFilter::kFT_IncludeExclude);
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildNearList(nearList, box, filter, this);
   for (int i = 0; i < nearList.size();) {
     bool erased = false;

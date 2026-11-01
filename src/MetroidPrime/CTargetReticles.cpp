@@ -243,7 +243,7 @@ void CCompoundTargetReticle::PortTriUpdateScanPointer(const CStateManager& mgr) 
   const CMaterialFilter filter = CMaterialFilter::MakeIncludeExclude(
       CMaterialList(kMT_Solid, kMT_Character, kMT_NonSolidDamageable),
       CMaterialList(kMT_ProjectilePassthrough, kMT_Player));
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildNearList(nearList, start, dir, 100.f, filter, mgr.GetPlayer(mPlayerIndex));
   TUniqueId hitId = kInvalidUniqueId;
   const CRayCastResult result = mgr.RayWorldIntersection(hitId, start, dir, 100.f, filter, nearList);
@@ -2133,7 +2133,7 @@ void CCompoundTargetReticle::PortUpdateRemasteredCrosshair(float dt, const CStat
     dir.Normalize();
     static const CMaterialFilter filter = CMaterialFilter::MakeIncludeExclude(
         CMaterialList(kMT_Solid), CMaterialList(kMT_Player, kMT_ProjectilePassthrough));
-    rstl::reserved_vector< TUniqueId, 1024 > nearList;
+    rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
     mgr.BuildNearList(nearList, eye, dir, kRange, filter, mgr.GetPlayer(mPlayerIndex));
     TUniqueId hitId = kInvalidUniqueId;
     const CRayCastResult hit = mgr.RayWorldIntersection(hitId, eye, dir, kRange, filter, nearList);

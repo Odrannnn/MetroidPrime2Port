@@ -57,7 +57,7 @@ void CMorphBallShadow::RenderIdBuffer(const CAABox& aabb, CStateManager& mgr, CP
   const float depth = aabb.GetDepth();
   CGraphics::SetOrtho(-halfWidth, halfWidth, halfHeight, -halfHeight, 0.f, FLT_EPSILON + depth);
   gpRender->SetViewport(0, CGraphics::GetRenderMode().efbHeight - mHeight, mWidth, mHeight);
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildNearList(nearList, aabb, CMaterialFilter::GetPassEverything(), &player);
 
   GXSetAlphaUpdate(true);
@@ -87,7 +87,7 @@ void CMorphBallShadow::RenderIdBuffer(const CAABox& aabb, CStateManager& mgr, CP
   CCubeModel::SetRenderModelBlack(true);
 
   int id = 1;
-  for (rstl::reserved_vector< TUniqueId, 1024 >::const_iterator it = nearList.begin();
+  for (rstl::reserved_vector< TUniqueId, kMaxObjects >::const_iterator it = nearList.begin();
        it != nearList.end() && id < 64; ++it) {
     CActor* actor = static_cast< CActor* >(const_cast< CEntity* >(mgr.GetObjectById(*it)));
     if (actor && actor->CanDrawStatic() && actor->GetTakesProjectedShadow()) {

@@ -1158,7 +1158,7 @@ bool CIng::HeardShot(CStateManager&, const CTriggerData&) const { return mHeardS
 bool CIng::AreaClear(CStateManager& mgr, const CTriggerData&) const {
   const CVector3f half = mModelScale * 10.f;
   const CVector3f pos = GetTranslation();
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildNearList(nearList, CAABox(pos - half, pos + half),
                     CMaterialFilter::MakeInclude(CMaterialList(kMT_Player, kMT_Character)), this);
   return nearList.empty();

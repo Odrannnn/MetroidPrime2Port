@@ -155,10 +155,10 @@ bool CTryclops::InMaxRange(CStateManager& mgr, const CTriggerData&) const {
   const CAABox bounds(GetTranslation() + CVector3f(negRange, negRange, 0.f),
                       GetTranslation() +
                           CVector3f(detectionRange, detectionRange, detectionHeight));
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildNearList(nearList, bounds, CMaterialFilter::MakeInclude(CMaterialList(kMT_Bomb)), this);
   mBombId = kInvalidUniqueId;
-  for (rstl::reserved_vector< TUniqueId, 1024 >::const_iterator it = nearList.begin();
+  for (rstl::reserved_vector< TUniqueId, kMaxObjects >::const_iterator it = nearList.begin();
        it != nearList.end(); ++it) {
     if (const CBomb* const bomb = TCastToConstPtr< CBomb >(mgr.GetObjectById(*it))) {
       if (!bomb->IsBeingDragged()) {
@@ -960,12 +960,12 @@ bool CTryclops::BallCloseToCollision(const CPlayer& player, const CStateManager&
   const CCollidableSphere sphere(
       CSphere(player.GetTranslation() + CVector3f(0.f, 0.f, radius), radius),
       CMaterialList(kMT_Player, kMT_Solid));
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildColliderList(nearList, player, sphere.CalculateLocalAABox());
   if (CGameCollision::DetectStaticCollisionBoolean(mgr, sphere, CTransform4f::Identity(), filter)) {
     return true;
   }
-  for (rstl::reserved_vector< TUniqueId, 1024 >::const_iterator it = nearList.begin();
+  for (rstl::reserved_vector< TUniqueId, kMaxObjects >::const_iterator it = nearList.begin();
        it != nearList.end(); ++it) {
     const TUniqueId& id = *it;
     if (id != GetUniqueId()) {

@@ -546,7 +546,7 @@ private:
   // fn_10_16048: how free the path to dest is: 1.0 clear, 0.49 off per blocked side ray, 0 when
   // the centre ray is blocked.
   float GetDashPathClearance(CStateManager& mgr, const CVector3f& dest,
-                             const rstl::reserved_vector< TUniqueId, 1024 >& nearList) const;
+                             const rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList) const;
 
   // fn_10_17E14: the fight script's object - the one with the uid at the guest's 0x974 - and
   // module 11's accessor on it (fn_11_B70, which returns the object's 0x24).

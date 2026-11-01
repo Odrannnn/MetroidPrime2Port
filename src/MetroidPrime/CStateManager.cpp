@@ -560,7 +560,7 @@ void CStateManager::UpdateObjectInLists(CEntity& entity) {
 
 CRayCastResult CStateManager::RayWorldIntersection(
     TUniqueId& idOut, const CVector3f& position, const CVector3f& direction, float length,
-    const CMaterialFilter& filter, const rstl::reserved_vector< TUniqueId, 1024 >& nearList) const {
+    const CMaterialFilter& filter, const rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList) const {
   return CGameCollision::RayWorldIntersection(*this, idOut, position, direction, length, filter,
                                               nearList);
 }
@@ -572,7 +572,7 @@ CRayCastResult CStateManager::RayStaticIntersection(const CVector3f& position,
 }
 
 bool CStateManager::RayCollideWorld(const CVector3f& start, const CVector3f& end,
-                                    const rstl::reserved_vector< TUniqueId, 1024 >& nearList,
+                                    const rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList,
                                     const CMaterialFilter& filter,
                                     const CActor* ignoreActor) const {
   return RayCollideWorldInternal(start, end, filter, nearList, ignoreActor);
@@ -580,7 +580,7 @@ bool CStateManager::RayCollideWorld(const CVector3f& start, const CVector3f& end
 
 bool CStateManager::RayCollideWorld(const CVector3f& start, const CVector3f& end,
                                     const CMaterialFilter& filter, const CActor* ignoreActor) {
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   CVector3f direction = end - start;
   const float length = direction.Magnitude();
   direction *= 1.f / length;
@@ -591,7 +591,7 @@ bool CStateManager::RayCollideWorld(const CVector3f& start, const CVector3f& end
 
 const bool CStateManager::RayCollideWorldInternal(
     const CVector3f& start, const CVector3f& end, const CMaterialFilter& filter,
-    const rstl::reserved_vector< TUniqueId, 1024 >& nearList, const CActor* ignoreActor) const {
+    const rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList, const CActor* ignoreActor) const {
   CVector3f direction = end - start;
   bool visible = true;
   if (direction.CanBeNormalized()) {
@@ -612,18 +612,18 @@ void CStateManager::AddObject(CEntity* entity) {
   }
 }
 
-void CStateManager::BuildNearList(rstl::reserved_vector< TUniqueId, 1024 >& nearList,
+void CStateManager::BuildNearList(rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList,
                                   const CAABox& bounds, const CMaterialFilter& filter,
                                   const CActor* ignoreActor) const {
   mSortedListManager->BuildNearList(nearList, bounds, filter, ignoreActor);
 }
 
-void CStateManager::BuildColliderList(rstl::reserved_vector< TUniqueId, 1024 >& nearList,
+void CStateManager::BuildColliderList(rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList,
                                       const CActor& actor, const CAABox& bounds) const {
   mSortedListManager->BuildNearList(nearList, actor, bounds);
 }
 
-void CStateManager::BuildNearList(rstl::reserved_vector< TUniqueId, 1024 >& nearList,
+void CStateManager::BuildNearList(rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList,
                                   const CVector3f& position, const CVector3f& direction,
                                   float length, const CMaterialFilter& filter,
                                   const CActor* ignoreActor) const {
@@ -2588,7 +2588,7 @@ TUniqueId CStateManager::AllocateUniqueId() {
   ushort ourIndex;
   do {
     ourIndex = mNextFreeIndex;
-    mNextFreeIndex = (ourIndex + 1) % 1024;
+    mNextFreeIndex = (ourIndex + 1) % kMaxObjects;
     if (mNextFreeIndex == lastIndex) {
 #ifdef TARGET_PC
       // Port: report it once. The do/while below cannot find a free index and would spin here
@@ -2602,7 +2602,7 @@ TUniqueId CStateManager::AllocateUniqueId() {
       // Nothing here can find a free index, so the do/while would spin forever. Say what happened
       // - including who holds the pool - and stop: a run that dies naming the cause is worth more
       // than one that hangs.
-      std::fprintf(stderr, "[ids] the object id pool is exhausted (1024 live objects)\n");
+      std::fprintf(stderr, "[ids] the object id pool is exhausted (%d live objects)\n", int(kMaxObjects));
       PortLogIdPressure();
       std::fflush(stderr);
       std::abort();
@@ -2612,7 +2612,7 @@ TUniqueId CStateManager::AllocateUniqueId() {
     }
   } while (mAllocatedObjectIndices[ourIndex]);
 
-  mObjectIndexArray[ourIndex] = (mObjectIndexArray[ourIndex] + 1) & 0x3f;
+  mObjectIndexArray[ourIndex] = (mObjectIndexArray[ourIndex] + 1) & kUniqueIdVersionMask;
   if (TUniqueId(mObjectIndexArray[ourIndex], ourIndex) == kInvalidUniqueId) {
     mObjectIndexArray[ourIndex] = 0;
   }
@@ -3528,7 +3528,7 @@ CPlane CScriptWater::GetWRSurfacePlane() const {
 
 const bool
 CStateManager::TestRayDamage(const CVector3f& position, const CActor& damagee,
-                             const rstl::reserved_vector< TUniqueId, 1024 >& nearList) const {
+                             const rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList) const {
   if (damagee.GetHealthInfo() == nullptr) {
     return false;
   }
@@ -3628,9 +3628,9 @@ void CStateManager::ProcessRadiusDamage(const CActor& source, CActor& damagee, T
   const CAABox bounds(position + CVector3f(negativeRadius, negativeRadius, negativeRadius),
                       position + CVector3f(radius, radius, radius));
 
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   BuildNearList(nearList, bounds, localFilter, nullptr);
-  for (rstl::reserved_vector< TUniqueId, 1024 >::iterator it = nearList.begin();
+  for (rstl::reserved_vector< TUniqueId, kMaxObjects >::iterator it = nearList.begin();
        it != nearList.end(); ++it) {
     CActor* actor = static_cast< CActor* >(ObjectById(*it));
     if (actor != nullptr) {
@@ -3661,9 +3661,9 @@ void CStateManager::ApplyDamageToWorld(TUniqueId owner, CActor& projectile,
         weapon->HasAttrib(CWeapon::kPA_TriggerBomb) || weapon->HasAttrib(CWeapon::kPA_PowerBombs);
   }
 
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   BuildNearList(nearList, bounds, useFilter, &projectile);
-  for (rstl::reserved_vector< TUniqueId, 1024 >::iterator it = nearList.begin();
+  for (rstl::reserved_vector< TUniqueId, kMaxObjects >::iterator it = nearList.begin();
        it != nearList.end(); ++it) {
     CActor* const actor = static_cast< CActor* >(ObjectById(*it));
     CPlayer* const player = TCastToPtr< CPlayer >(actor);
@@ -5039,7 +5039,7 @@ void CStateManager::PortWarpToArea(TAreaId aid) {
 
 namespace {
 // A warp holds off starting an area's stream while fewer than this many object ids are free. The
-// pool is 1024 (kMaxObjects) and a busy area's script objects run to several hundred, so a warp
+// pool is kMaxObjects (1024 retail, 2048 since the id widening; these thresholds are free-id counts measured at 1024) and a busy area's script objects run to several hundred, so a warp
 // started against a nearly-full pool is what exhausted it (a save load comes up at ~1008 and
 // settles near ~350 a few hundred frames later).
 constexpr int kPortWarpMinFreeIds = 256;

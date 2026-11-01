@@ -355,13 +355,13 @@ bool CIceImpact::GenerateParticlesAgainstWorld(CStateManager& mgr,
 
 bool CIceImpact::GenerateParticlesAgainstActors(CStateManager& mgr, const CAABox& bounds,
                                                 const CSphere& outer, const CSphere& inner) {
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildNearList(
       nearList, bounds,
       CMaterialFilter::MakeExclude(CMaterialList(kMT_Character, kMT_Player, kMT_Projectile,
                                                  kMT_ProjectilePassthrough, kMT_AIJoint)),
       this);
-  for (rstl::reserved_vector< TUniqueId, 1024 >::const_iterator it = nearList.begin();
+  for (rstl::reserved_vector< TUniqueId, kMaxObjects >::const_iterator it = nearList.begin();
        it != nearList.end(); ++it) {
     CActor* actor = static_cast< CActor* >(mgr.ObjectById(*it));
     CPhysicsActor* physActor = TCastToPtr< CPhysicsActor >(actor);

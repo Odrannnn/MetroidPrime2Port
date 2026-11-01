@@ -17,9 +17,9 @@ public:
                     float dampingRadius) const;
   CVector3f Separation(const CPhysicsActor& actor, const CVector3f& position,
                        float separation) const;
-  CVector3f Alignment(const CPhysicsActor& actor, rstl::reserved_vector< TUniqueId, 1024 >& list,
+  CVector3f Alignment(const CPhysicsActor& actor, rstl::reserved_vector< TUniqueId, kMaxObjects >& list,
                       const CStateManager& mgr) const;
-  CVector3f Cohesion(const CPhysicsActor& actor, rstl::reserved_vector< TUniqueId, 1024 >& list,
+  CVector3f Cohesion(const CPhysicsActor& actor, rstl::reserved_vector< TUniqueId, kMaxObjects >& list,
                      float dampingRadius, const CStateManager& mgr) const;
   CVector2f Separation2D(const CPhysicsActor& actor, const CVector2f& position,
                          float separation) const;

@@ -145,7 +145,7 @@ void CHudRadarInterface::Draw(const CStateManager& mgr, float alpha) const {
     const CVector3f extent(xyRadius, xyRadius, zRadius);
     bounds.AccumulateBounds(playerPos + -extent);
     bounds.AccumulateBounds(playerPos + extent);
-    rstl::reserved_vector< TUniqueId, 1024 > nearList;
+    rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
     mgr.BuildNearList(nearList, bounds, filter, nullptr);
     int count = 0;
     for (AUTO(it, nearList.begin()); it != nearList.end(); ++it) {

@@ -750,7 +750,7 @@ bool CPlayer::WithinOrbitScreenBox(const CVector3f& screenPosition, EPlayerZoneI
   return false;
 }
 
-void CPlayer::FindOrbitableObjects(const rstl::reserved_vector< TUniqueId, 1024 >& candidates,
+void CPlayer::FindOrbitableObjects(const rstl::reserved_vector< TUniqueId, kMaxObjects >& candidates,
                                    rstl::reserved_vector< TUniqueId, 64 >& objects,
                                    EPlayerZoneInfo zone, EPlayerZoneType type, CStateManager& mgr,
                                    bool onScreenTest) {
@@ -758,7 +758,7 @@ void CPlayer::FindOrbitableObjects(const rstl::reserved_vector< TUniqueId, 1024 
   CVector3f forward = GetTransform().GetForward();
   forward.Normalize();
   const CFirstPersonCamera* const fpCamera = mCameraManager->GetFirstPersonCamera();
-  for (rstl::reserved_vector< TUniqueId, 1024 >::const_iterator it = candidates.begin();
+  for (rstl::reserved_vector< TUniqueId, kMaxObjects >::const_iterator it = candidates.begin();
        it != candidates.end(); ++it) {
     const CActor* const act = TCastToConstPtr< CActor >(mgr.GetObjectById(*it));
     if (act) {
@@ -935,7 +935,7 @@ void CPlayer::UpdateOrbitableObjects(CStateManager& mgr) {
       if (mPlayerState->GetCurrentVisor() == CPlayerState::kPV_Scan) {
         filter = CMaterialFilter::MakeInclude(CMaterialList(kMT_Scannable));
       }
-      rstl::reserved_vector< TUniqueId, 1024 > nearList;
+      rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
       mgr.BuildNearList(nearList, bounds, filter, nullptr);
       FindOrbitableObjects(nearList, mNearbyOrbitObjects, mOrbitZoneMode, kZT_Always, mgr, true);
       FindOrbitableObjects(nearList, mOnScreenOrbitObjects, mOrbitZoneMode, mOrbitZoneType, mgr,
@@ -1764,7 +1764,7 @@ void CPlayer::UpdateGrappleState(const CFinalInput& input, CStateManager& mgr) {
 }
 
 bool CPlayer::ValidateFPPosition(CVector3f position, CStateManager& mgr) {
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   const CMaterialFilter filter = CMaterialFilter::MakeInclude(CMaterialList(kMT_Solid));
   const CVector3f margin(1.f, 1.f, 1.f);
   mgr.BuildColliderList(nearList, *this,

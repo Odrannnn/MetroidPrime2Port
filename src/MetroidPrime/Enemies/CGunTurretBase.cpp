@@ -368,13 +368,13 @@ bool CGunTurretBase::PlayerInRange(CStateManager& mgr, float range) const {
       }
     }
     if (x8bf_) {
-      rstl::reserved_vector< TUniqueId, 1024 > nearList;
+      rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
       static CMaterialFilter filter = CMaterialFilter::MakeIncludeExclude(
           CMaterialList(kMT_Character), CMaterialList(kMT_ProjectilePassthrough, kMT_Player));
       const float r = mDetectionRange;
       const CAABox bounds(pos + CVector3f(-r, -r, -r), pos + CVector3f(r, r, r));
       mgr.BuildNearList(nearList, bounds, filter, this);
-      for (rstl::reserved_vector< TUniqueId, 1024 >::iterator it = nearList.begin();
+      for (rstl::reserved_vector< TUniqueId, kMaxObjects >::iterator it = nearList.begin();
            it != nearList.end(); ++it) {
         CPatterned* patterned =
             const_cast< CPatterned* >(TCastToConstPtr< CPatterned >(mgr.GetObjectById(*it)));
@@ -943,14 +943,14 @@ CActor* CGunTurretBase::FindTarget(CStateManager& mgr) {
       }
 
       if (x8be_ && !mGunHit) {
-        rstl::reserved_vector< TUniqueId, 1024 > nearList;
+        rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
         static CMaterialFilter filter = CMaterialFilter::MakeIncludeExclude(
             CMaterialList(kMT_Character), CMaterialList(kMT_ProjectilePassthrough, kMT_Player));
         const float r = mMaxAttackRange;
         const CVector3f pos = GetTranslation();
         const CAABox bounds(pos + CVector3f(-r, -r, -r), pos + CVector3f(r, r, r));
         mgr.BuildNearList(nearList, bounds, filter, this);
-        for (rstl::reserved_vector< TUniqueId, 1024 >::iterator it = nearList.begin();
+        for (rstl::reserved_vector< TUniqueId, kMaxObjects >::iterator it = nearList.begin();
              it != nearList.end(); ++it) {
           CPatterned* patterned =
               const_cast< CPatterned* >(TCastToConstPtr< CPatterned >(mgr.GetObjectById(*it)));
@@ -1013,7 +1013,7 @@ void CGunTurretBase::UpdateAttack(CStateManager& mgr, float dt) {
         if (mIsPirateTurret) {
           LaunchProjectile(mgr);
         } else {
-          rstl::reserved_vector< TUniqueId, 1024 > nearList;
+          rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
           TUniqueId hitId = kInvalidUniqueId;
           static CMaterialFilter filter = CMaterialFilter::MakeIncludeExclude(
               CMaterialList(kMT_Solid), CMaterialList(kMT_ProjectilePassthrough));

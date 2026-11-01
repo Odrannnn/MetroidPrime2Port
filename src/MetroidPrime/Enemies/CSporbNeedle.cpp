@@ -69,9 +69,9 @@ void CSporbPowerBomb::Think(float dt, CStateManager& mgr) {
       const CAABox bounds(
           GetTranslation() + CVector3f(negativeRadius, negativeRadius, negativeRadius),
           GetTranslation() + CVector3f(mCurrentRadius, mCurrentRadius, mCurrentRadius));
-      rstl::reserved_vector< TUniqueId, 1024 > nearList;
+      rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
       mgr.BuildNearList(nearList, bounds, filter, this);
-      for (rstl::reserved_vector< TUniqueId, 1024 >::iterator it = nearList.begin();
+      for (rstl::reserved_vector< TUniqueId, kMaxObjects >::iterator it = nearList.begin();
            it != nearList.end(); ++it) {
         const TUniqueId id = *it;
         const CVector3f center = GetTranslation();
@@ -128,7 +128,7 @@ void CSporbPowerBomb::ResolveCollisionWithActor(const CRayCastResult& result, CA
 CRayCastResult
 CSporbPowerBomb::RayCollisionCheckWithWorld(TUniqueId& idOut, const CVector3f& start,
                                             const CVector3f& end, float magnitude,
-                                            rstl::reserved_vector< TUniqueId, 1024 >& nearList,
+                                            rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList,
                                             CStateManager& mgr, EStaticGeometryTest staticTest) {
   return CGameProjectile::RayCollisionCheckWithWorld(idOut, start, end, magnitude, nearList, mgr,
                                                      kSGT_CollisionGeometry);
@@ -338,9 +338,9 @@ void CSporbNeedle::Explode(CStateManager& mgr, TUniqueId hitId) {
                                         mAttackDamage.GetRadius()));
     const CMaterialFilter filter =
         CMaterialFilter::MakeInclude(CMaterialList(skNearCharacter, skNearPlayer));
-    rstl::reserved_vector< TUniqueId, 1024 > nearList;
+    rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
     mgr.BuildNearList(nearList, bounds, filter, nullptr);
-    for (rstl::reserved_vector< TUniqueId, 1024 >::const_iterator it = nearList.begin();
+    for (rstl::reserved_vector< TUniqueId, kMaxObjects >::const_iterator it = nearList.begin();
          it != nearList.end(); ++it) {
       bool isNearOwner = *it == mOwnerId;
       if (const CCollisionActor* actor =

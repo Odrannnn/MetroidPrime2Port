@@ -500,17 +500,17 @@ extern "C" void reachstub_147() { mpReachStub("_ZN11CSfxManager8SfxStartEtssbsbi
 // exactly this: delete the stale alias, not the definition. `docs/research/boot_path_reachable.tsv`
 // still lists the symbol, so re-running the generator here puts the alias back.
 
-// CSortedListManager::BuildColliderList(rstl::reserved_vector<TUniqueId, 1024>&, CActor const&, CAABox const&) const
+// CSortedListManager::BuildColliderList(rstl::reserved_vector< TUniqueId, kMaxObjects >&, CActor const&, CAABox const&) const
 extern "C" void reachstub_151() asm("_ZNK18CSortedListManager17BuildColliderListERN4rstl15reserved_vectorI9TUniqueIdLi1024EEERK6CActorRK6CAABox");
-extern "C" void reachstub_151() { mpReachStub("_ZNK18CSortedListManager17BuildColliderListERN4rstl15reserved_vectorI9TUniqueIdLi1024EEERK6CActorRK6CAABox", "CSortedListManager::BuildColliderList(rstl::reserved_vector<TUniqueId, 1024>&, CActor const&, CAABox const&) const"); }
+extern "C" void reachstub_151() { mpReachStub("_ZNK18CSortedListManager17BuildColliderListERN4rstl15reserved_vectorI9TUniqueIdLi1024EEERK6CActorRK6CAABox", "CSortedListManager::BuildColliderList(rstl::reserved_vector< TUniqueId, kMaxObjects >&, CActor const&, CAABox const&) const"); }
 
-// CSortedListManager::BuildNearList(rstl::reserved_vector<TUniqueId, 1024>&, CAABox const&, CMaterialFilter const&, CActor const*) const
+// CSortedListManager::BuildNearList(rstl::reserved_vector< TUniqueId, kMaxObjects >&, CAABox const&, CMaterialFilter const&, CActor const*) const
 extern "C" void reachstub_152() asm("_ZNK18CSortedListManager13BuildNearListERN4rstl15reserved_vectorI9TUniqueIdLi1024EEERK6CAABoxRK15CMaterialFilterPK6CActor");
-extern "C" void reachstub_152() { mpReachStub("_ZNK18CSortedListManager13BuildNearListERN4rstl15reserved_vectorI9TUniqueIdLi1024EEERK6CAABoxRK15CMaterialFilterPK6CActor", "CSortedListManager::BuildNearList(rstl::reserved_vector<TUniqueId, 1024>&, CAABox const&, CMaterialFilter const&, CActor const*) const"); }
+extern "C" void reachstub_152() { mpReachStub("_ZNK18CSortedListManager13BuildNearListERN4rstl15reserved_vectorI9TUniqueIdLi1024EEERK6CAABoxRK15CMaterialFilterPK6CActor", "CSortedListManager::BuildNearList(rstl::reserved_vector< TUniqueId, kMaxObjects >&, CAABox const&, CMaterialFilter const&, CActor const*) const"); }
 
-// CSortedListManager::BuildNearList(rstl::reserved_vector<TUniqueId, 1024>&, CVector3f const&, CVector3f const&, float, CMaterialFilter const&, CActor const*) const
+// CSortedListManager::BuildNearList(rstl::reserved_vector< TUniqueId, kMaxObjects >&, CVector3f const&, CVector3f const&, float, CMaterialFilter const&, CActor const*) const
 extern "C" void reachstub_153() asm("_ZNK18CSortedListManager13BuildNearListERN4rstl15reserved_vectorI9TUniqueIdLi1024EEERK9CVector3fS7_fRK15CMaterialFilterPK6CActor");
-extern "C" void reachstub_153() { mpReachStub("_ZNK18CSortedListManager13BuildNearListERN4rstl15reserved_vectorI9TUniqueIdLi1024EEERK9CVector3fS7_fRK15CMaterialFilterPK6CActor", "CSortedListManager::BuildNearList(rstl::reserved_vector<TUniqueId, 1024>&, CVector3f const&, CVector3f const&, float, CMaterialFilter const&, CActor const*) const"); }
+extern "C" void reachstub_153() { mpReachStub("_ZNK18CSortedListManager13BuildNearListERN4rstl15reserved_vectorI9TUniqueIdLi1024EEERK9CVector3fS7_fRK15CMaterialFilterPK6CActor", "CSortedListManager::BuildNearList(rstl::reserved_vector< TUniqueId, kMaxObjects >&, CVector3f const&, CVector3f const&, float, CMaterialFilter const&, CActor const*) const"); }
 
 // CStateManager::AddObject(CEntity&)
 extern "C" void reachstub_154() asm("_ZN13CStateManager9AddObjectER7CEntity");
@@ -524,9 +524,9 @@ extern "C" void reachstub_155() { mpReachStub("_ZNK13CStateManager26DisplayAlert
 extern "C" void reachstub_156() asm("_ZN13CStateManager24GetObjectByIdFromListAllE9TUniqueId");
 extern "C" void reachstub_156() { mpReachStub("_ZN13CStateManager24GetObjectByIdFromListAllE9TUniqueId", "CStateManager::GetObjectByIdFromListAll(TUniqueId)"); }
 
-// CStateManager::RayCollideWorldInternal(CVector3f const&, CVector3f const&, CMaterialFilter const&, rstl::reserved_vector<TUniqueId, 1024> const&, CActor const*) const
+// CStateManager::RayCollideWorldInternal(CVector3f const&, CVector3f const&, CMaterialFilter const&, rstl::reserved_vector< TUniqueId, kMaxObjects > const&, CActor const*) const
 extern "C" void reachstub_157() asm("_ZNK13CStateManager23RayCollideWorldInternalERK9CVector3fS2_RK15CMaterialFilterRKN4rstl15reserved_vectorI9TUniqueIdLi1024EEEPK6CActor");
-extern "C" void reachstub_157() { mpReachStub("_ZNK13CStateManager23RayCollideWorldInternalERK9CVector3fS2_RK15CMaterialFilterRKN4rstl15reserved_vectorI9TUniqueIdLi1024EEEPK6CActor", "CStateManager::RayCollideWorldInternal(CVector3f const&, CVector3f const&, CMaterialFilter const&, rstl::reserved_vector<TUniqueId, 1024> const&, CActor const*) const"); }
+extern "C" void reachstub_157() { mpReachStub("_ZNK13CStateManager23RayCollideWorldInternalERK9CVector3fS2_RK15CMaterialFilterRKN4rstl15reserved_vectorI9TUniqueIdLi1024EEEPK6CActor", "CStateManager::RayCollideWorldInternal(CVector3f const&, CVector3f const&, CMaterialFilter const&, rstl::reserved_vector< TUniqueId, kMaxObjects > const&, CActor const*) const"); }
 
 // CStateManager::UpdateObjectInLists(CEntity&)
 extern "C" void reachstub_159() asm("_ZN13CStateManager19UpdateObjectInListsER7CEntity");
@@ -1058,9 +1058,9 @@ extern "C" void reachstub_346() { mpReachStub("_ZN13CSkinnedModelD1Ev", "CSkinne
 extern "C" void reachstub_347() asm("_ZN14CBodyStateInfoD1Ev");
 extern "C" void reachstub_347() { mpReachStub("_ZN14CBodyStateInfoD1Ev", "CBodyStateInfo::~CBodyStateInfo()"); }
 
-// CGameCollision::RayDynamicIntersection(CStateManager const&, TUniqueId&, CVector3f const&, CVector3f const&, float, CMaterialFilter const&, rstl::reserved_vector<TUniqueId, 1024> const&)
+// CGameCollision::RayDynamicIntersection(CStateManager const&, TUniqueId&, CVector3f const&, CVector3f const&, float, CMaterialFilter const&, rstl::reserved_vector< TUniqueId, kMaxObjects > const&)
 extern "C" void reachstub_348() asm("_ZN14CGameCollision22RayDynamicIntersectionERK13CStateManagerR9TUniqueIdRK9CVector3fS7_fRK15CMaterialFilterRKN4rstl15reserved_vectorIS3_Li1024EEE");
-extern "C" void reachstub_348() { mpReachStub("_ZN14CGameCollision22RayDynamicIntersectionERK13CStateManagerR9TUniqueIdRK9CVector3fS7_fRK15CMaterialFilterRKN4rstl15reserved_vectorIS3_Li1024EEE", "CGameCollision::RayDynamicIntersection(CStateManager const&, TUniqueId&, CVector3f const&, CVector3f const&, float, CMaterialFilter const&, rstl::reserved_vector<TUniqueId, 1024> const&)"); }
+extern "C" void reachstub_348() { mpReachStub("_ZN14CGameCollision22RayDynamicIntersectionERK13CStateManagerR9TUniqueIdRK9CVector3fS7_fRK15CMaterialFilterRKN4rstl15reserved_vectorIS3_Li1024EEE", "CGameCollision::RayDynamicIntersection(CStateManager const&, TUniqueId&, CVector3f const&, CVector3f const&, float, CMaterialFilter const&, rstl::reserved_vector< TUniqueId, kMaxObjects > const&)"); }
 
 // CAiKnockBackMgr::KnockBack(CStateManager&, CActor&, CKnockBackInfo const&)
 extern "C" void reachstub_354() asm("_ZN15CAiKnockBackMgr9KnockBackER13CStateManagerR6CActorRK14CKnockBackInfo");
@@ -1809,9 +1809,9 @@ extern "C" void reachstub_592() { mpReachStub("_Z14ReadPlayerItemRiR12CInputStre
 extern "C" void reachstub_593() asm("_Z28GetLockedCacheAllocationBasev");
 extern "C" void reachstub_593() { mpReachStub("_Z28GetLockedCacheAllocationBasev", "GetLockedCacheAllocationBase()"); }
 
-// CGameCollision::Move(CStateManager&, CPhysicsActor&, float, rstl::reserved_vector<TUniqueId, 1024> const*)
+// CGameCollision::Move(CStateManager&, CPhysicsActor&, float, rstl::reserved_vector< TUniqueId, kMaxObjects > const*)
 extern "C" void reachstub_594() asm("_ZN14CGameCollision4MoveER13CStateManagerR13CPhysicsActorfPKN4rstl15reserved_vectorI9TUniqueIdLi1024EEE");
-extern "C" void reachstub_594() { mpReachStub("_ZN14CGameCollision4MoveER13CStateManagerR13CPhysicsActorfPKN4rstl15reserved_vectorI9TUniqueIdLi1024EEE", "CGameCollision::Move(CStateManager&, CPhysicsActor&, float, rstl::reserved_vector<TUniqueId, 1024> const*)"); }
+extern "C" void reachstub_594() { mpReachStub("_ZN14CGameCollision4MoveER13CStateManagerR13CPhysicsActorfPKN4rstl15reserved_vectorI9TUniqueIdLi1024EEE", "CGameCollision::Move(CStateManager&, CPhysicsActor&, float, rstl::reserved_vector< TUniqueId, kMaxObjects > const*)"); }
 
 // CInGameTweakManager::~CInGameTweakManager()
 extern "C" void reachstub_595() asm("_ZN19CInGameTweakManagerD1Ev");

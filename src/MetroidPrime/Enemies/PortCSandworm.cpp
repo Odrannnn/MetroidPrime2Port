@@ -647,7 +647,7 @@ void CSandworm::UpdateColorLerp(float dt) {
 void CSandworm::DetectIncomingProjectiles(CStateManager& mgr) {
   const CVector3f pos = GetTranslation();
   const CAABox box(pos - CVector3f(100.f, 100.f, 100.f), pos + CVector3f(100.f, 100.f, 100.f));
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildNearList(nearList, box, CMaterialFilter::MakeInclude(CMaterialList(kMT_Projectile)),
                     this);
   for (int i = 0; i < nearList.size(); ++i) {

@@ -144,7 +144,7 @@ void CAuxWeapon::FireProjectile(float dt, EWeaponType type, bool underwater, boo
     TUniqueId hitId = kInvalidUniqueId;
     const CMaterialFilter filter = CMaterialFilter::MakeIncludeExclude(
         CMaterialList(kMT_Solid), CMaterialList(kMT_ProjectilePassthrough));
-    rstl::reserved_vector< TUniqueId, 1024 > nearList;
+    rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
     mgr.BuildNearList(nearList, position, direction, 100.f, filter,
                       TCastToPtr< CActor >(mgr.ObjectById(mPlayerId)));
     const CRayCastResult result =

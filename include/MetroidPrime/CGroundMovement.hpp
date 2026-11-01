@@ -45,19 +45,19 @@ public:
 
   static void CheckFalling(CPhysicsActor& actor, CStateManager& mgr, float dt);
   static void MoveGroundCollider(CStateManager& mgr, CPhysicsActor& actor, float dt,
-                                 const rstl::reserved_vector< TUniqueId, 1024 >* colliderList);
+                                 const rstl::reserved_vector< TUniqueId, kMaxObjects >* colliderList);
   static bool ResolveUpDown(CAreaCollisionCache& cache, CStateManager& mgr, CPhysicsActor& actor,
                             const CMaterialFilter& filter,
-                            const rstl::reserved_vector< TUniqueId, 1024 >& nearList, float stepUp,
+                            const rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList, float stepUp,
                             float stepDown, float& resolved, CCollisionInfoList& list);
   static bool MoveGroundColliderZ(CAreaCollisionCache& cache, CStateManager& mgr,
                                   CPhysicsActor& actor, const CMaterialFilter& filter,
-                                  const rstl::reserved_vector< TUniqueId, 1024 >& nearList,
+                                  const rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList,
                                   float amount, float& resolved, CCollisionInfoList& list,
                                   TUniqueId& idOut);
   static bool MoveGroundColliderXY(CAreaCollisionCache& cache, CStateManager& mgr,
                                    CPhysicsActor& actor, const CMaterialFilter& filter,
-                                   const rstl::reserved_vector< TUniqueId, 1024 >& nearList,
+                                   const rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList,
                                    float dt);
   static CVector3f CollisionDamping(const CVector3f& velocity, const CVector3f& direction,
                                     const CVector3f& normal, float normalCoefficient,
@@ -66,10 +66,10 @@ public:
                                     CVector3f& collisionNormal, float& normalDot);
   static bool RemoveNormalComponent(const CVector3f& normal, CVector3f& velocity);
   static void MoveGroundCollider_New(CStateManager& mgr, CPhysicsActor& actor, float dt,
-                                     const rstl::reserved_vector< TUniqueId, 1024 >* colliderList);
+                                     const rstl::reserved_vector< TUniqueId, kMaxObjects >* colliderList);
   static CMaterialList
   MoveObjectAnalytical(CStateManager& mgr, CPhysicsActor& actor, float dt,
-                       const rstl::reserved_vector< TUniqueId, 1024 >& nearList,
+                       const rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList,
                        CCollisionCache& cache, const SMovementOptions& options,
                        SMoveObjectResult& result);
 };

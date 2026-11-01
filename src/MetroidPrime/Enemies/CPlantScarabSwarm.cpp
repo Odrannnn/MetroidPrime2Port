@@ -341,7 +341,7 @@ bool CPlantScarabSwarm::IsSpaceAboveBoidClear(const CStateManager& mgr, const CB
   const CAABox bounds = grenadeBounds.GetTransformedAABox(CTransform4f::Translate(top));
   const CMaterialList materials(kMT_Solid);
   const CMaterialFilter filter = CMaterialFilter::MakeInclude(materials);
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildNearList(nearList, bounds, filter, this);
   const CCollidableAABox primitive(bounds, materials);
   return !CGameCollision::DetectCollisionBoolean(mgr, primitive, CTransform4f::Identity(), filter,

@@ -756,7 +756,7 @@ void CCollisionTracker::Think(float dt, CStateManager& mgr) {
         CMaterialList(sCacheExcludeMaterial0, sCacheExcludeMaterial1, sCacheExcludeMaterial2));
     if (mLastCachePosition.valid() &&
         (*mLastCachePosition - position).MagSquared() < cacheRadius * cacheRadius) {
-      rstl::reserved_vector< TUniqueId, 1024 > nearList;
+      rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
       mgr.BuildNearList(nearList, mCollisionCache->GetBounds(), filter, this);
       CGameCollision::UpdateCollisionCache(mgr, *mCollisionCache, nearList,
                                            CGameCollision::kCUP_KeepNearListIds);

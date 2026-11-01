@@ -43,7 +43,7 @@ public:
 
   CRayCastResult RayCollisionCheckWithWorld(TUniqueId& idOut, const CVector3f& start,
                                             const CVector3f& end, float magnitude,
-                                            rstl::reserved_vector< TUniqueId, 1024 >& nearList,
+                                            rstl::reserved_vector< TUniqueId, kMaxObjects >& nearList,
                                             CStateManager& mgr,
                                             EStaticGeometryTest staticTest) override; // fn_55_1027C
 

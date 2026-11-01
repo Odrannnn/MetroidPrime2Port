@@ -528,7 +528,7 @@ bool CMinorIng::IsMoveClear(CStateManager& mgr, const CVector3f& offset, bool ch
   if (checkStatic && CGameCollision::DetectStaticCollisionBoolean(mgr, *prim, xf, filter)) {
     return false;
   }
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildNearList(nearList, prim->CalculateAABox(xf), filter, this);
   if (nearList.empty()) {
     return !mgr.GetSafeZoneManager()->PointIsInSafeZone(mgr, xf.GetTranslation());

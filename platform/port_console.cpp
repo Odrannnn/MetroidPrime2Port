@@ -766,7 +766,7 @@ void CmdAreas(CStateManager& mgr, const Args&, std::string& out) {
     out += "no world yet\n";
     return;
   }
-  // Per area: phase/chain/active, the live objects it owns (what holds the 1024-entry id pool) and
+  // Per area: phase/chain/active, the live objects it owns (what holds the kMaxObjects-entry id pool) and
   // the areas its docks attach, so "who loaded this neighbour" can be read off one reply.
   const int count = world->IGetAreaCount();
   std::vector< int > owned(count > 0 ? count : 0, 0);
@@ -4201,7 +4201,7 @@ void CmdRay(CStateManager& mgr, const Args& args, std::string& out) {
     start = pt + dir * 0.01f;
     left = len - CVector3f::Dot(start - origin, dir);
   }
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildNearList(nearList, origin, dir, len, filter, nullptr);
   TUniqueId id = kInvalidUniqueId;
   const CRayCastResult hit = mgr.RayWorldIntersection(id, origin, dir, len, filter, nearList);

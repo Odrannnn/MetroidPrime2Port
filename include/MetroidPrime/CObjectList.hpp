@@ -5,8 +5,6 @@
 
 class CEntity;
 
-#define kMaxObjects 1024
-
 enum EGameObjectList {
   kOL_Invalid = -1,
   kOL_All,

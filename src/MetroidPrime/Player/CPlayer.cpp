@@ -1046,7 +1046,7 @@ void CPlayer::UpdateGunTransform(const CVector3f& position, CStateManager& mgr) 
     {
       const CMaterialFilter filter = CMaterialFilter::MakeIncludeExclude(
           CMaterialList(kMT_Solid), CMaterialList(kMT_Player, kMT_ProjectilePassthrough));
-      rstl::reserved_vector< TUniqueId, 1024 > nearList;
+      rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
       mgr.BuildNearList(nearList, eye, rayDir, kAimRange, filter, this);
       TUniqueId hitId = kInvalidUniqueId;
       const CRayCastResult hit =
@@ -1625,7 +1625,7 @@ ushort CPlayer::GetMaterialSoundUnderPlayer(CStateManager& mgr, const ushort* ta
   static const CMaterialFilter matFilter = CMaterialFilter::MakeInclude(CMaterialList(kMT_Solid));
 
   TUniqueId collideId = kInvalidUniqueId;
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   CAABox aabb = GetBoundingBox();
   aabb.AccumulateBounds(GetTranslation() + skDown);
   mgr.BuildNearList(nearList, aabb, matFilter, nullptr);
@@ -3887,7 +3887,7 @@ bool CPlayer::CanLeaveMorphBallState(CStateManager& mgr, CVector3f& position) co
     return false;
   }
 
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   CMaterialFilter filter = CMaterialFilter::MakeInclude(CMaterialList(kMT_Solid));
   const CVector3f& nearPosition = GetTranslation();
   mgr.BuildColliderList(nearList, *this,

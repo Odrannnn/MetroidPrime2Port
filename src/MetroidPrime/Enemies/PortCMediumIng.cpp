@@ -143,7 +143,7 @@ void CMediumIng::ScanProjectileThreats(CStateManager& mgr, float dt) {
   }
   const CVector3f pos = GetTranslation();
   const CVector3f extent(30.f, 30.f, 30.f); // rodata_2C
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildNearList(nearList, CAABox(pos - extent, pos + extent),
                     CMaterialFilter::MakeInclude(CMaterialList(kMT_Projectile)), this);
   const CAABox bounds = GetBoundingBox();
@@ -222,7 +222,7 @@ bool CMediumIng::IsBlocked(CStateManager& mgr, const CVector3f& offset) {
   const CAABox moved = prim->CalculateAABox(CTransform4f::Translate(offset) * primXf);
   box.AccumulateBounds(moved.GetMinPoint());
   box.AccumulateBounds(moved.GetMaxPoint());
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildNearList(nearList, box, filter, this);
   return CGameCollision::DetectCollisionBoolean(mgr, CCollidableAABox(box, GetMaterialList()),
                                                 CTransform4f::Identity(), filter, nearList);

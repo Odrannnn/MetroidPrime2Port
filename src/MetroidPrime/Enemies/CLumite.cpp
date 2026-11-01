@@ -380,7 +380,7 @@ bool CLumite::IsTouchingSunTrigger(CStateManager& mgr) const {
 
   const CAABox box(GetTranslation() - CVector3f(1.f, 1.f, 1.f),
                    GetTranslation() + CVector3f(1.f, 1.f, 1.f));
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildNearList(nearList, box, CMaterialFilter::MakeInclude(CMaterialList(kMT_Trigger)),
                     nullptr);
   for (const TUniqueId* it = nearList.begin(); it != nearList.end(); ++it) {

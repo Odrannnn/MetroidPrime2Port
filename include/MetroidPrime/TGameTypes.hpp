@@ -52,14 +52,24 @@ struct TEditorId {
 };
 CHECK_SIZEOF(TEditorId, 0x4)
 
+// Retail packs 10 index bits and 6 version bits; the port has 11 and 5, so 2048 object slots
+// fit in the same 16 bits. Index 2047 + version 31 is 0xFFFF (kInvalidUniqueId), never allocated.
+enum {
+  kUniqueIdIndexBits = 11,
+  kUniqueIdVersionBits = 16 - kUniqueIdIndexBits,
+  kUniqueIdIndexMask = (1 << kUniqueIdIndexBits) - 1,
+  kUniqueIdVersionMask = (1 << kUniqueIdVersionBits) - 1,
+  kMaxObjects = 1 << kUniqueIdIndexBits,
+};
+
 struct TUniqueId {
   ushort value;
 
   explicit TUniqueId(ushort packed) : value(packed) {}
-  TUniqueId(const ushort version, const ushort id) : value(id | (version << 10)) {}
+  TUniqueId(const ushort version, const ushort id) : value(id | (version << kUniqueIdIndexBits)) {}
 
-  ushort Value() const { return value & 0x3FF; }
-  ushort Version() const { return (value >> 10) & 0x3F; }
+  ushort Value() const { return value & kUniqueIdIndexMask; }
+  ushort Version() const { return (value >> kUniqueIdIndexBits) & kUniqueIdVersionMask; }
 
   bool operator==(const TUniqueId& other) const { return value == other.value; }
   bool operator!=(const TUniqueId& other) const { return value != other.value; }

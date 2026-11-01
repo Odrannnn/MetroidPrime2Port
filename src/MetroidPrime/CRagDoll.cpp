@@ -209,7 +209,7 @@ bool CRagDoll::SatisfyWorldConstraints(CStateManager& mgr, int pass) {
   CMaterialFilter filter = CMaterialFilter::MakeIncludeExclude(
       include, mNoAiCollision ? CMaterialList(kMT_Character, kMT_Player, kMT_AIBlock, kMT_Occluder)
                               : CMaterialList(kMT_Character, kMT_Player));
-  rstl::reserved_vector< TUniqueId, 1024 > nearList;
+  rstl::reserved_vector< TUniqueId, kMaxObjects > nearList;
   mgr.BuildNearList(nearList, bounds, filter, nullptr);
   for (int i = 0; i < mParticles.size(); ++i) {
     CRagDollParticle& particle = mParticles[i];

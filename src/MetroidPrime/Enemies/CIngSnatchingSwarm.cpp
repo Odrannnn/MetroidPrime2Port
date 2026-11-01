@@ -482,7 +482,7 @@ void CIngSnatchingSwarm::SnatchTarget(CStateManager& mgr, int msg, float dt) {
 
 // @ fn_33_29A8
 void CIngSnatchingSwarm::SelectTarget(CStateManager& mgr, float dt) {
-  rstl::reserved_vector< SSnatchCandidate, 1024 > candidates;
+  rstl::reserved_vector< SSnatchCandidate, kMaxObjects > candidates;
   const CObjectList& list = mgr.GetObjectListById(kOL_Actor);
   for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
     const CPatterned* patterned = TCastToConstPtr< CPatterned >(list[i]);
