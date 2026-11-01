@@ -32,6 +32,9 @@ hp, hp_max, visor, beam, freecam) for scripts.
 - `mpforce <0|1>` — IsMultiplayer reports true (multiplayer-only arms)
 - `mpend` — ends the running multiplayer match now, as its time or kill limit would (fade, results screen, back to the front end)
 - `pads` — the controller on each pad port 0-3 (players 1-4: `port N: <index> <name>` or `port N: none`) and the controller count; the F1 page's Player rows set it
+- `padport <index> <port>` / `padport clear <port>` — give controller `<index>` (see `pads`) pad port 0-3, or free a port (what the F1 Player combos call)
+- `padread` — what `PADRead` returns for ports 0-3 right now (err, buttons, sticks, triggers)
+- `vpad list|attach [n]|detach <i>|<i> <button|axis> <value>` — SDL virtual gamepads for controller-to-port tests (`MP2_VPADS=<n>`, 1-4, attaches them at start); buttons `a b x y back guide start ls rs lb rb up down left right` (0/1), axes `lx ly rx ry lt rt` (-1..1, triggers 0..1)
 - `overlay <page>[/<sub>]|off` — open the F1 window on a page (name prefixes: `overlay video/qual`)
 - `gpuselftest` — run the GPU self-test next frame; PASS/FAIL lines go to the log
 - `state save|load <slot> [hold]` — the F5/F9 save states (load 0 = undo the last load); `load ... hold` stops the simulation on the tick the room state is restored

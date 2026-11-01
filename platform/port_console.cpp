@@ -11,6 +11,7 @@
 #include <SDL3/SDL.h>
 #include <dolphin/pad.h>
 #include "port_harness.h"
+#include "port_vpads.h"
 #include "port_console.h"
 #include "port_discord.h"
 #include "port_mouse.h"
@@ -1115,6 +1116,50 @@ void CmdPads(CStateManager&, const Args&, std::string& out) {
     } else {
       out += std::to_string(index) + " " + (name != nullptr ? name : "unknown") + "\n";
     }
+  }
+}
+
+// `padport <index> <port>` / `padport clear <port>`: what the F1 Player combos call
+// (PADSetPortForIndex / PADClearPort).
+void CmdPadPort(CStateManager&, const Args& args, std::string& out) {
+  if (args.size() == 3 && args[1] == "clear") {
+    PADClearPort(static_cast<u32>(ArgToInt(args[2], 0)));
+    out += "cleared\n";
+  } else if (args.size() == 3) {
+    const int port = ArgToInt(args[2], -1);
+    if (port < 0 || port > 3 || ArgToInt(args[1], -1) < 0) {
+      Fail("usage: padport <index> <port 0-3> | padport clear <port>");
+      return;
+    }
+    PADSetPortForIndex(static_cast<u32>(ArgToInt(args[1], 0)), static_cast<u32>(port));
+    out += "set\n";
+  } else {
+    Fail("usage: padport <index> <port 0-3> | padport clear <port>");
+  }
+}
+
+// `padread`: what the game's PADRead returns for each port right now.
+void CmdPadRead(CStateManager&, const Args&, std::string& out) {
+  PADStatus status[PAD_MAX_CONTROLLERS]{};
+  PADRead(status);
+  for (int i = 0; i < PAD_MAX_CONTROLLERS; ++i) {
+    char line[128];
+    std::snprintf(line, sizeof(line), "port %d: err %d buttons %04x stick %d,%d sub %d,%d trig %d,%d\n", i,
+                  static_cast<int>(status[i].err), status[i].button, status[i].stickX, status[i].stickY,
+                  status[i].substickX, status[i].substickY, status[i].triggerLeft, status[i].triggerRight);
+    out += line;
+  }
+}
+
+// `vpad ...`: SDL virtual gamepads (see port_vpads.h).
+void CmdVpad(CStateManager&, const Args& args, std::string& out) {
+  std::string rest;
+  for (size_t i = 1; i < args.size(); ++i) {
+    rest += Str(args[i]) + " ";
+  }
+  std::string err;
+  if (!PortVpads::Command(rest, out, err)) {
+    Fail(err);
   }
 }
 
@@ -4997,6 +5042,13 @@ const CommandSpec kCommands[] = {
       "mpend                       end the running multiplayer match now (fade, results, front end)\n"},
     {"pads", CmdPads,
       "pads                        the controller on each pad port 0-3 (players 1-4) and the controller count\n"},
+    {"padport", CmdPadPort,
+      "padport <index> <port>      give controller <index> (see `pads`) pad port 0-3; `padport clear <port>` frees it\n"},
+    {"padread", CmdPadRead,
+      "padread                     PADRead's status (err, buttons, sticks, triggers) for ports 0-3 right now\n"},
+    {"vpad", CmdVpad,
+      "vpad list|attach [n]|detach <i>|<i> <button|axis> <value>  SDL virtual gamepads (MP2_VPADS=n attaches at start);\n"
+      "                            buttons a b x y back guide start ls rs lb rb up down left right (0/1), axes lx ly rx ry lt rt (-1..1)\n"},
     {"overlay", CmdOverlay,
       "overlay <page>[/<sub>]|off  open the F1 window on a page (name prefixes: `overlay video/qual`)\n"},
     {"gpuselftest", CmdGpuSelfTest,

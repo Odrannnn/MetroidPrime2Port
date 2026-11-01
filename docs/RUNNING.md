@@ -206,6 +206,8 @@ What a save keeps of each enemy (the `kTagFields` block) is in `docs/SAVESTATE_S
 
 ## Driving pads 1-3 (multiplayer)
 
+`MP2_VPADS=<1-4>` attaches that many SDL virtual gamepads at start (console `vpad`, `pads`, `padport`): they go through Aurora's real controller-to-port assignment, which `MP2_INPUT` bypasses.
+
 `MP2_INPUT` entries take a pad prefix: `p1.A@300`, `P2:START@320+4` (`p0.`-`p3.`, `.` or `:`); no
 prefix is pad 0 as before, and warp tokens stay pad 0. A pad is connected and idle (the front end
 counts `DeviceIsPresent`) once any entry names it. Parser test: `port_input_pad_tests`.
