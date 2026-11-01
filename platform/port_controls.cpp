@@ -108,27 +108,25 @@ void ApplyPadPreset(EPadPreset preset, u32 port) {
   case EPadPreset::kGameCube:
     break;
   case EPadPreset::kRemastered: {
-    // Remastered's Dual Sticks scheme: fire on RT and the right face button,
-    // lock on with LT (the default L), missile on RB, jump on the bottom face
-    // button and LB, morph on the left one, map on Start, pause on Back, and
-    // the top face button held with the D-pad picks beams. Free look (no
-    // Remastered equivalent) goes on the right stick click.
+    // Remastered's Dual Sticks scheme: fire on RT, lock on with LT (the default
+    // L), missile on RB, jump on the bottom face button, morph on the left one,
+    // map on Back (Minus) and pause on Start (Plus). Free look (no Remastered
+    // equivalent) goes on the right stick click. Aurora holds one button per
+    // GameCube button, so the Remap preset adds the rest as engine rows (fire
+    // on the right face button, jump on LB, the top face button's beam shift and
+    // Spring Ball: port_input_remap_ui's ApplyRemasteredRows).
     const PADButtonMapping buttons[] = {
         {PAD_NATIVE_BUTTON_TRIGGER_RIGHT, PAD_BUTTON_A},
         {SDL_GAMEPAD_BUTTON_SOUTH, PAD_BUTTON_B},
         {SDL_GAMEPAD_BUTTON_WEST, PAD_BUTTON_X},
         {SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER, PAD_BUTTON_Y},
-        {SDL_GAMEPAD_BUTTON_START, PAD_TRIGGER_Z},
-        {SDL_GAMEPAD_BUTTON_BACK, PAD_BUTTON_START},
+        {SDL_GAMEPAD_BUTTON_BACK, PAD_TRIGGER_Z},
         {SDL_GAMEPAD_BUTTON_RIGHT_STICK, PAD_TRIGGER_R},
     };
     for (const PADButtonMapping& mapping : buttons) {
       PADSetButtonMapping(port, mapping);
     }
     PADSetAxisMapping(port, {{-1, AXIS_SIGN_POSITIVE}, SDL_GAMEPAD_BUTTON_RIGHT_STICK, PAD_AXIS_TRIGGER_R});
-    // MP2: MP1 also gives A the east button and B the left shoulder (pad alt
-    // buttons), the top face button the beam shift and swaps scan and X-ray;
-    // none of those settings exist here.
     PortMouse::SetPlayerStickEnabled(port, true);
     break;
   }

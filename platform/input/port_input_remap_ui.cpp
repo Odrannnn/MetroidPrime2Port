@@ -1631,9 +1631,10 @@ constexpr SPreset kPadPresets[] = {
     {"GameCube", "gamecube",
      "The default layout: the face buttons and shoulder as on a GameCube pad.\nTurns off Twin Stick Aim."},
     {"Remastered", "remastered",
-     "Metroid Prime Remastered's Dual Sticks scheme (Xbox labels): RT fire, LT lock on,\n"
-     "A jump, X morph ball, RB missile, Menu map, View pause, right stick click free look.\n"
-     "Turns on Twin Stick Aim."},
+     "Metroid Prime Remastered's Dual Sticks scheme (Xbox labels): RT or B fire, LT lock on\n"
+      "(Spider Ball), A or LB jump, X morph ball, RB missile, Y + D-pad beams (Spring Ball in\n"
+      "the ball), D-pad visors, View map, Menu pause, right stick click free look.\n"
+      "Turns on Twin Stick Aim."},
     {"Modern", "modern",
      "RT fire, LT lock on, A jump, B morph ball, RB missile, Y map,\n"
      "right stick click free look. Turns on Twin Stick Aim."},
@@ -1706,6 +1707,39 @@ void ApplyBallPreset(PortInput::Family family, std::string_view id) {
   b.action = PortInput::Action::BallSpider;
   b.count = 1;
   PortInput::AddUserBinding(Ensure("", "Default"), b);
+  Commit();
+}
+
+// Remastered's Dual Sticks rows that one Aurora mapping per GameCube button can't
+// hold: the right face button fires beside RT, LB jumps beside the bottom one,
+// and the top face button is the beam shift (with the D-pad, in the retail
+// C-stick directions) and springs the ball, which takes the built-in LB shift's
+// rows away. After the pad preset, so the inherited rows are its mapping's.
+void ApplyRemasteredRows(int port) {
+  using PortInput::Action;
+  using PortInput::Family;
+  PortInput::Profile inherited;
+  PortInputDevices::BuildBaseProfile(inherited, port);
+  UserProfile& profile = Ensure("", "Default");
+  const auto add = [&profile](Action action, std::initializer_list<const char*> inputs, uint16_t contexts) {
+    Binding b;
+    for (const char* text : inputs) {
+      if (!PortInput::InputFromText(text, b.inputs[b.count++])) return;
+    }
+    b.action = action;
+    b.contexts = contexts;
+    PortInput::AddUserBinding(profile, b);
+  };
+  PortInput::Materialize(profile, Action::PadA, Family::Pad, inherited);
+  PortInput::Materialize(profile, Action::PadB, Family::Pad, inherited);
+  add(Action::PadA, {"pad:b"}, PortInput::kCtxAll);
+  add(Action::PadB, {"pad:leftshoulder"}, PortInput::kCtxAll);
+  const auto noBall = static_cast<uint16_t>(PortInput::kCtxAll & ~PortInput::kCtxMorphBall);
+  add(Action::BeamPower, {"pad:y", "pad:dpup"}, noBall);
+  add(Action::BeamWave, {"pad:y", "pad:dpleft"}, noBall);
+  add(Action::BeamIce, {"pad:y", "pad:dpright"}, noBall);
+  add(Action::BeamPlasma, {"pad:y", "pad:dpdown"}, noBall);
+  add(Action::SpringBall, {"pad:y"}, PortInput::kCtxMorphBall);
   Commit();
 }
 
@@ -2036,6 +2070,7 @@ void ApplyPreset(PortInput::Family family, std::string_view id, unsigned port) {
   }
   Reload(int(port));
   ApplyBallPreset(family, id);
+  if (family == PortInput::Family::Pad && id == "remastered") ApplyRemasteredRows(int(port));
 }
 
 std::string BindingsText(PortInput::Action action, const char* separator) {
