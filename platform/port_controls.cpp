@@ -25,7 +25,6 @@
 
 #include <algorithm>
 #include <atomic>
-#include <bit>
 #include <cctype>
 #include <cmath>
 #include <iterator>
@@ -455,33 +454,6 @@ void DrawDeadZones(unsigned port) {
 }
 
 namespace {
-// The button capture of DrawPadButtons: the port and kControlPadButtons row waiting for a press.
-int sButtonCapturePort = -1;
-int sButtonCaptureRow = 0;
-u64 sButtonCaptureHeld = 0; // inputs already held when it started, ignored until released
-uint64_t sButtonCaptureStartMs = 0;
-constexpr uint64_t kButtonCaptureMs = 5000;
-
-// Native inputs as bits: SDL_GamepadButton, then the two triggers past half pull.
-constexpr int kBitTriggerL = SDL_GAMEPAD_BUTTON_COUNT;
-constexpr int kBitTriggerR = SDL_GAMEPAD_BUTTON_COUNT + 1;
-
-u64 HeldNatives(SDL_Gamepad* pad) {
-  u64 bits = 0;
-  for (int b = 0; b < SDL_GAMEPAD_BUTTON_COUNT; ++b) {
-    if (SDL_GetGamepadButton(pad, static_cast< SDL_GamepadButton >(b))) bits |= u64{1} << b;
-  }
-  if (SDL_GetGamepadAxis(pad, SDL_GAMEPAD_AXIS_LEFT_TRIGGER) > 16384) bits |= u64{1} << kBitTriggerL;
-  if (SDL_GetGamepadAxis(pad, SDL_GAMEPAD_AXIS_RIGHT_TRIGGER) > 16384) bits |= u64{1} << kBitTriggerR;
-  return bits;
-}
-
-u32 NativeForBit(int bit) {
-  if (bit == kBitTriggerL) return PAD_NATIVE_BUTTON_TRIGGER_LEFT;
-  if (bit == kBitTriggerR) return PAD_NATIVE_BUTTON_TRIGGER_RIGHT;
-  return static_cast< u32 >(bit);
-}
-
 // As the Remap page labels them (Xbox names, by SDL_GamepadButton).
 std::string NativeName(u32 native) {
   static constexpr const char* kLabels[] = {
@@ -603,66 +575,6 @@ long long NativeForLabel(std::string_view label) {
   }
   const int b = std::stoi(std::string(label));
   return b < SDL_GAMEPAD_BUTTON_COUNT ? b : -1;
-}
-
-void DrawPadButtons(unsigned port) {
-  if (port > PAD_CHAN3) return;
-  const s32 index = PADGetIndexForPort(port);
-  SDL_Gamepad* pad = index >= 0 ? PADGetSDLGamepadForIndex(static_cast< u32 >(index)) : nullptr;
-  u32 count = 0;
-  PADButtonMapping* list = pad != nullptr ? PADGetButtonMappings(port, &count) : nullptr;
-  if (list == nullptr || SDL_IsJoystickVirtual(SDL_GetGamepadID(pad))) {
-    if (sButtonCapturePort == int(port)) sButtonCapturePort = -1;
-    ImGui::TextDisabled(pad == nullptr ? "No controller; choose one above." : "Virtual pads can't be remapped.");
-    return;
-  }
-  const uint64_t now = SDL_GetTicks();
-  if (sButtonCapturePort == int(port)) {
-    const u64 held = HeldNatives(pad);
-    sButtonCaptureHeld &= held;
-    if (const u64 fresh = held & ~sButtonCaptureHeld; fresh != 0) {
-      BindPadButton(port, kControlPadButtons[sButtonCaptureRow].button, NativeForBit(std::countr_zero(fresh)));
-      sButtonCapturePort = -1;
-    } else if (now - sButtonCaptureStartMs > kButtonCaptureMs) {
-      sButtonCapturePort = -1;
-    }
-  }
-  if (ImGui::BeginTable("padbuttons", 2, ImGuiTableFlags_SizingFixedFit)) {
-    for (int row = 0; row < int(std::size(kControlPadButtons)); ++row) {
-      const SControlPadButton& b = kControlPadButtons[row];
-      const PADButtonMapping* m = FindMapping(list, count, b.button);
-      ImGui::TableNextRow();
-      ImGui::TableNextColumn();
-      ImGui::AlignTextToFramePadding();
-      ImGui::TextUnformatted(b.label);
-      ImGui::TableNextColumn();
-      ImGui::PushID(row);
-      const bool waiting = sButtonCapturePort == int(port) && sButtonCaptureRow == row;
-      const uint64_t left = (kButtonCaptureMs - std::min(now - sButtonCaptureStartMs, kButtonCaptureMs)) / 1000 + 1;
-      const std::string text = waiting ? "Press a button... (" + std::to_string(left) + ")"
-                                       : NativeName(ShownNative(port, m));
-      if (ImGui::Button(text.c_str(), ImVec2(ImGui::GetFontSize() * 11.f, 0.f))) {
-        if (waiting) {
-          sButtonCapturePort = -1;
-        } else {
-          sButtonCapturePort = int(port);
-          sButtonCaptureRow = row;
-          sButtonCaptureHeld = HeldNatives(pad);
-          sButtonCaptureStartMs = now;
-        }
-      }
-      ImGui::SetItemTooltip("Click, then press the button on this player's controller. A GameCube button "
-                            "already on it swaps.");
-      ImGui::PopID();
-    }
-    ImGui::EndTable();
-  }
-  if (ImGui::Button("Default buttons")) {
-    sButtonCapturePort = -1;
-    PADRestoreDefaultMapping(port);
-    PADSerializeMappings();
-  }
-  ImGui::SetItemTooltip("This controller's GameCube layout again (sticks too); twin stick stays as set.");
 }
 
 } // namespace PortControls
