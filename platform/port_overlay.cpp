@@ -134,6 +134,7 @@ bool sSecondaryCrosshairs = true;
 // `crosshair_dark`, `crosshair_echo`: the aiming crosshair in those visors (off: it fades out as in Scan).
 bool sCrosshairDark = false;
 bool sCrosshairEcho = false;
+bool sBallBars = false; // `ball_bars`: the morph ball view's narrowed viewport
 bool sDarkVisorFull = false;
 int sDarkVisorStatic = PortOverlay::kDarkVisorStaticMax;
 bool sInfiniteBeamAmmo = false; // Enhancements; saved, unlike the sInfiniteAmmo cheat
@@ -781,6 +782,14 @@ bool CrosshairInVisor(int visor) {
   default:
     return true;
   }
+}
+
+bool BallBars() {
+  ReadEnv();
+  if (OriginalExperience()) {
+    return true;
+  }
+  return EnvBool("MP2_BALL_BARS", sBallBars);
 }
 
 bool DarkVisorFullScreen() {

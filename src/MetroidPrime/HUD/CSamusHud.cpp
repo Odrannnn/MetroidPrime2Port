@@ -2415,7 +2415,14 @@ void CSamusHud::Update(float dt, const CStateManager& mgr, uint helmetVisibility
       morphFactor = 1.f - player.GetMorphBallTransitionFactor();
       break;
     }
+#ifdef TARGET_PC
+    // Port: with PortOverlay::BallBars off the world keeps filling the screen in ball mode.
+    mViewportScaleY = PortOverlay::BallBars()
+                          ? 1.f - morphFactor * gpTweakGui->GetBallViewportYReduction()
+                          : 1.f;
+#else
     mViewportScaleY = 1.f - morphFactor * gpTweakGui->GetBallViewportYReduction();
+#endif
     const float xfbHeight = float(int(CGraphics::GetRenderMode().xfbHeight));
     const float halfReduction = 0.5f * (xfbHeight * gpTweakGui->GetBallViewportYReduction());
     const CTransform4f& idle = mHudCamera->GetIdleXform();

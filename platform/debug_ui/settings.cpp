@@ -386,6 +386,7 @@ const SettingKey kSettingKeys[] = {
     BoolKey< &sSecondaryCrosshairs >("secondary_crosshairs"),
     BoolKey< &sCrosshairDark >("crosshair_dark"),
     BoolKey< &sCrosshairEcho >("crosshair_echo"),
+    BoolKey< &sBallBars >("ball_bars"),
     BoolKey< &sDarkVisorFull >("dark_visor_full"),
     IntKey< &sDarkVisorStatic, 0, PortOverlay::kDarkVisorStaticMax >("dark_visor_static", "50", "100"),
     BoolKey< &sInfiniteBeamAmmo >("infinite_beam_ammo"),

@@ -311,6 +311,9 @@ Video > Display:
 - `crosshair_dark`, `crosshair_echo` (default off, env `MP2_CROSSHAIR_DARK`, `MP2_CROSSHAIR_ECHO`):
   HUD and view > Crosshair in Dark Visor / Echo Visor; off fades the aiming crosshair (every style,
   Trilogy's aiming cursor too) out as the Scan Visor does. Original experience shows it (MP1 486f7a0df).
+- `ball_bars` (default off, env `MP2_BALL_BARS`): HUD and view > Morph ball black bars; the ball
+  view's narrowed viewport (tweak `BallViewportYReduction`). Off, the world fills the screen in ball
+  mode and the ball HUD stays put. Original experience keeps the bars (MP1 535ccd192).
 - `secondary_crosshairs` (default on, env `MP2_SECONDARY_CROSSHAIRS`): HUD and view > Secondary
   crosshairs; off hides the next-target reticle (lock-on and the scan box stay).
 - `dark_visor_full` (default off, env `MP2_DARK_VISOR_FULL`): Enhancements > Full-screen Dark

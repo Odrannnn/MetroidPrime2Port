@@ -136,6 +136,7 @@
 {"Video", "Display", "HUD and view", "Hide helmet", "visor frame face"},
 {"Video", "Display", "HUD and view", "Hide visor effects", "visor rain fog steam overlay"},
 {"Video", "Display", "HUD and view", "Cutscene black bars", "letterbox cinema bars cinematic widescreen fullscreen"},
+{"Video", "Display", "HUD and view", "Morph ball black bars", "letterbox morph ball camera bars"},
 {"Video", "Display", "HUD and view", "Crosshair in Dark Visor", "crosshair reticle visor dark hide per visor"},
 {"Video", "Display", "HUD and view", "Crosshair in Echo Visor", "crosshair reticle visor echo hide per visor"},
 {"Video", "Display", "HUD and view", "Secondary crosshairs", "next target reticle seeker lock-on hide"},

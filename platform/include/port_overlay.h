@@ -427,6 +427,10 @@ bool SecondaryCrosshairs();
 // (`crosshair_dark`, `crosshair_echo`, env `MP2_CROSSHAIR_DARK`/`MP2_CROSSHAIR_ECHO`, off by
 // default). On under Original experience. Read by CCompoundTargetReticle.
 bool CrosshairInVisor(int visor);
+// Morph ball black bars (`ball_bars`, env `MP2_BALL_BARS`, off by default): the ball view's
+// narrowed viewport (tweak BallViewportYReduction). Off, the world fills the screen in ball mode;
+// the ball HUD stays put. On under Original experience. Read by CSamusHud::Update.
+bool BallBars();
 // Full-screen Dark Visor (`dark_visor_full`, env `MP2_DARK_VISOR_FULL`): the visor reveals and
 // highlights over the whole view, as the game's own split-screen does, instead of the lens
 // (FRME_DarkVisorMask) inside the tweak frame. Off by default; Original experience keeps the lens.

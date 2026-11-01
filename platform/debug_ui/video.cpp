@@ -200,6 +200,8 @@ void DrawVideoDisplay() {
   ImGui::SetItemTooltip("The scan visor's window and edges are what a visor effect draws here.");
   Changed(ImGui::Checkbox("Cutscene black bars", &sCinemaBars));
   ImGui::SetItemTooltip("Off lets a cutscene fill the screen instead of the game's letterbox.");
+  Changed(ImGui::Checkbox("Morph ball black bars", &sBallBars));
+  ImGui::SetItemTooltip("Off: the world fills the screen in morph ball.\nOn: the game's narrowed ball view.");
   Changed(ImGui::Checkbox("Crosshair in Dark Visor", &sCrosshairDark));
   ImGui::SetItemTooltip("Off hides the aiming crosshair in the Dark Visor. On under Original experience.");
   ImGui::SameLine();
