@@ -1008,11 +1008,17 @@ bool CGameArea::StartStreamIn(CStateManager& mgr) {
     return false;
   }
 #ifdef TARGET_PC
-  // A lazy pipeline cache builds the pipelines this area drew last time, in the background.
+  // A lazy pipeline cache builds the pipelines this area drew last time, in the background, then
+  // (once per world) those of every other area of the world, so later rooms find theirs built.
   if (mPhase == kP_Allocate) {
     if (const CWorld* world = mgr.GetWorld()) {
-      aurora_pipeline_prefetch(
-          PortPipelineAreaContext(static_cast< uint32_t >(world->GetWorldAssetId()), mSelfIdx.Value()));
+      const uint32_t mlvl = static_cast< uint32_t >(world->GetWorldAssetId());
+      aurora_pipeline_prefetch(PortPipelineAreaContext(mlvl, mSelfIdx.Value()));
+      static uint32_t sPrefetchedWorld = 0xFFFFFFFFu;
+      if (mlvl != sPrefetchedWorld) {
+        sPrefetchedWorld = mlvl;
+        aurora_pipeline_prefetch(AURORA_PIPELINE_CONTEXT_WORLD(mlvl));
+      }
     }
   }
 #endif

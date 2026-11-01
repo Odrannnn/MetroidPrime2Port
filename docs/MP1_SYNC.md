@@ -151,6 +151,16 @@ Each needs MP2 game-side hooks found fresh; a row with no possible MP2 backend i
     - Skipped: Remastered/PBR/effects, third person, Dread suits, Archipelago/rando, `34899e497`
       (Remastered particles), `005ae8a6e` (we have infinite ammo), artifact cheats `904552326
       0dadb6af9`, `881e1e899` (Frigate), `09ea6ad2d` (Trilogy corner layout; check ours if seen).
+28. **Range `7eda62884..96529013d`** (2026-11-01). Taken: `8f353245d` world pipeline prefetch (Aurora
+    `AURORA_PIPELINE_CONTEXT_WORLD`, an area's rows promoted ahead of its world's backlog; CGameArea
+    prefetches the world once per mlvl; seen with `MP2_PIPELINE_LAZY=1`: world context 330 rows).
+    Not taken: `e4a0af0bd` + `4ab18ced5` (60 Hz movement at any sim rate): MP2's Sim Hz has none of
+    MP1's step-scaling base (`68fd1fb4c` friction, `bcf3065a2` counters, `fa3dfa649` jumps,
+    `1b51e5efd`, `733b09e03` clocks/aim), so the force-law fix alone would be wrong; port that chain
+    as one package if Sim Hz is to work off 60. Skipped: `22bff9633` (Remastered rider), third person
+    `a74355f2f 5047a0b01 559301f5c`, from-MP2 `8a58764bf 112ae170d e971467ac`, `951a93f5a` (we have
+    the boosts), `6fb5e0871` (done in `703cf3c85`), `67d13d552` (MP1 seed; ours has pipeline_use),
+    `96529013d` release.
 
 Skipped from this range: Phazon Beam cheat and stacked beam rate (MP1 items), mods page/import
 fixes (wait for package 8), decomp matches.
@@ -160,9 +170,9 @@ set differs; the approach can be reused), Archipelago, MP1 randomizer logic.
 
 ## Status
 
-Packages 1-27 are merged; the dated per-merge log moved verbatim to
+Packages 1-28 are merged; the dated per-merge log moved verbatim to
 `docs/history/MP1_SYNC-to-2026-10-29.md`. MP1 was last reviewed through `e3d8c8940`
-(2026-10-29), then through `7eda62884` (2026-11-01, package 27); take later commits by `git -C ../MetroidPrimePort log --no-merges 7eda62884..HEAD`.
+(2026-10-29), then through `96529013d` (2026-11-01, package 28); take later commits by `git -C ../MetroidPrimePort log --no-merges 96529013d..HEAD`.
 
 Still unrun/unverified per that log (no device or hardware available then):
 

@@ -115,6 +115,7 @@ static int g_sdlVfsRegisterResult = SQLITE_ERROR;
 static sqlite3_stmt* g_pipelineUseInsertStmt = nullptr;
 static sqlite3_stmt* g_pipelineContextLoadStmt = nullptr;
 static sqlite3_stmt* g_pipelineSharedLoadStmt = nullptr;
+static sqlite3_stmt* g_pipelineWorldLoadStmt = nullptr;
 static std::atomic_uint64_t g_pipelineContext = AURORA_PIPELINE_CONTEXT_FRONTEND;
 // The uses recorded this session; any draw thread (require_pipeline records from the render thread).
 static std::mutex g_recordedUsesMutex;
@@ -763,7 +764,8 @@ static void pipeline_cache_abort() {
     sqlite3_finalize(g_pipelineCacheUpsertStmt);
     g_pipelineCacheUpsertStmt = nullptr;
   }
-  for (sqlite3_stmt** stmt : {&g_pipelineUseInsertStmt, &g_pipelineContextLoadStmt, &g_pipelineSharedLoadStmt}) {
+  for (sqlite3_stmt** stmt :
+       {&g_pipelineUseInsertStmt, &g_pipelineContextLoadStmt, &g_pipelineSharedLoadStmt, &g_pipelineWorldLoadStmt}) {
     if (*stmt != nullptr) {
       sqlite3_finalize(*stmt);
       *stmt = nullptr;
@@ -1082,6 +1084,15 @@ INSERT INTO aurora_schema VALUES ({});)",
                              "ORDER BY p.first_frame_used",
                              -1, SQLITE_PREPARE_PERSISTENT, &g_pipelineSharedLoadStmt, nullptr);
   }
+  if (ret == SQLITE_OK) {
+    // Every area of one world: the contexts from (mlvl << 32) through (mlvl << 32) | 0xFFFFFFFF.
+    ret = sqlite3_prepare_v3(g_pipelineCacheDb,
+                             "SELECT p.type, p.config_version, p.config, p.first_frame_used "
+                             "FROM pipeline_cache p WHERE p.hash IN "
+                             "(SELECT hash FROM pipeline_use WHERE context BETWEEN ?1 AND ?2) "
+                             "ORDER BY p.first_frame_used",
+                             -1, SQLITE_PREPARE_PERSISTENT, &g_pipelineWorldLoadStmt, nullptr);
+  }
   if (ret != SQLITE_OK) {
     Log.error("Failed to prepare pipeline use statements: {}", sqlite3_errmsg(g_pipelineCacheDb));
     pipeline_cache_abort();
@@ -1377,6 +1388,9 @@ struct CachedRowOptions {
   // Stamp rows already built as used now, so idle eviction keeps them a while longer.
   bool touchBuilt = false;
   bool pin = false;
+  // Move rows still waiting in the background queue ahead of it: an area's prefetch overtakes the
+  // backlog of its world's.
+  bool promote = false;
 };
 
 struct CachedRowStats {
@@ -1384,6 +1398,7 @@ struct CachedRowStats {
   size_t incompatible = 0;
   size_t pbr = 0;
   size_t queued = 0;
+  size_t promoted = 0;
 };
 
 template <typename PipelineConfig, typename CreateFn>
@@ -1426,6 +1441,17 @@ static void queue_cached_row(ShaderType type, uint32_t configVersion, CreateFn&&
       return;
     }
     if (g_pendingPipelines.contains(hash)) {
+      if (opts.promote) {
+        // To the front of the background queue, in this prefetch's order (workers popping meanwhile
+        // only shift it by a few). Not the priority queue: that one is for draws waiting now.
+        if (auto it = find_pending_pipeline(g_backgroundPipelineQueue, hash); it != g_backgroundPipelineQueue.end()) {
+          PendingPipeline pending = std::move(*it);
+          g_backgroundPipelineQueue.erase(it);
+          const size_t at = std::min(stats.promoted, g_backgroundPipelineQueue.size());
+          g_backgroundPipelineQueue.insert(g_backgroundPipelineQueue.begin() + at, std::move(pending));
+          ++stats.promoted;
+        }
+      }
       return;
     }
   }
@@ -1529,28 +1555,41 @@ static size_t load_pipeline_cache_entries(ShaderType type, uint32_t configVersio
 
 // Queues the Background builds for one context's recorded rows. The startup lazy load runs it on
 // the init thread; aurora_pipeline_prefetch's requests run it on the writer thread.
+static bool is_world_context(uint64_t context) {
+  return (context & 0xFFFFFFFFull) == 0xFFFFFFFFull && context > AURORA_PIPELINE_CONTEXT_FRONTEND;
+}
+
 static CachedRowStats queue_pipeline_context(uint64_t context, const CachedRowOptions& opts, bool& ok) {
   CachedRowStats stats;
-  auto ret = sqlite3_bind_int64(g_pipelineContextLoadStmt, 1, static_cast<sqlite3_int64>(context));
+  // A WORLD context stands for all of that world's areas. Contexts are stored as signed 64-bit
+  // integers; the low 32 bits only add to the high ones, so one world's range stays contiguous.
+  const bool world = is_world_context(context);
+  sqlite3_stmt* stmt = world ? g_pipelineWorldLoadStmt : g_pipelineContextLoadStmt;
+  auto ret = sqlite3_bind_int64(stmt, 1, static_cast<sqlite3_int64>(world ? context & ~0xFFFFFFFFull : context));
+  if (ret == SQLITE_OK && world) {
+    ret = sqlite3_bind_int64(stmt, 2, static_cast<sqlite3_int64>(context));
+  }
   if (ret != SQLITE_OK) {
     Log.error("Failed to bind pipeline use context: {}", sqlite3_errmsg(g_pipelineCacheDb));
-    sqlite3_clear_bindings(g_pipelineContextLoadStmt);
+    sqlite3_clear_bindings(stmt);
     ok = false;
     return stats;
   }
-  ok = load_rows(g_pipelineContextLoadStmt, opts, stats);
+  ok = load_rows(stmt, opts, stats);
   return stats;
 }
 
 static size_t prefetch_pipeline_context(uint64_t context, bool withShared, bool& ok) {
-  const auto contextStats =
-      queue_pipeline_context(context, {.renderThread = true, .touchBuilt = true, .pin = false}, ok);
+  // An area's rows go ahead of whatever its world's prefetch still has queued.
+  const auto contextStats = queue_pipeline_context(
+      context, {.renderThread = true, .touchBuilt = true, .pin = false, .promote = !is_world_context(context)}, ok);
   CachedRowStats sharedStats;
   if (ok && withShared) {
     ok = load_rows(g_pipelineSharedLoadStmt, {.renderThread = true, .touchBuilt = false, .pin = false}, sharedStats);
   }
-  Log.info("pipeline cache: prefetch context {:x}: {} rows, {} queued; shared {} rows, {} queued", context,
-           contextStats.accepted, contextStats.queued, sharedStats.accepted, sharedStats.queued);
+  Log.info("pipeline cache: prefetch context {:x}: {} rows, {} queued, {} promoted; shared {} rows, {} queued",
+           context, contextStats.accepted, contextStats.queued, contextStats.promoted, sharedStats.accepted,
+           sharedStats.queued);
   return contextStats.queued + sharedStats.queued;
 }
 

@@ -63,11 +63,14 @@ uint32_t aurora_get_pipeline_count(void);
 #define AURORA_PIPELINE_CONTEXT_GLOBAL 0ull
 #define AURORA_PIPELINE_CONTEXT_FRONTEND 1ull
 #define AURORA_PIPELINE_CONTEXT_AREA(mlvl, area) ((((uint64_t)(uint32_t)(mlvl)) << 32) | (uint32_t)(area))
+// Prefetch only: every area of world `mlvl`. Draws never record under it.
+#define AURORA_PIPELINE_CONTEXT_WORLD(mlvl) AURORA_PIPELINE_CONTEXT_AREA(mlvl, 0xFFFFFFFFu)
 // Draw thread: the context the draws that follow record under; returns the previous one. Every frame
 // starts in FRONTEND.
 uint64_t aurora_pipeline_set_context(uint64_t context);
 // Any thread: queue background builds of the pipelines `context` used before, plus those shared by
 // several areas. Lazy pipeline cache only; a context prefetched in the last 600 frames is skipped.
+// An AREA's rows still queued by a WORLD prefetch move ahead of the rest.
 void aurora_pipeline_prefetch(uint64_t context);
 typedef struct {
   uint64_t skippedDraws; // draws dropped because their pipeline was not built yet
