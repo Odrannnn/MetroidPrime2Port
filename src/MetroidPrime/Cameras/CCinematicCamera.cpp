@@ -16,17 +16,21 @@
 #include "MetroidPrime/TCastTo.hpp"
 
 #ifdef TARGET_PC
+#include "MetroidPrime/Player/CGameOptions.hpp"
+
 // Port (MP1's fix for its issues #9 and #14): the vertical FOV for a cinematic's horizontal FOV at
 // the live aspect. Retail divides the angle by its 4:3 camera aspect and frames the shot for the
 // 16:9 letterbox CCameraFilterPass draws over it; dividing by a wider aspect zoomed the shot in and
 // cut its top and bottom off. Keep retail's shot width (in tangent space) up to 16:9, where the
 // bars crop it to the same band, and past 16:9 keep the band's height and widen instead.
+// The front end's menus are cinematic shots with no letterbox: their titles and button prompts sit
+// at the top and bottom of the whole 4:3 frame, so there keep that frame's height past 4:3.
 static float PortCinematicFovy(const float hfov, const float aspect) {
   const float retailAspect = CCameraManager::GetDefaultAspectRatio();
-  const float kLetterbox = 16.f / 9.f;
+  const float band = CGameOptions::IsFrontEndActive() ? retailAspect : 16.f / 9.f;
   const float retailFovy = hfov / retailAspect;
   const float tanHalfWidth = retailAspect * tanf(CMath::Deg2Rad(0.5f * retailFovy));
-  const float fit = aspect < kLetterbox ? aspect : kLetterbox;
+  const float fit = aspect < band ? aspect : band;
   return 2.f * CMath::Rad2Deg(atanf(tanHalfWidth / fit));
 }
 #endif
