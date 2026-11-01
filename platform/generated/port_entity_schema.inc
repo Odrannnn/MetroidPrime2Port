@@ -4382,6 +4382,8 @@ template <> const PortSchemaClass& PortEntitySchema::Describe< CPlayerGun >() {
       {"mMissileCloseAnimDone", "bool", PortSchemaKind::bitfield, 1, kPortSchemaPrivate, 0, nullptr, PES_GETI(CPlayerGun, mMissileCloseAnimDone), PES_SETI(CPlayerGun, mMissileCloseAnimDone)},
       {"mCommonDependenciesLoaded", "bool", PortSchemaKind::bitfield, 1, kPortSchemaPrivate, 0, nullptr, PES_GETI(CPlayerGun, mCommonDependenciesLoaded), PES_SETI(CPlayerGun, mCommonDependenciesLoaded)},
       {"mBeamLoadRequested", "bool", PortSchemaKind::bitfield, 1, kPortSchemaPrivate, 0, nullptr, PES_GETI(CPlayerGun, mBeamLoadRequested), PES_SETI(CPlayerGun, mBeamLoadRequested)},
+      {"mPortStillTime", "float", PortSchemaKind::float_, 0, kPortSchemaPrivate, sizeof(CPlayerGun::mPortStillTime), PES_ADDR(CPlayerGun, mPortStillTime), nullptr, nullptr},
+      {"mPortHandOnCannon", "bool", PortSchemaKind::bool_, 0, kPortSchemaPrivate, sizeof(CPlayerGun::mPortHandOnCannon), PES_ADDR(CPlayerGun, mPortHandOnCannon), PES_GETI(CPlayerGun, mPortHandOnCannon), PES_SETI(CPlayerGun, mPortHandOnCannon)},
       {"mPortRapidCharge", "bool", PortSchemaKind::bool_, 0, kPortSchemaPrivate, sizeof(CPlayerGun::mPortRapidCharge), PES_ADDR(CPlayerGun, mPortRapidCharge), PES_GETI(CPlayerGun, mPortRapidCharge), PES_SETI(CPlayerGun, mPortRapidCharge)},
       {"mPortRapidShots", "int", PortSchemaKind::int_, 0, kPortSchemaPrivate, sizeof(CPlayerGun::mPortRapidShots), PES_ADDR(CPlayerGun, mPortRapidShots), PES_GETI(CPlayerGun, mPortRapidShots), PES_SETI(CPlayerGun, mPortRapidShots)},
       {"mPortRapidTimer", "float", PortSchemaKind::float_, 0, kPortSchemaPrivate, sizeof(CPlayerGun::mPortRapidTimer), PES_ADDR(CPlayerGun, mPortRapidTimer), nullptr, nullptr},
@@ -4390,7 +4392,7 @@ template <> const PortSchemaClass& PortEntitySchema::Describe< CPlayerGun >() {
       {"mPortPrevGunRel", "CTransform4f", PortSchemaKind::math, 0, kPortSchemaPrivate, sizeof(CPlayerGun::mPortPrevGunRel), PES_ADDR(CPlayerGun, mPortPrevGunRel), nullptr, nullptr},
       {"mPortPrevGunGeneration", "unsigned int", PortSchemaKind::int_, 0, kPortSchemaPrivate, sizeof(CPlayerGun::mPortPrevGunGeneration), PES_ADDR(CPlayerGun, mPortPrevGunGeneration), PES_GETI(CPlayerGun, mPortPrevGunGeneration), PES_SETI(CPlayerGun, mPortPrevGunGeneration)},
   };
-  static const PortSchemaClass desc = {"CPlayerGun", "CPlayerGunBase", fields, 106, 0xC36C03DC57CD63BDull};
+  static const PortSchemaClass desc = {"CPlayerGun", "CPlayerGunBase", fields, 108, 0x3302EBE9C6622CEDull};
   return desc;
 }
 template <> const PortSchemaClass& PortEntitySchema::Describe< CPlayerGunBase >() {
@@ -8221,4 +8223,4 @@ const PortSchemaClass* const* PortEntitySchema::Classes(int& count) {
 }
 
 const int PortEntitySchema::kClassCount = 243;
-const int PortEntitySchema::kFieldCount = 6282;
+const int PortEntitySchema::kFieldCount = 6284;
