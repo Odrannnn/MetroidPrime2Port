@@ -76,7 +76,9 @@ struct PromptKey {
 struct PromptAsset {
   uint32_t id;
   uint32_t prompt;
+  bool glow = false; // drawn inside a glow: served GlowVariant's recolouring
 };
+constexpr bool kGlow = true;
 // Ids marked "Trilogy only" are Wii art that the GameCube disc draws with other
 // ids; each was paired with its GameCube counterpart by aligning the two discs'
 // STRGs string by string.
@@ -103,7 +105,7 @@ constexpr PromptAsset kAssets[] = {
     {0x617D3700, PROMPT_STICK}, // Trilogy only: Nunchuk stick frame (Dash)
     {0x61E49F68, PROMPT_STICK},
     {0x637BA080, PROMPT_STICK}, // Trilogy only: Nunchuk stick frame (Dash)
-    {0x6D482337, PAD_BUTTON_A},
+    {0x6D482337, PAD_BUTTON_A, kGlow}, // the main menu's selection orb
     {0x71AA55E3, PAD_BUTTON_B}, // Trilogy only: Wii B, jump / Space Jump / Screw Attack
     {0x72A83A41, PROMPT_STICK},
     {0x738A4798, PROMPT_CSTICK_UP}, {0x73E9B3B2, PROMPT_CSTICK_LEFT},
@@ -552,9 +554,45 @@ bool IconFitsBound(uint32_t iconWidth, uint32_t iconHeight, uint32_t width, uint
 // icon after Apply has unregistered it and moved on to another path, so each
 // path gets storage that is never changed or freed. Only the main thread adds
 // to the set, and there are only as many entries as distinct icon files.
-const std::string* StablePath(const std::string& path) {
-  static std::set<std::string> sPaths;
-  return &*sPaths.insert(path).first;
+// The bool asks for the glow variant (GlowVariant).
+using IconSource = std::pair<std::string, bool>;
+const IconSource* StablePath(const std::string& path, bool glow = false) {
+  static std::set<IconSource> sPaths;
+  return &*sPaths.emplace(path, glow).first;
+}
+
+// The icon recoloured for a slot the game draws inside a glow that lifts every texel (the main
+// menu's selection orb): the game's own art there is a light symbol on a mid-tone disc, which the
+// lift leaves readable, while a light keycap with a dark symbol came out a blank white square.
+// So the body goes dark and whatever is darker than it - the symbol - goes white, eased over the
+// antialiased edge. `bytes` is one of tools/make_prompt_glyphs.py's DDS files: a 128-byte header,
+// then 8-bit RGBA.
+void GlowVariant(std::vector<uint8_t>& bytes) {
+  constexpr size_t kHeader = 128;
+  if (bytes.size() <= kHeader) {
+    return;
+  }
+  uint8_t* px = bytes.data() + kHeader;
+  const size_t count = (bytes.size() - kHeader) / 4;
+  const auto luma = [](const uint8_t* p) { return (p[0] * 77 + p[1] * 150 + p[2] * 29) >> 8; };
+  // The body: the brightest of the opaque texels (a keycap's face, a button's disc).
+  int body = 0;
+  for (size_t i = 0; i < count; ++i) {
+    if (px[i * 4 + 3] >= 128) {
+      body = std::max(body, luma(px + i * 4));
+    }
+  }
+  if (body == 0) {
+    return;
+  }
+  for (size_t i = 0; i < count; ++i) {
+    uint8_t* p = px + i * 4;
+    // 0 on the body, 1 once a texel is half the body's brightness or darker.
+    const float t = std::clamp(float(body - luma(p)) * 2.f / float(body), 0.f, 1.f);
+    for (int c = 0; c < 3; ++c) {
+      p[c] = static_cast<uint8_t>(p[c] * 0.35f * (1.f - t) + 255.f * t + 0.5f);
+    }
+  }
 }
 
 // Serves one generated icon as if it were a replacement file. Called from
@@ -565,7 +603,14 @@ bool ReadIconBytes(void* userData, const char* path, std::vector<uint8_t>& out) 
   if (path != nullptr && std::strstr(path, "_mip") != nullptr) {
     return false;
   }
-  return ReadIconFile(*static_cast<const std::string*>(userData), out);
+  const auto& source = *static_cast<const IconSource*>(userData);
+  if (!ReadIconFile(source.first, out)) {
+    return false;
+  }
+  if (source.second) {
+    GlowVariant(out);
+  }
+  return true;
 }
 
 const char* StemForScancode(int scancode) {
@@ -832,7 +877,7 @@ void Apply(size_t index, const std::string& stem) {
   // set (a pad unplugged, say) buried the binding icons, and Poll does not
   // re-apply a stem that has not changed.
   reg.handle = aurora::texture::register_virtual_replacement(
-      keyName, aurora::texture::VirtualFileSource{&ReadIconBytes, const_cast<std::string*>(StablePath(reg.iconPath))},
+      keyName, aurora::texture::VirtualFileSource{&ReadIconBytes, const_cast<IconSource*>(StablePath(reg.iconPath))},
       aurora::texture::ReplacementOptions{.priority = 2});
   reg.registered = reg.handle.id != 0;
 }
@@ -843,6 +888,7 @@ struct BoundPrompt {
   uint32_t prompt;
   uint32_t width;
   uint32_t height;
+  bool glow;
   aurora::texture::ReplacementRegistration handle{};
   bool registered = false;
 };
@@ -876,12 +922,12 @@ void ApplyBound(const void* owner, BoundPrompt& bound, const std::string& stem) 
       !IconFitsBound(iconWidth, iconHeight, bound.width, bound.height)) {
     return;
   }
-  const std::string* path = StablePath(iconPath);
+  const IconSource* source = StablePath(iconPath, bound.glow);
   // Above the user's texture pack (priority 1) and the static device set (0): a remapped
   // action still shows the key or button it is bound to.
   bound.handle = aurora::texture::register_virtual_replacement(
-      aurora::texture::TexturePointerKey{owner}, *path,
-      aurora::texture::VirtualFileSource{&ReadIconBytes, const_cast<std::string*>(path)},
+      aurora::texture::TexturePointerKey{owner}, bound.glow ? iconPath + "#glow" : iconPath,
+      aurora::texture::VirtualFileSource{&ReadIconBytes, const_cast<IconSource*>(source)},
       aurora::texture::ReplacementOptions{.priority = 2});
   bound.registered = bound.handle.id != 0;
 }
@@ -1071,7 +1117,7 @@ bool BindTexture(const void* owner, uint32_t id, uint32_t width, uint32_t height
   if (bound.registered) {
     aurora::texture::unregister_replacement(bound.handle);
   }
-  bound = BoundPrompt{prompt, width, height};
+  bound = BoundPrompt{prompt, width, height, asset->glow};
   if (sEnabled) {
     // Textures stream in after Poll ran: give this one the action's current icon.
     const std::string& stem = ActionStem(prompt);
