@@ -140,9 +140,30 @@ void ClearTouchHover() {
   }
 }
 
-// Full screen inside the display's safe area (clear of the notch and the
-// gesture bars), no title bar to drag, a Close button a thumb can hit, and a
-// page list down the side in place of a tab strip too narrow to tap.
+// SDL's safe area, except that on Android the top edge only keeps clear of the cutout and a visible
+// status bar. SDL's also avoids the swipe-down band, which Android reports even with the bars
+// hidden, leaving a wide empty strip; the back-gesture edges at the sides stay avoided.
+static bool DrawArea(SDL_Window* window, SDL_Rect* area) {
+  if (!SDL_GetWindowSafeArea(window, area))
+    return false;
+#if defined(__ANDROID__)
+  int left, top, right, bottom;
+  int h = 0, ph = 0;
+  if (DrawInsetsPx(left, top, right, bottom) && SDL_GetWindowSize(window, nullptr, &h) &&
+      SDL_GetWindowSizeInPixels(window, nullptr, &ph) && h > 0 && ph > 0) {
+    const int drawTop = static_cast< int >(top * static_cast< float >(h) / static_cast< float >(ph));
+    if (drawTop < area->y) {
+      area->h += area->y - drawTop;
+      area->y = drawTop;
+    }
+  }
+#endif
+  return true;
+}
+
+// Full screen inside the display's drawable area (clear of the notch and any bar on screen), no
+// title bar to drag, a Close button a thumb can hit, and a page list down the side in place of a
+// tab strip too narrow to tap.
 bool DrawPageWindow() {
   const ImGuiViewport* viewport = ImGui::GetMainViewport();
   ImVec2 pos = viewport->WorkPos;
@@ -150,7 +171,7 @@ bool DrawPageWindow() {
   SDL_Window* window = MainWindow();
   SDL_Rect safe;
   int windowWidth = 0, windowHeight = 0;
-  if (window != nullptr && SDL_GetWindowSafeArea(window, &safe) &&
+  if (window != nullptr && DrawArea(window, &safe) &&
       SDL_GetWindowSize(window, &windowWidth, &windowHeight) && windowWidth > 0 &&
       windowHeight > 0 && safe.w > 0 && safe.h > 0) {
     // ImGui's display size need not be in window coordinates.
