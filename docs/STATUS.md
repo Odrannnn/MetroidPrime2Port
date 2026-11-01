@@ -3,6 +3,17 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-11-01: map pickup tracker (map/pickups, 23360d435)
+
+MP1-style pickup dots: `platform/port_map_pickups.cpp`, `CMapWorld::DrawPortPickups` (TARGET_PC), F1 Tracker
+page, settings `map_pickups` (Off/Rooms/All) and `map_pickup_kinds`, console `tracker`/`pickups` (docs/CONSOLE.md,
+SETTINGS.md, QOL.md item 7). `tools/rando_world.py` emits `PORT_RANDO_LOCATION_MAP(relay, x, y, z)` for all 114
+locations; collected = the memory relay in that world's `CScriptMailbox` (Bomb Guardian drop: the boss's DEAD relay
+0x0C1A0062). Verified in Xvfb: new game 0/114; Dynamo Chamber dot sits under the player arrow after `tp` to the
+pickup; Rooms tint amber, dark rims (PC `CColor(uint)` byte order: use the uchar constructor). Not verified on screen:
+a collected pickup turning into a cross, a randomized seed's kinds. Not done: reveal map, unvisited-room list.
+Windows laptop not updated (unreachable).
+
 ## 2026-10-31: broad save-state sweep (every area)
 
 statecheck round trip in every slot of Temple Grounds (0-52), Great Temple, Agon, Torvus and Sanctuary:
