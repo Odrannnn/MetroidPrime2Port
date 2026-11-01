@@ -795,6 +795,17 @@ void CPlayer::FindOrbitableObjects(const rstl::reserved_vector< TUniqueId, 1024 
   }
 }
 
+#ifdef TARGET_PC
+// Aim Lock-On: screen x is weighed by the aspect ratio so the ranking is the same angle both ways
+// on a wide screen. 1 when the setting is off, so retail's measure is untouched.
+static float PortAimLockXScale() {
+  if (!PortOverlay::AimLockOn() || CGraphics::GetViewport().mHeight <= 0) {
+    return 1.f;
+  }
+  return CCast::LtoF(CGraphics::GetViewport().mWidth) / CCast::LtoF(CGraphics::GetViewport().mHeight);
+}
+#endif
+
 TUniqueId CPlayer::FindBestOrbitableObject(const rstl::reserved_vector< TUniqueId, 64 >& objects,
                                            EPlayerZoneInfo zone, CStateManager& mgr) {
   const CVector3f eyePosition = GetEyePosition();
@@ -820,6 +831,13 @@ TUniqueId CPlayer::FindBestOrbitableObject(const rstl::reserved_vector< TUniqueI
       (CCast::LtoF(GetTweakPlayer()->GetOrbitZoneIdealX(zone)) - halfWidth) / halfWidth;
   const float idealY =
       (CCast::LtoF(GetTweakPlayer()->GetOrbitZoneIdealY(zone)) - halfHeight) / halfHeight;
+#endif
+#ifdef TARGET_PC
+  // Aim Lock-On: the target nearest the crosshair wins whatever its distance (retail prefers one
+  // nearer the player by more than the orbit distance threshold). Not in the scan visor.
+  const bool aimPriority =
+      PortOverlay::AimLockOn() && mPlayerState->GetCurrentVisor() != CPlayerState::kPV_Scan;
+  const float aimXScale = aimPriority ? PortAimLockXScale() : 1.f;
 #endif
   TUniqueId bestId = mOrbitNextTargetId;
   const CFirstPersonCamera* fpCamera = mCameraManager->GetFirstPersonCamera();
@@ -861,7 +879,11 @@ TUniqueId CPlayer::FindBestOrbitableObject(const rstl::reserved_vector< TUniqueI
             }
             bestId = act->GetUniqueId();
             pass = true;
+            #ifdef TARGET_PC
+            const float screenX = (screenPosition.GetX() - idealX) * aimXScale;
+#else
             const float screenX = screenPosition.GetX() - idealX;
+#endif
             const float screenY = screenPosition.GetY() - idealY;
             mOrbitTargetScreenDistance = screenX * screenX + screenY * screenY;
             mOrbitTargetDistance = distance;
@@ -872,13 +894,31 @@ TUniqueId CPlayer::FindBestOrbitableObject(const rstl::reserved_vector< TUniqueI
                                 act)) {
           pass = true;
         }
+#ifdef TARGET_PC
+      } else if (aimPriority) {
+        const float screenX = (screenPosition.GetX() - idealX) * aimXScale;
+        const float screenY = screenPosition.GetY() - idealY;
+        const float screenDistance = screenX * screenX + screenY * screenY;
+        if (screenDistance < mOrbitTargetScreenDistance &&
+            mgr.RayCollideWorld(eyePosition, eyePosition + eyeToOrbit, kPlayerLineOfSightFilter,
+                                act)) {
+          bestId = act->GetUniqueId();
+          pass = true;
+          mOrbitTargetScreenDistance = screenDistance;
+          mOrbitTargetDistance = distance;
+        }
+#endif
       } else if (mOrbitTargetDistance - distance > GetTweakPlayer()->GetOrbitDistanceThreshold() &&
                  mPlayerState->GetCurrentVisor() != CPlayerState::kPV_Scan) {
         if (mgr.RayCollideWorld(eyePosition, eyePosition + eyeToOrbit, kPlayerLineOfSightFilter,
                                 act)) {
           bestId = act->GetUniqueId();
           pass = true;
-          const float screenX = screenPosition.GetX() - idealX;
+          #ifdef TARGET_PC
+            const float screenX = (screenPosition.GetX() - idealX) * aimXScale;
+#else
+            const float screenX = screenPosition.GetX() - idealX;
+#endif
           const float screenY = screenPosition.GetY() - idealY;
           mOrbitTargetScreenDistance = screenX * screenX + screenY * screenY;
           mOrbitTargetDistance = distance;
@@ -886,7 +926,11 @@ TUniqueId CPlayer::FindBestOrbitableObject(const rstl::reserved_vector< TUniqueI
       } else if (CMath::AbsF(distance - mOrbitTargetDistance) <
                      GetTweakPlayer()->GetOrbitDistanceThreshold() ||
                  mPlayerState->GetCurrentVisor() == CPlayerState::kPV_Scan) {
-        const float screenX = screenPosition.GetX() - idealX;
+        #ifdef TARGET_PC
+            const float screenX = (screenPosition.GetX() - idealX) * aimXScale;
+#else
+            const float screenX = screenPosition.GetX() - idealX;
+#endif
         const float screenY = screenPosition.GetY() - idealY;
         const float screenDistance = screenX * screenX + screenY * screenY;
         if (screenDistance < mOrbitTargetScreenDistance &&
@@ -992,7 +1036,11 @@ TUniqueId CPlayer::FindOrbitTargetId(CStateManager& mgr) {
       SetOrbitNextTargetId(kInvalidUniqueId);
       return kInvalidUniqueId;
     }
+#ifdef TARGET_PC
+    const float screenX = (screenPosition.GetX() - idealX) * PortAimLockXScale();
+#else
     const float screenX = screenPosition.GetX() - idealX;
+#endif
     const float screenY = screenPosition.GetY() - idealY;
     mOrbitTargetScreenDistance = screenX * screenX + screenY * screenY;
     mOrbitTargetDistance = (orbitPosition - GetTranslation()).Magnitude();

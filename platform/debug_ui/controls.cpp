@@ -70,6 +70,9 @@ void DrawControlsOptions() {
   Changed(ImGui::Checkbox("Toggle Lock-On", &sLockOnToggle));
   ItemHelp("Press L once to lock on, scan or grapple, and again to let go. With no target, L works "
            "as usual.");
+  Changed(ImGui::Checkbox("Aim Lock-On", &sAimLockOn));
+  ItemHelp("Lock onto the target nearest the crosshair. The original prefers a nearer target even "
+           "when it is off to the side. Scanning works as usual.");
   Changed(ImGui::Checkbox("Sticky Charge", &sStickyCharge));
   ItemHelp("Tap to fire as usual. Hold fire, let go, and the beam keeps charging; press fire again "
            "to shoot. Needs the Charge Beam.");

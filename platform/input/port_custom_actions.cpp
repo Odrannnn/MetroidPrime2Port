@@ -117,6 +117,8 @@ constexpr BoolSetting kBoolSettings[] = {
      &PortOverlay::SetSpringBallFlick},
     {"lockon_toggle", "Toggle Lock-On", "Controls", &PortOverlay::LockOnToggle,
      &PortOverlay::SetLockOnToggle},
+    {"aim_lock_on", "Aim Lock-On", "Controls", &PortOverlay::AimLockOn,
+     &PortOverlay::SetAimLockOn},
     {"sticky_charge", "Sticky Charge", "Controls", &PortOverlay::StickyCharge,
      &PortOverlay::SetStickyCharge},
     {"rapid_charge", "Rapid charge", "Controls", &PortOverlay::RapidCharge,

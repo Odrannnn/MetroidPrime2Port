@@ -1654,6 +1654,12 @@ void CmdLockOn(CStateManager&, const Args& args, std::string& out) {
   out += enabled ? "toggle lock-on on\n" : "toggle lock-on off\n";
 }
 
+void CmdAimLockOn(CStateManager&, const Args& args, std::string& out) {
+  const bool enabled = args.size() < 2 ? !PortOverlay::AimLockOn() : ArgToInt(args[1], 1) != 0;
+  PortOverlay::SetAimLockOn(enabled);
+  out += enabled ? "aim lock-on on\n" : "aim lock-on off\n";
+}
+
 void CmdSticky(CStateManager&, const Args& args, std::string& out) {
   const bool enabled = args.size() < 2 ? !PortOverlay::StickyCharge() : ArgToInt(args[1], 1) != 0;
   PortOverlay::SetStickyCharge(enabled);
@@ -5063,6 +5069,8 @@ const CommandSpec kCommands[] = {
       "springball <0|1>            spring ball: C-stick up in Morph Ball bomb-jumps (needs Bombs)\n"},
     {"lockon", CmdLockOn,
       "lockon <0|1>                toggle lock-on: an L press latches until the next press\n"},
+    {"aimlockon", CmdAimLockOn,
+      "aimlockon [0|1]            lock-on picks the target nearest the crosshair (aim_lock_on)\n"},
     {"sticky", CmdSticky,
       "sticky <0|1>                sticky charge: a long A hold keeps charging after the release\n"},
     {"pointeraim", CmdPointerAim,

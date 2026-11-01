@@ -292,6 +292,10 @@ float SpringBallFlickRate();
 const float kStickyChargeAfter = 0.35f;
 bool LockOnToggle();
 void SetLockOnToggle(bool enabled);
+// Aim Lock-On: lock onto the target nearest the crosshair instead of the retail pick, which
+// prefers a nearer target (CPlayer::FindBestOrbitableObject). Off under Original Experience.
+bool AimLockOn();
+void SetAimLockOn(bool enabled);
 bool StickyCharge();
 void SetStickyCharge(bool enabled);
 // Auto-aim (`MP2_AUTO_AIM=0` turns it off, default on): off, the arm cannon aims only at a

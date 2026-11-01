@@ -169,6 +169,11 @@ Controls > Options:
   applies the Remastered layout to all controllers (Remap > Presets...), replacing your own
   controller bindings; greyed out with a GameCube adapter.
 - `lockon_toggle`: Buttons > Toggle Lock-On; env `MP2_LOCK_ON_TOGGLE`.
+- `aim_lock_on`: Buttons > Aim Lock-On (default off, off under Original Experience; env
+  `MP2_AIM_LOCK_ON`): lock-on picks the target nearest the crosshair, measured as an angle (screen x
+  weighed by the aspect ratio) with line of sight still required. Retail prefers a target nearer the
+  player by more than the orbit distance threshold even when it is off to the side. Grapple points
+  and the scan visor keep retail's pick.
 - `sticky_charge`, `rapid_charge`: Buttons > Sticky Charge, Remastered charge (rapid fire).
 - `auto_aim`: Aiming > Auto-aim.
 - `pointer_aim`, `pointer_aim_box`, `pointer_aim_turn`: Aiming > Pointer aim (Trilogy style),

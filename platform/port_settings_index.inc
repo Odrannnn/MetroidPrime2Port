@@ -23,6 +23,7 @@
 {"Controls", "Options", "Quick setup", "Use twin-stick controller", "twin stick dual sticks right stick aim controller gamepad remastered preset layout quick setup"},
 {"Controls", "Options", "On-screen prompts", "Button glyphs", "prompt glyphs xbox playstation switch nintendo gamecube keyboard icons buttons"},
 {"Controls", "Options", "Buttons", "Toggle Lock-On", "lock on target latch hold l trigger"},
+{"Controls", "Options", "Buttons", "Aim Lock-On", "lock on target nearest crosshair aim priority"},
 {"Controls", "Options", "Buttons", "Sticky Charge", "charge beam hold a"},
 {"Controls", "Options", "Buttons", "Remastered charge (rapid fire)", "rapid fire charge beam power"},
 {"Controls", "Options", "Aiming", "Native Trilogy radial selectors", "beam visor menu held wheel rs5"},
