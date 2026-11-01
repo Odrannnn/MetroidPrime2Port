@@ -21,6 +21,7 @@
 #include "port_input.h"
 #include "port_logfile.h"
 #include "port_overlay.h"
+#include "port_touch.h"
 #include "port_pointer.h"
 #include "port_save.h"
 #include "port_savestate.h"
@@ -1640,6 +1641,14 @@ void CmdGameEvent(CStateManager& mgr, const Args& args, std::string& out) {
   std::snprintf(line, sizeof(line), "gameevent %.*s %u->%u: %d proxies\n", int(args[1].size()),
                 args[1].data(), src, tgt, reached);
   out += line;
+}
+
+// As the Dodge action's press: the player takes it within 120 ms, on the ground while strafing
+// (hold one with `press sx:<n>`).
+void CmdDodge(CStateManager&, const Args&, std::string& out) {
+  PortTouch::RequestDodge();
+  out = PortOverlay::OriginalExperience() ? "dodge requested (off under original experience)"
+                                          : "dodge requested";
 }
 
 void CmdSpringBall(CStateManager&, const Args& args, std::string& out) {
@@ -5069,6 +5078,8 @@ const CommandSpec kCommands[] = {
       "springball <0|1>            spring ball: C-stick up in Morph Ball bomb-jumps (needs Bombs)\n"},
     {"lockon", CmdLockOn,
       "lockon <0|1>                toggle lock-on: an L press latches until the next press\n"},
+    {"dodge", CmdDodge,
+      "dodge                      a Dodge press (sideways dash, locked on or not; needs a strafe held)\n"},
     {"aimlockon", CmdAimLockOn,
       "aimlockon [0|1]            lock-on picks the target nearest the crosshair (aim_lock_on)\n"},
     {"sticky", CmdSticky,

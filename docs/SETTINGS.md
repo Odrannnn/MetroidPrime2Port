@@ -174,6 +174,13 @@ Controls > Options:
   weighed by the aspect ratio) with line of sight still required. Retail prefers a target nearer the
   player by more than the orbit distance threshold even when it is off to the side. Grapple points
   and the scan visor keep retail's pick.
+- Dodge (Controls > Remap > Move and aim, binding `dodge`, unbound by default): pressed on the
+  ground while strafing (strafe at least as strong as forward/back), it dashes. Locked on, it does
+  what a jump tapped while strafing does: retail's dash around the target. Not locked on, it does
+  the same dash (hop, speed, length, sound and rumble) straight sideways along the facing at the
+  press, with mouse/stick look free during it. A press is kept for 0.12 s, so pressing just before
+  the strafe works. Like any digital action it can be a touch button in the layout editor. Off under
+  Original Experience; the jump-tap dash is unchanged.
 - `sticky_charge`, `rapid_charge`: Buttons > Sticky Charge, Remastered charge (rapid fire).
 - `auto_aim`: Aiming > Auto-aim.
 - `pointer_aim`, `pointer_aim_box`, `pointer_aim_turn`: Aiming > Pointer aim (Trilogy style),

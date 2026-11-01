@@ -31,6 +31,7 @@
 #ifdef TARGET_PC
 #include "port_mouse.h"
 #include "port_overlay.h"
+#include "port_touch.h"
 #endif
 
 #include "MetroidPrime/CAnimData.hpp"
@@ -59,6 +60,18 @@ static const float skOrbitForwardDistances[] = {11.8f, 11.8f, 11.8f, 5.f, 6.f, 5
 // speed it settles at (and every clamp) is k times retail's, reached in the same time. At 100 the
 // factor is exactly 1.
 static float WalkScale() { return static_cast< float >(PortOverlay::WalkSpeed()) / 100.f; }
+
+// The Dodge action (MP1 issue #236): retail's sideways dash, also without a lock-on target. Not
+// locked on, a press on the ground while strafing starts a jump (kDodgeHop); the next tick starts
+// the dash as a tapped jump does in ComputeDash, and it moves in a straight line along the body's
+// right axis at that moment, at the dash's speeds, until it lands or times out (kDodgeDash).
+// Locked on, the press starts the jump and ComputeDash starts retail's dash on the same tick.
+enum EDodgePhase { kDodgeNone, kDodgeHop, kDodgeDash };
+static EDodgePhase sDodgePhase = kDodgeNone;
+static float sDodgeStrafe = 0.f;
+static CVector3f sDodgeRight = CVector3f(1.f, 0.f, 0.f);
+static CVector3f sDodgeForward = CVector3f(0.f, 1.f, 0.f);
+static bool sDodgeOrbitDash = false;
 #endif
 
 CVector3f CPlayer::GetDampedClampedVelocityWR() const {
@@ -299,7 +312,16 @@ void CPlayer::ComputeDash(const CFinalInput& input, float dt, CStateManager& mgr
     mDashButtonHoldTime += dt;
   }
   if (!mSidewaysDashing) {
+#ifdef TARGET_PC
+    const bool dodge = sDodgeOrbitDash && !mSlidingOnWall && !mHitWallDuringMove &&
+                       mOrbitState == kOS_OrbitObject &&
+                       CMath::AbsF(strafeInput) >= CMath::AbsF(forwardInput) &&
+                       CMath::AbsF(strafeInput) > GetTweakPlayer()->GetDashStrafeInputThreshold();
+    sDodgeOrbitDash = false;
+    if (dodge || SidewaysDashAllowed(strafeInput, forwardInput, input, mgr)) {
+#else
     if (SidewaysDashAllowed(strafeInput, forwardInput, input, mgr)) {
+#endif
       BeginSidewaysDash(strafeInput, mgr);
     }
     strafeVelocity *= strafeInput;
@@ -385,6 +407,57 @@ CVector3f CPlayer::PortMovementInput(const CFinalInput& input) const {
 #endif
 
 void CPlayer::ComputeMovement(const CFinalInput& input, CStateManager& mgr, float dt) {
+#ifdef TARGET_PC
+  // A Dodge press is held for a short window (PortTouch::TakeDodgeRequest), so it is only taken
+  // once the strafe input and the ground allow it, as SidewaysDashAllowed asks of a dash.
+  bool dodgePressed = false;
+  sDodgeOrbitDash = false;
+  const bool lockedOn = mOrbitState == kOS_OrbitObject;
+  if (sDodgePhase == kDodgeNone && (mOrbitState == kOS_NoOrbit || lockedOn) &&
+      mMovementState == NPlayer::kMS_OnGround && !IsMorphBallTransitioning() &&
+      GetTweakPlayer()->GetDashEnabled() && !mSlidingOnWall && !mHitWallDuringMove) {
+    const float strafe = mControlMapper.GetAnalogInput(CControlMapper::kC_StrafeRight, input) -
+                         mControlMapper.GetAnalogInput(CControlMapper::kC_StrafeLeft, input);
+    const float forward = mControlMapper.GetAnalogInput(CControlMapper::kC_Forward, input) -
+                          mControlMapper.GetAnalogInput(CControlMapper::kC_Backward, input);
+    CVector3f right = GetTransform().GetRight();
+    right.SetZ(0.f);
+    if (CMath::AbsF(strafe) >= CMath::AbsF(forward) &&
+        CMath::AbsF(strafe) > GetTweakPlayer()->GetDashStrafeInputThreshold() &&
+        right.CanBeNormalized() && PortTouch::TakeDodgeRequest()) {
+      SetMoveState(NPlayer::kMS_Jump, mgr);
+      if (lockedOn) {
+        sDodgeOrbitDash = true;
+      } else {
+        sDodgePhase = kDodgeHop;
+        dodgePressed = true;
+      }
+      sDodgeStrafe = strafe;
+      sDodgeRight = right.AsNormalized();
+      sDodgeForward = CVector3f(-sDodgeRight.GetY(), sDodgeRight.GetX(), 0.f);
+    }
+  }
+  if (sDodgePhase != kDodgeNone && !dodgePressed) {
+    const bool stop = mMovementState == NPlayer::kMS_OnGround || mOrbitState != kOS_NoOrbit ||
+                      IsMorphBallTransitioning() || mSlidingOnWall || mHitWallDuringMove;
+    if (sDodgePhase == kDodgeHop) {
+      if (stop) {
+        sDodgePhase = kDodgeNone;
+      } else {
+        // ComputeDash's start, a tick into the jump as a tapped jump is.
+        sDodgePhase = kDodgeDash;
+        BeginSidewaysDash(sDodgeStrafe, mgr);
+      }
+    } else {
+      mDashTimer += dt;
+      if (stop || !mSidewaysDashing || mDashTimer >= mDashDuration) {
+        FinishSidewaysDash(mgr);
+        CSfxManager::RemoveEmitter(mDashSfx);
+        sDodgePhase = kDodgeNone;
+      }
+    }
+  }
+#endif
   const float jumpInput = JumpInput(input, mgr);
 #ifdef TARGET_PC
   // The Prime port's rule for direct aim (`MetroidPrimePort`'s "direct aim without Remastered
@@ -408,6 +481,10 @@ void CPlayer::ComputeMovement(const CFinalInput& input, CStateManager& mgr, floa
   float turnInput = TurnInput(input, mgr);
   const float forwardInput = ForwardInput(input, turnInput);
   const float strafeInput = StrafeInput(input);
+#endif
+#ifdef TARGET_PC
+  // A Dodge sets its own velocity, as an orbit dash does without the free-movement friction.
+  if (sDodgePhase != kDodgeDash)
 #endif
   SetVelocityWR(GetDampedClampedVelocityWR());
   float turnSpeedMultiplier = GetTweakPlayer()->GetTurnSpeedMultiplier();
@@ -537,6 +614,37 @@ void CPlayer::ComputeMovement(const CFinalInput& input, CStateManager& mgr, floa
     forwardForce = 0.f;
     strafeForce = 0.f;
   }
+#ifdef TARGET_PC
+  if (sDodgePhase == kDodgeDash) {
+    // ComputeDash's speeds along the captured axes: the walk strafe speed on its
+    // first tick, then the dash speed blended down to it.
+    const ESurfaceRestraints restraint = GetSurfaceRestraint();
+    float strafeSpeed = skStrafeDistances[restraint] * WalkScale() * sDodgeStrafe;
+    if (mDashTimer > 0.f) {
+      if (mNoStrafeDashBlend) {
+        strafeSpeed = mDashSpeedMultiplier * skDashStrafeDistances[restraint];
+      } else {
+        const float blend = 1.f - CMath::Limit(mDashTimer / mStrafeDashBlendDuration, 1.f);
+        strafeSpeed = mDashSpeedMultiplier *
+                      ((skDashStrafeDistances[restraint] - skStrafeDistances[restraint]) * blend +
+                       skStrafeDistances[restraint]);
+      }
+      if (mStrafeInputAtDash < 0.f) {
+        strafeSpeed = -strafeSpeed;
+      }
+    }
+    const float forwardSpeed = forwardInput * (skOrbitForwardDistances[restraint] * WalkScale());
+    const CVector3f target = sDodgeRight * strafeSpeed + sDodgeForward * forwardSpeed;
+    // The dash sets the horizontal speed outright, as an orbit dash does; a force's per-tick
+    // acceleration would take far longer than the dash lasts.
+    SetVelocityWR(CVector3f(target.GetX(), target.GetY(), GetVelocityWR().GetZ()));
+    ApplyForceOR(CVector3f(0.f, 0.f, jumpInput), CAxisAngle::Identity());
+    if (turnInput != 0.f) {
+      ApplyForceOR(CVector3f::Zero(),
+                   CAxisAngle(CUnitVector3f(0.f, 0.f, 1.f, CUnitVector3f::kN_Yes), turnInput));
+    }
+  } else
+#endif
   if (mOrbitState == kOS_NoOrbit || mLookButtonHeld) {
     const CVector3f force = CVector3f(0.f, forwardForce, 0.f) + CVector3f(0.f, 0.f, jumpInput) +
                             CVector3f(strafeForce, 0.f, 0.f);

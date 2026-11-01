@@ -69,6 +69,10 @@ bool SpringBallRequested();
 // per request.
 void RequestSpringBall(float seconds = 0.12f);
 void ClearSpringBallRequest();
+// The Dodge action (MP1 issue #236): a sideways dash, locked on or not. The request lasts 120 ms;
+// CPlayer takes it once, only on the ground while strafing (false under Original Experience).
+void RequestDodge();
+bool TakeDodgeRequest();
 
 // Drag on the free screen to aim (MP1's `touch_aim`, on by default; `MP2_TOUCH_AIM`).
 bool AimEnabled();
