@@ -25,6 +25,7 @@
 #ifdef TARGET_PC
 #include "MetroidPrime/CActor.hpp"
 #include "MetroidPrime/CCameraManager.hpp"
+#include "MetroidPrime/PortEfbCopy.hpp"
 #include "port_overlay.h"
 #endif
 #ifdef TARGET_PC
@@ -57,8 +58,12 @@ void PortDeclareParticleFormats() {
 // it, at full size (INDM's half-size copy only saved console EFB bandwidth), and point each
 // particle at its own rectangle of that copy. Particles of one system no longer refract each other.
 // The copy is bound again on every call: a model system's other draws may load that texmap.
+// It has its own destination: Aurora keeps one copy texture per destination, so sharing the spare
+// buffer with the water's half-size copy made a splash blank the water's refraction (#44).
 void PortCopyViewportOnce(bool& copied) {
   const CViewport& vp = CGraphics::GetViewport();
+  void* const dest =
+      PortEfbCopy::Destination(CGraphics::GetDolphinSpareBuffer(), vp.mWidth, vp.mHeight, 2);
   if (!copied) {
     GXSetTexCopySrc(static_cast< u16 >(vp.mLeft), static_cast< u16 >(vp.mTop),
                     static_cast< u16 >(vp.mWidth), static_cast< u16 >(vp.mHeight));
@@ -66,12 +71,12 @@ void PortCopyViewportOnce(bool& copied) {
                     GX_FALSE);
     const bool useVideoFilter = CGraphics::GetUseVideoFilter();
     CGraphics::SetUseVideoFilter(false);
-    GXCopyTex(CGraphics::GetDolphinSpareBuffer(), GX_FALSE);
+    GXCopyTex(dest, GX_FALSE);
     CGraphics::SetUseVideoFilter(useVideoFilter);
     GXPixModeSync();
     copied = true;
   }
-  CGraphics::LoadDolphinSpareTexture(vp.mWidth, vp.mHeight, GX_TF_RGB565, nullptr,
+  CGraphics::LoadDolphinSpareTexture(vp.mWidth, vp.mHeight, GX_TF_RGB565, dest,
                                      CGraphics::kSpareBufferTexMapID);
 }
 

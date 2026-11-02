@@ -23,6 +23,9 @@
 #include "MetroidPrime/CGameArea.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/CWorld.hpp"
+#ifdef TARGET_PC
+#include "MetroidPrime/PortEfbCopy.hpp"
+#endif
 #include "MetroidPrime/Cameras/CGameCamera.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptWater.hpp"
 #include "MetroidPrime/TCastTo.hpp"
@@ -203,7 +206,15 @@ void CFluidPlaneCPU::RenderDistortion(float time, const CTransform4f& xf,
   GXColor fogColor;
   CGX::GetFog(&fogType, &fogStart, &fogEnd, &fogNear, &fogFar, &fogColor);
   CGX::SetFog(GX_FOG_NONE, 0.f, 0.f, 0.f, 0.f, fogColor);
+#ifdef TARGET_PC
+  // Distortion particles copy the full viewport into the same spare buffer. Aurora keeps one copy
+  // texture per destination and drops to the buffer's CPU bytes when the size differs, so a splash
+  // made the water sample garbage for a frame (#44). Take this copy's own destination.
+  void* buffer = PortEfbCopy::Destination(CGraphics::GetDolphinSpareBuffer(), viewport.mHalfWidth,
+                                          viewport.mHalfHeight, 2);
+#else
   void* buffer = CGraphics::GetDolphinSpareBuffer();
+#endif
   GXSetTexCopySrc(viewport.mLeft, viewport.mTop, viewport.mWidth, viewport.mHeight);
   GXSetTexCopyDst(viewport.mHalfWidth, viewport.mHalfHeight, GX_TF_RGB565, GX_TRUE);
   const bool videoFilter = CGraphics::GetUseVideoFilter();
@@ -211,8 +222,13 @@ void CFluidPlaneCPU::RenderDistortion(float time, const CTransform4f& xf,
   GXCopyTex(buffer, GX_FALSE);
   CGraphics::SetUseVideoFilter(videoFilter);
   GXPixModeSync();
+#ifdef TARGET_PC
+  CGraphics::LoadDolphinSpareTexture(viewport.mHalfWidth, viewport.mHalfHeight, GX_TF_RGB565,
+                                     buffer, CGraphics::kSpareBufferTexMapID);
+#else
   CGraphics::LoadDolphinSpareTexture(viewport.mHalfWidth, viewport.mHalfHeight, GX_TF_RGB565,
                                      nullptr, CGraphics::kSpareBufferTexMapID);
+#endif
 
   rstl::vector< CVector3f > polygon;
   polygon.reserve(4);
