@@ -7,8 +7,8 @@ compares the port body with the retail body (asm and rodata read through tools/a
   call   a retail `bl` target the port body never names: a ported module callee by its port name,
          an unported one by fn_<mod>_<off> or an x<OFF>_ name (in code or a comment), a DOL callee
          by its demangled base name (runtime helpers, rstl, ctors/dtors, operators skipped).
-         Port helpers the body calls (any def of that name, the caller's class when several) are
-         expanded 2 levels; DOL callees the port names another way (DOL_ALIAS: ObjectById,
+         Port helpers the body calls (any def of that name, the caller's class when several; else a
+         short inline body of an unmarked include/ header) are expanded 2 levels; DOL callees the port names another way (DOL_ALIAS: ObjectById,
          AsNormalized, SetDrawShadow...) count as named. Hidden unless --strict: callees missed at
          >= half of their (>= 3) call sites (port-model differences), unported module callees of a
          ctor or dtor (member ctors/dtors), unported rstl/string/allocation template instances,
@@ -365,6 +365,22 @@ def port_functions(paths, display=None):
                     funcs[k] = f
                     break
     return funcs, helpers, texts
+
+
+def add_header_helpers(helpers, texts):
+    """Inline bodies of the headers no marker sits in, as helpers of names the port defines nowhere
+    else (CEnergyProjectile::AddCollisionCooldown is the CCollisionCooldowns::Add retail calls)."""
+    have = set(helpers)
+    for p in sorted((ROOT / "include").rglob("*.hpp")):
+        if p in texts or str(p) in texts:
+            continue
+        try:
+            defs = ac.parse_cpp(str(p), deep=True)
+        except (OSError, RecursionError):
+            continue
+        for f in defs:
+            if f.short and f.short not in have and f.code.count("\n") <= 12:
+                helpers.setdefault(f.short, []).append((f.cls, f.code, p))
 
 
 def pick_helper(cands, cls, file):
@@ -1135,6 +1151,7 @@ def main():
     mods = sorted(p.name for p in rm.RELS.iterdir() if p.is_dir())
     retail, ids, sizes = load_retail(mods)
     funcs, helpers, texts = port_functions([Path(x).resolve() for x in args.file] if args.file else marker_files())
+    add_header_helpers(helpers, texts)
     dol = dol_symbols()
     layouts, members = class_info()
     ctx = {"helpers": helpers, "texts": texts, "sizes": sizes, "dol": dol, "lits": {}, "sites": {},
