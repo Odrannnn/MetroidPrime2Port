@@ -64,7 +64,14 @@ private:
   float mScanTime;
   float mRefreshTimer;
   rstl::vector< SScanObject > mScanObjects;
+#ifdef TARGET_PC
+  // One bit per object slot: the port has 2048 (TGameTypes.hpp), so retail's 128 bytes would be
+  // read and written past their end for ids >= 1024 (stray bits there kept scannables out of
+  // mScanObjects: they pulsed red/yellow and could not be scanned, #51).
+  uchar mScanObjectMembership[kMaxObjects / 8];
+#else
   uchar mScanObjectMembership[128];
+#endif
 };
 CHECK_SIZEOF(CPlayerTargeting, 0xa8)
 typedef CPlayerTargeting::SScanObject CPlayerTargetingScanObject;
