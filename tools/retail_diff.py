@@ -12,6 +12,7 @@ compares the port body with the retail body (asm and rodata read through tools/a
          AsNormalized, SetDrawShadow...) count as named. Hidden unless --strict: callees missed at
          >= half of their (>= 3) call sites (port-model differences), unported module callees of a
          ctor or dtor (member ctors/dtors), unported rstl/string/allocation template instances,
+         unported value helpers (straight-line stores through r3 only: struct copies, Cross),
          CToken::GetObj. A marker inside a body (a switch arm) checks that body (no shape check)
   const  a float constant retail loads from module rodata that appears nowhere in the port file
          as a literal (0 and the int->float conversion magic skipped)
@@ -812,6 +813,27 @@ def plumbing(ck, ctx, depth=0):
     return ok
 
 
+def value_helper(ck, ctx):
+    """An unported module function that only builds a value at r3 from its other arguments:
+    straight line, no calls, every store through r3, r3 never read or moved (an implicit struct
+    copy, a cross product, an aggregate's ctor) - the port's `=`, operator or brace init."""
+    m = ctx["ids"].get(ck[0])
+    fn = ctx["retail"][m][1].get(ck[1]) if m else None
+    if fn is None:
+        return False
+    for i in fn.ins:
+        a = i.args
+        if i.op.startswith("b") and i.op != "blr":
+            return False
+        if i.op.startswith("st") and len(a) == 2 and not re.search(r"\(r[13]\)$", a[1]):
+            return False
+        if i.op.startswith("l") and len(a) == 2 and a[1].endswith("(r3)"):
+            return False
+        if a and a[0] == "r3" and not i.op.startswith(("st", "cmp")):
+            return False
+    return True
+
+
 FREG = re.compile(r"f(\d+)$")
 FLIT = re.compile(r"^[-+]?(?:\d+\.\d*(?:[eE][-+]?\d+)?|\.\d+(?:[eE][-+]?\d+)?|\d+[eE][-+]?\d+)[fF]?$")
 
@@ -952,6 +974,8 @@ def check(key, f, retail, ctx):
                 continue    # the split's name for it
             if ck not in ctx["pnames"] and plumbing(ck, ctx) and not ctx["strict"]:
                 continue    # an rstl/string/allocation template instance the port's containers are
+            if ck not in ctx["pnames"] and value_helper(ck, ctx) and not ctx["strict"]:
+                continue    # a struct copy / vector op the port writes as an expression
             if ck in ctx["pnames"]:
                 pn = ctx["pnames"][ck]
                 cf = ctx["funcs"][ck]
