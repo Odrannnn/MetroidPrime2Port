@@ -1049,8 +1049,10 @@ void CElitePirate::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node
     handled = true;
     break;
   case 16:
+    // 0x7D90..0x7DC8: the shaker is CEntity::FindConnectedObject's first IS01/ATCH link, not
+    // CPatterned::GetConnectedObject's random active one (that draws from the RNG every shake)
     ApplyScreenShake(mgr, GetTranslation(),
-                     GetConnectedObject(mgr, kSS_InternalState1, kSM_Attach));
+                     FindConnectedObject(mgr, kSS_InternalState1, kSM_Attach));
     ShakePlayers(mgr);
     handled = true;
     break;
@@ -1084,7 +1086,8 @@ void CElitePirate::DoUserAnimEvent(CStateManager& mgr, const CInt32POINode& node
     RemoveMaterial(kMT_Solid, mgr);
     break;
   case 26:
-    ApplyScreenShake(mgr, GetTranslation(), GetConnectedObject(mgr, kSS_Footstep, kSM_Attach));
+    // 0x7DE0..0x7E18: FOOT/ATCH through FindConnectedObject as well
+    ApplyScreenShake(mgr, GetTranslation(), FindConnectedObject(mgr, kSS_Footstep, kSM_Attach));
     handled = true;
     break;
   default:
