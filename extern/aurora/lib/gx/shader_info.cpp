@@ -584,22 +584,13 @@ static void fill_uniform(ByteBuffer& buf, const ShaderInfo& info) noexcept {
   }
   if (info.usesFog) {
     const auto& state = g_gxState.fog;
-    const float logicalWidth = std::max(g_gxState.logicalViewport.width, 1.f);
-    const float renderWidth = std::max(g_gxState.renderViewport.width, 1.f);
     Fog fog{
         .color = state.color,
         .a = state.a,
         .b = state.b,
         .c = state.c,
-        .rangeCenter = ((static_cast<float>(state.rangeCenter) - g_gxState.logicalViewport.left) / logicalWidth) * 2.f -
-                       1.f + (g_gxState.renderViewport.left / renderWidth) * 2.f,
+        .type = static_cast<u32>(state.type),
     };
-    for (u32 i = 0; i < state.rangeK.size(); ++i) {
-      const u32 source = (i & ~1u) | (1u - (i & 1u));
-      fog.rangeK[i / 4][i % 4] = static_cast<float>(state.rangeK[source]) / 64.f;
-    }
-    fog.rangeK[2][2] = fog.rangeK[2][1];
-    fog.rangeK[2][3] = fog.rangeK[2][1];
     buf.append(fog);
   }
   if (info.usesVolFog) {

@@ -1212,6 +1212,9 @@ int main(int argc, char** argv) {
       .cachePath = EnvOrFallback("MP2_CACHE_PATH", appPaths.cache),
       .resourcesPath = nullptr,
       .desiredBackend = BACKEND_AUTO,
+      // The `msaa` setting from the start, not from the first frame's ApplyGraphicsQuality: the
+      // pipeline cache queues its startup rows at this sample count (its MSAA variants).
+      .msaa = static_cast<uint32_t>(PortOverlay::Msaa()),
       .vsync = false, // the `vsync` setting (platform/port_overlay.cpp) is the source of truth
       .startFullscreen = PortOverlay::Fullscreen(),
       // MP2_DUMP_TEXTURES=1 writes every texture the game loads to <cache>/texture_dumps, named

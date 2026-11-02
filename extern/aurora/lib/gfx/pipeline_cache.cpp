@@ -1402,32 +1402,8 @@ struct CachedRowStats {
 };
 
 template <typename PipelineConfig, typename CreateFn>
-static void queue_cached_row(ShaderType type, uint32_t configVersion, CreateFn&& create, const uint8_t* configBlob,
-                             int configSize, uint32_t firstFrameUsed, const CachedRowOptions& opts,
-                             CachedRowStats& stats) {
-  if (configSize != static_cast<int>(sizeof(PipelineConfig)) || (configSize != 0 && configBlob == nullptr)) {
-    return;
-  }
-
-  PipelineConfig config;
-  std::memcpy(&config, configBlob, sizeof(config));
-  if (config.version != configVersion) {
-    return;
-  }
-
-  if constexpr (std::is_same_v<PipelineConfig, gx::PipelineConfig>) {
-    if (!gx::pipeline_config_compatible(config, webgpu::g_lightmapBinding)) {
-      ++stats.incompatible;
-      return;
-    }
-    // Left in the database, and built by find_pipeline on the first draw that wants it.
-    if (g_config.pipelineCacheSkipPbr && config.shaderConfig.pbr != 0) {
-      ++stats.pbr;
-      return;
-    }
-  }
-
-  ++stats.accepted;
+static void queue_cached_config(ShaderType type, const PipelineConfig& config, const CreateFn& create,
+                                uint32_t firstFrameUsed, const CachedRowOptions& opts, CachedRowStats& stats) {
   const PipelineRef hash = xxh3_hash(config, static_cast<HashType>(type));
   {
     std::scoped_lock guard{g_pipelineMutex};
@@ -1458,6 +1434,59 @@ static void queue_cached_row(ShaderType type, uint32_t configVersion, CreateFn&&
   find_pipeline_impl(type, config, [=] { return create(config); }, PipelinePriority::Background, firstFrameUsed,
                      opts.renderThread);
   ++stats.queued;
+}
+
+template <typename PipelineConfig, typename CreateFn>
+static void queue_cached_row(ShaderType type, uint32_t configVersion, CreateFn&& create, const uint8_t* configBlob,
+                             int configSize, uint32_t firstFrameUsed, const CachedRowOptions& opts,
+                             CachedRowStats& stats) {
+  if (configSize != static_cast<int>(sizeof(PipelineConfig)) || (configSize != 0 && configBlob == nullptr)) {
+    return;
+  }
+
+  PipelineConfig config;
+  std::memcpy(&config, configBlob, sizeof(config));
+  if (config.version != configVersion) {
+    return;
+  }
+
+  if constexpr (std::is_same_v<PipelineConfig, gx::PipelineConfig>) {
+    if (!gx::pipeline_config_compatible(config, webgpu::g_lightmapBinding)) {
+      ++stats.incompatible;
+      return;
+    }
+    // A row recorded before the fog curve moved to the uniform names its fog type.
+    config.shaderConfig.fogType = gx::pipeline_fog_type(config.shaderConfig.fogType);
+    // Left in the database, and built by find_pipeline on the first draw that wants it.
+    if (g_config.pipelineCacheSkipPbr && config.shaderConfig.pbr != 0) {
+      ++stats.pbr;
+      return;
+    }
+  }
+
+  ++stats.accepted;
+  // A row holds the sample count of the pass it was recorded in, so a cache (or the embedded seed)
+  // recorded at another MSAA setting misses every scene draw, and each first-use effect drops its
+  // draws while it builds (the flicker of issue #44). The scene's variant queues as well. A 1x row
+  // may also be an offscreen pass (1x at any setting), so it stays; a 4x row is always the scene's.
+  // Shadow passes are 1x on purpose.
+  if constexpr (requires { config.msaaSamples; }) {
+    const uint32_t samples = webgpu::g_graphicsConfig.msaaSamples;
+    bool scenePass = samples != 0 && config.msaaSamples != samples;
+    if constexpr (requires { config.shadowPass; }) {
+      scenePass = scenePass && config.shadowPass == 0;
+    }
+    if (scenePass) {
+      const bool keep = config.msaaSamples == 1;
+      PipelineConfig variant = config;
+      variant.msaaSamples = samples;
+      queue_cached_config(type, variant, create, firstFrameUsed, opts, stats);
+      if (!keep) {
+        return;
+      }
+    }
+  }
+  queue_cached_config(type, config, create, firstFrameUsed, opts, stats);
 }
 
 static void queue_cached_row_any(int type, uint32_t configVersion, const uint8_t* blob, int size, uint32_t firstFrame,

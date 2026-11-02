@@ -575,7 +575,7 @@ constexpr auto kBpRegs = [] {
   regs[0xEE] = {bp_fog0, DirtyUniform};
   regs[0xEF] = {bp_fog1, DirtyUniform};
   regs[0xF0] = {bp_fog2, DirtyUniform};
-  regs[0xF1] = {bp_fog3, DirtyPipeline | DirtyUniform}; // fog.type affects shader
+  regs[0xF1] = {bp_fog3, DirtyPipeline | DirtyUniform}; // fog on or off picks the pipeline
   regs[0xF2] = {bp_fog_color, DirtyUniform};
   regs[0xF3] = {bp_alpha_compare, DirtyPipeline};
   for (u8 r = 0xF6; r <= 0xFD; ++r) {

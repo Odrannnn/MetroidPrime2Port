@@ -69,7 +69,10 @@ Desktop and Android builds embed `assets/initial_pipeline_cache.db`: the pipelin
 the front end, a scripted in-game pass and every campaign area, so a first start compiles the
 game's shaders in the background instead of skipping draws as it meets them (Android, lazy,
 queues each area's rows when the game prefetches the area). Retail rows only (no
-Remastered-style rows). When aurora bumps a pipeline config version (`clear.hpp`,
+Remastered-style rows). A row holds the sample count it was recorded at; aurora also queues each
+non-shadow row at the running MSAA setting (`queue_cached_row`), so a seed recorded at either
+setting covers both. The fog curve is a uniform, so rows differ only by fog on or off (aurora
+folds an older row's fog type on load). When aurora bumps a pipeline config version (`clear.hpp`,
 `gx/pipeline.hpp`, `rmlui/pipeline.hpp`), aurora ignores the seed and the `port_pipeline_seed`
 test fails. Re-record from empty caches (needs a GPU path, ~41 min on the dev machine; no mods or texture packs):
 `python3 tools/pipeline_seed.py record`, then the `merge` line it prints. `MP2_PIPELINE_SEED=0`

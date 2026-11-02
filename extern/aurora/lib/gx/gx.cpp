@@ -512,7 +512,7 @@ void populate_pipeline_config(PipelineConfig& config, GXPrimitive primitive, GXV
   // From the pass being recorded (the replayed FIFO's), so an offscreen pass or the next frame's
   // LDR scene never takes an HDR pipeline.
   config.shaderConfig.sceneHdr = gfx::scene_hdr_pass_active();
-  config.shaderConfig.fogType = g_gxState.fog.type;
+  config.shaderConfig.fogType = pipeline_fog_type(g_gxState.fog.type);
   config.shaderConfig.fogRangeEnabled = g_gxState.fog.rangeEnabled;
   config.shaderConfig.pbr = g_gxState.pbr;
   if (g_gxState.pbr != 0) {

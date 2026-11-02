@@ -303,10 +303,10 @@ struct Fog {
   float a = 0.f;
   float b = 0.5f;
   float c = 0.f;
-  float rangeCenter = 0.f;
-  std::array<Vec4<float>, 3> rangeK;
+  // The GXFogType: the curve is chosen in the shader, not by the pipeline (ShaderConfig::fogType).
+  u32 type = GX_FOG_NONE;
 };
-static_assert(sizeof(Fog) == 80);
+static_assert(sizeof(Fog) == 32);
 struct AttrArray {
   const void* data;
   u32 size;
@@ -604,6 +604,8 @@ enum : u8 {
   VolFogPremultiplied = 4, // ONE, INVSRCALPHA, per vertex: colour T + in-scatter alpha
 };
 struct ShaderConfig {
+  // GX_FOG_NONE or, for every other type, GX_FOG_PERSP_LIN (pipeline_fog_type): the curve is the Fog
+  // uniform's, so a fog change (entering water) needs no new pipeline.
   u8 fogType = GX_FOG_NONE;
   u8 vtxStride = 0;
   u8 lineMode : 2 = 0; // 1 = GX_LINES, 2 = GX_LINESTRIP, 3 = GX_POINTS
@@ -650,6 +652,9 @@ struct ShaderConfig {
   bool operator==(const ShaderConfig& rhs) const { return memcmp(this, &rhs, sizeof(*this)) == 0; }
 };
 static_assert(std::has_unique_object_representations_v<ShaderConfig>);
+constexpr u8 pipeline_fog_type(u32 fogType) noexcept {
+  return fogType == GX_FOG_NONE ? GX_FOG_NONE : GX_FOG_PERSP_LIN;
+}
 // Whether a draw samples the sun's shadow map: a lit PBR surface drawn in colour without per-pixel fog.
 inline bool shadow_receives(const ShaderConfig& sc) noexcept {
   return sc.shadow && (sc.pbr != 0 || sc.actorDecal != 0) && sc.volFog == VolFogNone && sc.depthOnly == 0 && sc.lineMode == 0 && !sc.drawId;
