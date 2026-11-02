@@ -680,6 +680,13 @@ constexpr AlphaCompare pipeline_alpha_compare(AlphaCompare ac) noexcept {
   ac.ref1 = pipeline_alpha_ref(ac.comp1, ac.ref1);
   return ac;
 }
+// The konst selections are the tev_konst uniform's (ShaderInfo::usesTevKonst), not the pipeline's.
+constexpr void pipeline_tev_konst(ShaderConfig& config) noexcept {
+  for (auto& stage : config.tevStages) {
+    stage.kcSel = GX_TEV_KCSEL_1;
+    stage.kaSel = GX_TEV_KASEL_1;
+  }
+}
 // Whether a draw samples the sun's shadow map: a lit PBR surface drawn in colour without per-pixel fog.
 inline bool shadow_receives(const ShaderConfig& sc) noexcept {
   return sc.shadow && (sc.pbr != 0 || sc.actorDecal != 0) && sc.volFog == VolFogNone && sc.depthOnly == 0 && sc.lineMode == 0 && !sc.drawId;
@@ -696,7 +703,7 @@ struct GXBindGroups {
 struct ShaderInfo {
   std::bitset<MaxTexCoord> sampledTexCoords;
   std::bitset<MaxTextures> sampledTextures;
-  std::bitset<MaxKColors> sampledKColors;
+  u8 tevStageCount = 0; // the tev_konst uniform's length (usesTevKonst)
   std::bitset<MaxColorChannels / 2> sampledColorChannels;
   std::bitset<MaxTevRegs> loadsTevReg;
   std::bitset<MaxTevRegs> writesTevReg;
@@ -717,6 +724,7 @@ struct ShaderInfo {
   bool shadowReceive : 1 = false; // shadow_receives: group 2 uses the shadow layout
   bool actorDecal : 1 = false;    // actor_decal: group 2 uses the shadow layout with the actor maps
   bool usesHdrTone : 1 = false;   // sceneHdr without pbr: hdr_tone (pbrTone) and hdr_tev_blend
+  bool usesTevKonst : 1 = false; // a stage reads a konst input: the tev_konst uniform
   bool usesAlphaRef : 1 = false;  // an alpha compare reference is AlphaRefUniform: the alpha_ref uniform
 };
 struct BindGroupRanges {

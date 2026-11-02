@@ -223,67 +223,8 @@ std::string color_arg_reg(GXTevColorArg arg, size_t stageIdx, const ShaderConfig
     return "vec3f(1.0)";
   case GX_CC_HALF:
     return "vec3f(0.5)";
-  case GX_CC_KONST: {
-    switch (stage.kcSel) {
-      DEFAULT_FATAL("invalid kcSel {}", underlying(stage.kcSel));
-    case GX_TEV_KCSEL_8_8:
-      return "vec3f(1.0)";
-    case GX_TEV_KCSEL_7_8:
-      return "vec3f(7.0/8.0)";
-    case GX_TEV_KCSEL_6_8:
-      return "vec3f(6.0/8.0)";
-    case GX_TEV_KCSEL_5_8:
-      return "vec3f(5.0/8.0)";
-    case GX_TEV_KCSEL_4_8:
-      return "vec3f(4.0/8.0)";
-    case GX_TEV_KCSEL_3_8:
-      return "vec3f(3.0/8.0)";
-    case GX_TEV_KCSEL_2_8:
-      return "vec3f(2.0/8.0)";
-    case GX_TEV_KCSEL_1_8:
-      return "vec3f(1.0/8.0)";
-    case GX_TEV_KCSEL_K0:
-      return "ubuf.kcolor0.rgb";
-    case GX_TEV_KCSEL_K1:
-      return "ubuf.kcolor1.rgb";
-    case GX_TEV_KCSEL_K2:
-      return "ubuf.kcolor2.rgb";
-    case GX_TEV_KCSEL_K3:
-      return "ubuf.kcolor3.rgb";
-    case GX_TEV_KCSEL_K0_R:
-      return "vec3f(ubuf.kcolor0.r)";
-    case GX_TEV_KCSEL_K1_R:
-      return "vec3f(ubuf.kcolor1.r)";
-    case GX_TEV_KCSEL_K2_R:
-      return "vec3f(ubuf.kcolor2.r)";
-    case GX_TEV_KCSEL_K3_R:
-      return "vec3f(ubuf.kcolor3.r)";
-    case GX_TEV_KCSEL_K0_G:
-      return "vec3f(ubuf.kcolor0.g)";
-    case GX_TEV_KCSEL_K1_G:
-      return "vec3f(ubuf.kcolor1.g)";
-    case GX_TEV_KCSEL_K2_G:
-      return "vec3f(ubuf.kcolor2.g)";
-    case GX_TEV_KCSEL_K3_G:
-      return "vec3f(ubuf.kcolor3.g)";
-    case GX_TEV_KCSEL_K0_B:
-      return "vec3f(ubuf.kcolor0.b)";
-    case GX_TEV_KCSEL_K1_B:
-      return "vec3f(ubuf.kcolor1.b)";
-    case GX_TEV_KCSEL_K2_B:
-      return "vec3f(ubuf.kcolor2.b)";
-    case GX_TEV_KCSEL_K3_B:
-      return "vec3f(ubuf.kcolor3.b)";
-    case GX_TEV_KCSEL_K0_A:
-      return "vec3f(ubuf.kcolor0.a)";
-    case GX_TEV_KCSEL_K1_A:
-      return "vec3f(ubuf.kcolor1.a)";
-    case GX_TEV_KCSEL_K2_A:
-      return "vec3f(ubuf.kcolor2.a)";
-    case GX_TEV_KCSEL_K3_A:
-      return "vec3f(ubuf.kcolor3.a)";
-    }
-  }
+  case GX_CC_KONST:
+    return fmt::format("ubuf.tev_konst[{}].rgb", stageIdx); // tev_konst (ShaderInfo::usesTevKonst)
   case GX_CC_ZERO:
     return "vec3f(0.0)";
   }
@@ -325,59 +266,8 @@ std::string alpha_arg_reg(GXTevAlphaArg arg, size_t stageIdx, const ShaderConfig
     const auto& swap = config.tevSwapTable[stage.tevSwapRas];
     return fmt::format("rast{}.{}", idx, chan_comp(swap.alpha));
   }
-  case GX_CA_KONST: {
-    switch (stage.kaSel) {
-      DEFAULT_FATAL("invalid kaSel {}", underlying(stage.kaSel));
-    case GX_TEV_KASEL_8_8:
-      return "1.0";
-    case GX_TEV_KASEL_7_8:
-      return "(7.0/8.0)";
-    case GX_TEV_KASEL_6_8:
-      return "(6.0/8.0)";
-    case GX_TEV_KASEL_5_8:
-      return "(5.0/8.0)";
-    case GX_TEV_KASEL_4_8:
-      return "(4.0/8.0)";
-    case GX_TEV_KASEL_3_8:
-      return "(3.0/8.0)";
-    case GX_TEV_KASEL_2_8:
-      return "(2.0/8.0)";
-    case GX_TEV_KASEL_1_8:
-      return "(1.0/8.0)";
-    case GX_TEV_KASEL_K0_R:
-      return "ubuf.kcolor0.r";
-    case GX_TEV_KASEL_K1_R:
-      return "ubuf.kcolor1.r";
-    case GX_TEV_KASEL_K2_R:
-      return "ubuf.kcolor2.r";
-    case GX_TEV_KASEL_K3_R:
-      return "ubuf.kcolor3.r";
-    case GX_TEV_KASEL_K0_G:
-      return "ubuf.kcolor0.g";
-    case GX_TEV_KASEL_K1_G:
-      return "ubuf.kcolor1.g";
-    case GX_TEV_KASEL_K2_G:
-      return "ubuf.kcolor2.g";
-    case GX_TEV_KASEL_K3_G:
-      return "ubuf.kcolor3.g";
-    case GX_TEV_KASEL_K0_B:
-      return "ubuf.kcolor0.b";
-    case GX_TEV_KASEL_K1_B:
-      return "ubuf.kcolor1.b";
-    case GX_TEV_KASEL_K2_B:
-      return "ubuf.kcolor2.b";
-    case GX_TEV_KASEL_K3_B:
-      return "ubuf.kcolor3.b";
-    case GX_TEV_KASEL_K0_A:
-      return "ubuf.kcolor0.a";
-    case GX_TEV_KASEL_K1_A:
-      return "ubuf.kcolor1.a";
-    case GX_TEV_KASEL_K2_A:
-      return "ubuf.kcolor2.a";
-    case GX_TEV_KASEL_K3_A:
-      return "ubuf.kcolor3.a";
-    }
-  }
+  case GX_CA_KONST:
+    return fmt::format("ubuf.tev_konst[{}].a", stageIdx);
   case GX_CA_ZERO:
     return "0.0";
   }
@@ -3515,10 +3405,9 @@ std::string build_shader_source(const ShaderConfig& config) noexcept {
       fragmentFnPre += fmt::format("\n    var rast{0} = in.cc{0};", i);
     }
   }
-  for (int i = 0; i < info.sampledKColors.size(); ++i) {
-    if (info.sampledKColors.test(i)) {
-      uniBufAttrs += fmt::format("\n    kcolor{}: vec4f,", i);
-    }
+  if (info.usesTevKonst) {
+    // Each stage's konst input (its kcSel and kaSel), so a konst selection needs no new pipeline.
+    uniBufAttrs += fmt::format("\n    tev_konst: array<vec4f, {}>,", config.tevStageCount);
   }
   for (int i = 0; i < info.sampledTexCoords.size(); ++i) {
     if (!info.sampledTexCoords.test(i)) {

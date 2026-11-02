@@ -579,7 +579,7 @@ constexpr auto kBpRegs = [] {
   regs[0xF2] = {bp_fog_color, DirtyUniform};
   regs[0xF3] = {bp_alpha_compare, DirtyPipeline | DirtyUniform}; // the reference is the alpha_ref uniform
   for (u8 r = 0xF6; r <= 0xFD; ++r) {
-    regs[r] = {bp_ksel, DirtyPipeline};
+    regs[r] = {bp_ksel, DirtyPipeline | DirtyUniform}; // the selections are the tev_konst uniform
   }
   return regs;
 }();

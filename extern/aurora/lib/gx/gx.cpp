@@ -586,6 +586,7 @@ void populate_pipeline_config(PipelineConfig& config, GXPrimitive primitive, GXV
     config.shaderConfig.tevStages[i] = g_gxState.tevStages[i];
   }
   config.shaderConfig.tevStageCount = g_gxState.numTevStages;
+  pipeline_tev_konst(config.shaderConfig);
   for (u8 i = 0; i < g_gxState.numIndStages; ++i) {
     config.shaderConfig.indStages[i] = g_gxState.indStages[i];
   }

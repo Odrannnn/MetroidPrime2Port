@@ -1455,10 +1455,11 @@ static void queue_cached_row(ShaderType type, uint32_t configVersion, CreateFn&&
       ++stats.incompatible;
       return;
     }
-    // A row recorded before the fog curve and the alpha compare references moved to uniforms names
-    // its fog type and references.
+    // A row recorded before the fog curve, the alpha compare references and the konst selections
+    // moved to uniforms names them.
     config.shaderConfig.fogType = gx::pipeline_fog_type(config.shaderConfig.fogType);
     config.shaderConfig.alphaCompare = gx::pipeline_alpha_compare(config.shaderConfig.alphaCompare);
+    gx::pipeline_tev_konst(config.shaderConfig);
     // Left in the database, and built by find_pipeline on the first draw that wants it.
     if (g_config.pipelineCacheSkipPbr && config.shaderConfig.pbr != 0) {
       ++stats.pbr;

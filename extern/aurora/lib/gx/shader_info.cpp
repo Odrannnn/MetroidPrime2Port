@@ -66,38 +66,7 @@ void color_arg_reg_info(GXTevColorArg arg, const TevStage& stage, ShaderInfo& in
     }
     break;
   case GX_CC_KONST:
-    switch (stage.kcSel) {
-    case GX_TEV_KCSEL_K0:
-    case GX_TEV_KCSEL_K0_R:
-    case GX_TEV_KCSEL_K0_G:
-    case GX_TEV_KCSEL_K0_B:
-    case GX_TEV_KCSEL_K0_A:
-      info.sampledKColors.set(0);
-      break;
-    case GX_TEV_KCSEL_K1:
-    case GX_TEV_KCSEL_K1_R:
-    case GX_TEV_KCSEL_K1_G:
-    case GX_TEV_KCSEL_K1_B:
-    case GX_TEV_KCSEL_K1_A:
-      info.sampledKColors.set(1);
-      break;
-    case GX_TEV_KCSEL_K2:
-    case GX_TEV_KCSEL_K2_R:
-    case GX_TEV_KCSEL_K2_G:
-    case GX_TEV_KCSEL_K2_B:
-    case GX_TEV_KCSEL_K2_A:
-      info.sampledKColors.set(2);
-      break;
-    case GX_TEV_KCSEL_K3:
-    case GX_TEV_KCSEL_K3_R:
-    case GX_TEV_KCSEL_K3_G:
-    case GX_TEV_KCSEL_K3_B:
-    case GX_TEV_KCSEL_K3_A:
-      info.sampledKColors.set(3);
-      break;
-    default:
-      break;
-    }
+    info.usesTevKonst = true;
     break;
   default:
     break;
@@ -140,34 +109,7 @@ void alpha_arg_reg_info(GXTevAlphaArg arg, const TevStage& stage, ShaderInfo& in
     }
     break;
   case GX_CA_KONST:
-    switch (stage.kaSel) {
-    case GX_TEV_KASEL_K0_R:
-    case GX_TEV_KASEL_K0_G:
-    case GX_TEV_KASEL_K0_B:
-    case GX_TEV_KASEL_K0_A:
-      info.sampledKColors.set(0);
-      break;
-    case GX_TEV_KASEL_K1_R:
-    case GX_TEV_KASEL_K1_G:
-    case GX_TEV_KASEL_K1_B:
-    case GX_TEV_KASEL_K1_A:
-      info.sampledKColors.set(1);
-      break;
-    case GX_TEV_KASEL_K2_R:
-    case GX_TEV_KASEL_K2_G:
-    case GX_TEV_KASEL_K2_B:
-    case GX_TEV_KASEL_K2_A:
-      info.sampledKColors.set(2);
-      break;
-    case GX_TEV_KASEL_K3_R:
-    case GX_TEV_KASEL_K3_G:
-    case GX_TEV_KASEL_K3_B:
-    case GX_TEV_KASEL_K3_A:
-      info.sampledKColors.set(3);
-      break;
-    default:
-      break;
-    }
+    info.usesTevKonst = true;
     break;
   default:
     break;
@@ -354,7 +296,10 @@ ShaderInfo build_shader_info(const ShaderConfig& config) noexcept {
       }
     }
   }
-  info.uniformSize += info.sampledKColors.count() * sizeof(Vec4<float>);
+  if (info.usesTevKonst) {
+    info.tevStageCount = config.tevStageCount;
+    info.uniformSize += config.tevStageCount * sizeof(Vec4<float>);
+  }
   for (int i = 0; i < info.sampledTexCoords.size(); ++i) {
     if (!info.sampledTexCoords.test(i)) {
       continue;
@@ -414,6 +359,24 @@ ShaderInfo build_shader_info(const ShaderConfig& config) noexcept {
     Log.fatal("Uniform size exceeds maximum: {} > {}", info.uniformSize, MaxUniformSize);
   }
   return info;
+}
+
+// A stage's konst input: rgb as its kcSel, alpha as its kaSel (a fraction, or a K register or one of
+// its components).
+static Vec4<float> tev_konst(const TevStage& stage) noexcept {
+  const auto konst = [](u32 sel, u32 comp) -> float {
+    if (sel < 8) {
+      return static_cast<float>(8 - sel) / 8.f; // GX_TEV_K?SEL_8_8 .. 1_8
+    }
+    if (sel >= GX_TEV_KCSEL_K0_R) { // K0_R .. K3_A: one component of a register
+      return g_gxState.kcolors[(sel - GX_TEV_KCSEL_K0_R) % 4][(sel - GX_TEV_KCSEL_K0_R) / 4];
+    }
+    if (sel >= GX_TEV_KCSEL_K0) { // K0 .. K3 (colour only)
+      return g_gxState.kcolors[sel - GX_TEV_KCSEL_K0][comp];
+    }
+    return 0.f;
+  };
+  return {konst(stage.kcSel, 0), konst(stage.kcSel, 1), konst(stage.kcSel, 2), konst(stage.kaSel, 3)};
 }
 
 static void fill_uniform(ByteBuffer& buf, const ShaderInfo& info) noexcept {
@@ -491,9 +454,9 @@ static void fill_uniform(ByteBuffer& buf, const ShaderInfo& info) noexcept {
       buf.append(ccsa.matColor);
     }
   }
-  for (int i = 0; i < info.sampledKColors.size(); ++i) {
-    if (info.sampledKColors.test(i)) {
-      buf.append(g_gxState.kcolors[i]);
+  if (info.usesTevKonst) {
+    for (u32 i = 0; i < info.tevStageCount; ++i) {
+      buf.append(tev_konst(g_gxState.tevStages[i]));
     }
   }
   if (info.usesPbr) {
