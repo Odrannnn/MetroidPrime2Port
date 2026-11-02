@@ -184,6 +184,8 @@ void DrawControlsKeyboardMouse() {
     PortMouse::SetEnabled(mouseAim);
     Changed(true);
   }
+  ItemHelp("While a controller is in use with twin stick and gyro off, it plays the classic "
+           "GameCube way (R to look) and the mouse aims again once you press a key or click.");
   // Shown on the Quake/Source/Apex scale (0.022 degrees a count per unit), stored in radians.
   float sourceSensitivity = PortMouse::SourceFromRadians(PortMouse::Sensitivity());
   if (ImGui::SliderFloat("Sensitivity", &sourceSensitivity, 0.05f, 30.f, "%.3f",

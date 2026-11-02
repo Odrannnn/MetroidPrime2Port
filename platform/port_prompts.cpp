@@ -1140,6 +1140,10 @@ void UnbindTexture(const void* owner) {
 }
 bool KeyboardActive() { return sActiveInput.load(std::memory_order_relaxed) == ActiveInput::Keyboard; }
 
+bool PadActive() {
+  return sActiveInput.load(std::memory_order_relaxed) == ActiveInput::Pad && PADGetIndexForPort(PAD_CHAN0) >= 0;
+}
+
 void NoteTouchInput(bool xboxLayout) {
   sActiveInput.store(xboxLayout ? ActiveInput::TouchXbox : ActiveInput::TouchGameCube,
                      std::memory_order_relaxed);

@@ -234,6 +234,11 @@ void SetStickEnabled(bool enabled);
 // Whether `player`'s view follows the platform aim: for Player 1 any of mouse, twin stick and
 // touch; the others have only their own twin stick.
 bool DirectAim(int player = 0);
+// Direct aim takes the pad off the classic scheme (the left stick strafes, R no longer looks), so
+// mouse aim counts for it only while this is clear: set once per poll while a connected pad is
+// the last-used input and aims by neither twin stick nor gyro, else the GameCube preset could
+// neither turn nor look (MP1 #253). A key or click hands aiming back to the mouse.
+void SetMouseYieldsToPad(bool yields);
 // Twin stick takes the C-stick for aim, so the game's C-stick beam picks ignore it (issue #15).
 // Under mouse aim a keyboard key held on a C-stick direction (the mouse-and-keyboard preset's
 // 1-4) gives it back for that poll: the key picks a beam and does not aim, as in MP1.

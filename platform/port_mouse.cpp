@@ -27,6 +27,7 @@ namespace {
 bool sEnabled = false;
 bool sStickEnabled = false;
 bool sKeyboardCStickHeld = false;
+bool sMouseYieldsToPad = false;
 // The Java UI thread can flip this through a layout change while the game thread reads it in
 // UpdateAim, so it is atomic unlike the mouse's and the stick's flags.
 std::atomic<bool> sTouchEnabled{false};
@@ -339,8 +340,11 @@ bool StickEnabled(int player) {
 bool DirectAim(int player) {
   ReadEnv();
   // Mouse and touch are Player 1's; the others aim directly only with their own twin stick.
-  return player <= 0 ? sEnabled || sStickEnabled || sTouchEnabled.load() : StickEnabled(player);
+  return player <= 0 ? (sEnabled && !sMouseYieldsToPad) || sStickEnabled || sTouchEnabled.load()
+                     : StickEnabled(player);
 }
+
+void SetMouseYieldsToPad(bool yields) { sMouseYieldsToPad = yields; }
 
 bool StickOwnsCStick(int player) {
   ReadEnv();

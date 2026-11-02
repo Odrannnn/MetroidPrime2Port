@@ -15,6 +15,7 @@
 #include "port_radial.h"
 #include "port_overlay.h"
 #include "port_photo.h"
+#include "port_prompts.h"
 #include "port_pointer.h"
 #include "port_savestate.h"
 #include "port_touch.h"
@@ -1480,6 +1481,7 @@ SPoll Poll(unsigned mouseHeld, bool focused) {
   const PortInput::Output& out =
       sRuntime.Poll(raw, contexts, nowMs, 0);
   PortMouse::SetKeyboardCStickHeld(KeyboardCStickHeld(sProfile, raw, contexts));
+  PortMouse::SetMouseYieldsToPad(PortPrompts::PadActive() && !PortOverlay::GyroAim(0));
   PublishFlickStick(out, 0);
   SPoll r;
   sConsumeRadialPoll = false;
