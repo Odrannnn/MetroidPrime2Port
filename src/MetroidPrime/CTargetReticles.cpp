@@ -528,7 +528,7 @@ CColor PortTriXhairColor(const CColor& color) {
   return PortOverlay::CrosshairColor(rgb) ? CColor(rgb[0], rgb[1], rgb[2], color.GetAlpha()) : color;
 }
 float PortTriXhairAlpha(float alpha) {
-  return alpha * static_cast< float >(PortOverlay::CrosshairOpacity()) / 100.f;
+  return std::min(alpha * static_cast< float >(PortOverlay::CrosshairOpacity()) / 100.f, 1.f);
 }
 float PortTriXhairSize(int playerIndex) {
   return PortMouse::Aiming(playerIndex) ? static_cast< float >(PortOverlay::CrosshairSize()) / 100.f : 1.f;
@@ -2045,9 +2045,9 @@ void CCompoundTargetReticle::DrawCrosshairs(const CMatrix3f& rotation,
     }
     const float opacity = static_cast< float >(PortOverlay::CrosshairOpacity()) / 100.f;
     // Retail's tweak alpha, faded by the draw scale as retail's Additive flags do; the option
-    // scales it (100% = retail). Remastered builds its own colour below.
+    // scales it (100% = retail, up to 500%, #56). Remastered builds its own colour below.
     color = CColor(color.GetRed(), color.GetGreen(), color.GetBlue(),
-                   color.GetAlpha() * opacity * mCrosshairsDrawScale);
+                   std::min(color.GetAlpha() * opacity * mCrosshairsDrawScale, 1.f));
   }
   if (PortOverlay::CrosshairStyle() == PortOverlay::kCrosshairStyle_Remastered) {
     const CCameraManager* camMgr = mgr.GetCameraManager(mPlayerIndex);
@@ -2078,7 +2078,8 @@ void CCompoundTargetReticle::DrawCrosshairs(const CMatrix3f& rotation,
     const CVector3f cursor = camXf * cursorLocal;
     CColor rc = PortRemasteredCrosshairColor(mPreviousState, mPortXhairTargetT);
     rc = CColor(rc.GetRed(), rc.GetGreen(), rc.GetBlue(),
-                mCrosshairsDrawScale * static_cast< float >(PortOverlay::CrosshairOpacity()) / 100.f);
+                std::min(mCrosshairsDrawScale *
+                             static_cast< float >(PortOverlay::CrosshairOpacity()) / 100.f, 1.f));
     CGraphics::SetDepthWriteMode(false, kE_Always, false);
     PortDrawRemasteredCrosshair(rotation, cursor, units * kCursorPlane, mPortXhairArmScale,
                                 mPortXhairCentreScale, rc);

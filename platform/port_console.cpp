@@ -2234,7 +2234,7 @@ void CmdHudOpacity(CStateManager&, const Args& args, std::string& out) {
   out += line;
 }
 
-// crosshair [<25..100> | style classic|remastered|gamecube | opacity <0..100> | color <r> <g> <b> | color
+// crosshair [<25..100> | style classic|remastered|gamecube | opacity <0..500> | color <r> <g> <b> | color
 // clear]: the Prime port's crosshair settings, same meanings.
 void CmdCrosshair(CStateManager&, const Args& args, std::string& out) {
   if (args.size() >= 2) {
@@ -2253,7 +2253,7 @@ void CmdCrosshair(CStateManager&, const Args& args, std::string& out) {
       const int percent = ArgToInt(args[2], -1);
       if (percent < PortOverlay::kCrosshairOpacityMin ||
           percent > PortOverlay::kCrosshairOpacityMax) {
-        Fail("crosshair opacity is 0..100 percent");
+        Fail("crosshair opacity is 0..500 percent");
         return;
       }
       PortOverlay::SetCrosshairOpacity(percent);
@@ -2271,7 +2271,7 @@ void CmdCrosshair(CStateManager&, const Args& args, std::string& out) {
     } else {
       const int percent = ArgToInt(args[1], -1);
       if (percent < PortOverlay::kCrosshairSizeMin || percent > PortOverlay::kCrosshairSizeMax) {
-        Fail("usage: crosshair [<25..100> | style classic|remastered|gamecube | opacity <0..100> | color "
+        Fail("usage: crosshair [<25..100> | style classic|remastered|gamecube | opacity <0..500> | color "
              "<r> <g> <b> | color clear | aim <0|1>]");
         return;
       }

@@ -591,7 +591,7 @@ const SettingKey kSettingKeys[] = {
     IntKey< &sCrosshairSize, PortOverlay::kCrosshairSizeMin, PortOverlay::kCrosshairSizeMax >(
         "crosshair_size", "25", "100"),
     IntKey< &sCrosshairOpacity, PortOverlay::kCrosshairOpacityMin,
-            PortOverlay::kCrosshairOpacityMax >("crosshair_opacity", "0", "100"),
+            PortOverlay::kCrosshairOpacityMax >("crosshair_opacity", "0", "300"),
     {"crosshair_color",
      [](const std::string& value) { ParseFloat3(value, sCrosshairColor, 0.f, 1.f); },
      [](std::ostream& out) {

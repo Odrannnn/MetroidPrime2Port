@@ -326,7 +326,8 @@ Video > Display:
 - `scan_spread` (0-100; default 100, 0 on Android, env `MP2_SCAN_SPREAD`): HUD and view > Scan image
   spread; how far the widescreen HUD moves the scan visor's side panels. Scan text box and bar stay 4:3.
 - `crosshair_style` (`0` classic, `1` remastered, `2` gamecube; env `MP2_CROSSHAIR_STYLE` also takes
-  the names), `crosshair_opacity`: HUD and view > Crosshair style, Crosshair opacity.
+  the names), `crosshair_opacity` (0-500; default 100, the game's own alpha; above 100 brightens the
+  dim GameCube/Classic crosshair, #56): HUD and view > Crosshair style, Crosshair opacity.
 - `crosshair_color`, `crosshair_custom_color`: HUD and view > Custom crosshair colour (off: the
   game's own), which shows the colour picker; env `MP2_CROSSHAIR_COLOR`.
 - On Trilogy discs these crosshair settings act on Trilogy's own aiming cursor (centre and arms):

@@ -154,7 +154,7 @@ bool sAimCrosshair = true;
 // MP2's classic model does not resolve in this port, so `remastered` is the default here.
 int sCrosshairStyle = PortOverlay::kCrosshairStyle_Remastered;
 int sCrosshairSize = PortOverlay::kCrosshairSizeDefault;
-int sCrosshairOpacity = PortOverlay::kCrosshairOpacityMax;
+int sCrosshairOpacity = PortOverlay::kCrosshairOpacityDefault;
 bool sCrosshairCustomColor = false;
 float sCrosshairColor[3] = {1.f, 1.f, 1.f};
 // Arm cannon offset in metres along the camera's right, forward and up axes (`MP2_GUN_OFFSET`).

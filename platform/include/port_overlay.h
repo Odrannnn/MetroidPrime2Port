@@ -510,12 +510,16 @@ void SetAimCrosshair(bool enabled);
 // reticle model with the port's size, opacity and colour applied, and `remastered` replaces it
 // with the cursor drawn procedurally in CTargetReticles.cpp (that is the one this port can show:
 // the classic model's token does not resolve here). Size is a percent of the model's own scale
-// (25..100) and applies only while the port's aim owns the view; opacity is 0..100.
+// (25..100) and applies only while the port's aim owns the view. Opacity is 0..500 percent of the
+// style's own alpha, 100 by default: retail's GameCube crosshair alpha is a dim ~0.2 tweak value,
+// so values above 100 brighten it (500 is about what 0.6.x drew at 100, #56); the drawn alpha
+// stops at 1.
 const int kCrosshairSizeMin = 25;
 const int kCrosshairSizeMax = 100;
 const int kCrosshairSizeDefault = 50;
 const int kCrosshairOpacityMin = 0;
-const int kCrosshairOpacityMax = 100;
+const int kCrosshairOpacityMax = 500;
+const int kCrosshairOpacityDefault = 100;
 const int kCrosshairStyle_Classic = 0;
 const int kCrosshairStyle_Remastered = 1;
 // On a Trilogy disc: the GameCube crosshair model in place of Trilogy's aiming cursor; Classic on

@@ -176,7 +176,8 @@ void DrawVideoDisplay() {
   if (sAimCrosshair) {
     Changed(ImGui::SliderInt("Crosshair opacity", &sCrosshairOpacity, PortOverlay::kCrosshairOpacityMin,
                              PortOverlay::kCrosshairOpacityMax, "%d%%"));
-    ImGui::SetItemTooltip("The crosshair in the middle of the screen (mouse aim, twin stick, touch).");
+    ImGui::SetItemTooltip("The crosshair in the middle of the screen (mouse aim, twin stick, touch).\n"
+                          "100%% is the game's own; above it brightens the dim GameCube crosshair.");
     int style = sCrosshairStyle;
     static const char* const kStyles[] = {"Classic", "Remastered", "GameCube"};
     if (ImGui::Combo("Crosshair style", &style, kStyles, 3)) {
