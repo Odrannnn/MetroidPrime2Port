@@ -199,6 +199,16 @@ CPatterned::CPatterned(EPatternedAI character, TUniqueId uid, const rstl::string
     BuildBodyController(body);
     mLockOnTarget = GetAnimationData()->GetLocatorSegId(rstl::string("lockon_target_LCTR"));
   }
+#ifdef TARGET_PC
+  // Retail 0x6CC0-0x6CEC (unit offsets): lbz 0x2a4(pinfo); extrwi. 1,24 (mEchoParameters.mIsEchoEmitter,
+  // 0x80); beq; CAABox(this+0x54, this+0x54) = GetTranslation(); li r4,1;
+  // bl AllocateEchoEmitter. The emitter starts pending deletion, so a derived
+  // SetEchoEmitter (SpacePirate REL) still replaces it.
+  if (pinfo.GetEchoParameters().mIsEchoEmitter) {
+    AllocateEchoEmitter(true, CAABox(GetTranslation(), GetTranslation()),
+                        pinfo.GetEchoParameters());
+  }
+#endif
   if (mIngPossessionData.darkScanInfo != kInvalidAssetId) {
     mIngScanInfo = rs_new TLockedToken< CScannableObjectInfo >(
         gpSimplePool->GetObj(SObjectTag('SCAN', mIngPossessionData.darkScanInfo)));
