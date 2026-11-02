@@ -141,6 +141,7 @@ struct RoomRestore {
   // and those saved objects come back as unmatched (162 in area 0 of the Temple Grounds save).
   std::vector< std::pair< int, int > > layers;
   size_t nextLayer = 0;
+  bool replaced = false; // Samus put back once her area was applied
 };
 RoomRestore sRoom;
 std::atomic< bool > sHoldAfterRestore{false};
@@ -840,6 +841,34 @@ void TickResume(CStateManager& mgr) {
   }
 }
 
+// Samus at the saved spot, facing along the saved forward in the horizontal plane (as the console's
+// `face` does), at rest and in her saved morph state.
+void PlaceSamus(CStateManager& mgr, const State& s) {
+  CPlayer& player = *mgr.GetPlayer(0);
+  const CVector3f pos(s.pos[0], s.pos[1], s.pos[2]);
+  float lx = s.fwd[0];
+  float ly = s.fwd[1];
+  const float len = std::sqrt(lx * lx + ly * ly);
+  if (len < 1e-4f || !std::isfinite(len)) {
+    lx = 0.f;
+    ly = 1.f;
+  } else {
+    lx /= len;
+    ly /= len;
+  }
+  const CVector3f look(pos.GetX() + lx, pos.GetY() + ly, pos.GetZ());
+  player.Teleport(CTransform4f::LookAt(pos, look, CVector3f::Up()), mgr, true);
+  player.SetVelocityWR(CVector3f(0.f, 0.f, 0.f));
+  // The rebuilt player has no area until its first tick files it; give it Samus's before that
+  // tick so nothing the restore starts sees an area-less player (MP1 sync 14-25).
+  mgr.SetActorAreaId(player, mgr.World()->GetCurrentAreaId());
+  const CPlayer::EPlayerMorphBallState morph = player.GetMorphballTransitionState();
+  const bool morphedNow = morph == CPlayer::kMS_Morphed || morph == CPlayer::kMS_Morphing;
+  if (morphedNow != s.morphed) {
+    player.SetSpawnedMorphBallState(s.morphed ? CPlayer::kMS_Morphed : CPlayer::kMS_Unmorphed, mgr);
+  }
+}
+
 // Put Samus back once the rebuilt world runs.
 void TickPlacement(CStateManager& mgr) {
   if (++sPlace.waited > kPlaceTimeoutFrames) {
@@ -883,30 +912,7 @@ void TickPlacement(CStateManager& mgr) {
   sPlace.active = false;
 
   const State& s = sPlace.state;
-  CPlayer& player = *mgr.GetPlayer(0);
-  const CVector3f pos(s.pos[0], s.pos[1], s.pos[2]);
-  // Face along the saved forward in the horizontal plane, as the console's `face` does.
-  float lx = s.fwd[0];
-  float ly = s.fwd[1];
-  const float len = std::sqrt(lx * lx + ly * ly);
-  if (len < 1e-4f || !std::isfinite(len)) {
-    lx = 0.f;
-    ly = 1.f;
-  } else {
-    lx /= len;
-    ly /= len;
-  }
-  const CVector3f look(pos.GetX() + lx, pos.GetY() + ly, pos.GetZ());
-  player.Teleport(CTransform4f::LookAt(pos, look, CVector3f::Up()), mgr, true);
-  player.SetVelocityWR(CVector3f(0.f, 0.f, 0.f));
-  // The rebuilt player has no area until its first tick files it; give it Samus's before that
-  // tick so nothing the restore starts sees an area-less player (MP1 sync 14-25).
-  mgr.SetActorAreaId(player, mgr.World()->GetCurrentAreaId());
-  const CPlayer::EPlayerMorphBallState morph = player.GetMorphballTransitionState();
-  const bool morphedNow = morph == CPlayer::kMS_Morphed || morph == CPlayer::kMS_Morphing;
-  if (morphedNow != s.morphed) {
-    player.SetSpawnedMorphBallState(s.morphed ? CPlayer::kMS_Morphed : CPlayer::kMS_Unmorphed, mgr);
-  }
+  PlaceSamus(mgr, s);
   if (CCameraManager* cameras = mgr.CameraManager(0)) {
     cameras->ResetCameras(mgr);
   }
@@ -958,6 +964,19 @@ uint64_t RoomSignature(CStateManager& mgr, int waiting, bool& busy) {
   return signature;
 }
 
+// The world ran while the restore waited for its layers and areas: Samus may have fallen through a
+// platform that was not yet back where she stood (#61, the Dark Torvus Temple elevator closed
+// around her). Once her area's saved objects are in place, put her back on the saved spot.
+void ReplaceSamusIfApplied(CStateManager& mgr) {
+  const std::vector< int32_t >& done = sRoom.progress.done;
+  if (sRoom.replaced || mgr.GetPlayer(0) == nullptr ||
+      std::find(done.begin(), done.end(), sPlace.state.areaIndex) == done.end()) {
+    return;
+  }
+  sRoom.replaced = true;
+  PlaceSamus(mgr, sPlace.state);
+}
+
 // Apply the room state to each saved area once it is back, Samus's own first.
 void TickRoom(CStateManager& mgr) {
   if (mgr.mQuitGame || !mgr.IsFullyInitialized() || mgr.World() == nullptr ||
@@ -995,6 +1014,7 @@ void TickRoom(CStateManager& mgr) {
     }
   } else {
     waiting = ApplyRoomState(mgr, sRoom.state, sRoom.progress);
+    ReplaceSamusIfApplied(mgr);
   }
   if (waiting != 0) {
     // Give up only once nothing has moved for kRoomTimeoutFrames: a world that is still loading
@@ -1015,6 +1035,7 @@ void TickRoom(CStateManager& mgr) {
                  sRoom.waited, sRoom.idle);
     // the layers never settled, or an area never came back: restore the areas that are ready
     waiting = ApplyRoomState(mgr, sRoom.state, sRoom.progress, true);
+    ReplaceSamusIfApplied(mgr);
   }
   sRoom.active = false;
   DisarmSpawnLayers();
