@@ -30,6 +30,16 @@ compares the port body with the retail body (asm and rodata read through tools/a
          minActiveTime/knockback). Skipped: callees called more than once on either side, a float
          register set by anything but a rodata load or cleared by a label, fewer than two
          floats, equal values. Integer immediates are not compared (too noisy)
+  effect a ctor/dtor the port performs a retail side effect in fewer times: CToken::Lock (EFFECTS:
+         also Unlock, CSfxManager start/stop, AddObject/FreeScriptObject, SetActive, Add/Remove
+         Material), counted through unported module callees (r3 = this + off followed through
+         mr/addi). A Lock of a token at +0 of a member the header places (`x<OFF>_` name or a
+         `// 0x<OFF>` comment) must be that member's in the port (`m.Lock()`, `m.Token().Lock()`,
+         a TLockedToken member built/assigned); the others are compared by count against the port's
+         Lock calls, TLockedToken / optional_object<TLockedToken> constructions, TLockedToken
+         member inits/assignments/push_backs, locking default member initializers and member ctors
+         the port defines that lock. Locks of stack temporaries and unplaced locks inside a callee
+         (a host ctor's own) are dropped. Always on. tools/retail_diff_regress.sh pins it (#59)
 Findings are hints for a human (inlined callees, constants named in another file show up); a clean
 function is a good sign, not proof.
 
@@ -40,7 +50,7 @@ Bodies are parsed by asmcheck.parse_cpp(deep=True): also in-class (header / loca
 bodies and `extern "C" void f() {}`. Still unparsed: markers on data tables, `= default`,
 declarations, and a marker not directly above its definition.
 
-usage: retail_diff.py [--module M ...] [--fn fn_X ...] [--diff BASE] [--kinds call,const,shape,nan,args]
+usage: retail_diff.py [--module M ...] [--fn fn_X ...] [--diff BASE] [--kinds call,const,shape,nan,args,effect]
                       [--file PATH ...] [--coverage] [--verbose]
                       [--top N] [--strict]
   no selector: whole port, per-kind totals and the N (default 40) worst functions
@@ -86,6 +96,21 @@ DOL_ALIAS = {
 }
 SKIP_DOL = ("GetObj",)
 INBODY = set()  # CToken::GetObj: a token dereference (`*tok`, `tok->`), never a behaviour
+# ctor/dtor side effects (`effect` kind, always on): retail callee (current DOL name) -> effect, and
+# the port text that performs it. A ctor/dtor's own retail calls plus those of the unported module
+# callees it reaches (member ctors/dtors, module copies of DOL ctors) are counted; the port body,
+# its helpers and the TLockedToken members it builds must perform each effect as often.
+EFFECTS = (
+    ("Lock", re.compile(r"^Lock__6CToken"), r"\bLock\s*\("),
+    ("Unlock", re.compile(r"^Unlock__6CToken"), r"\bUnlock\s*\("),
+    ("SfxStart", re.compile(r"^(?:SfxStart|AddEmitter)__11CSfxManager"), r"\b(?:SfxStart|AddEmitter)\s*\("),
+    ("SfxStop", re.compile(r"^(?:SfxStop|RemoveEmitter)__11CSfxManager"), r"\b(?:SfxStop|RemoveEmitter)\s*\("),
+    ("AddObject", re.compile(r"^AddObject__13CStateManager"), r"\bAddObject\s*\("),
+    ("FreeScriptObject", re.compile(r"^FreeScriptObject__13CStateManager"), r"\bFreeScriptObject\s*\("),
+    ("SetActive", re.compile(r"^SetActive__(?:6CActor|7CEntity)F"), r"\bSetActive\s*\("),
+    ("AddMaterial", re.compile(r"^AddMaterial__6CActor"), r"\bAddMaterial\s*\("),
+    ("RemoveMaterial", re.compile(r"^RemoveMaterial__6CActor"), r"\bRemoveMaterial\s*\("),
+)
 PLUMB = re.compile(r"rstl|allocate|Free__7CMemory|string_l|internal_dereference|__ct__|__dt__|__nw|__dl")
 SKIP_CALL = ("__ct__", "__dt__", "__nw", "__dl", "__as", "__pl", "__mi", "__ml", "__dv", "__eq", "__ne",
              "__lt", "__gt", "__le", "__ge", "__vc", "__cl", "__rf", "__apl", "__ami", "__aml", "__adv")
@@ -361,6 +386,296 @@ def port_compares(code):
     return s, n, ns, nn
 
 
+# ---------------------------------------------------------------- effect
+
+def locked_members():
+    """Member names declared with a TLockedToken type (bare, optional_object<>, containers):
+    name -> True when a container (push_back adds a lock)."""
+    out = {}
+    decl = re.compile(r"^\s*(?:mutable\s+)?[\w:]*(?:<.*TLockedToken.*>|TLockedToken\s*<.*>)\s*(\w+)\s*(?:\[[^\]]*\])?\s*;")
+    for top in ("include", "src"):
+        for p in (ROOT / top).rglob("*"):
+            if p.suffix not in (".h", ".hpp", ".cpp"):
+                continue
+            try:
+                text = p.read_text(errors="replace")
+            except OSError:
+                continue
+            if "TLockedToken" not in text:
+                continue
+            for line in text.split("\n"):
+                if "TLockedToken" not in line or "(" in line.split("//")[0]:
+                    continue
+                m = decl.match(line.split("//")[0])
+                if m:
+                    out[m.group(1)] = bool(re.search(r"vector\s*<", line))
+    return out
+
+
+def skip_template(s, i):
+    """Index after the balanced `<...>` starting at s[i] == '<' (len(s) if unbalanced)."""
+    d = 0
+    while i < len(s):
+        if s[i] == "<":
+            d += 1
+        elif s[i] == ">":
+            d -= 1
+            if d == 0:
+                return i + 1
+        elif s[i] in ";{}":
+            return i
+        i += 1
+    return i
+
+
+def args_at(s, i):
+    """Text inside the balanced parens/braces opening at s[i]."""
+    close = {"(": ")", "{": "}"}[s[i]]
+    d, j = 0, i
+    while j < len(s):
+        if s[j] in "({":
+            d += 1
+        elif s[j] in ")}":
+            d -= 1
+            if d == 0:
+                return s[i + 1:j]
+        j += 1
+    return s[i + 1:]
+
+
+def locked_constructions(code):
+    """TLockedToken<..>(x) temporaries and `TLockedToken<..> v(x)` / `v = x` locals."""
+    n = 0
+    for m in re.finditer(r"\bTLockedToken\s*<", code):
+        j = skip_template(code, m.end() - 1)
+        rest = code[j:j + 200]
+        mm = re.match(r"\s*([({])", rest)
+        if mm and args_at(rest, mm.start(1)).strip():
+            n += 1
+            continue
+        mm = re.match(r"\s*\w+\s*(?:=(?!=)|([({]))", rest)
+        if mm and (not mm.group(1) or args_at(rest, mm.start(1)).strip()):
+            n += 1
+    # optional_object<TLockedToken<..>>(token): the TLockedToken its ctor builds from the CToken
+    for m in re.finditer(r"\boptional_object\s*(<)\s*TLockedToken\s*<", code):
+        j = skip_template(code, m.start(1))
+        rest = code[j:j + 200]
+        mm = re.match(r"\s*\(", rest)
+        if mm:
+            a = args_at(rest, mm.end() - 1)
+            if a.strip() and not re.search(r"\bTLockedToken\s*<", a):
+                n += 1
+    return n
+
+
+NO_LOCK_INIT = re.compile(r"^\s*$|optional_object_null|^\s*rstl::optional_object\s*<[^()]*>\s*\(\s*\)\s*$")
+
+
+def member_locks(code, ctx, ctor, cls=None):
+    """member -> (locks, TLockedToken temporaries in the value) of its TLockedToken initializers /
+    assignments / push_backs: one lock each (the value's temporary, or a port helper's, is that
+    lock, not another one)."""
+    out = {}
+    own = ctx["members"].get(cls, {})
+    lm = {n: c for n, c in ctx["locked"].items() if own.get(n, (True,))[0]}
+    lm.update({n: v[1] for n, v in own.items() if v[0]})
+    if not lm:
+        return out
+    names = "|".join(map(re.escape, sorted(lm)))
+    pat = r"(?<![\w.>:])(?:this->)?(" + names + r")\s*(?:([({])|=(?!=)\s*|\.push_back\s*\()"
+    for m in re.finditer(pat, code):
+        name = m.group(1)
+        if m.group(2):
+            if not ctor:
+                continue
+            a = args_at(code, m.start(2))
+        else:
+            if "push_back" in m.group(0) and not lm[name]:
+                continue
+            a = code[m.end():code.find(";", m.end()) if ";" in code[m.end():] else len(code)]
+        if NO_LOCK_INIT.search(a):
+            continue
+        n, t = out.get(name, (0, 0))
+        out[name] = (n + 1, t + locked_constructions(a))
+    return out
+
+
+MEMBER_DECL = re.compile(r"^\s*(?:mutable\s+)?[\w:<>,\s*&\[\]]*?[\w>*&\]]\s+\**(\w+)\s*(?:\[[^\]]*\])?\s*;"
+                         r"(?:\s*//\s*(?:\+|at\s+)?0x([0-9A-Fa-f]+)\b)?")
+CLASS_HEAD = re.compile(r"^\s*(?:class|struct)\s+(?:\w+\s+)?(\w+)\s*(?:final\s*)?(?::[^{;]*)?\{?\s*$")
+
+
+LOCKED_DECL = re.compile(r"^\s*(?:mutable\s+)?([\w:]*(?:<.*TLockedToken.*>|TLockedToken\s*<.*>))\s*(\w+)\s*"
+                         r"(?:\[[^\]]*\])?\s*(=(?!=)|\{|;)")
+
+
+def class_info():
+    """(layouts, members) from header declarations. layouts: class -> [(offset, member)], an
+    `x<hex>_` name or a trailing `// 0x<hex>` comment giving the offset. members: class ->
+    {member: (TLockedToken type, container, default-initialized with a lock, plain class type)}."""
+    lay, mem = {}, {}
+    for top in ("include", "src"):
+        for p in (ROOT / top).rglob("*"):
+            if p.suffix not in (".h", ".hpp"):
+                continue
+            try:
+                lines = ac.drop_non_pc_arms(p.read_text(errors="replace")).split("\n")
+            except OSError:
+                continue
+            stack, depth, pending = [], 0, None
+            for ln, line in enumerate(lines):
+                code = line.split("//")[0]
+                m = CLASS_HEAD.match(code)
+                if m:
+                    pending = m.group(1)
+                opens, closes = code.count("{"), code.count("}")
+                if pending and opens:
+                    stack.append((pending, depth))
+                    pending = None
+                elif pending and ";" in code:
+                    pending = None
+                if stack and depth == stack[-1][1] + 1:
+                    cls = stack[-1][0]
+                    lm = LOCKED_DECL.match(code)
+                    mm = MEMBER_DECL.match(line)
+                    if lm:
+                        init = code[lm.end(3):].strip() if lm.group(3) != ";" else ""
+                        if lm.group(3) == "=" and not init and ln + 1 < len(lines):
+                            init = lines[ln + 1].split("//")[0].strip()
+                        nsdmi = lm.group(3) != ";" and not NO_LOCK_INIT.search(init.rstrip(";}").strip())
+                        mem.setdefault(cls, {})[lm.group(2)] = (True, bool(re.search(r"vector\s*<", lm.group(1))), nsdmi, None)
+                    elif mm and "(" not in code:
+                        tm = re.match(r"\s*(?:mutable\s+)?(?:\w+::)*(\w+)\s+\w+\s*;", code)
+                        mem.setdefault(cls, {}).setdefault(mm.group(1), (False, False, False, tm and tm.group(1)))
+                    if mm and "(" not in code:
+                        name = mm.group(1)
+                        xm = re.match(r"x([0-9A-Fa-f]+)_", name)
+                        off = int(xm.group(1), 16) if xm else (int(mm.group(2), 16) if mm.group(2) else None)
+                        if off is not None:
+                            lay.setdefault(cls, []).append((off, name))
+                depth += opens - closes
+                while stack and depth <= stack[-1][1]:
+                    stack.pop()
+    return {k: sorted(set(v)) for k, v in lay.items()}, mem
+
+
+def member_at(layout, off):
+    """The member a this-relative offset falls in (the last one at or below it)."""
+    best = None
+    for o, n in layout or ():
+        if o <= off:
+            best = (o, n)
+    return best
+
+
+GPR = re.compile(r"r\d+$")
+
+
+def retail_effects(fn, ctx, depth=0, seen=None, base=0):
+    """effect -> [(this-relative offset of the call's r3 or None, in a callee)] for a retail body's
+    effect calls, through unported module callees (a member ctor called with r3 = this + off adds
+    off). A token
+    Locked/Unlocked on the stack is a temporary the port's TLockedToken expression stands for."""
+    seen = set() if seen is None else seen
+    out = {}
+    regs = {"r3": base} if base is not None else {}   # GPR -> this + offset
+    stack = set()                                      # GPRs pointing into the frame
+    for i in fn.ins:
+        a = i.args
+        if i.op == "bl" and a:
+            r3 = regs.get("r3")
+            on_stack = "r3" in stack
+            for r in ["r0"] + [f"r{n}" for n in range(3, 13)]:
+                regs.pop(r, None)
+                stack.discard(r)
+            c = a[0].strip('"')
+            m = FNID.match(c)
+            if m:
+                ck = (int(m.group(1)), int(m.group(2), 16))
+                if ck in ctx["pnames"] or ck in seen or depth >= 3 or on_stack:
+                    continue
+                seen.add(ck)
+                mname = ctx["ids"].get(ck[0])
+                sub = ctx["retail"][mname][1].get(ck[1]) if mname in ctx["retail"] else None
+                if sub is not None:
+                    for k, v in retail_effects(sub, ctx, depth + 1, seen, r3).items():
+                        out.setdefault(k, []).extend(v)
+                continue
+            name = ctx["dol_name"](c)
+            for k, rx, _ in EFFECTS:
+                if rx.match(name) and not (on_stack and k in ("Lock", "Unlock")):
+                    out.setdefault(k, []).append((r3, depth > 0))
+            continue
+        if not a or not GPR.match(a[0]) or i.op.startswith(("st", "cmp", "b", "tw")):
+            continue
+        d = a[0]
+        regs.pop(d, None)
+        stack.discard(d)
+        if i.op == "mr" and len(a) == 2:
+            if a[1] in regs:
+                regs[d] = regs[a[1]]
+            elif a[1] in stack or a[1] == "r1":
+                stack.add(d)
+        elif i.op in ("addi", "addic", "addic.") and len(a) == 3 and re.fullmatch(r"-?(?:0x[0-9A-Fa-f]+|\d+)", a[2]):
+            if a[1] in regs:
+                regs[d] = regs[a[1]] + int(a[2], 0)
+            elif a[1] == "r1" or a[1] in stack:
+                stack.add(d)
+    return out
+
+
+def check_effects(fn, f, ctx):
+    """`effect` findings of a ctor/dtor: retail effect calls the port performs fewer times. A Lock
+    whose token offset falls in a member the class header places is that member's: the port must
+    lock that member (`m.Lock()`, `m.Token().Lock()`, a TLockedToken member built or assigned),
+    whatever else it locks; the other Locks are compared by count."""
+    ctor = f.short == f.cls
+    if not (ctor or (f.short or "").startswith("~")):
+        return []
+    want = retail_effects(fn, ctx)
+    if not want:
+        return []
+    body = strip_strings(ac.strip_comments_keep(expand(f.code, ctx["helpers"], cls=f.cls, file=f.file)))
+    own = strip_strings(ac.strip_comments_keep(f.code))
+    out = []
+    for k, _, prx in EFFECTS:
+        if k not in want:
+            continue
+        have = len(re.findall(prx, body))
+        need = want[k]
+        if k == "Lock":
+            ml = member_locks(own, ctx, ctor, f.cls)
+            if ctor:     # default member initializers that lock run in every ctor
+                for n, v in ctx["members"].get(f.cls, {}).items():
+                    if v[2] and n not in ml:
+                        ml[n] = (1, 0)
+            have += locked_constructions(own) + sum(n - t for n, t in ml.values())
+            if ctor:     # a member built by its own port ctor that locks (an SShotAttack's info)
+                for n, v in ctx["members"].get(f.cls, {}).items():
+                    if v[3] and re.search(rf"[:,]\s*{n}\s*\(", own):
+                        for c, hc, _ in ctx["helpers"].get(v[3], []):
+                            if c == v[3]:
+                                have += len(re.findall(prx, hc)) + locked_constructions(hc)
+                                break
+            layout = ctx["layouts"].get(f.cls)
+            rest = []
+            for off, via in need:
+                mem = member_at(layout, off) if off is not None else None
+                if mem is None or mem[0] != off:     # a token sits at +0 of its member
+                    if not via:     # a callee's unplaced lock is that (host) ctor's, as the port's
+                        rest.append(off)
+                    continue
+                name = mem[1]
+                if name in ml or re.search(rf"\b{re.escape(name)}\b[^;{{}}]*\bLock\s*\(", body):
+                    have -= 1
+                    continue
+                out.append(("effect", f"Lock: retail locks +0x{off:X} ({name}), port does not"))
+            need, have = rest, max(have, 0)
+        if have < len(need):
+            out.append(("effect", f"{k}: retail {len(need)}, port {have}"))
+    return out
+
+
 # ---------------------------------------------------------------- compare
 
 def plumbing(ck, ctx, depth=0):
@@ -564,6 +879,7 @@ def check(key, f, retail, ctx):
         if missing:
             out.append(("const", "retail constant(s) not in the port file: " + ", ".join(sorted(set(missing))[:6])))
     out += check_args(mod, fn, f, ctx)
+    out += check_effects(fn, f, ctx)
     nonblank = [x for x in code.split("\n") if x.strip()]
     shape_body = code if len(nonblank) > 5 else body
     pc = len(PORT_COND.findall(strip_strings(shape_body)))
@@ -729,7 +1045,7 @@ def main():
     ap.add_argument("--module", action="append", default=[], help="only this REL module (repeatable)")
     ap.add_argument("--fn", action="append", default=[], help="only fn_<mod>_<off> (repeatable)")
     ap.add_argument("--diff", metavar="BASE", help="only bodies new or changed since BASE")
-    ap.add_argument("--kinds", help="comma list of call,const,shape,nan,args")
+    ap.add_argument("--kinds", help="comma list of call,const,shape,nan,args,effect")
     ap.add_argument("--file", action="append", default=[], help="check only the marked bodies in these files")
     ap.add_argument("--top", type=int, default=40, help="whole-port listing: N worst functions")
     ap.add_argument("--coverage", action="store_true", help="per-module parse coverage table")
@@ -741,9 +1057,11 @@ def main():
     retail, ids, sizes = load_retail(mods)
     funcs, helpers, texts = port_functions([Path(x).resolve() for x in args.file] if args.file else marker_files())
     dol = dol_symbols()
+    layouts, members = class_info()
     ctx = {"helpers": helpers, "texts": texts, "sizes": sizes, "dol": dol, "lits": {}, "sites": {},
            "pnames": {k: f.short for k, f in funcs.items()}, "funcs": funcs, "strict": args.strict,
-           "retail": retail, "ids": ids, "plumb": {},
+           "retail": retail, "ids": ids, "plumb": {}, "locked": locked_members(),
+           "layouts": layouts, "members": members,
            "dol_name": lambda c: dol_callee(c, dol)[0]}
     marks = port_progress.markers()
     found_by, nobody = {}, []
