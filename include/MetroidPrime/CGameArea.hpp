@@ -295,11 +295,18 @@ public:
     return mPhase > kP_WaitForData && mPostConst.get() != nullptr ? mPostConst->mLayerScriptSizes.size() : 0;
   }
   // Bit n: layer n's script objects were spawned (the layers active when the area's tokens were
-  // listed, plus layers activated since). Save states rebuild the area with these bits.
+  // listed for its current load, plus layers activated since, minus layers unloaded since). Save
+  // states rebuild the area with these bits.
   uint64_t PortSpawnLayers() const { return mPortSpawnLayers; }
+  void PortResetSpawnLayers() { mPortSpawnLayers = 0; }
   void PortNoteSpawnLayer(int layer) {
     if (layer >= 0 && layer < 64) {
       mPortSpawnLayers |= uint64_t(1) << layer;
+    }
+  }
+  void PortDropSpawnLayer(int layer) {
+    if (layer >= 0 && layer < 64) {
+      mPortSpawnLayers &= ~(uint64_t(1) << layer);
     }
   }
 #endif

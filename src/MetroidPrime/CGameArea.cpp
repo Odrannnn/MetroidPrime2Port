@@ -358,6 +358,9 @@ void CGameArea::VerifyTokenList(CStateManager& mgr) {
 #ifdef TARGET_PC
     // PORT: a save state rebuilds the area with the layers its objects were spawned with.
     PortSaveState::NoteAreaSpawnBegin(*mgr.mCurrentWorldLayerState, mSelfIdx.Value());
+    // A new load: the bits of an earlier load are stale (a layer switched off since then would be
+    // rebuilt by a state load although the room has none of its objects, issue #52).
+    PortResetSpawnLayers();
 #endif
     ClearTokenList();
     mLayerPhases.resize(mLayerDependencyOffsets.size(), kLP_Inactive);
@@ -2428,6 +2431,7 @@ void CGameArea::UnloadLayerDynamic(CStateManager& mgr, const TLayerId layer) {
   if (PortSaveState::LayerHeld(mSelfIdx.Value(), layerIdx)) {
     return;
   }
+  PortDropSpawnLayer(layerIdx);
 #endif
   const ELayerPhase phase = mLayerPhases[layerIdx];
   bool cleared = false;
