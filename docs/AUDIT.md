@@ -196,6 +196,8 @@ Scripts: `tools/audit/` (see its README).
 | A9-600 | Platforms | CScriptPlatform.cpp:855 Move | upstream | minor | retail unit 0x17CC/0x1828 `lwz r12,0x5c(r12); bctrl` = CActor slot 0x5C GetScanObjectIndicatorPosition for the look-at target; decomp called GetOrbitPosition (0x50). Not reached in smoke (no look-at platform) | fixed 301d76296 (TARGET_PC) |
 | A9-601 | AI base | CPatterned.cpp:202 ctor | upstream | gameplay | retail unit 0x6CC0-0x6CEC `lbz 0x2a4(pinfo); extrwi. 1,24` (SEchoParameters.mIsEchoEmitter, bit 0x80) `beq; CAABox(pos,pos); li r4,1; bl AllocateEchoEmitter`; decomp never allocated the echo emitter. Smoke: 9 ctor calls in Agon 0i_sand_hall | fixed 4179dca39 (TARGET_PC) |
 | A9-602 | constants | CActorLights.cpp:113 ActivateLights, CScriptSound.cpp:425 GetOccludedVolumeAmount | upstream | minor | 1-ulp literals: retail lbl_8041B64C = 0x40A00001 (5.0000005f) vs 5.f; 0.42f rounds 1 ulp off retail. A8 precedent | wontfix |
+| A9-700 | Model materials | CCubeMaterial.cpp:529 HandleReflection | upstream | render | retail 0x80304040 `rlwinm r0,r0,9,21,22` (0x54004D6C) `cmpwi r0,3` tests `((mColorOps & 3) << 9) == GX_TEVREG2`, never true: retail never takes the TEVREG2 reflection path (always KONST colour arg, no extra stage). Decomp read the outReg field (`>> 9 & 3`). Only two such sites in the DOL | fixed (TARGET_PC) |
+| A9-701 | Model materials | CCubeMaterial.cpp:1033 SetCurrent | upstream | render | retail 0x80303594 `rlwinm. r0,r0,9,21,22` (0x54004D6D) `beq`: DoPassthru when the last stage's `(mColorOps & 3) << 9` (op low bits) is non-zero, not its outReg. Same packing-helper mixup as A9-700. Needs a visual check of materials whose last stage writes a non-PREV register | fixed (TARGET_PC) |
 
 ## Sweep log
 
