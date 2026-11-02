@@ -335,6 +335,12 @@ Controls > Touch & gyro (Gyro aim):
 Gyro aim needs mouse aim, twin stick or the touch controls' aim; without pointer aim it turns the
 camera at Sensitivity. Touch aim's Separate vertical speed and Vertical touch aim speed are
 touch.cfg's `aim_split` and `aim_speed_y` (env `MP2_TOUCH_AIM_SPLIT`, `MP2_TOUCH_AIM_SPEED_Y`).
+Beam and visor wheels: two round buttons, Visor and Beam, stock in the Default layout; any layout
+takes them as added buttons (Edit layout > Add a button > Visor wheel / Beam wheel, keys
+`visor_wheel` and `beam_wheel`, which only the overlay reads; a quick tap on Visor picks Scan with
+Tap Visor for Scan Visor). touch.cfg's retired `wheels=1` put the stock pair in the Classic and Twin
+layouts in place of the D-pad; such a layout becomes added wheel buttons where they were, without
+the D-pad, on its first draw (either overlay), and the line is dropped.
 
 Multiplayer (Player 1-4 selector; Player 1 edits the Controls keys above):
 

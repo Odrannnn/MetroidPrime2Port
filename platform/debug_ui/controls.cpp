@@ -388,14 +388,11 @@ void DrawControlsTouchGyro() {
     for (int i = 0; i < 3 && (PortTouch::Classic() ? 1 : (PortTouch::TwinStick() ? 2 : 0)) != layoutIndex; ++i) {
       PortTouch::CycleLayout();
     }
-    if (layoutIndex == 2) {
-      // Remastered picks beams with Y + the D-pad, so twin starts with the D-pad, not the wheels.
-      PortTouch::SetWheelsEnabled(false);
-    }
   }
   ItemHelp("Default: GameCube buttons, drag the screen to aim, Visor and Beam wheels.\n"
            "Classic GameCube: adds the C-stick and D-pad.\n"
-           "Twin stick (Remastered): a right stick that aims.");
+           "Twin stick (Remastered): a right stick that aims.\n"
+           "Any layout takes Visor and Beam wheels as buttons: Edit layout, Add a button.");
   ImGui::BeginDisabled(!twin);
   b = PortMouse::TouchFlickStick();
   if (ImGui::Checkbox("Flick stick##touch", &b)) {
@@ -414,21 +411,11 @@ void DrawControlsTouchGyro() {
     PortTouch::SetAimEnabled(aim);
   }
   ItemHelp("Drag the free screen area to turn and look around.");
-  ImGui::BeginDisabled(!classic && !twin);
-  b = PortTouch::WheelsEnabled();
-  if (ImGui::Checkbox("Beam and visor wheels", &b)) {
-    PortTouch::SetWheelsEnabled(b);
-  }
-  ItemHelp("Replaces the D-pad with Visor and Beam buttons: hold, slide to one, let go. "
-           "Let go in the middle to cancel.");
-  ImGui::EndDisabled();
-  ImGui::BeginDisabled(!((!classic && !twin) || PortTouch::WheelsEnabled()));
   b = PortTouch::VisorTapScan();
   if (ImGui::Checkbox("Tap Visor for Scan Visor", &b)) {
     PortTouch::SetVisorTapScan(b);
   }
-  ItemHelp("A quick tap on Visor switches to the Scan Visor.");
-  ImGui::EndDisabled();
+  ItemHelp("A quick tap on the Visor wheel button switches to the Scan Visor.");
   float speed = PortTouch::AimSpeed();
   if (ImGui::SliderFloat("Touch aim speed", &speed, 0.5f, 6.f, "%.2f px/dp")) {
     PortTouch::SetAimSpeed(speed);

@@ -74,7 +74,6 @@
 {"Controls", "Touch & gyro", "Touch controls", "Floating left stick", "joystick movement phone"},
 {"Controls", "Touch & gyro", "Touch controls", "Layout", "touch default classic twin stick phone"},
 {"Controls", "Touch & gyro", "Touch controls", "Touch aim", "drag swipe look camera phone"},
-{"Controls", "Touch & gyro", "Touch controls", "Beam and visor wheels", "radial dpad phone"},
 {"Controls", "Touch & gyro", "Touch controls", "Tap Visor for Scan Visor", "scan tap phone"},
 {"Controls", "Touch & gyro", "Touch controls", "Touch aim speed", "sensitivity drag phone"},
 {"Controls", "Touch & gyro", "Touch controls", "Separate vertical speed", "touch vertical drag speed split phone"},

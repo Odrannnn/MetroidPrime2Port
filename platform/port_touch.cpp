@@ -61,7 +61,7 @@ struct Settings {
 #else
   bool aim = false;
 #endif
-  bool wheels = true;
+  bool wheels = false; // retired, until an overlay migrates it (port_touch.h kTouchWheelActions)
   bool turbo = false;
   bool colors = false;
   bool labels = true;
@@ -313,7 +313,9 @@ void SaveConfigLocked() {
     file << "classic=" << (s.classic ? 1 : 0) << '\n';
     file << "twin=" << (s.twin ? 1 : 0) << '\n';
     file << "aim=" << (s.aim ? 1 : 0) << '\n';
-    file << "wheels=" << (s.wheels ? 1 : 0) << '\n';
+    if (s.wheels) {
+      file << "wheels=1\n"; // not migrated yet
+    }
     file << "turbo=" << (s.turbo ? 1 : 0) << '\n';
     file << "colors=" << (s.colors ? 1 : 0) << '\n';
     file << "labels=" << (s.labels ? 1 : 0) << '\n';
