@@ -3,10 +3,10 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
-## 2026-11-02: Sweep A9 (retail vs decomp vs port), lanes 1-3 merged
+## 2026-11-02: Sweep A9 (retail vs decomp vs port), closed
 
-Plan "Sweep A9" (3 Opus lanes); rows A9-100..105, 200..208, 300..310 in docs/AUDIT.md; reports
-`/tmp/opencode/reports/a9-{tooling-port,upstream-decomp,constants-notes}.md`.
+Plan "Sweep A9" (Opus lanes, all steps ticked); rows A9-100..806 in docs/AUDIT.md (closing line in its sweep
+log); reports `/tmp/opencode/reports/a9-*.md`. Not pushed.
 - Tooling (step 1): retail_diff always flags retail ctor/dtor effects (CToken::Lock, Sfx, AddObject;
   the #59 class); `tools/retail_diff_regress.sh` (all PASS); `tools/retail_diff_allow.txt` holds
   asm-checked model differences. Default call findings 546 -> 338.
@@ -14,9 +14,15 @@ Plan "Sweep A9" (3 Opus lanes); rows A9-100..105, 200..208, 300..310 in docs/AUD
   constants and branch senses (A9-200..208); next-draw-node and scan-lock fixes in Chykka 1/2, Ing,
   Splitter (A9-301..305); cov tooling TUniqueId packing for 2048 slots (A9-300).
 - Not run-verified: A9-201..205, 208, A9-302's off path, A9-303's reset case.
-- Open: step 2 rest (254 module-local callees that make calls, plus const/nan/shape kinds, mostly
-  SwampBossStage1/SandBoss/Grenchler); upstream decomp tier 2 (constants only) and tier 3 (661 functions)
-  unread; step 7 closes the sweep.
+- Second round: SwampBossStage1 UpdateHeadTurn divides by retail's 0.43633232f (A9-500); CScriptPlatform
+  look-at uses slot 0x5C GetScanObjectIndicatorPosition (A9-600); CPatterned ctor allocates the echo
+  emitter (A9-601); CCubeMaterial TEV outReg tests use retail's `(ops & 3) << 9` (A9-700/701). Tool rules
+  (A9-400, 520..522) and allowlist: `retail_diff.py` default findings 0 (48 allowlisted), regress 33/33.
+  `--strict` still lists 1370 calls: the rule-hidden classes (inline copies, ctor members, port-model callees).
+- Upstream tiers 2/3 read (A9-600..806): all 175 differing tier-3 functions screened, the rest matching-only;
+  ~33 no-diff functions not read for branch sense, 33 unpaired symbols unassigned.
+- Not run-verified: A9-201..205, 208, A9-302's off path, A9-303's reset case, A9-600, A9-700/701 (a stderr
+  probe reached neither CCubeMaterial path in three 900-frame runs: both sit under `reflection`).
 
 ## 2026-11-02: Morph Ball camera control (#54)
 
