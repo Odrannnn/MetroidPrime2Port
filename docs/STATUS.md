@@ -3,6 +3,21 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-11-02: Sweep A9 (retail vs decomp vs port), lanes 1-3 merged
+
+Plan "Sweep A9" (3 Opus lanes); rows A9-100..105, 200..208, 300..310 in docs/AUDIT.md; reports
+`/tmp/opencode/reports/a9-{tooling-port,upstream-decomp,constants-notes}.md`.
+- Tooling (step 1): retail_diff always flags retail ctor/dtor effects (CToken::Lock, Sfx, AddObject;
+  the #59 class); `tools/retail_diff_regress.sh` (all PASS); `tools/retail_diff_allow.txt` holds
+  asm-checked model differences. Default call findings 546 -> 338.
+- Fixes: ElitePirate shakes use FindConnectedObject (A9-100); CPlayer/gun/dynamics/collision-actor
+  constants and branch senses (A9-200..208); next-draw-node and scan-lock fixes in Chykka 1/2, Ing,
+  Splitter (A9-301..305); cov tooling TUniqueId packing for 2048 slots (A9-300).
+- Not run-verified: A9-201..205, 208, A9-302's off path, A9-303's reset case.
+- Open: step 2 rest (254 module-local callees that make calls, plus const/nan/shape kinds, mostly
+  SwampBossStage1/SandBoss/Grenchler); upstream decomp tier 2 (constants only) and tier 3 (661 functions)
+  unread; step 7 closes the sweep.
+
 ## 2026-11-02: Morph Ball camera control (#54)
 
 `ball_cam` / `ball_cam_speed` (docs/SETTINGS.md), `CBallCamera::PortManualOrbit` (TARGET_PC; state in a
