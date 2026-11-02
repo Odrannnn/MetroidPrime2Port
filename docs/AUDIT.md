@@ -193,6 +193,21 @@ Scripts: `tools/audit/` (see its README).
 | A9-308 | CStateManager warp | src/MetroidPrime/CStateManager.cpp:4425,5071,5089-5099,5126,5467-5474,5601 | port-limit | minor | kPortWarpMinFreeIds 256 / kPortWarpComfortIds 700 heuristics have comments measured at 1024 slots; still valid lower bounds at 2048. CDarkCommando.cpp:1064 reserved_vector<TUniqueId,128> holds candidates, not slots | not-a-bug (stale comments only) |
 | A9-309 | unmarked companions | SnakeWeedSwarm, Splitter fn_75_5F18/5418/CB30, BoostBallSwooshToken fn_10_895C, ctor/dtor helpers | target-pc | minor | retail_diff/`--strict` hits are inlined container/token helpers, a wrapper whose body (PortListen) is marked, or Bounce/DoubleSnap (dead in shipped data); no marker without every arm run, so none added | not-a-bug |
 | A9-310 | guessed names | PortCDigitalGuardianHead.cpp:1964, PortCSplitterCommandModule.cpp:297, CActor.hpp "Guessed names" | upstream | minor | remaining notes only question member names, not behaviour; no other TODO(uncertain) in src | not-a-bug |
+| A9-500 | SwampBossStage1 | PortCSwampBossStage1.cpp:626 (UpdateHeadTurn fn_78_2E38) | constant | minor | retail divides the radian angle by `lfs f2, lbl_78_rodata_194` = 0.43633232f (0x2F84, `fdivs f29, f1, f2` at 0x2F8C); the port's Rad2Deg(a) / 25.f could round 1 ulp apart (the A8 log's open note). Smoke: 487 calls in a forced TongueLoop/Vomit/PlatformReady fight | fixed |
+| A9-501 | DarkCommando | CDarkCommando.cpp:1308 (fn_3_3104) | constant | info | the 15 (lfs at 0x3304) feeds an AsNormalized whose 0x38(r1) result is never read | not-a-bug (dead in retail) |
+| A9-502 | CommandoPirate | PortCCommandoPirate.cpp:4939 (fn_9_E30) | constant | info | 150/360/90/0.8/30/80 are SLdrCommandoPirate.hpp's inline ctor defaults, stored at 0xED0.. | not-a-bug |
+| A9-503 | DarkSamus | PortCDarkSamusHelpers.cpp:949 (FirePhazonShot fn_10_50B8) | constant | info | `lfs 1.3f` at 0x5128 * scale.z (0x513C) stored at 0x5164..0x516C, overwritten at 0x5360..0x5368 before any read | not-a-bug (dead store) |
+| A9-504 | DigitalGuardian | PortCDigitalGuardian.cpp:269 (ctor fn_14_B100) | constant | info | the +-pi/4, +-3pi/4 .data words 0x45C..0x468 fill the 0xFF8 vector, which nothing reads | not-a-bug |
+| A9-505 | Metroid, Splinter | SLdrMetroidAlpha.hpp:45 (fn_40_D70), SLdrSplinter.hpp:44 (fn_74_C3C) | constant | info | re-store SLdrIngPossessionData's ctor default health 150 (SLdrIngPossessionData.cpp:12) | not-a-bug |
+| A9-506 | SwampBossStage1 | PortCSwampBossStage1.cpp:1068 (ShouldExposeBelly fn_78_6458) | nan | info | retail duplicates `xd10 > x824/x820` into each ternary arm (mfcr/extrwi GT at 0x6498, 0x64B0); same NaN arm | not-a-bug |
+| A9-507 | SwampBossStage2 | PortCSwampBossStage2.cpp:1912 (Circle fn_79_7BE0) | nan | info | retail splits the per-phase compare (0x7C50 bgt, 0x7C68 ble); the port's selected-limit compare is equivalent | not-a-bug |
+| A9-508 | SwampBossStage2 | PortCSwampBossStage2.cpp:1374 (AllGrowthsDead fn_79_A438) | nan | info | retail tests the four fixed slots xc10..xc1c (ble 0xA444..0xA480); the port loops size(), InitGrowths always pushes 4 | not-a-bug |
+| A9-509 | ScriptPlayerTurret | PortCScriptPlayerTurret.cpp:756 (PreRender fn_63_2D68) | nan | info | retail re-tests x20c > 0 in the unrendered arm (0x2F0C); the clamp's NaN arm cannot happen (x20c/0.33 with x20c > 0) | not-a-bug (unreachable) |
+| A9-510 | DarkSamus | PortCDarkSamusHelpers.cpp:474 (ConstructPhazonBeam fn_10_45F8) | shape | info | the 14 branches are the token/optional build, which lives in PhazonBeamHitToken's member initializer (:454-472) | not-a-bug |
+| A9-511 | Tweaks | Tweaks.cpp:149 (FreeTweaks fn_82_8C) | shape | info | retail Frees each tweak global (Free, single_ptr assign, a delete[] loop); the port keeps them inside CTweakContents, whose delete frees them (runs at REL exit only) | not-a-bug |
+| A9-520 | retail_diff const | tools/retail_diff.py | tool | info | named constants (M_PIF, Deg2Rad, Rad2Deg, close_enough's 1e-5, CColor 255), literal folds (every prefix), Deg2Rad/byte folds, tree `const float` defs with literal right-hand sides; 107 const findings cleared | fixed |
+| A9-521 | retail_diff nan | tools/retail_diff.py | tool | info | mfcr + extrwi of the EQ bit is ==; MWCC unrolls literal-trip loops (compares x trips); a shadowed header inline counts per call; the negated-form count reads only the body's own code; 28 nan findings cleared | fixed |
+| A9-522 | retail_diff shape | tools/retail_diff.py | tool | info | loader switches in the generated .inc, auto_ptr assigns (5 branches), jumptable switches (one branch), new null checks, string_l temporaries, Min/Max selects; the short-body rule counts inlined helpers and CTransform4f/rs_new plumbing; 35 shape findings cleared | fixed |
 
 ## Sweep log
 
@@ -219,7 +234,11 @@ every `TODO(uncertain)` / `[uncertain]` note in src (A9-301..307, A9-310); every
 Sweep A9 (retail vs decomp vs port, 2026-11-02): tooling-port lane (`/tmp/opencode/reports/a9-tooling-port.md`):
 retail_diff effect kind (ctor/dtor Locks, `tools/retail_diff_regress.sh`), DOL-named call findings
 all triaged (A9-100..104), value helpers hidden (A9-105); default calls 546 -> 338, strict 2174 -> 1381.
-Untriaged: the 254 module-local `(unported) not named` callees that make calls, const/nan/shape kinds.
+Untriaged: the 254 module-local `(unported) not named` callees that make calls.
+Sweep A9 const-nan-shape lane (2026-11-02, `/tmp/opencode/reports/a9-const-nan-shape.md`): every const,
+nan and shape finding (default and `--strict`) read against the asm: one real constant (A9-500), model
+differences allowlisted (A9-501..511, fn_72_38E4 cites A8-7), the rest tool rules (A9-520..522, fixtures in
+`tools/retail_diff_regress.sh`); const 108 -> 0, nan 33 -> 0, shape 37 -> 0 (13 allowlisted).
 
 Open: only A1-26 (RadialHud `model_inner_ring`, widget name on the GameCube pak unconfirmed); every other
 row above is `fixed`, `not-a-bug`, `wontfix` or `partly fixed` (state in its status cell).
