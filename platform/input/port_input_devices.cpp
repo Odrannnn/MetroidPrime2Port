@@ -340,8 +340,11 @@ bool PadButtonBoundBesidesL(s32 native, u32 port) {
 // The overlay's own Beam button works inside PortTouch. As in MP1 the shifts also spring the ball
 // in morph ball (the Spring Ball action, RouteDirectActions -> PortTouch::RequestSpringBall).
 // Players 2-4 (port > 0) have only their pad, and only its shift, under their own twin stick.
+// The touch layout's twin stick counts only while touch is the last-used input (MP1's TwinStick):
+// a pad played with Twin Stick Aim off keeps LB to itself (#58).
 void BindBeamChords(Profile& p, u32 port = 0) {
-  if (port == 0 ? !PortTouch::TwinStick() && !PortMouse::StickEnabled() : !PortMouse::StickEnabled(int(port))) return;
+  const bool touchTwin = port == 0 && PortTouch::Active() && PortTouch::TwinStick();
+  if (!touchTwin && !PortMouse::StickEnabled(int(port))) return;
   std::vector<Input> keyShifts;
   std::vector<Input> padShifts;
   bool lshiftTaken = false;
