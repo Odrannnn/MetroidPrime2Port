@@ -5,7 +5,8 @@
 in the background instead of skipping draws as it meets them. Ported from the Prime 1 port's script.
 
     record [--out DIR]    play the campaign from empty caches (MP2_PIPELINE_SEED=0): the front end, an
-                          item/visor/beam/ball/menu pass, then every area of the five campaign worlds
+                          item/visor/beam/ball/menu pass, the SPOTS a sweep misses (`--only NAME` runs
+                          one alone), then every area of the five campaign worlds
                           (tools/sweep_areas.sh WORLD=<w>), Temple Grounds first. Needs a built
                           build-port-link/metroid_prime2_port, the disc, a GPU (Xvfb is fine; headless
                           draws nothing and records nothing). Retail content only: no texture mods, no
@@ -50,6 +51,12 @@ GX_VA_NULL = 0xFF
 # A first playthrough meets Temple Grounds, Agon, Torvus, Sanctuary, then the Great Temple.
 WORLDS = [("3bfa3eff", "Temple Grounds"), ("42b935e4", "Agon Wastes"), ("3dfd2249", "Torvus Bog"),
           ("1baa96c2", "Sanctuary Fortress"), ("863fcd72", "Great Temple")]
+# Spots the area sweep never reaches (it walks each area's spawn, not its water or corners): (name, console
+# script in tools/drivers, "<world>,<area>" direct boot, game updates, timeout s). When a player report
+# shows a pipeline miss ("pipeline cache: new pipeline" in the log) the seed lacks, add its repro here.
+SPOTS = [
+    ("torvus_water", "pipeline_seed_torvus_water.con", "3dfd2249,01_swamp_entrance", "900", "200"),  # #44
+]
 
 SCHEMA = """
 CREATE TABLE aurora_schema(value INTEGER);
@@ -266,19 +273,26 @@ def cmd_record(a):
         env.update(MP2_FRAME_LIMIT="0", MP2_TICKS_PER_FRAME="8")
     for k in ("MP2_TEXTURE_PACK", "MP2_MODS", "MP2_REMASTERED"):  # no mods, no Remastered options
         env.pop(k, None)
+    unknown = set(a.only or []) - {"frontend", "actions"} - {s[0] for s in SPOTS}
+    if unknown:
+        sys.exit(f"[record] unknown --only {', '.join(sorted(unknown))} (frontend, actions or a SPOTS name)")
     caches = []
     t0 = time.monotonic()
-    # Scripted passes through the console driver: the front end (logo, menu, file select, intro) and
-    # an in-game pass (every beam x visor, charge, missile, morph ball, pause screens).
-    for i, (name, con, front, secs) in enumerate([("frontend", "pipeline_seed_frontend.con", "0", "300"),
-                                                  ("actions", "pipeline_seed.con", "1", "400")]):
-        if a.world and not a.scripted:
-            break
+    # Scripted passes through the console driver: the front end (logo, menu, file select, intro), an
+    # in-game pass (every beam x visor, charge, missile, morph ball, pause screens), then SPOTS.
+    for i, (name, con, world, frames, secs) in enumerate([("frontend", "pipeline_seed_frontend.con", None, "100000", "300"),
+                                                          ("actions", "pipeline_seed.con", None, "100000", "400")]
+                                                         + SPOTS):
+        if (a.world and not a.scripted) or (a.only and name not in a.only):
+            continue
         cache = out / f"cache_{name}"
         shutil.rmtree(cache, ignore_errors=True)
         port = str(7790 + i)
-        genv = dict(env, SKIP_FRONTEND=front, FRAMES="100000", SECS=secs, DISPLAY_NUM=f":{150 + i}",
-                    CACHEDIR=str(cache), LOG=str(out / f"{name}.log"), MP2_CONSOLE=port, MP2_CONSOLE_WAIT="1")
+        genv = dict(env, SKIP_FRONTEND="0" if name == "frontend" else "1", FRAMES=frames, SECS=secs,
+                    DISPLAY_NUM=f":{150 + i}", CACHEDIR=str(cache), LOG=str(out / f"{name}.log"),
+                    MP2_CONSOLE=port, MP2_CONSOLE_WAIT="1")
+        if world:
+            genv["WORLD"] = world
         print(f"[record] {name} ...", flush=True)
         t1 = time.monotonic()
         game = subprocess.Popen(["bash", "tools/run_gameplay.sh"], env=genv)
@@ -288,7 +302,7 @@ def cmd_record(a):
         game.wait()
         print(f"[record] {name}: {time.monotonic() - t1:.0f} s", flush=True)
         caches.append(cache / "pipeline_cache.db")
-    wanted = a.world or [w for w, _ in WORLDS]
+    wanted = a.world or ([] if a.only else [w for w, _ in WORLDS])
     for w, name in WORLDS:
         if w not in wanted:
             continue
@@ -317,6 +331,8 @@ def main():
     r.add_argument("--shards", type=int, default=4)
     r.add_argument("--world", action="append", help="only this MLVL id (repeatable)")
     r.add_argument("--scripted", action="store_true", help="with --world, still run the front-end/in-game passes")
+    r.add_argument("--only", action="append", help="only this scripted pass or SPOTS entry, no worlds (repeatable); "
+                   "merge with --extra assets/initial_pipeline_cache.db to add it to the seed")
     r.add_argument("--fast", action="store_true", help="unpaced game (loses ~10%% of the rows)")
     r.add_argument("--present-every", type=int, default=6)
     r.add_argument("--extra", nargs="*", default=[], help="caches to put first in the merge line")

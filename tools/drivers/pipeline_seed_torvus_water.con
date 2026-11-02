@@ -1,0 +1,7 @@
+# tools/pipeline_seed.py record: Torvus underwater (#44), which the area sweep never reaches (3 pipelines
+# whose TEV alpha input differs). Direct boot into 01_swamp_entrance; missile splashes, then the water.
+@f300 god 1; give missile 20
+@f305 shoot u0859 missile 6
+@f400 shoot u0859 6
+@f505 tp 162.7 -78.4 40
+@f705 tp 210.3 -89.9 33.1
