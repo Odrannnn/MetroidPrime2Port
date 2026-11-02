@@ -61,13 +61,13 @@ for line in open(os.environ['COV_NM']):
         ShootTrace('*' + raw.split()[2], internal=True)
 
 objlist = '((rstl::auto_ptr<CObjectList>*)$mgr->mObjectLists.mData)[0].mItem->mObjects'
-children = [('$sp5r_top', '(CSporbTop*)' + objlist + '[$this->mTopId.value & 1023].mEntity'),
+children = [('$sp5r_top', '(CSporbTop*)' + objlist + '[$this->mTopId.value & 2047].mEntity'),
             ('$sp5r_area', '$mgr->mWorld.mPtr->mAreas.mItems[$this->mAreaId.value].mItem')]
 if guardian:
     children += [('$sp5r_stage', '$this->mStages.mItems[0].mPtr')]
 else:
     children += [('$sp5r_proj', '(CSporbProjectile*)' + objlist +
-                  '[$this->mProjectileId.value & 1023].mEntity')]
+                  '[$this->mProjectileId.value & 2047].mEntity')]
 saved = ['$this->' + field for field in (
     'mState mAnimationState.mState mReadyToFire x860_ mAimLocked mAttackType mGrabberState '
     'mAttacksSinceDoubleShot mPowerBombsFired mTendrilParticleCount mBodyController.mPtr->mLocomotionType '

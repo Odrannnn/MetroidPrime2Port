@@ -40,10 +40,10 @@ class Prepare(gdb.Function):
     def invoke(self, actor, mgr):
         table = ev('((rstl::auto_ptr<CObjectList>*)((CStateManager*)%d)->mObjectLists.mData)[0].mItem' % int(mgr)).dereference()['mObjects']
         mouth_id = int(actor.dereference()['xac4_']['value'])
-        col = table[mouth_id & 1023]['mEntity'].cast(gdb.lookup_type('CCollisionActor').pointer())
+        col = table[mouth_id & 2047]['mEntity'].cast(gdb.lookup_type('CCollisionActor').pointer())
         assert mouth_id != 65535 and int(col)
         gdb.set_convenience_variable('b7_col',col)
-        for i in range(1024):
+        for i in range(2048):
             obj = table[i]['mEntity']
             if not int(obj):
                 continue

@@ -97,10 +97,10 @@ for line in open(os.environ['COV_NM']):
         PredictEntry('*' + raw.split()[2], internal=True)
 
 objlist = '((rstl::auto_ptr<CObjectList>*)$mgr->mObjectLists.mData)[0].mItem->mObjects'
-children = [('$sp5_top', '(CSporbTop*)' + objlist + '[$this->mTopId.value & 1023].mEntity')]
+children = [('$sp5_top', '(CSporbTop*)' + objlist + '[$this->mTopId.value & 2047].mEntity')]
 if not guardian:
     children += [('$sp5_proj', '(CSporbProjectile*)' + objlist +
-                  '[$this->mProjectileId.value & 1023].mEntity')]
+                  '[$this->mProjectileId.value & 2047].mEntity')]
 else:
     children += [('$sp5_stage', '$this->mStages.mItems[0].mPtr')]
 
@@ -281,13 +281,13 @@ if guardian:
     for count in (0, 1, 3):
         writes = [('$this->mWaypointIds.mCount', str(count))]
         for i in range(count):
-            waypoint = '(CScriptWaypoint*)' + objlist + '[$this->mWaypointIds.mItems[%d].value & 1023].mEntity' % i
+            waypoint = '(CScriptWaypoint*)' + objlist + '[$this->mWaypointIds.mItems[%d].value & 2047].mEntity' % i
             writes += [('((CEntity*)(' + waypoint + '))->mActive', '1')]
         case('5B90/5B98 target waypoints=%d' % count, writes,
              '$sp5_vector_equal($sp5_result,$P->mPosition)' if count == 0 else '1',
              method='vector', expression='$sp5_result=$this->PickTargetPosition(*$mgr,0)')
     for stage_count, index in ((0, 0), (4, 4)):
-        waypoint = '(CScriptWaypoint*)' + objlist + '[$this->mWaypointIds.mItems[0].value & 1023].mEntity'
+        waypoint = '(CScriptWaypoint*)' + objlist + '[$this->mWaypointIds.mItems[0].value & 2047].mEntity'
         case('5AB0/5ABC no valid target stage',
              [('$this->mStages.mCount', str(stage_count)), ('$this->mStageIndex', str(index)),
               ('$this->mWaypointIds.mCount', '1'), ('((CEntity*)(' + waypoint + '))->mActive', '1')],

@@ -89,11 +89,11 @@ if gdb.convenience_variable('split25_on') is None:
         def stop(self):
             inf = gdb.selected_inferior()
             n = int(gdb.parse_and_eval('*(int*)%d' % self.lst))
-            if n < 1024:
+            if n < 2048:
                 data = bytes(inf.read_memory(self.lst + 4, 2 * n)) if n else b''
                 ids = [self.pid]
                 w = gdb.convenience_variable('split23_wid')
-                if w is not None and int(w) & 0xffff != 0xffff and n < 1023:
+                if w is not None and int(w) & 0xffff != 0xffff and n < 2047:
                     ids.append(int(w) & 0xffff)
                 inf.write_memory(self.lst + 4, b''.join(i.to_bytes(2, 'little') for i in ids) + data)
                 gdb.execute('set var *(int*)%d = %d' % (self.lst, n + len(ids)))

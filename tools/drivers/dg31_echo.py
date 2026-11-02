@@ -82,7 +82,7 @@ var('dg.flags', flags | 0x10)
 # fn_14_3DA8: knee 3 unset, knee 2's id with another version (a stale id: ObjectById is null)
 # one console line, so no body frame runs between the writes and the call (as in
 # tools/cov/specs/digitalguardian_dg31_knee.con)
-C(f'var {BODY} dg.armor3 65535; var {BODY} dg.armor2 {knees[2] ^ 0x400}; '
+C(f'var {BODY} dg.armor3 65535; var {BODY} dg.armor2 {knees[2] ^ 0x800}; '
   f'codecall {BODY} SetVortexAttackMode; var {BODY} dg.armor2 {knees[2]}; '
   f'var {BODY} dg.armor3 {knees[3]}')
 # (a fast run renders every 8th update: the flag stays up for a few drawn frames)

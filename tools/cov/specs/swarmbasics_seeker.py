@@ -97,7 +97,7 @@ def _actor_of(g, mgr, uid):
         list0 = _i(g, '((%s))[0].mItem' % (_OBJ_LIST0 % mgr))
         if not list0:
             return 0
-        ent = _i(g, '((CObjectList*)%d)->mObjects[%d].mEntity' % (list0, uid & 0x3FF))
+        ent = _i(g, '((CObjectList*)%d)->mObjects[%d].mEntity' % (list0, uid & 0x7ff))
         if not ent:
             return 0
         if _i(g, '((CEntity*)%d)->mUniqueId.value' % ent) != uid:

@@ -33,9 +33,9 @@ class Check(gdb.Function):
 Check()
 scenarios, labels = [], []
 objlist = '((rstl::auto_ptr<CObjectList>*)$mgr->mObjectLists.mData)[0].mItem->mObjects'
-children = [('$sp4_top', '(CSporbTop*)' + objlist + '[$this->mTopId.value & 1023].mEntity'),
+children = [('$sp4_top', '(CSporbTop*)' + objlist + '[$this->mTopId.value & 2047].mEntity'),
             ('$sp4_projectile', '(CSporbProjectile*)' + objlist +
-             '[$this->mProjectileId.value & 1023].mEntity')]
+             '[$this->mProjectileId.value & 2047].mEntity')]
 
 shot_inputs = [('mShooting', '1'), ('mShotTimer', '0.5f'), ('mTimeBetweenShots', '0.25f'),
                ('mShotsFired', '0'), ('mShotsInBurst', '3'), ('mTimerScale', '2.f'),

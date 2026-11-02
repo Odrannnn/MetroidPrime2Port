@@ -1816,11 +1816,14 @@ void CIng::CreateBlob(CStateManager& mgr) {
         LoadGeomBlobV2(*desc, mBlobId, GetAreaIdForPersistence(), true,
                        rstl::string_l("IngBlobEffect"), CTransform4f::Translate(GetTranslation()),
                        GetUniqueId(), 0);
-    mgr.AddObject(blob);
     // fn_25_256C: the member at 0x190 - the particle generator's rate (the retail's own code
     // reads it at 0x2B60 and hands it to CElementGen::SetGeneratorRate) - set to 0, so the blob
     // emits no particles.
     static_cast< CCollisionTracker * >(blob)->SetParticleEmissionRateScalar(0.f);
+    // asm 0x4930-0x4948: the blob draws after the Ing (its id at 0x8 into the blob's next draw
+    // node at +0x12a), then it is added.
+    blob->SetNextDrawNode(GetUniqueId());
+    mgr.AddObject(blob);
   }
 }
 

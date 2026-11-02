@@ -54,7 +54,7 @@ class Prepare(gdb.Function):
     def invoke(self, actor, mgr):
         listing = val('((rstl::auto_ptr<CObjectList>*)((CStateManager*)%d)->mObjectLists.mData)[0].mItem' % int(mgr))
         found = {}
-        for index in range(1024):
+        for index in range(2048):
             entry = listing.dereference()['mObjects'][index]
             entity = entry['mEntity']
             if int(entity):
@@ -73,7 +73,7 @@ class Prepare(gdb.Function):
         weapons = found.get('CEnergyProjectile', []) + found.get('CGameProjectile', []) + found.get('CPlasmaProjectile', [])
         assign('$sj4_weapon', '(CWeapon*)%d' % (weapons[0] if weapons else 0))
         cid = int(actor.dereference()['mCollisionManager']['mPtr'].dereference()['mJointDescriptions']['mItems'][0]['mActorId']['value'])
-        gdb.set_convenience_variable('sj4_col', listing.dereference()['mObjects'][cid & 1023]['mEntity'].cast(gdb.lookup_type('CCollisionActor').pointer()))
+        gdb.set_convenience_variable('sj4_col', listing.dereference()['mObjects'][cid & 2047]['mEntity'].cast(gdb.lookup_type('CCollisionActor').pointer()))
         assign('$sj4_list', '((rstl::auto_ptr<CObjectList>*)((CStateManager*)%d)->mObjectLists.mData)[5].mItem' % int(mgr))
         assign('$sj4_conn', '(SConnection*)malloc(sizeof(SConnection))')
         assign('$sj4_ids', '(TUniqueId*)malloc(64)')
@@ -272,7 +272,7 @@ class Ready(gdb.Breakpoint):
         if self.n % 8:
             return False
         table = val('((rstl::auto_ptr<CObjectList>*)((CStateManager*)$rsi)->mObjectLists.mData)[0].mItem').dereference()['mObjects']
-        for index in range(1024):
+        for index in range(2048):
             entity = table[index]['mEntity']
             if int(entity) and str(entity.dynamic_type).replace(' *', '') in ('CGameProjectile', 'CEnergyProjectile', 'CPlasmaProjectile'):
                 assign('$sj4_ready', '1')

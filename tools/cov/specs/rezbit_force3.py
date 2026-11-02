@@ -422,7 +422,7 @@ class NearAppend(gdb.Breakpoint):
     """CStateManager::BuildNearList(list&, aabox, filter, actor) returns with `uid` appended (a stray id)."""
 
     def __init__(self):
-        super().__init__(addr('CStateManager::BuildNearList(rstl::reserved_vector<TUniqueId, 1024>&, CAABox const&'),
+        super().__init__(addr('CStateManager::BuildNearList(rstl::reserved_vector<TUniqueId, 2048>&, CAABox const&'),
                          internal=True)
         self.uid = None
         self.enabled = False

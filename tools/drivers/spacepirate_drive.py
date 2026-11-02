@@ -166,7 +166,7 @@ def main():
             continue
         ids = {}
         for p in pirates(c.cmd('objs spacepirate')):
-            ids['%08x' % p[4]] = ids['#%d' % (p[0] & 0x3ff)] = 'u%04x' % p[0]
+            ids['%08x' % p[4]] = ids['#%d' % (p[0] & 0x7ff)] = 'u%04x' % p[0]
         for cls in set(re.findall(r'\{cls:(\w+)\}', step)):
             m = re.search(r'u([0-9a-f]+) [0-9a-f]{8}\s+%s\b' % cls, c.cmd('objs %s' % cls.lower()))
             ids['cls:' + cls] = 'u' + m.group(1) if m else 'u_missing_' + cls

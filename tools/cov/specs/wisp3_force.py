@@ -252,7 +252,7 @@ def _find_bomb(g):
     try:
         vt = int(gdb.parse_and_eval("(long)&'vtable for CBomb'"))
         lst = gdb.parse_and_eval('**(CObjectList**)(((CStateManager*)$r12)->mObjectLists.mData + 8)')
-        for idx in range(1024):
+        for idx in range(2048):
             ent = int(lst['mObjects'][idx]['mEntity'])
             if ent == 0:
                 continue
@@ -263,7 +263,7 @@ def _find_bomb(g):
                 return uid
         if _dm['dbg'] < 12:
             _dm['dbg'] += 1
-            nz = [i for i in range(1024) if int(lst['mObjects'][i]['mEntity'])]
+            nz = [i for i in range(2048) if int(lst['mObjects'][i]['mEntity'])]
             hi = [(i, hex(int(gdb.parse_and_eval('*(long*)%d' % int(lst['mObjects'][i]['mEntity']))))) for i in nz if i >= 0x290]
             _log('findbomb: no CBomb vtable 0x%x; list0 count %d, slots>=0x290: %s' % (vt, len(nz), hi[:12]))
     except Exception as e:  # noqa: BLE001
@@ -296,7 +296,7 @@ def dmg_state(g):
         try:
             sid = int(gdb.parse_and_eval('((CScriptMsg*)$r15)->mSenderId.value'))
             lst = gdb.parse_and_eval('**(CObjectList**)(((CStateManager*)$r12)->mObjectLists.mData + 8)')
-            ent = int(lst['mObjects'][sid & 0x3ff]['mEntity'])
+            ent = int(lst['mObjects'][sid & 0x7ff]['mEntity'])
             sym = g.execute('info symbol *(long*)%d' % ent, to_string=True) if ent else 'null'
             _log('dstate dbg: sender 0x%x slot ent 0x%x %s' % (sid, ent, sym.strip()[:60]))
         except Exception as e:  # noqa: BLE001

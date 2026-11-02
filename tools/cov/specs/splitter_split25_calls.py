@@ -297,7 +297,7 @@ def collided():
     al = '(*((rstl::auto_ptr<CObjectList>*)$s25m->mObjectLists.mData)[kOL_Actor].mItem)'
     try:
         idx = int(ev(al + '.mFirstId'))
-        for _ in range(1024):
+        for _ in range(2048):
             if idx == -1:
                 break
             a = '((CActor*)%s.mObjects[%d].mEntity)' % (al, idx)

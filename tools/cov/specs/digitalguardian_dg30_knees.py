@@ -19,6 +19,6 @@ FORCE = [
     ('CE94 handle', 'CDigitalGuardianKneeArmor::SetArmored(',
      ['$this->mUniqueId.value', '$rdx & 1', '$this->x19C_24_armored_', '$this->x198_.mID'],
      ['$this->x198_.mID = ($this->x19C_24_armored_ != ($rdx & 1)) ? '
-      '((($this->mUniqueId.value & 0x3ff) == 0x17a) ? 0xfffff : 0) : $this->x198_.mID'],
+      '((($this->mUniqueId.value & 0x7ff) == 0x17a) ? 0xfffff : 0) : $this->x198_.mID'],
      0, 'x198 per knee'),
 ]

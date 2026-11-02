@@ -160,6 +160,22 @@ Scripts: `tools/audit/` (see its README).
 | A8-27 | HUD | src/MetroidPrime/CTargetReticles.cpp:2041 | wrong-logic | low | Classic/GameCube crosshair replaced the tweak alpha with the opacity option and dropped the draw-scale fade (retail 0x800AE414..438). Now tweak alpha * opacity * draw scale | fixed |
 | A8-28 | HUD | platform/port_overlay.cpp:142 | port-feature | info | Crosshair style defaults to Remastered (port feature on by default; retail look is Classic). User decision 2026-10-31: keep Remastered as default | won't fix (decision) |
 
+## Sweep A9
+
+| id | area | file:line | class | severity | evidence | status |
+|----|------|-----------|-------|----------|----------|--------|
+| A9-300 | cov tooling | tools/cov/specs/*.py, tools/drivers/{dg31_echo,ing_drive,spacepirate_drive}.py | port-limit | minor | gdb specs/drivers decoded TUniqueId with the retail 10/6 packing (& 0x3ff, 1024 slots, version +0x400) after the PC moved to 11/5 (kMaxObjects 2048): slot indices above 1023 aliased. Left as-is: splinter_grab_force.py hard-coded ids, elitepirate_shouldfire.con `ep.target 1024` (fixture values) | fixed 921d82799 |
+| A9-301 | Chykka 2 | src/MetroidPrime/Enemies/PortCSwampBossStage2.cpp:685 UpdateWater (fn_79_3900) | render | visual | asm 0x3D58-0x3D68 `lhz 0xd3c` (mWater) -> `sth 0x12a` of the splash before AddObject; port dropped it (TODO), so splashes sorted independently of the water. Smoke: 109/109 splashes linked | fixed a5f03ba7c |
+| A9-302 | Chykka 2 | src/MetroidPrime/Enemies/PortCSwampBossStage2.cpp:2427 Render (fn_79_A78C) | render | minor | asm 0xA7B4-0xA7CC queries GetCharacterRenderMaskAndTarget only when 0x421 bit 0x01 (mDrawParticles); port always queried | fixed a5f03ba7c |
+| A9-303 | Chykka 1 | src/MetroidPrime/Enemies/PortCSwampBossStage1.cpp:2226 GetScannableObjectInfo (fn_78_A570) | logic | gameplay | asm 0xA57C `lwz 0x48c; lwz 0x580; cmpwi 7`: 0x580 is CBodyController::mLocomotionType (DOL SetLocomotionType 0x800F73EC), type 7 set by ResetPlatform; port compared the body state id 7 (melee), hiding the scan in melee and showing it during the reset. No other module misreads 0x580 | fixed a5f03ba7c |
+| A9-304 | Ing | src/MetroidPrime/Enemies/PortCIng.cpp:1825 CreateBlob (fn_29_4830) | render | visual | asm 0x4930-0x4948 `lhz 0x8` (Ing id) -> blob `sth 0x12a` before AddObject; port dropped it. Smoke (Agon 3f5cdf39): blob linked | fixed ef701fe5b |
+| A9-305 | Splitter | src/MetroidPrime/Enemies/PortCSplitterCommandModule.cpp:1674,1748 (fn_75_3EEC, fn_75_31A8) | render | visual | guest 0x12a was a private `mClearedId` instead of CActor's next draw node: the docked head never drew after its chassis (asm 0x3F60 set, 0x324C clear). Field removed, schema regenerated. Smoke (split23): 2/2 docks linked; clear arm not reached | fixed e8aa180e3 |
+| A9-306 | Chykka 1/2 | PortCSwampBossStage1.cpp:2046, PortCSwampBossStage2.cpp:2414 AddToRenderer | upstream | minor | notes claimed IRenderer slot 0x44 is a 3-arg overload; asm 0x2240-0x228C / 0xA720-0xA73C set only r4: the one-argument AddParticleGen the port calls | not-a-bug (notes rewritten a5f03ba7c) |
+| A9-307 | Quadraxis, Sandworm eye | PortCSandBossAttacks.cpp:1158, PortCSandBoss.cpp:772, PortCSandwormEye.cpp:26 | upstream | minor | `[uncertain]` notes: 0x24/0x34/0x44 is GetColumn(kDX) (row-major m00/m10/m20); vtable lbl_55_data_760 D208/D308 = AddToRenderer/Render; lbl_56_bss_C = string_l(rodata_250+0x489) "Sandworm.rel" (fn_56_14FA8). Port already right | not-a-bug (notes rewritten 2c45a8f50) |
+| A9-308 | CStateManager warp | src/MetroidPrime/CStateManager.cpp:4425,5071,5089-5099,5126,5467-5474,5601 | port-limit | minor | kPortWarpMinFreeIds 256 / kPortWarpComfortIds 700 heuristics have comments measured at 1024 slots; still valid lower bounds at 2048. CDarkCommando.cpp:1064 reserved_vector<TUniqueId,128> holds candidates, not slots | not-a-bug (stale comments only) |
+| A9-309 | unmarked companions | SnakeWeedSwarm, Splitter fn_75_5F18/5418/CB30, BoostBallSwooshToken fn_10_895C, ctor/dtor helpers | target-pc | minor | retail_diff/`--strict` hits are inlined container/token helpers, a wrapper whose body (PortListen) is marked, or Bounce/DoubleSnap (dead in shipped data); no marker without every arm run, so none added | not-a-bug |
+| A9-310 | guessed names | PortCDigitalGuardianHead.cpp:1964, PortCSplitterCommandModule.cpp:297, CActor.hpp "Guessed names" | upstream | minor | remaining notes only question member names, not behaviour; no other TODO(uncertain) in src | not-a-bug |
+
 ## Sweep log
 
 Moved verbatim to `docs/history/AUDIT-to-2026-10-29.md` (one row per lane report: sweeps 1-4, Review 5b
@@ -172,6 +188,12 @@ covered so far: reached stubs (clean), Grenchler parts 1-3 (part 3 clean), Sporb
 constants (none diverge; fn_78_2E38 may round 1 ulp differently), FlyingPirate (clean), ScriptSafeZone
 (clean), the 50 NaN-flagged comparisons (A8-3..7), commits since 2026-10-29 (gate list; the 9 that reach
 gameplay at defaults restore retail behaviour or are port features by design: quick resume, input mapping).
+
+Sweep A9 constants-notes lane (2026-11-02, plan steps 4-6; report `/tmp/opencode/reports/a9-constants-notes.md`):
+Port companions without markers (retail_diff on 79 unmarked ids, `--strict`: all inlined helpers, already
+marked elsewhere, or dead in shipped data, A9-309), capacity constants 1024->2048 (A9-300, A9-308), and
+every `TODO(uncertain)` / `[uncertain]` note in src (A9-301..307, A9-310); every retail `sth 0x12a`
+(CActor next draw node) site checked against the port (the three missing ones are A9-301/304/305).
 
 Open: only A1-26 (RadialHud `model_inner_ring`, widget name on the GameCube pak unconfirmed); every other
 row above is `fixed`, `not-a-bug`, `wontfix` or `partly fixed` (state in its status cell).
