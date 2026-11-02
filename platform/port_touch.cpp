@@ -543,8 +543,10 @@ void BeginFrame() {
     sRealPad.store(real, std::memory_order_release);
   }
 
-  // The aim source: the setting asks for it, and the F1 overlay takes it away while it is up.
-  const bool aim = AimEnabled() && !OverlayVisible();
+  // The aim source: the setting asks for it while touch is the last-used input (MP1's
+  // TouchDirectAim), and the F1 overlay takes it away while it is up. A pad or keyboard press
+  // hands aim back to its own settings, so with Twin Stick Aim off the left stick turns (#58).
+  const bool aim = AimEnabled() && Active() && !OverlayVisible();
   PortMouse::SetTouchEnabled(aim);
   if (!aim) {
     // The finger's release may never arrive (the overlay opened under it).
