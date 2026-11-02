@@ -1154,8 +1154,8 @@ void CSandBoss::HandleDamage(CStateManager& mgr, TUniqueId sender) { // fn_55_82
 // @ fn_55_83AC
 // Picks the locomotion type from how far the player is off the facing axis: under 35 degrees or
 // over 145 (0.6108652 / 2.5307274 rad) the body relaxes (pas 1); otherwise 0xB when the player is
-// on one side of the local X axis and 0xA on the other. Retail's side test reads +0x24/+0x34/+0x44,
-// which under the proven kDY mapping (0x28/0x38/0x48) is the kDX column [uncertain: row vs column].
+// on one side of the local X axis and 0xA on the other. Retail's side test reads +0x24/+0x34/+0x44:
+// the row-major transform's m00/m10/m20 (the kDY column is 0x28/0x38/0x48), so GetColumn(kDX).
 void CSandBoss::RotateToPlayerHelper(const CVector3f& target) {
   const CVector3f toTarget = target - GetTranslation(); // 0x54..0x5C
   const float angle = CVector3f::GetAngleDiff(GetTransform().GetColumn(kDY), toTarget);

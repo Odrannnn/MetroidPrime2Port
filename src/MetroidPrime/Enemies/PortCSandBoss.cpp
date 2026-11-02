@@ -769,8 +769,9 @@ void CSandBoss::AddToRenderer(const CStateManager& mgr) const {
 // Retail's Render draws only the particle systems; the body and the armour are drawn by
 // fn_55_D208 (CPatterned::AddToRenderer, then CPatterned::Render + fn_55_8A8C unless 0x165C b7).
 // The host draws them here instead, from the sorted Render pass CPatterned::AddToRenderer queues,
-// so the result matches without drawing during the sort. [uncertain: the D208/D308 slot names come
-// from the vtable map, and D208 calling Render directly reads like the slots may be one off]
+// so the result matches without drawing during the sort. The vtable (lbl_55_data_760) holds D208 at
+// slot 0x40 (AddToRenderer) and D308 at 0x44 (Render), as CSwampBossStage2's A59C/A78C; D208 drawing
+// directly is the retail AddToRenderer's own choice.
 void CSandBoss::Render(const CStateManager& mgr) const {
   if (!mUnderGround) {
     CPatterned::Render(mgr);

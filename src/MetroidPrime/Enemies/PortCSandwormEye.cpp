@@ -22,8 +22,8 @@
 #include "MetroidPrime/Weapons/CWeapon.hpp"
 
 namespace {
-// lbl_56_bss_C: an rstl::string that no code in the REL dump initialises, so its text is not
-// pinned down. The name follows the other enemy RELs (CGrenchlerTail "Grenchler.rel"). [uncertain]
+// lbl_56_bss_C: the static init fn_56_14FA8 builds it with string_l(lbl_56_rodata_250 + 0x489),
+// which is "Sandworm.rel".
 const rstl::string& SandwormRelName() {
   static const rstl::string skRelName = rstl::string_l("Sandworm.rel");
   return skRelName;
