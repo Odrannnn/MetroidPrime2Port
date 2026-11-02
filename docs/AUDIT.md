@@ -221,6 +221,12 @@ read for branch sense, compare immediates, call targets and vtable slots (A9-600
 positives: tail duplication, inlined helpers, switch-tree shape, NaN-only). Tier 3 (661) scanned by
 vtable-slot, call-target and compare-immediate bags only; 3/3, ~14/61 and ~8/52 hits read, all false
 positives; the unread hits are listed in the report.
+Sweep A9 upstream-tier3 (2026-11-02, report `/tmp/opencode/reports/a9-upstream-tier3.md`): all unread
+tier-3 compare-immediate and call-target hits read, plus the 5 tier-2 functions skimmed earlier; A9-700/701
+(CCubeMaterial TEV outReg test), the rest false positives. All 661 tier-3 functions screened by
+immediate/constant multisets (295 same, 175 differ, 191 unpaired fn_ symbols); ~35 of the differing ones
+read, all false positives (switch layout, reloads, inlined helpers, mislabels); where the read stopped is
+in the report.
 Sweep A9 constants-notes lane (2026-11-02, plan steps 4-6; report `/tmp/opencode/reports/a9-constants-notes.md`):
 Port companions without markers (retail_diff on 79 unmarked ids, `--strict`: all inlined helpers, already
 marked elsewhere, or dead in shipped data, A9-309), capacity constants 1024->2048 (A9-300, A9-308), and
