@@ -147,6 +147,7 @@ bool sBallBars = false; // `ball_bars`: the morph ball view's narrowed viewport
 bool sDarkVisorFull = false;
 int sDarkVisorStatic = PortOverlay::kDarkVisorStaticMax;
 bool sInfiniteBeamAmmo = false; // Enhancements; saved, unlike the sInfiniteAmmo cheat
+bool sDarkWorldLightMusic = false; // `dark_world_light_music` (#36)
 int sHudOpacityEcho = PortOverlay::kHudOpacityVisor;
 int sHudOpacityDark = PortOverlay::kHudOpacityVisor;
 int sHudOpacityScan = PortOverlay::kHudOpacityVisor;
@@ -1020,6 +1021,14 @@ bool InfiniteBeamAmmo() {
     return false;
   }
   return EnvBool("MP2_INFINITE_BEAM_AMMO", sInfiniteBeamAmmo);
+}
+
+bool DarkWorldLightMusic() {
+  ReadEnv();
+  if (OriginalExperience()) {
+    return false;
+  }
+  return EnvBool("MP2_DARK_WORLD_LIGHT_MUSIC", sDarkWorldLightMusic);
 }
 
 bool InfiniteAmmo(unsigned kinds) {

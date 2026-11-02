@@ -13,6 +13,10 @@
 
 #include <string.h>
 
+#ifdef TARGET_PC
+#include "port_overlay.h"
+#endif
+
 extern "C" void fn_8015DCF0(CScriptStreamedMusic*);
 
 CScriptStreamedMusic::CScriptStreamedMusic(TUniqueId id, const CEntityInfo& info,
@@ -134,6 +138,34 @@ void CScriptStreamedMusic::TweakOverride(CStateManager& mgr) {
   }
 }
 
+#ifdef TARGET_PC
+// Enhancement (#36): each region's Dark Aether theme becomes its light world theme. Only these
+// area themes change (read off the disc's StreamedAudio objects); boss, event and cutscene music
+// stays. A portal hop asks for the track already playing, so it keeps going instead of restarting.
+// The name is swapped before playing, so Stop and save states see the track that plays.
+void CScriptStreamedMusic::PortLightWorldMusic() {
+  static const char* const kSwaps[][2] = {
+      {"/audio/Dark-Temple32.dsp", "/audio/Moth-Temple-open32-2.dsp"}, // Sky Temple Grounds
+      {"/audio/Darkworld_sand.dsp", "/audio/sand_soto.dsp"},           // Dark Agon Wastes
+      {"/audio/Dark-Swamp-32.dsp", "/audio/swamp3-32.dsp"},            // Dark Torvus Bog
+      {"/audio/swanp-chika-dark32.dsp", "/audio/swanp-chika32.dsp"},   // Dark Torvus, underground
+      {"/audio/Clif-dark32.dsp", "/audio/cliff2-1-32.dsp"},            // Ing Hive
+      {"/audio/sunG-heya-dark32.dsp", "/audio/sunG-heya32.dsp"},       // dark energy controllers
+  };
+  if (!mFileIsDsp || !PortOverlay::DarkWorldLightMusic()) {
+    return;
+  }
+  for (int i = 0; i < static_cast< int >(sizeof(kSwaps) / sizeof(kSwaps[0])); ++i) {
+    if (CStringExtras::CompareCaseInsensitive(mFileName, rstl::string_l(kSwaps[i][0])) == 0) {
+      if (CDvdFile::FileExists(kSwaps[i][1])) {
+        mFileName = rstl::string_l(kSwaps[i][1]);
+      }
+      return;
+    }
+  }
+}
+#endif
+
 void CScriptStreamedMusic::SetStereoPair() {
   if (mFileIsDsp && mFileName.find('|', 0) == -1 && mFileName.size() >= 5) {
     if (CStringExtras::CompareCaseInsensitive(
@@ -179,6 +211,9 @@ void CScriptStreamedMusic::Play(CStateManager& mgr) {
     return;
   }
   TweakOverride(mgr);
+#ifdef TARGET_PC
+  PortLightWorldMusic();
+#endif
   if (mFileIsDsp) {
     StartStream();
   } else {

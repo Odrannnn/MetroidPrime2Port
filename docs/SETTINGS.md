@@ -372,6 +372,11 @@ Video > Display:
 - `infinite_beam_ammo` (default off, env `MP2_INFINITE_BEAM_AMMO`): Enhancements > Infinite Light
   and Dark Ammo; the beams spend no ammo and the HUD shows infinity. Saved, unlike the Infinite
   cheat. Original experience turns it off.
+- `dark_world_light_music` (default off, env `MP2_DARK_WORLD_LIGHT_MUSIC`, issue #36):
+  Enhancements > Music > Light world music in Dark Aether; each region's Dark Aether theme plays
+  its light world theme (Temple Grounds, Agon, Torvus and its underground, Sanctuary, energy
+  controllers), so a portal hop keeps the track going. Boss, event and cutscene music is
+  unchanged. Takes effect at the next track start. Original experience turns it off.
 - `hud_opacity_echo`, `hud_opacity_dark`, `hud_opacity_scan` (`-1` = the game's Visor Opacity,
   default; else 0-100): HUD and view > Echo/Dark/Scan HUD opacity. Applies to that visor's HUD, its
   visor/beam menu, the radar and the map; the energy readout is part of the HUD frame and has no

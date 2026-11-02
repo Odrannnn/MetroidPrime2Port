@@ -194,6 +194,7 @@
 {"Enhancements", "", "Dark Visor", "Full-screen Dark Visor", "dark visor fullscreen echo view"},
 {"Enhancements", "", "Dark Visor", "Dark Visor static", "dark visor noise static grain"},
 {"Enhancements", "", "Ammo", "Infinite Light and Dark Ammo", "beam ammo unlimited light dark cheat"},
+{"Enhancements", "", "Music", "Light world music in Dark Aether", "dark world soundtrack theme bgm song track override"},
 {"Enhancements", "", "Pace", "Skippable cutscenes", "skip cinematics movies"},
 {"Enhancements", "", "Pace", "Walk speed", "movement run fast slow strafe velocity samus"},
 {"Enhancements", "", "Pace", "Scan speed", "scanning visor faster slower scan time"},

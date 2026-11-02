@@ -43,6 +43,9 @@ private:
   void TweakOverride(CStateManager& mgr);
   void PreloadMemoryAudio();
   void SetStereoPair();
+#ifdef TARGET_PC
+  void PortLightWorldMusic();
+#endif
 
   rstl::string mFileName;
   bool mNoStopOnDeactivate : 1;

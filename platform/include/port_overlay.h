@@ -107,6 +107,10 @@ bool InfiniteAmmo(unsigned kinds);
 // Enhancement (F1 > Enhancements, saved, env `MP2_INFINITE_BEAM_AMMO`): Light and Dark Ammo are
 // infinite, whatever the cheat's bits say. Original experience turns it off.
 bool InfiniteBeamAmmo();
+// Enhancement (F1 > Enhancements > Music, saved, env `MP2_DARK_WORLD_LIGHT_MUSIC`, #36): Dark
+// Aether's area themes play their light world counterparts (CScriptStreamedMusic::Play); takes
+// effect at the next track start. Original experience turns it off.
+bool DarkWorldLightMusic();
 void SetInfiniteAmmo(unsigned kinds, bool enabled);
 // Gameplay tweaks (F1 > Enhancements, the pause menu's Options > Controller, and one console command
 // each), off by default and saved in the settings file.

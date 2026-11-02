@@ -25,6 +25,10 @@ void DrawEnhancementsTab() {
   ImGui::SeparatorText("Ammo");
   Changed(ImGui::Checkbox("Infinite Light and Dark Ammo", &sInfiniteBeamAmmo));
 
+  ImGui::SeparatorText("Music");
+  // Read when the next track starts: a room change or a portal hop.
+  Changed(ImGui::Checkbox("Light world music in Dark Aether", &sDarkWorldLightMusic));
+
   ImGui::SeparatorText("Pace");
   // The game reads this every frame in its cinematic flow state.
   Changed(ImGui::Checkbox("Skippable cutscenes", &sSkipCinematics));

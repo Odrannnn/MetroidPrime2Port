@@ -96,6 +96,7 @@ extern bool sBallBars;
 extern bool sDarkVisorFull;
 extern int sDarkVisorStatic;
 extern bool sInfiniteBeamAmmo;
+extern bool sDarkWorldLightMusic;
 extern int sHudOpacityEcho;
 extern int sHudOpacityDark;
 extern int sHudOpacityScan;
