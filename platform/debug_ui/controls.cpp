@@ -22,6 +22,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <string>
 
 namespace PortDebug {
@@ -240,6 +241,25 @@ void DrawControlsKeyboardMouse() {
   ImGui::SetItemTooltip("Applies under mouse aim, twin stick and touch aim.");
 }
 
+// Flick stick turns only left and right; say so when nothing aims up and down.
+static void DrawFlickStickWarning() {
+  const char* warning = nullptr;
+  if (!PortOverlay::GyroAim()) {
+    warning = "Flick stick only turns left and right: turn on Gyro aim (Controls > Touch & gyro) to "
+              "aim up and down.";
+  } else if (std::strcmp(PortInputDevices::GyroStatus(), "no gyro found") == 0) {
+    warning = "No gyro found: flick stick only turns left and right, so nothing aims up and down.";
+  } else if (PortOverlay::PointerAim()) {
+    warning = "Under Pointer aim the right stick flicks only while the gyro is aiming; otherwise it "
+              "moves the pointer.";
+  }
+  if (warning != nullptr) {
+    ImGui::PushStyleColor(ImGuiCol_Text, ThemeWarnColor());
+    ImGui::TextWrapped("%s", warning);
+    ImGui::PopStyleColor();
+  }
+}
+
 void DrawControlsController() {
   ImGui::SeparatorText("Stick aim");
   bool twinStick = PortMouse::StickEnabled();
@@ -249,8 +269,28 @@ void DrawControlsController() {
   }
   ItemHelp("Aims with the right stick like the mouse, so it no longer free-looks, and the R trigger stops "
            "free-looking (it stays Spider Ball in the Morph Ball). Fire stays on A; change it in Controls > Remap.");
-  // Shown only with twin stick on, as MP1 does.
   if (PortMouse::StickEnabled()) {
+    bool flickStick = PortMouse::FlickStickSetting();
+    if (ImGui::Checkbox("Flick stick", &flickStick)) {
+      PortMouse::SetFlickStick(flickStick);
+      Changed(true);
+    }
+    ItemHelp("Tilting the right stick turns you to face that way (right: a quarter turn, down: turn "
+             "around); rotating the held stick turns with it. Left and right only: aim up and down with "
+             "gyro aim.");
+    if (PortMouse::FlickStickSetting()) {
+      DrawFlickStickWarning();
+      float outer = PortMouse::FlickOuterDeadZone();
+      if (ImGui::SliderFloat("Flick outer deadzone", &outer, 0.f, PortMouse::kFlickOuterDeadZoneMax, "%.0f%%")) {
+        PortMouse::SetFlickOuterDeadZone(outer);
+        Changed(true);
+      }
+      ItemHelp("How far from its edge the right stick counts as fully tilted. Raise it if flicks need "
+               "the stick pushed hard into its rim, or don't fire on the diagonals.");
+    }
+  }
+  // Shown only with twin stick on, as MP1 does; flick stick has no speed.
+  if (PortMouse::StickEnabled() && !PortMouse::FlickStickSetting()) {
     float rate = PortMouse::StickAimRate();
     if (ImGui::SliderFloat("Stick aim speed", &rate, 100.f, 8100.f, "%.0f px/s")) {
       PortMouse::SetStickAimRate(rate);
@@ -354,6 +394,19 @@ void DrawControlsTouchGyro() {
   ItemHelp("Default: GameCube buttons, drag the screen to aim, Visor and Beam wheels.\n"
            "Classic GameCube: adds the C-stick and D-pad.\n"
            "Twin stick (Remastered): a right stick that aims.");
+  ImGui::BeginDisabled(!twin);
+  b = PortMouse::TouchFlickStick();
+  if (ImGui::Checkbox("Flick stick##touch", &b)) {
+    PortMouse::SetTouchFlickStick(b);
+    Changed(true);
+  }
+  ItemHelp("Twin stick layout: pushing the right stick to its edge turns you to face that way (right: "
+           "a quarter turn, down: turn around); circling it turns with it. Left and right only: aim up "
+           "and down with gyro aim.");
+  if (twin && PortMouse::TouchFlickStick()) {
+    DrawFlickStickWarning();
+  }
+  ImGui::EndDisabled();
   bool aim = PortTouch::AimEnabled();
   if (ImGui::Checkbox("Touch aim", &aim)) {
     PortTouch::SetAimEnabled(aim);

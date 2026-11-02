@@ -258,6 +258,14 @@ Controls > Controller settings:
 - `stick_aim_rate`, `stick_aim_split`, `stick_aim_rate_y`: Stick aim > Stick aim speed,
   Separate vertical speed, Vertical stick aim speed (px/s, 50..10000; the slider runs
   100..8100).
+- `flick_stick`: Stick aim > Flick stick (`MP2_FLICK_STICK`; twin stick only): tilting the right
+  stick past 90% turns to face that way over 0.1 s, rotating it turns by the same angle; yaw only,
+  pitch is left to gyro aim. Under Pointer aim it flicks only while the gyro aims. The stick-speed
+  rows hide while it is on.
+- `flick_stick_outer_deadzone`: Flick outer deadzone (percent, 0..50, default 10): the tilt that
+  counts as full; the inner edge is the C-stick dead zone, round under flick stick.
+- `touch_flick_stick`: Touch controls > Flick stick (`MP2_TOUCH_FLICK_STICK`): the same for the
+  touch twin-stick layout while touch is the last-used input.
 
 Controls > Remap:
 
@@ -325,7 +333,7 @@ touch.cfg's `aim_split` and `aim_speed_y` (env `MP2_TOUCH_AIM_SPLIT`, `MP2_TOUCH
 
 Multiplayer (Player 1-4 selector; Player 1 edits the Controls keys above):
 
-- `p2.`..`p4.` + `twin_stick`, `stick_aim_rate`, `stick_aim_split`, `stick_aim_rate_y`, `lockon_toggle`,
+- `p2.`..`p4.` + `twin_stick`, `flick_stick`, `stick_aim_rate`, `stick_aim_split`, `stick_aim_rate_y`, `lockon_toggle`,
   `sticky_charge`, `rapid_charge`, `auto_aim`, `lock_on_free_aim`, `gyro_aim`, `gyro_mode`,
   `gyro_sensitivity`, `gyro_split`, `gyro_sensitivity_y`: that player's own value; a missing key follows
   Player 1 ("same as Player 1"; Reset and Reset to Player 1 remove keys). Each player's controller is the

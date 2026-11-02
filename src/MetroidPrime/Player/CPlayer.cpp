@@ -103,7 +103,6 @@
 #ifdef TARGET_PC
 #include "port_entry.h"
 #include "port_mouse.h"
-#include "port_radial.h"
 #include "MetroidPrime/PortScanTarget.hpp"
 #include "port_freecam.h"
 #include "port_overlay.h"
@@ -3009,7 +3008,8 @@ void CPlayer::UpdateMouseAim(CStateManager& mgr, float dt) {
     return;
   }
   const bool allowed = MouseAimAllowed(mgr);
-  if (PortMouse::StickEnabled(mPlayerIndex) && !PortRadial::Capturing()) {
+  // The radial menu's capture is checked inside, so flick stick sees it end.
+  if (PortMouse::StickEnabled(mPlayerIndex)) {
     PortMouse::AddStickAim(mPortLookX, mPortLookY, dt, mPlayerIndex);
   }
   // While something else owns the view - a lock-on, the morph ball, a cinematic - track the

@@ -191,16 +191,17 @@ constexpr SettingKey PlayerKey(const char* key, const char* sampleA, const char*
           WritePlayerSetting< Player, Key, Kind >, true, sampleA, sampleB};
 }
 
-// p<N>.twin_stick and the stick rates: PortMouse keeps those overrides.
+// p<N>.twin_stick, flick stick and the stick rates: PortMouse keeps those overrides.
 template < int Player, PortMouse::StickKey Key >
 void ReadPlayerStick(const std::string& value) {
   if (Trim(value).empty()) {
     PortMouse::ClearPlayerStick(Player, Key);
     return;
   }
-  if (Key == PortMouse::kStick_Enabled || Key == PortMouse::kStick_Split) {
+  if (Key == PortMouse::kStick_Enabled || Key == PortMouse::kStick_Split || Key == PortMouse::kStick_Flick) {
     (Key == PortMouse::kStick_Enabled ? PortMouse::SetPlayerStickEnabled
-                                      : PortMouse::SetPlayerStickAimSplit)(Player, ParseBool(value));
+     : Key == PortMouse::kStick_Split ? PortMouse::SetPlayerStickAimSplit
+                                      : PortMouse::SetPlayerFlickStick)(Player, ParseBool(value));
     return;
   }
   float parsed = 0.f;
@@ -219,6 +220,7 @@ void WritePlayerStick(std::ostream& out) {
   case PortMouse::kStick_Rate: out << PortMouse::StickAimRate(Player); break;
   case PortMouse::kStick_Split: WriteBool(out, PortMouse::StickAimSplit(Player)); break;
   case PortMouse::kStick_RateY: out << PortMouse::StickAimRateY(Player); break;
+  case PortMouse::kStick_Flick: WriteBool(out, PortMouse::FlickStickSetting(Player)); break;
   }
 }
 
@@ -234,6 +236,7 @@ constexpr SettingKey PlayerStickKey(const char* key, const char* sampleA, const 
       PlayerStickKey< N - 1, PortMouse::kStick_Rate >("p" #N ".stick_aim_rate", "900", "1200"),    \
       PlayerStickKey< N - 1, PortMouse::kStick_Split >("p" #N ".stick_aim_split", "1", "0"),       \
       PlayerStickKey< N - 1, PortMouse::kStick_RateY >("p" #N ".stick_aim_rate_y", "900", "1200"), \
+      PlayerStickKey< N - 1, PortMouse::kStick_Flick >("p" #N ".flick_stick", "1", "0"),           \
       PlayerKey< N - 1, PortOverlay::kPlayer_LockOnToggle, kPlayerBool >("p" #N ".lockon_toggle",  \
                                                                          "1", "0"),                \
       PlayerKey< N - 1, PortOverlay::kPlayer_StickyCharge, kPlayerBool >("p" #N ".sticky_charge",  \
@@ -490,6 +493,20 @@ const SettingKey kSettingKeys[] = {
        }
      },
      [](std::ostream& out) { out << PortMouse::StickAimRateY(); }, false, "900", "1200"},
+    {"flick_stick",
+     [](const std::string& value) { PortMouse::SetFlickStick(ParseBool(value)); },
+     [](std::ostream& out) { WriteBool(out, PortMouse::FlickStickSetting()); }, false, "1", "0"},
+    {"flick_stick_outer_deadzone",
+     [](const std::string& value) {
+       float parsed = 0.f;
+       if (ParseFloat(value, parsed) && parsed >= 0.f && parsed <= PortMouse::kFlickOuterDeadZoneMax) {
+         PortMouse::SetFlickOuterDeadZone(parsed);
+       }
+     },
+     [](std::ostream& out) { out << PortMouse::FlickOuterDeadZone(); }, false, "10", "20"},
+    {"touch_flick_stick",
+     [](const std::string& value) { PortMouse::SetTouchFlickStick(ParseBool(value)); },
+     [](std::ostream& out) { WriteBool(out, PortMouse::TouchFlickStick()); }, false, "1", "0"},
     BoolKey< &sCardBackup >("card_backup"),
     BoolKey< &sLogFile >("log_file"),
     BoolKey< &sHideHelmet >("no_helmet"),

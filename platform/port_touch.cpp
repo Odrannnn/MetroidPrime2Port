@@ -548,6 +548,8 @@ void BeginFrame() {
   // hands aim back to its own settings, so with Twin Stick Aim off the left stick turns (#58).
   const bool aim = AimEnabled() && Active() && !OverlayVisible();
   PortMouse::SetTouchEnabled(aim);
+  // Touch keeps its own flick stick switch while its twin stick is the last-used input.
+  PortMouse::SetTouchTwinStickActive(Active() && TwinStick() && !OverlayVisible());
   if (!aim) {
     // The finger's release may never arrive (the overlay opened under it).
     PortMouse::SetTouchAimDown(false);
