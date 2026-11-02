@@ -16,8 +16,15 @@ fn_79_66DC call ^fn_79_6754  # A9-102: CollisionActor's manager lookup is inline
 fn_78_48A8 call ^fn_78_9A1C  # A9-102: JointMatches(type, 2) is `mType == 2`: no kJoints entry is kAllJoints (3)
 fn_79_6B78 call ^(GetDamageVulnerability|LdrToDamageVulnerability)  # A9-102: the light vulnerability is built once (mLightVulnerability), not per joint
 fn_29_2414 call ^AddObject  # A9-102: the caller (PortCIng.cpp AcceptScriptMsg) adds the explosion SpawnHitEffect returns
-fn_30_CC34 call ^fn_30_CD78  # A9-102: CD78 is the optional_object<CAABox> assignment; the host returns the optional
 fn_30_CD10 call ^GetBoundingBox__13CPhysicsActor  # A9-102: CD10 is the REL's copy of CPatterned::GetTouchBounds, which the port calls
+fn_12_1154 call ^fn_12_11E0  # A9-402: the REL's copy of CPatterned::GetTouchBounds (bl GetBoundingBox__13CPhysicsActorCFv, 11E0 at 0x11F8), which the port calls
+fn_29_B970 call ^fn_29_BA4C  # A9-402: the REL's copy of CPatterned::GetTouchBounds (bl GetBoundingBox__13CPhysicsActorCFv, 11E0 at 0x11F8), which the port calls
+fn_52_120C call ^fn_52_13CC  # A9-402: the REL's copy of CPatterned::GetTouchBounds (bl GetBoundingBox__13CPhysicsActorCFv, 11E0 at 0x11F8), which the port calls
+fn_74_3CA8 call ^fn_74_3E58  # A9-402: the REL's copy of CPatterned::GetTouchBounds (bl GetBoundingBox__13CPhysicsActorCFv, 11E0 at 0x11F8), which the port calls
+fn_15_1A48 call ^fn_15_1A84  # A9-403: the shock-wave info built from its loader data per use (bl LdrToDamageInfo at 0x1AB0); the port converts it once in the data ctor
+fn_34_1904 call ^fn_34_1B30  # A9-403: as fn_15_1A84 (bl LdrToDamageInfo at 0x1B5C); the port builds CShockWaveInfo(mData.shockWaveInfo)
+fn_27_3C1C call ^fn_27_3E18  # A9-404: 3E18 is the CLineSeg ctor (AsNormalized 0x3E74, CUnitVector3f ctor 0x3E80): the port's `const CLineSeg line(start, end)`
+fn_56_6AA8 call ^Normalize__9CVector3f  # A9-406: 0x6B3C/0x6B44 normalize both vectors before GetAngleDiff, which divides by both magnitudes itself (rounding only)
 fn_56_D690 call ^fn_56_D83C  # A9-102: D83C is the CRayCastResult copy; the host's `res =` assignment
 fn_56_E764 call ^fn_56_C704  # A9-102: C704 is the inlined CCharLayoutInfo::GetFromParentUnrotated the port calls
 fn_55_D208 call ^(Render__10CPatterned|fn_55_8A8C)  # A9-102: the host draws the body and armour from the sorted Render pass (see PortCSandBoss.cpp Render)
@@ -26,4 +33,8 @@ fn_55_D208 call ^(Render__10CPatterned|fn_55_8A8C)  # A9-102: the host draws the
 fn_10_1FA14 call ^fn_10_21104  # A9-103: PhazonVisorToken builds mGuestF6C in its default member initializer (CDarkSamus.hpp)
 fn_18_94C8 call ^fn_18_D794  # A9-103: D794 is the stage data's destructor; the host's implicit member destructors run it
 fn_40_3B18 call ^fn_72_E0AC  # A9-103: DetachActorFromPirate, the SSpacePirate_FuncPtrs proxy to PortDetachActor
+fn_59_18DC call ^fn_59_3380  # A9-401: 3380 is the port's CloseNode (PRSB msgs, SetIntAt1C(-1), ENTR, bl 155C), unmarked until every arm runs
+fn_59_5D40 call ^fn_59_3380  # A9-401: 3380 is the port's CloseNode (PRSB msgs, SetIntAt1C(-1), ENTR, bl 155C), unmarked until every arm runs
+fn_59_34BC call ^fn_59_155C  # A9-401: 155C is the port's SetSelection (prev/cur index, 0x194/0x198, bl 4088 UpdateTransition), unmarked until every arm runs
+fn_70_4D0 call ^fn_70_330  # A9-401: 330 is the port's RenderSkyActor (TCastToPtr<CActor> 0x370, CModelData::Render 0x4B8), unmarked until every arm runs
 fn_76_59BC call ^fn_76_(6F70|481C)  # A9-103: unreachable in retail (r4 = 0 at 0x5C2C); the TARGET_PC block drops the dead prediction
