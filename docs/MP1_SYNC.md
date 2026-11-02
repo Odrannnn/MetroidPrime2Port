@@ -166,6 +166,15 @@ Each needs MP2 game-side hooks found fresh; a row with no possible MP2 backend i
     they pressed the virtual pad, which port 0's preset remaps (Remastered: touch B dead, START = map).
     Turbo's pulse is touch code 33 (A) for the same reason. Console `touchctl` holds a touch code;
     `touchctl b 1` jumps on a new game. Skipped: `c3d086188` (third-person shoulder).
+30. **Range `b6b6f60e8..5e1a88514`** (2026-11-02). Taken: flick stick `81cd66195 48c19cffc 4511169d0
+    9d0024ae9` (#251; `402f95cef`), `e0808c4d5` pad preset sticks to later controllers (`d39145329`,
+    uinput fake pad checked), `5e1a88514` mouse aim leaves an in-use pad its classic controls
+    (`3988a982b`, build only), `5ef1edfe1` Visor/Beam wheels are addable touch buttons, F1 checkbox
+    retired, touch.cfg `wheels=1` migrated once (`965341707`; C++ built, Java javac-checked, not run
+    on a device), `2183f90b2` empty-lock marker on the view ray (`72ef472b7`, build only).
+    `bf49ed7d2` is our #44 work (42fea9ab1/472b1cf1a) ported to MP1: nothing differs, nothing taken.
+    Skipped: `4512ddbf8` (R-jump), every remastered/roomfx/roomenv commit,
+    third person `8b42ffa6c 35de50d42`, `cfa7a69eb` FUNDING.yml.
 
 Skipped from this range: Phazon Beam cheat and stacked beam rate (MP1 items), mods page/import
 fixes (wait for package 8), decomp matches.
@@ -175,9 +184,9 @@ set differs; the approach can be reused), Archipelago, MP1 randomizer logic.
 
 ## Status
 
-Packages 1-29 are merged; the dated per-merge log moved verbatim to
+Packages 1-30 are merged; the dated per-merge log moved verbatim to
 `docs/history/MP1_SYNC-to-2026-10-29.md`. MP1 was last reviewed through `e3d8c8940`
-(2026-10-29), then through `b6b6f60e8` (2026-11-01, package 29); take later commits by `git -C ../MetroidPrimePort log --no-merges b6b6f60e8..HEAD`.
+(2026-10-29), then through `5e1a88514` (2026-11-02, package 30); take later commits by `git -C ../MetroidPrimePort log --no-merges 5e1a88514..HEAD`.
 
 Still unrun/unverified per that log (no device or hardware available then):
 
