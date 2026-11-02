@@ -6,7 +6,7 @@ appended, dated as in the heading there.
 ## 2026-11-02: Sweep A9 (retail vs decomp vs port), closed
 
 Plan "Sweep A9" (Opus lanes, all steps ticked); rows A9-100..806 in docs/AUDIT.md (closing line in its sweep
-log); reports `/tmp/opencode/reports/a9-*.md`. Not pushed.
+log); reports `/tmp/opencode/reports/a9-*.md`. Pushed at 0e229952f.
 - Tooling (step 1): retail_diff always flags retail ctor/dtor effects (CToken::Lock, Sfx, AddObject;
   the #59 class); `tools/retail_diff_regress.sh` (all PASS); `tools/retail_diff_allow.txt` holds
   asm-checked model differences. Default call findings 546 -> 338.
