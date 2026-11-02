@@ -42,6 +42,9 @@ behind this are in `docs/DECOMP_WORKFLOW.md` ("Done means verified", "Lane brief
   `<=`/`>=`). `tools/retail_diff.py --kinds nan` lists suspects. Before committing a select or
   clamp fix, trace NaN through the asm: for `fcmpo 0,f; bge L; …; L: fmr f2,f0`, NaN lands on L
   (gets 0), so `f > 0 ? f : 0` is already right and `0 >= f ? 0 : f` is wrong.
+- A `retail_diff.py` finding checked against the asm as a model difference goes in
+  `tools/retail_diff_allow.txt` (`fn_<mod>_<off> <kind> <regex>  # <ledger id>: <asm reason>`);
+  `--no-allow` shows them, and a whole run lists lines that match nothing (stale).
 - `cntlzw; li 1; rlwnm` (or `srwi 5`) tests == 0, but `rlwnm` rotates by the count's low 5
   bits only, so check what a negative value gives.
 - `mulhw` divides signed; `mulhwu` unsigned. `subfc/adde` and `slwi` pairs are MWCC compare

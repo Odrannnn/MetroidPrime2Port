@@ -1,0 +1,29 @@
+# retail_diff.py findings checked against the retail asm and accepted as model differences.
+# One per line: fn_<mod>_<off> <kind> <regex over the finding text>  # reason (required)
+# A whole-port run lists stale lines (matching nothing); --no-allow shows the accepted findings.
+
+# Dead results: retail computes a value it never reads (no side effects)
+fn_3_3104 call ^(Magnitude|AsNormalized)__9CVector3f  # A9-101: 0x32FC/0x3318, the normalized aim delta at 0x38(r1) is never read; RayCollideWorld takes start/end
+fn_16_601C call ^GetCurrentCameraTransform  # A9-101: 0x6324, the camera transform copied to 0x1F0(r1) is never read
+fn_83_1098 call ^FromMatrix__11CQuaternion  # A9-101: 0x1130/0x1160, both quaternions (0x34/0x24(r1)) are never read
+fn_55_3434 call ^GetLctrTransform  # A9-101: the locator transform copied to 0xBC(r1) is never read
+fn_55_37F4 call ^GetLctrTransform  # A9-101: the locator transform copied to 0x94(r1) is never read
+fn_61_2630 call ^IsMultiplayer  # A9-101: 0x2660, r3 is overwritten by the next lbz; the result is dropped
+
+# Same behaviour, written another way
+fn_79_A13C call ^Dot__9CVector2f  # A9-102: the 2D dot is written out (x*x + y*y)
+fn_79_66DC call ^fn_79_6754  # A9-102: CollisionActor's manager lookup is inlined (the ids it holds are all collision actors)
+fn_78_48A8 call ^fn_78_9A1C  # A9-102: JointMatches(type, 2) is `mType == 2`: no kJoints entry is kAllJoints (3)
+fn_79_6B78 call ^(GetDamageVulnerability|LdrToDamageVulnerability)  # A9-102: the light vulnerability is built once (mLightVulnerability), not per joint
+fn_29_2414 call ^AddObject  # A9-102: the caller (PortCIng.cpp AcceptScriptMsg) adds the explosion SpawnHitEffect returns
+fn_30_CC34 call ^fn_30_CD78  # A9-102: CD78 is the optional_object<CAABox> assignment; the host returns the optional
+fn_30_CD10 call ^GetBoundingBox__13CPhysicsActor  # A9-102: CD10 is the REL's copy of CPatterned::GetTouchBounds, which the port calls
+fn_56_D690 call ^fn_56_D83C  # A9-102: D83C is the CRayCastResult copy; the host's `res =` assignment
+fn_56_E764 call ^fn_56_C704  # A9-102: C704 is the inlined CCharLayoutInfo::GetFromParentUnrotated the port calls
+fn_55_D208 call ^(Render__10CPatterned|fn_55_8A8C)  # A9-102: the host draws the body and armour from the sorted Render pass (see PortCSandBoss.cpp Render)
+
+# The callee runs somewhere the tool does not look
+fn_10_1FA14 call ^fn_10_21104  # A9-103: PhazonVisorToken builds mGuestF6C in its default member initializer (CDarkSamus.hpp)
+fn_18_94C8 call ^fn_18_D794  # A9-103: D794 is the stage data's destructor; the host's implicit member destructors run it
+fn_40_3B18 call ^fn_72_E0AC  # A9-103: DetachActorFromPirate, the SSpacePirate_FuncPtrs proxy to PortDetachActor
+fn_76_59BC call ^fn_76_(6F70|481C)  # A9-103: unreachable in retail (r4 = 0 at 0x5C2C); the TARGET_PC block drops the dead prediction

@@ -162,8 +162,17 @@ Scripts: `tools/audit/` (see its README).
 
 ## Sweep A9
 
+`tools/retail_diff.py` triage (retail vs port calls/constants). Accepted model differences live in
+`tools/retail_diff_allow.txt`, one line per finding with its id and asm reason.
+
 | id | area | file:line | class | severity | evidence | status |
 |----|------|-----------|-------|----------|----------|--------|
+| A9-100 | ElitePirate | src/MetroidPrime/Enemies/PortCElitePirate.cpp:1051,1089 DoUserAnimEvent | logic | minor | shakes (events 16 IS01/ATCH, 26 FOOT/ATCH) took the shaker from CPatterned::GetConnectedObject (random pick, one RNG draw per shake); retail fn_15_7BFC calls CEntity::FindConnectedObject (bl at 0x7DAC, 0x7DFC). Smoke: `uevent` 16/26 in Sanctuary 0c_cliff_hall reach FindConnectedObject (IS01, FOOT), 0 crashes | fixed fe7b15710 |
+| A9-101 | Retail dead math | fn_3_3104, fn_16_601C, fn_83_1098, fn_55_3434, fn_55_37F4, fn_61_2630 | logic | info | retail calls a pure function and never reads the result (Magnitude/AsNormalized, GetCurrentCameraTransform, FromMatrix, GetLctrTransform, IsMultiplayer; offsets in the allowlist) | not-a-bug |
+| A9-102 | Inlined / restated helpers | fn_79_A13C, fn_79_66DC, fn_78_48A8, fn_79_6B78, fn_29_2414, fn_30_CC34, fn_30_CD10, fn_56_D690, fn_56_E764, fn_55_D208 | logic | info | same behaviour written another way (Dot written out, lookups inlined, vulnerability hoisted, AddObject in the caller, optional/copy assignments, Render split) | not-a-bug |
+| A9-103 | Callee elsewhere | fn_10_1FA14, fn_18_94C8, fn_40_3B18, fn_76_59BC | logic | info | member initializer (PhazonVisorToken), implicit member dtor, FuncPtrs proxy (DetachActorFromPirate), retail-unreachable prediction (r4 = 0 at 0x5C2C) | not-a-bug |
+| A9-104 | Tool names | ElitePirate/SafeZone/Tryclops libm, GeomBlobV2 OSGetTime, 5 SetLoader_*, DigitalGuardianHead SetTarget, IngBoostBallGuardian fn_30_F78 | logic | info | the port calls sinf/acosf/cosf, CStopwatch::GetGlobalMicros, Set*_FuncPtrs, SetVisualTarget; the phase copy marker sat on the wrong function | not-a-bug (aliases eb85716eb) |
+| A9-105 | Value helpers | 83 findings (Cross, struct copies, aggregate ctors) | logic | info | unported straight-line helpers that only store through r3: the port's `=`/operators; hidden by default since 304b3a87b, `--strict` shows them | not-a-bug |
 | A9-200 | Player | src/MetroidPrime/Player/CPlayer.cpp:841 ResetPlayerState | wrong-call | low | retail 0x8001A038/0x8001A054 `lwz r12,0x10(r12)` = CHintManager vtable slot 0x10 Reset; decomp called RefreshHint (0xC) | fixed 9a8ff5911 |
 | A9-201 | Player | CPlayer.cpp:852 ResetPlayerState (multiplayer) | wrong-const | low | retail 0x8001A088 lfs lbl_8041A4B4 = 3.0 into 0x12f4 (invulnerability); decomp 2.0 | fixed 9a8ff5911 |
 | A9-202 | Player | CPlayer.cpp:1356 UpdatePlayerDrawFlags | wrong-const | visual | retail 0x80017F60 `fdivs f29,f1,f3`, f3 = 3.0 (Double Damage pulse); decomp /2 | fixed 9a8ff5911 |
@@ -207,6 +216,10 @@ Port companions without markers (retail_diff on 79 unmarked ids, `--strict`: all
 marked elsewhere, or dead in shipped data, A9-309), capacity constants 1024->2048 (A9-300, A9-308), and
 every `TODO(uncertain)` / `[uncertain]` note in src (A9-301..307, A9-310); every retail `sth 0x12a`
 (CActor next draw node) site checked against the port (the three missing ones are A9-301/304/305).
+Sweep A9 (retail vs decomp vs port, 2026-11-02): tooling-port lane (`/tmp/opencode/reports/a9-tooling-port.md`):
+retail_diff effect kind (ctor/dtor Locks, `tools/retail_diff_regress.sh`), DOL-named call findings
+all triaged (A9-100..104), value helpers hidden (A9-105); default calls 546 -> 338, strict 2174 -> 1381.
+Untriaged: the 254 module-local `(unported) not named` callees that make calls, const/nan/shape kinds.
 
 Open: only A1-26 (RadialHud `model_inner_ring`, widget name on the GameCube pak unconfirmed); every other
 row above is `fixed`, `not-a-bug`, `wontfix` or `partly fixed` (state in its status cell).

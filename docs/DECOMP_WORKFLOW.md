@@ -138,6 +138,10 @@ patch, run `tools/review_decomp_diff.sh <lane-base>` and answer every hit:
   names, rodata floats missing from the file, branch-count/size shape, and `nan` (fcmpo + plain
   `blt/ble/bge/bgt` needs a C `<`/`>`; `cror` needs `<=`/`>=`; negation flips the NaN arm with the
   sense, so `!(a <= b)` is wrong for a plain `ble`). Leads only: answer each like the hits above.
+  The always-on `effect` kind checks ctors/dtors: retail `CToken::Lock` (and Sfx/AddObject/
+  SetActive/material calls, through unported member ctors) the port performs fewer times; a Lock
+  at a header-placed member's offset must be that member's (#59, a dropped spit-token lock).
+  `tools/retail_diff_regress.sh` pins it; whole-module runs only (`--file` alone mis-scopes callees).
 - **mathdiff** - after any Kyoto/Math or CMath.hpp change, run `tools/mathdiff.py` (~5 s with build;
   `[ADDR|#idx ...] [--seed N] [--n N] [--strict] [--verbose] [--rebuild]`). It runs retail
   (`tools/ppc_run.py`, unicorn on `orig/G2ME01/sys/main.dol`) and the port's units

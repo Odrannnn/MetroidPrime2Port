@@ -1751,6 +1751,10 @@ def parse_cpp(path, deep=False):
     dbg_lines = debug_pp_lines(text.split('\n'))
     # blank preprocessor lines (same length) so `#include` / `#if` never join a definition head
     code = re.sub(r'(?m)^[ \t]*#.*$', lambda m: ' ' * len(m.group(0)), code)
+    # and declaration macros written without a `;` (CHECK_SIZEOF(X, 0x40)), which would join the next
+    # `class Y {` into a function head named CHECK_SIZEOF
+    code = re.sub(r'(?m)^[ \t]*(?:(?:NESTED_)?CHECK_\w+|\w+_IMPL|RSTL_DECLARE_\w+)[ \t]*\([^;{}\n]*\)[ \t]*$',
+                  lambda m: ' ' * len(m.group(0)), code)
     lines = text.split('\n')
     starts = [0] + [m.end() for m in re.finditer('\n', text)]
     funcs = []
@@ -1782,6 +1786,23 @@ def parse_cpp(path, deep=False):
                 if mm and not re.match(r'^(class|struct|enum|union|namespace)\b', h) and '=' not in h.split('(')[0] \
                         and mm.group(1) not in ('if', 'while', 'for', 'switch'):
                     is_fn = True
+            if is_fn and re.search(r'[\w>]\s*$', head):
+                # a ctor initializer list's brace member (`, mUids{a, b}`), not the body: skip it
+                d, q = 0, h.find('(', mm.end(1))
+                while 0 <= q < len(h):
+                    d += {'(': 1, ')': -1}.get(h[q], 0)
+                    if d == 0:
+                        break
+                    q += 1
+                if 0 <= q < len(h) and re.match(r'\s*:(?!:)', h[q + 1:]):
+                    d, j = 0, i
+                    while j < n:
+                        d += {'{': 1, '}': -1}.get(code[j], 0)
+                        j += 1
+                        if d == 0:
+                            break
+                    i = j
+                    continue
             if is_fn:
                 depth, j = 1, i + 1
                 while j < n and depth:

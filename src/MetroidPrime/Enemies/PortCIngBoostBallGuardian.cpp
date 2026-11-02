@@ -442,8 +442,11 @@ CEntity* CIngBoostBallGuardian::TypesMatch(int typeId) const {
 // fn_30_748 (boost block, from the args at 0x0000039C-0x00000468; its field order differs from
 // the host's - trail/shield/charge-up at data+0xA8/0xAC/0xB0 - but every value lands in the
 // field named for its property; unknown_0x7b21e31a, SLdr+0x7C, is never passed). The phases are
-// fn_30_18F0 -> fn_30_194C, the 14 fields in declaration order, which is the `phase` lambda.
+// fn_30_18F0 -> fn_30_194C, the 14 fields in declaration order, which is the `phase` lambda; each
+// phase is then copied by fn_30_F78, the phase struct's implicit copy (0x38: six floats, six ints,
+// two floats, as the host's).
 // @ fn_30_130
+// @ fn_30_F78
 // @ fn_30_1540
 // @ fn_30_2CCC
 // @ fn_30_160C
