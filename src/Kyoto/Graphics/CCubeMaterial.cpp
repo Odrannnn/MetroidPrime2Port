@@ -527,7 +527,13 @@ uint CCubeMaterial::HandleReflection(const GXTexMapID indTexSlot, const int indM
                                      const uint kColorCount) {
   bool usesTevReg2 = false;
   for (uint i = 0; i < tevCount; ++i) {
+#ifdef TARGET_PC
+    // Retail 0x80304040: rlwinm r0,r0,9,21,22; cmpwi r0,0x3 tests ((ops & 3) << 9) == 3,
+    // which never holds, so retail never takes the TEVREG2 path below.
+    if (((CGX::GetTevState(static_cast< GXTevStageID >(i)).mColorOps & 3) << 9) == GX_TEVREG2) {
+#else
     if ((CGX::GetTevState(static_cast< GXTevStageID >(i)).mColorOps >> 9 & 3) == GX_TEVREG2) {
+#endif
       usesTevReg2 = true;
       break;
     }
@@ -1024,9 +1030,17 @@ void CCubeMaterial::SetCurrent(const CModelFlags& flags, const CCubeSurface& sur
       finalTevCount += addedTevs;
       texCount += 1;
       finalKColorCount += 1;
+#ifdef TARGET_PC
+    // Retail 0x80303594: rlwinm. r0,r0,9,21,22 (0x54004D6D); beq tests ((ops & 3) << 9) != 0,
+    // the op's low bits, not the outReg field (ops >> 9 & 3).
+    } else if (finalTevCount != 0 &&
+               ((CGX::GetTevState(static_cast< GXTevStageID >(finalTevCount - 1)).mColorOps & 3)
+                << 9) != 0) {
+#else
     } else if (finalTevCount != 0 &&
                (CGX::GetTevState(static_cast< GXTevStageID >(finalTevCount - 1)).mColorOps >> 9 &
                 3) != 0) {
+#endif
       DoPassthru(finalTevCount);
       finalTevCount += 1;
     }

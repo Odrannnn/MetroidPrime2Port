@@ -211,6 +211,8 @@ Scripts: `tools/audit/` (see its README).
 | A9-600 | Platforms | CScriptPlatform.cpp:855 Move | upstream | minor | retail unit 0x17CC/0x1828 `lwz r12,0x5c(r12); bctrl` = CActor slot 0x5C GetScanObjectIndicatorPosition for the look-at target; decomp called GetOrbitPosition (0x50). Not reached in smoke (no look-at platform) | fixed 301d76296 (TARGET_PC) |
 | A9-601 | AI base | CPatterned.cpp:202 ctor | upstream | gameplay | retail unit 0x6CC0-0x6CEC `lbz 0x2a4(pinfo); extrwi. 1,24` (SEchoParameters.mIsEchoEmitter, bit 0x80) `beq; CAABox(pos,pos); li r4,1; bl AllocateEchoEmitter`; decomp never allocated the echo emitter. Smoke: 9 ctor calls in Agon 0i_sand_hall | fixed 4179dca39 (TARGET_PC) |
 | A9-602 | constants | CActorLights.cpp:113 ActivateLights, CScriptSound.cpp:425 GetOccludedVolumeAmount | upstream | minor | 1-ulp literals: retail lbl_8041B64C = 0x40A00001 (5.0000005f) vs 5.f; 0.42f rounds 1 ulp off retail. A8 precedent | wontfix |
+| A9-700 | Model materials | CCubeMaterial.cpp:529 HandleReflection | upstream | render | retail 0x80304040 `rlwinm r0,r0,9,21,22` (0x54004D6C) `cmpwi r0,3` tests `((mColorOps & 3) << 9) == GX_TEVREG2`, never true: retail never takes the TEVREG2 reflection path (always KONST colour arg, no extra stage). Decomp read the outReg field (`>> 9 & 3`). Only two such sites in the DOL | fixed (TARGET_PC) |
+| A9-701 | Model materials | CCubeMaterial.cpp:1033 SetCurrent | upstream | render | retail 0x80303594 `rlwinm. r0,r0,9,21,22` (0x54004D6D) `beq`: DoPassthru when the last stage's `(mColorOps & 3) << 9` (op low bits) is non-zero, not its outReg. Same packing-helper mixup as A9-700. Needs a visual check of materials whose last stage writes a non-PREV register | fixed (TARGET_PC) |
 
 ## Sweep log
 
@@ -234,6 +236,12 @@ read for branch sense, compare immediates, call targets and vtable slots (A9-600
 positives: tail duplication, inlined helpers, switch-tree shape, NaN-only). Tier 3 (661) scanned by
 vtable-slot, call-target and compare-immediate bags only; 3/3, ~14/61 and ~8/52 hits read, all false
 positives; the unread hits are listed in the report.
+Sweep A9 upstream-tier3 (2026-11-02, report `/tmp/opencode/reports/a9-upstream-tier3.md`): all unread
+tier-3 compare-immediate and call-target hits read, plus the 5 tier-2 functions skimmed earlier; A9-700/701
+(CCubeMaterial TEV outReg test), the rest false positives. All 661 tier-3 functions screened by
+immediate/constant multisets (295 same, 175 differ, 191 unpaired fn_ symbols); ~35 of the differing ones
+read, all false positives (switch layout, reloads, inlined helpers, mislabels); where the read stopped is
+in the report.
 Sweep A9 constants-notes lane (2026-11-02, plan steps 4-6; report `/tmp/opencode/reports/a9-constants-notes.md`):
 Port companions without markers (retail_diff on 79 unmarked ids, `--strict`: all inlined helpers, already
 marked elsewhere, or dead in shipped data, A9-309), capacity constants 1024->2048 (A9-300, A9-308), and
