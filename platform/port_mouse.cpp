@@ -8,6 +8,7 @@
 // turning, so it stays opt-in until it has had more play time.
 
 #include "port_mouse.h"
+#include "port_flick_stick.h"
 #include "port_radial.h"
 
 #include "port_overlay_internal.h"
@@ -26,6 +27,7 @@ namespace {
 bool sEnabled = false;
 bool sStickEnabled = false;
 bool sKeyboardCStickHeld = false;
+bool sMouseYieldsToPad = false;
 // The Java UI thread can flip this through a layout change while the game thread reads it in
 // UpdateAim, so it is atomic unlike the mouse's and the stick's flags.
 std::atomic<bool> sTouchEnabled{false};
@@ -41,6 +43,12 @@ float sStickAimRate = 900.f;  // aim pixels per second at full stick deflection
 // MP1's "Separate vertical speed": with the split on, up and down use their own rate.
 bool sStickAimSplit = false;
 float sStickAimRateY = 900.f;
+// Flick stick: the controller's switch, the touch twin-stick layout's own, and whether that layout
+// is the active input (PortTouch, UI thread); the outer deadzone in percent.
+bool sFlickStick = false;
+bool sTouchFlickStick = false;
+std::atomic<bool> sTouchTwinStickActive{false};
+float sFlickOuterDeadZone = 10.f;
 float sTouchAimSpeed = 2.25f; // aim pixels per dp, the Prime port's touch_aim_speed default
 float sTouchAimSpeedY = 2.25f; // PortTouch pushes its vertical speed (the same one, unsplit)
 bool sInvertX = false;
@@ -104,6 +112,12 @@ struct Slot {
   bool debugHold = false;
   float pointerBox = 0.7f;
   float pointerTurnRate = PortMouse::kPi;
+  // Flick stick's state, and whether it was on last tick (on from the start: a pad that comes
+  // tilted flicks on its first read). The engine's round-dead-zone right stick for this port.
+  PortFlickStick::State flick;
+  bool flickOn = true;
+  float flickRawX = 0.f;
+  float flickRawY = 0.f;
 };
 
 constexpr int kSlots = 4;
@@ -123,6 +137,7 @@ struct PlayerStick {
   PlayerValue<float> rate;
   PlayerValue<bool> split;
   PlayerValue<float> rateY;
+  PlayerValue<bool> flick;
 };
 PlayerStick sPlayerStick[kSlots]; // [0] unused: Player 1 is the global settings
 
@@ -174,6 +189,8 @@ void ReadEnv() {
   sInvertX = EnvFlagOr("MP2_MOUSE_INVERT_X", sInvertX);
   sInvertY = EnvFlagOr("MP2_MOUSE_INVERT_Y", sInvertY);
   sStickAimSplit = EnvFlagOr("MP2_STICK_AIM_SPLIT", sStickAimSplit);
+  sFlickStick = EnvFlagOr("MP2_FLICK_STICK", sFlickStick);
+  sTouchFlickStick = EnvFlagOr("MP2_TOUCH_FLICK_STICK", sTouchFlickStick);
   if (const char* rate = std::getenv("MP2_STICK_AIM_RATE")) {
     const float value = static_cast< float >(std::atof(rate));
     if (std::isfinite(value) && value > 0.f) {
@@ -323,8 +340,11 @@ bool StickEnabled(int player) {
 bool DirectAim(int player) {
   ReadEnv();
   // Mouse and touch are Player 1's; the others aim directly only with their own twin stick.
-  return player <= 0 ? sEnabled || sStickEnabled || sTouchEnabled.load() : StickEnabled(player);
+  return player <= 0 ? (sEnabled && !sMouseYieldsToPad) || sStickEnabled || sTouchEnabled.load()
+                     : StickEnabled(player);
 }
+
+void SetMouseYieldsToPad(bool yields) { sMouseYieldsToPad = yields; }
 
 bool StickOwnsCStick(int player) {
   ReadEnv();
@@ -384,6 +404,7 @@ bool PlayerStickSet(int player, StickKey key) {
   case kStick_Rate: return p.rate.set;
   case kStick_Split: return p.split.set;
   case kStick_RateY: return p.rateY.set;
+  case kStick_Flick: return p.flick.set;
   }
   return false;
 }
@@ -401,6 +422,7 @@ void ClearPlayerStick(int player, StickKey key) {
   case kStick_Rate: p.rate = {}; break;
   case kStick_Split: p.split = {}; break;
   case kStick_RateY: p.rateY = {}; break;
+  case kStick_Flick: p.flick = {}; break;
   }
 }
 
@@ -436,8 +458,94 @@ void SetPlayerStickAimRateY(int player, float pixelsPerSecond) {
   }
 }
 
+void SetPlayerFlickStick(int player, bool enabled) {
+  if (player <= 0) {
+    SetFlickStick(enabled);
+  } else if (player < kSlots) {
+    sPlayerStick[player].flick = {enabled, true};
+  }
+}
+
+bool FlickStickSetting(int player) {
+  ReadEnv();
+  return ForPlayer(player, &PlayerStick::flick, sFlickStick);
+}
+
+bool FlickStick(int player) {
+  if (!StickEnabled(player)) return false;
+  // Touch keeps its own switch, as it keeps its own twin-stick layout (Player 1's only).
+  if (player <= 0 && sTouchTwinStickActive.load(std::memory_order_relaxed)) return sTouchFlickStick;
+  return FlickStickSetting(player);
+}
+
+void SetFlickStick(bool enabled) {
+  ReadEnv();
+  sFlickStick = enabled;
+}
+
+bool TouchFlickStick() {
+  ReadEnv();
+  return sTouchFlickStick;
+}
+
+void SetTouchFlickStick(bool enabled) {
+  ReadEnv();
+  sTouchFlickStick = enabled;
+}
+
+void SetTouchTwinStickActive(bool active) { sTouchTwinStickActive.store(active, std::memory_order_relaxed); }
+
+float FlickOuterDeadZone() {
+  ReadEnv();
+  return sFlickOuterDeadZone;
+}
+
+void SetFlickOuterDeadZone(float percent) {
+  ReadEnv();
+  if (std::isfinite(percent)) sFlickOuterDeadZone = std::fmin(std::fmax(percent, 0.f), kFlickOuterDeadZoneMax);
+}
+
+void SetFlickRawStick(int port, float x, float y) {
+  if (port < 0 || port >= kSlots || !std::isfinite(x) || !std::isfinite(y)) return;
+  Slot& s = sSlots[port];
+  s.flickRawX = x;
+  s.flickRawY = y;
+}
+
 void AddStickAim(float x, float y, float dt, int player) {
-  if (!StickEnabled(player) || sUiActive || dt <= 0.f || !std::isfinite(x) || !std::isfinite(y)) {
+  if (!StickEnabled(player) || dt <= 0.f || !std::isfinite(x) || !std::isfinite(y)) {
+    return;
+  }
+  Slot& s = SlotFor(player);
+  // Player 1's radial menu takes the right stick from every player.
+  if (PortRadial::Capturing()) {
+    s.flickOn = false;
+    return;
+  }
+  // MP1's FlickStickTurn. Under pointer aim the stick moves the pointer unless the gyro drives
+  // the aim; a lock with free aim takes the stick's travel as it is.
+  const bool flickOn = FlickStick(player) && !sUiActive && !s.lockFree && (!s.pointerEnabled || s.gyroDrivesAim);
+  // Off and back on, a stick still tilted must be let go before it flicks.
+  if (flickOn != s.flickOn) s.flick.Reset();
+  s.flickOn = flickOn;
+  if (flickOn) {
+    // It turns by the stick's angle, which PADClamp's dead zone per axis pulls onto the nearest
+    // axis (a snap every 90 degrees while circling): the engine's stick from before it.
+    if (x != 0.f || y != 0.f) {
+      x = s.flickRawX;
+      y = s.flickRawY;
+    }
+    const float yaw = s.flick.Update(x, y, dt);
+    if (yaw == 0.f || !(sSensitivity > 0.f)) return;
+    // An exact angle: the aim turns sSensitivity rad per count with the mouse's Invert X, so
+    // divide that out and pre-undo the inversion.
+    const float dx = yaw / sSensitivity * (sInvertX ? -1.f : 1.f);
+    std::lock_guard< std::mutex > lock(sPendingMutex);
+    s.pendingX += dx;
+    s.stickPendingX += dx;
+    return;
+  }
+  if (sUiActive) {
     return;
   }
   if (x * x + y * y < 0.04f) {
@@ -452,7 +560,6 @@ void AddStickAim(float x, float y, float dt, int player) {
   const float dy = AimPixelsAsCounts(-y * (StickAimSplit(player) ? StickAimRateY(player) : rate) * dt,
                                     sSensitivity);
   // Same thread as the latch (see sPendingMutex), but PresentedAimDelta reads both under the lock.
-  Slot& s = SlotFor(player);
   std::lock_guard< std::mutex > lock(sPendingMutex);
   s.pendingX += dx;
   s.pendingY += dy;

@@ -114,6 +114,12 @@ Java_org_metroidprime2_port_TouchControlsView_nativeTouchWheelsEnabled(JNIEnv*, 
   return PortTouch::WheelsEnabled() ? JNI_TRUE : JNI_FALSE;
 }
 
+// The view has moved the retired setting's wheels into the layout as added buttons.
+JNIEXPORT void JNICALL Java_org_metroidprime2_port_TouchControlsView_nativeRetireTouchWheels(JNIEnv*,
+                                                                                            jclass) {
+  PortTouch::SetWheelsEnabled(false);
+}
+
 JNIEXPORT jboolean JNICALL
 Java_org_metroidprime2_port_TouchControlsView_nativeTouchVisorTapScan(JNIEnv*, jclass) {
   return PortTouch::VisorTapScan() ? JNI_TRUE : JNI_FALSE;
@@ -383,6 +389,10 @@ JNIEXPORT jobjectArray JNICALL Java_org_metroidprime2_port_TouchControlsView_nat
     const PortInput::ActionInfo& info = PortInput::Info(a);
     items.emplace_back(info.key);
     items.emplace_back(info.label);
+    if (a == PortInput::Action::VisorPrev) {
+      items.insert(items.end(), std::begin(PortTouch::kTouchWheelActions),
+                   std::end(PortTouch::kTouchWheelActions));
+    }
   }
   jclass stringClass = env->FindClass("java/lang/String");
   if (stringClass == nullptr) {

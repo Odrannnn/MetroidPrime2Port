@@ -258,6 +258,14 @@ Controls > Controller settings:
 - `stick_aim_rate`, `stick_aim_split`, `stick_aim_rate_y`: Stick aim > Stick aim speed,
   Separate vertical speed, Vertical stick aim speed (px/s, 50..10000; the slider runs
   100..8100).
+- `flick_stick`: Stick aim > Flick stick (`MP2_FLICK_STICK`; twin stick only): tilting the right
+  stick past 90% turns to face that way over 0.1 s, rotating it turns by the same angle; yaw only,
+  pitch is left to gyro aim. Under Pointer aim it flicks only while the gyro aims. The stick-speed
+  rows hide while it is on.
+- `flick_stick_outer_deadzone`: Flick outer deadzone (percent, 0..50, default 10): the tilt that
+  counts as full; the inner edge is the C-stick dead zone, round under flick stick.
+- `touch_flick_stick`: Touch controls > Flick stick (`MP2_TOUCH_FLICK_STICK`): the same for the
+  touch twin-stick layout while touch is the last-used input.
 
 Controls > Remap:
 
@@ -265,6 +273,11 @@ Controls > Remap:
   GameCube, Remastered, Modern or Southpaw to all controllers, replacing your own bindings
   there; a selected kind or model keeps its own on top. Reset... removes a device's own
   bindings (after a confirmation), bringing back the Classic and GameCube layouts.
+- `pad_preset` (`p2.`..`p4.pad_preset` for pad ports 2-4): the last controller preset picked
+  there (`gamecube`, `remastered`, `modern`, `southpaw`; empty = none). Aurora keeps mappings per
+  controller model, so a real controller connected to that port later, still on its defaults, gets
+  the preset's mapping (dual-stick ones skip a GameCube adapter), and Remap shows it with no
+  controller. Restoring My presets' controller mapping clears it.
 - My presets... (beside Presets...): "Save current as..." keeps your bindings as a preset of your own. One list; a
   preset covers every device it was saved with: keyboard & mouse, touch (when it has bindings) and, with a
   controller connected, the controller (its bindings, custom actions, button/axis mapping), plus twin stick and
@@ -322,14 +335,20 @@ Controls > Touch & gyro (Gyro aim):
 Gyro aim needs mouse aim, twin stick or the touch controls' aim; without pointer aim it turns the
 camera at Sensitivity. Touch aim's Separate vertical speed and Vertical touch aim speed are
 touch.cfg's `aim_split` and `aim_speed_y` (env `MP2_TOUCH_AIM_SPLIT`, `MP2_TOUCH_AIM_SPEED_Y`).
+Beam and visor wheels: two round buttons, Visor and Beam, stock in the Default layout; any layout
+takes them as added buttons (Edit layout > Add a button > Visor wheel / Beam wheel, keys
+`visor_wheel` and `beam_wheel`, which only the overlay reads; a quick tap on Visor picks Scan with
+Tap Visor for Scan Visor). touch.cfg's retired `wheels=1` put the stock pair in the Classic and Twin
+layouts in place of the D-pad; such a layout becomes added wheel buttons where they were, without
+the D-pad, on its first draw (either overlay), and the line is dropped.
 
 Multiplayer (Player 1-4 selector; Player 1 edits the Controls keys above):
 
-- `p2.`..`p4.` + `twin_stick`, `stick_aim_rate`, `stick_aim_split`, `stick_aim_rate_y`, `lockon_toggle`,
+- `p2.`..`p4.` + `twin_stick`, `flick_stick`, `stick_aim_rate`, `stick_aim_split`, `stick_aim_rate_y`, `lockon_toggle`,
   `sticky_charge`, `rapid_charge`, `auto_aim`, `lock_on_free_aim`, `gyro_aim`, `gyro_mode`,
   `gyro_sensitivity`, `gyro_split`, `gyro_sensitivity_y`: that player's own value; a missing key follows
   Player 1 ("same as Player 1"; Reset and Reset to Player 1 remove keys). Each player's controller is the
-  pad port assignment, not a settings key; Remap... opens Controls > Remap on that port.
+  pad port assignment, not a settings key (its last controller preset is `p<N>.pad_preset`, above); Remap... opens Controls > Remap on that port.
 
 Video > Display:
 

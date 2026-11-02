@@ -229,6 +229,8 @@ s32 PADGetNativeButtonPressed(u32 port);
 /* Returns the first native axis which is currently pulled halfway or more */
 PADSignedNativeAxis PADGetNativeAxisPulled(u32 port);
 void PADRestoreDefaultMapping(u32 port);
+/* Whether the controller on the port has its type's default button and axis mappings. */
+BOOL PADIsDefaultMapping(u32 port);
 void PADBlockInput(bool block);
 
 void PADSetVirtualStatus(u32 port, const PADStatus* status);

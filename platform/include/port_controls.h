@@ -3,6 +3,9 @@
 #include <string>
 #include <string_view>
 
+struct PADButtonMapping;
+struct PADAxisMapping;
+
 // The port's keyboard and controller presets, over the Aurora PAD mappings
 // (dolphin/pad.h). Binding itself is the overlay's Controls > Remap page.
 
@@ -21,6 +24,19 @@ bool ApplyKeyPresetNamed(std::string_view name, unsigned port = 0);
 // switch it sets is that player's (PortMouse::SetPlayerStickEnabled). Aurora ignores mappings
 // of a virtual pad and of an empty port (still returns true: use PadPortInfo to tell the caller).
 bool ApplyPadPresetNamed(std::string_view name, unsigned port = 0);
+// Once per poll: a real controller newly on a pad port whose mappings are still its type's
+// defaults gets that port's last controller preset (Aurora keeps mappings per controller
+// model, so one connected after the preset was picked has none of it).
+void ApplySavedPadPresets();
+// `port`'s last controller preset over these defaults: what the Remap page shows with no
+// controller on that port.
+void ApplySavedPadPreset(unsigned port, PADButtonMapping* buttons, unsigned buttonCount, PADAxisMapping* axes,
+                         unsigned axisCount);
+// The last preset picked for `port` ("gamecube", "remastered", "modern", "southpaw"), or empty
+// for none or a custom layout (settings.cfg `pad_preset`, `p2.pad_preset`...). Setting an
+// unknown name clears it; neither applies anything.
+std::string_view SavedPadPreset(unsigned port);
+void SetSavedPadPreset(unsigned port, std::string_view name);
 // The stick deadzone and trigger click-point sliders of the Controller settings
 // page (nothing when no controller is on that port).
 void DrawDeadZones(unsigned port = 0);

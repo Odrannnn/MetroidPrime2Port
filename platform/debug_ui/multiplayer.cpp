@@ -114,6 +114,14 @@ void DrawStickRows(int p) {
   }
   StickMark(p, PortMouse::kStick_Enabled);
   if (!PortMouse::StickEnabled(p)) return;
+  bool flick = PortMouse::FlickStickSetting(p);
+  if (ImGui::Checkbox("Flick stick##mp", &flick)) {
+    PortMouse::SetPlayerFlickStick(p, flick);
+    Changed(true);
+  }
+  StickMark(p, PortMouse::kStick_Flick);
+  // Flick stick has no speed.
+  if (PortMouse::FlickStickSetting(p)) return;
   float rate = PortMouse::StickAimRate(p);
   if (ImGui::SliderFloat("Stick aim speed##mp", &rate, 100.f, 8100.f, "%.0f px/s")) {
     PortMouse::SetPlayerStickAimRate(p, rate);
@@ -199,7 +207,7 @@ bool AnyOverride(int p) {
   for (int k = 0; k < PortOverlay::kPlayerSettingCount; ++k) {
     if (PortOverlay::PlayerSettingSet(p, PlayerSetting(k))) return true;
   }
-  for (int k = PortMouse::kStick_Enabled; k <= PortMouse::kStick_RateY; ++k) {
+  for (int k = PortMouse::kStick_Enabled; k <= PortMouse::kStick_Flick; ++k) {
     if (PortMouse::PlayerStickSet(p, PortMouse::StickKey(k))) return true;
   }
   return false;

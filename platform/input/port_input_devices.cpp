@@ -3,6 +3,7 @@
 // Ported from the Prime 1 port's platform/input/port_input_devices.cpp. What MP2 has no backend or
 // setting for is left out, each at the place it would go: see the header for the list.
 
+#include "port_controls.h"
 #include "port_custom_actions.h"
 #include "port_debug.h"
 #include "port_input_remap_ui.h"
@@ -14,6 +15,7 @@
 #include "port_radial.h"
 #include "port_overlay.h"
 #include "port_photo.h"
+#include "port_prompts.h"
 #include "port_pointer.h"
 #include "port_savestate.h"
 #include "port_touch.h"
@@ -266,11 +268,13 @@ void BindController(Profile& p, u32 port) {
   const PADButtonMapping* buttons = PADGetButtonMappings(port, &buttonCount);
   const PADAxisMapping* axes = PADGetAxisMappings(port, &axisCount);
   const PADDeadZones* dz = PADGetDeadZones(port);
-  // No controller on the port: bind the standard defaults anyway, so a remap page
-  // shows what a pad would get (nothing reads them until one connects).
+  // No controller on the port: bind the standard defaults with the port's last pad
+  // preset anyway, so a remap page shows what a pad would get (nothing reads them
+  // until one connects).
   PADDefaultMapping fallback;
   if (buttons == nullptr || axes == nullptr) {
     PADGetDefaultMapping(&fallback, PAD_TYPE_STANDARD);
+    PortControls::ApplySavedPadPreset(port, fallback.buttons, PAD_BUTTON_COUNT, fallback.axes, PAD_AXIS_COUNT);
     buttons = fallback.buttons;
     axes = fallback.axes;
     buttonCount = PAD_BUTTON_COUNT;
@@ -491,6 +495,16 @@ void FillPadState(PortInput::RawState& raw, u32 port) {
         raw.padAxes[a] = StickValue(pad.axes[a], dz == nullptr ? 0 : left ? dz->stickDeadZone : dz->substickDeadZone,
                                     useDz);
       }
+    }
+    // Flick stick turns by the right stick's angle: a dead zone per axis zeroes the minor axis
+    // near each axis (a snap every 90 degrees while circling), so under it the dead zone is round.
+    if (useDz && PortMouse::FlickStick(static_cast<int>(port))) {
+      const float x = static_cast<float>(pad.axes[SDL_GAMEPAD_AXIS_RIGHTX]);
+      const float y = static_cast<float>(pad.axes[SDL_GAMEPAD_AXIS_RIGHTY]);
+      const float dzr = static_cast<float>(dz->substickDeadZone);
+      const bool inside = x * x + y * y <= dzr * dzr;
+      raw.padAxes[SDL_GAMEPAD_AXIS_RIGHTX] = inside ? 0.f : StickValue(pad.axes[SDL_GAMEPAD_AXIS_RIGHTX], 0, false);
+      raw.padAxes[SDL_GAMEPAD_AXIS_RIGHTY] = inside ? 0.f : StickValue(pad.axes[SDL_GAMEPAD_AXIS_RIGHTY], 0, false);
     }
   }
 }
@@ -1421,11 +1435,31 @@ static bool KeyboardCStickHeld(const Profile& p, const PortInput::RawState& raw,
   return false;
 }
 
+// Hands flick stick the engine's right stick from before PADClamp, its tilt running from the
+// C-stick dead zone to the outer one, so a pad that never reaches its edge still flicks.
+static void PublishFlickStick(const PortInput::Output& out, int port) {
+  const float x = std::clamp(out.Value(Action::CRight) - out.Value(Action::CLeft), -1.f, 1.f);
+  const float y = std::clamp(out.Value(Action::CUp) - out.Value(Action::CDown), -1.f, 1.f);
+  const float length = std::sqrt(x * x + y * y);
+  if (!(length > 0.f)) {
+    PortMouse::SetFlickRawStick(port, 0.f, 0.f);
+    return;
+  }
+  const PADDeadZones* zones = PADGetDeadZones(static_cast<u32>(port));
+  const float inner =
+      zones != nullptr && zones->useDeadzones ? static_cast<float>(zones->substickDeadZone) / 32767.f : 0.f;
+  const float span = std::max(1.f - PortMouse::FlickOuterDeadZone() / 100.f - inner, 0.05f);
+  const float scale = std::clamp((length - inner) / span, 0.f, 1.f) / length;
+  PortMouse::SetFlickRawStick(port, x * scale, y * scale);
+}
+
 SPoll Poll(unsigned mouseHeld, bool focused) {
   static Profile sProfile;
   static PortInput::Runtime sRuntime;
   static bool sInit = false;
 
+  // Every pad port's, before PollPlayer builds ports 1-3 from them.
+  PortControls::ApplySavedPadPresets();
   Profile next;
   BuildProfile(next);
   ApplyMenuButtons(next);
@@ -1447,6 +1481,8 @@ SPoll Poll(unsigned mouseHeld, bool focused) {
   const PortInput::Output& out =
       sRuntime.Poll(raw, contexts, nowMs, 0);
   PortMouse::SetKeyboardCStickHeld(KeyboardCStickHeld(sProfile, raw, contexts));
+  PortMouse::SetMouseYieldsToPad(PortPrompts::PadActive() && !PortOverlay::GyroAim(0));
+  PublishFlickStick(out, 0);
   SPoll r;
   sConsumeRadialPoll = false;
   if (PortInputRemap::Capturing()) {
@@ -1501,6 +1537,7 @@ bool PollPlayer(int port, PADStatus& status) {
   const double nowMs =
       std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();
   const PortInput::Output& out = runtime.Poll(raw, contexts, nowMs, 0);
+  PublishFlickStick(out, port);
   // While F1 is open the picks wait, as Player 1's do; PortPumpEvents blocks the pads.
   if (!PortOverlay::Visible() && !PortInputRemap::Capturing()) RoutePlayerActions(out, port);
   status = SynthesizeStatus(out, false);

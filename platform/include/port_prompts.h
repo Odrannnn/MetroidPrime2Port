@@ -28,6 +28,10 @@ const char* ActiveDevice();
 // nothing in Echoes asks yet.
 bool KeyboardActive();
 
+// True while a connected pad is the input the player last used (not the touch
+// overlay's virtual one). Starts true: no key or click yet means no keyboard.
+bool PadActive();
+
 // What the game's A button is called on the device in use ("A", "Cross", "Enter"...), for text
 // prompts such as the cinematic skip confirm.
 const char* ConfirmLabel();

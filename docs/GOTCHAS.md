@@ -181,7 +181,8 @@ Things that took real effort to find out. AGENTS.md keeps a one-line index; the 
 - **Other vendored-Aurora additions** to keep on re-vendor: the partial `GXCopyTex` clear
   (`recording.cpp`, from upstream aurora 9c0bf66f1e), the dstAlpha alpha-only pass
   (`command_processor.cpp` `push_gx_draw`, `67f337a57`) and `AURORA_PRESENT_EVERY` (`aurora.cpp`
-  end_frame) and the empty-string fallback when `SDL_GetPrefPath` returns null for `userPath`/
+  end_frame), `PADIsDefaultMapping` (`pad.cpp`, MP1 e0808c4d5: saved pad presets reach controllers
+  connected later) and the empty-string fallback when `SDL_GetPrefPath` returns null for `userPath`/
   `cachePath` (`aurora.cpp` initialize). Windows: the user folder is `Metroid Prime 2 Echoes` (no `:`, which
   Windows rejects); with the old name Aurora's cachePath was null and the first run crashed in the
   Dawn cache's `fs_path_from_string` (win-startup-crash, CI 40572636384).

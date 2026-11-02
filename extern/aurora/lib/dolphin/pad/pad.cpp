@@ -1899,6 +1899,27 @@ void PADRestoreDefaultMapping(const u32 port) {
   controller->m_axisMapping = g_defaultAxes;
 }
 
+BOOL PADIsDefaultMapping(const u32 port) {
+  auto* controller = aurora::input::get_controller_for_player(port);
+  if (controller == nullptr) {
+    return FALSE;
+  }
+  EnsureMappingLoaded(controller);
+  const auto buttons = controller->m_buttonMapping;
+  __PADSetDefaultMapping(controller);
+  const bool same =
+      std::ranges::equal(controller->m_buttonMapping, buttons,
+                         [](const PADButtonMapping& a, const PADButtonMapping& b) {
+                           return a.nativeButton == b.nativeButton && a.padButton == b.padButton;
+                         }) &&
+      std::ranges::equal(controller->m_axisMapping, g_defaultAxes, [](const PADAxisMapping& a, const PADAxisMapping& b) {
+        return a.nativeAxis.nativeAxis == b.nativeAxis.nativeAxis && a.nativeAxis.sign == b.nativeAxis.sign &&
+               a.nativeButton == b.nativeButton && a.padAxis == b.padAxis;
+      });
+  controller->m_buttonMapping = buttons;
+  return same ? TRUE : FALSE;
+}
+
 void PADBlockInput(const bool block) {
   if (g_blockPAD && !block) {
     g_suppressHeldOnRead = true;

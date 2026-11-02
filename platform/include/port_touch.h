@@ -94,6 +94,12 @@ bool Labels();
 bool Colors();
 bool FloatingStick();
 bool Turbo();
+// The wheels are stock in the default layout; elsewhere they are added buttons with these
+// overlay-only keys (input skips them), key then label, listed after Previous visor (MP1
+// 5ef1edfe1). WheelsEnabled is the retired setting that put the stock pair in the classic and twin
+// layouts: true until an overlay has turned it into those buttons.
+inline constexpr const char* kTouchWheelActions[4] = {"visor_wheel", "Visor wheel", "beam_wheel",
+                                                      "Beam wheel"};
 bool WheelsEnabled();
 bool VisorTapScan();
 bool ControlsEnabled();

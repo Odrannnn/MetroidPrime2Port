@@ -22,6 +22,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <string>
 
 namespace PortDebug {
@@ -183,6 +184,8 @@ void DrawControlsKeyboardMouse() {
     PortMouse::SetEnabled(mouseAim);
     Changed(true);
   }
+  ItemHelp("While a controller is in use with twin stick and gyro off, it plays the classic "
+           "GameCube way (R to look) and the mouse aims again once you press a key or click.");
   // Shown on the Quake/Source/Apex scale (0.022 degrees a count per unit), stored in radians.
   float sourceSensitivity = PortMouse::SourceFromRadians(PortMouse::Sensitivity());
   if (ImGui::SliderFloat("Sensitivity", &sourceSensitivity, 0.05f, 30.f, "%.3f",
@@ -240,6 +243,25 @@ void DrawControlsKeyboardMouse() {
   ImGui::SetItemTooltip("Applies under mouse aim, twin stick and touch aim.");
 }
 
+// Flick stick turns only left and right; say so when nothing aims up and down.
+static void DrawFlickStickWarning() {
+  const char* warning = nullptr;
+  if (!PortOverlay::GyroAim()) {
+    warning = "Flick stick only turns left and right: turn on Gyro aim (Controls > Touch & gyro) to "
+              "aim up and down.";
+  } else if (std::strcmp(PortInputDevices::GyroStatus(), "no gyro found") == 0) {
+    warning = "No gyro found: flick stick only turns left and right, so nothing aims up and down.";
+  } else if (PortOverlay::PointerAim()) {
+    warning = "Under Pointer aim the right stick flicks only while the gyro is aiming; otherwise it "
+              "moves the pointer.";
+  }
+  if (warning != nullptr) {
+    ImGui::PushStyleColor(ImGuiCol_Text, ThemeWarnColor());
+    ImGui::TextWrapped("%s", warning);
+    ImGui::PopStyleColor();
+  }
+}
+
 void DrawControlsController() {
   ImGui::SeparatorText("Stick aim");
   bool twinStick = PortMouse::StickEnabled();
@@ -249,8 +271,28 @@ void DrawControlsController() {
   }
   ItemHelp("Aims with the right stick like the mouse, so it no longer free-looks, and the R trigger stops "
            "free-looking (it stays Spider Ball in the Morph Ball). Fire stays on A; change it in Controls > Remap.");
-  // Shown only with twin stick on, as MP1 does.
   if (PortMouse::StickEnabled()) {
+    bool flickStick = PortMouse::FlickStickSetting();
+    if (ImGui::Checkbox("Flick stick", &flickStick)) {
+      PortMouse::SetFlickStick(flickStick);
+      Changed(true);
+    }
+    ItemHelp("Tilting the right stick turns you to face that way (right: a quarter turn, down: turn "
+             "around); rotating the held stick turns with it. Left and right only: aim up and down with "
+             "gyro aim.");
+    if (PortMouse::FlickStickSetting()) {
+      DrawFlickStickWarning();
+      float outer = PortMouse::FlickOuterDeadZone();
+      if (ImGui::SliderFloat("Flick outer deadzone", &outer, 0.f, PortMouse::kFlickOuterDeadZoneMax, "%.0f%%")) {
+        PortMouse::SetFlickOuterDeadZone(outer);
+        Changed(true);
+      }
+      ItemHelp("How far from its edge the right stick counts as fully tilted. Raise it if flicks need "
+               "the stick pushed hard into its rim, or don't fire on the diagonals.");
+    }
+  }
+  // Shown only with twin stick on, as MP1 does; flick stick has no speed.
+  if (PortMouse::StickEnabled() && !PortMouse::FlickStickSetting()) {
     float rate = PortMouse::StickAimRate();
     if (ImGui::SliderFloat("Stick aim speed", &rate, 100.f, 8100.f, "%.0f px/s")) {
       PortMouse::SetStickAimRate(rate);
@@ -346,34 +388,34 @@ void DrawControlsTouchGyro() {
     for (int i = 0; i < 3 && (PortTouch::Classic() ? 1 : (PortTouch::TwinStick() ? 2 : 0)) != layoutIndex; ++i) {
       PortTouch::CycleLayout();
     }
-    if (layoutIndex == 2) {
-      // Remastered picks beams with Y + the D-pad, so twin starts with the D-pad, not the wheels.
-      PortTouch::SetWheelsEnabled(false);
-    }
   }
   ItemHelp("Default: GameCube buttons, drag the screen to aim, Visor and Beam wheels.\n"
            "Classic GameCube: adds the C-stick and D-pad.\n"
-           "Twin stick (Remastered): a right stick that aims.");
+           "Twin stick (Remastered): a right stick that aims.\n"
+           "Any layout takes Visor and Beam wheels as buttons: Edit layout, Add a button.");
+  ImGui::BeginDisabled(!twin);
+  b = PortMouse::TouchFlickStick();
+  if (ImGui::Checkbox("Flick stick##touch", &b)) {
+    PortMouse::SetTouchFlickStick(b);
+    Changed(true);
+  }
+  ItemHelp("Twin stick layout: pushing the right stick to its edge turns you to face that way (right: "
+           "a quarter turn, down: turn around); circling it turns with it. Left and right only: aim up "
+           "and down with gyro aim.");
+  if (twin && PortMouse::TouchFlickStick()) {
+    DrawFlickStickWarning();
+  }
+  ImGui::EndDisabled();
   bool aim = PortTouch::AimEnabled();
   if (ImGui::Checkbox("Touch aim", &aim)) {
     PortTouch::SetAimEnabled(aim);
   }
   ItemHelp("Drag the free screen area to turn and look around.");
-  ImGui::BeginDisabled(!classic && !twin);
-  b = PortTouch::WheelsEnabled();
-  if (ImGui::Checkbox("Beam and visor wheels", &b)) {
-    PortTouch::SetWheelsEnabled(b);
-  }
-  ItemHelp("Replaces the D-pad with Visor and Beam buttons: hold, slide to one, let go. "
-           "Let go in the middle to cancel.");
-  ImGui::EndDisabled();
-  ImGui::BeginDisabled(!((!classic && !twin) || PortTouch::WheelsEnabled()));
   b = PortTouch::VisorTapScan();
   if (ImGui::Checkbox("Tap Visor for Scan Visor", &b)) {
     PortTouch::SetVisorTapScan(b);
   }
-  ItemHelp("A quick tap on Visor switches to the Scan Visor.");
-  ImGui::EndDisabled();
+  ItemHelp("A quick tap on the Visor wheel button switches to the Scan Visor.");
   float speed = PortTouch::AimSpeed();
   if (ImGui::SliderFloat("Touch aim speed", &speed, 0.5f, 6.f, "%.2f px/dp")) {
     PortTouch::SetAimSpeed(speed);
