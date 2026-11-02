@@ -5562,7 +5562,11 @@ void CStateManager::PortWarpSettle() {
                      keep.Value(), mPortPendingWarpArea.Value(), PortFreeObjectIds());
       }
     }
-    return;
+    // An area that finished loading just now settles in this frame, before its new objects first
+    // Think: see the spawn below.
+    if (!area->IsLoaded()) {
+      return;
+    }
   }
   mPortWarpWaitingForIds = false;
   mPortWarpStreamStarted = false;
@@ -5573,6 +5577,15 @@ void CStateManager::PortWarpSettle() {
   const TAreaId target = mPortPendingWarpArea;
   mPortPendingWarpArea = kInvalidAreaId;
   mPortWarpDroppedAreas = false;
+  // The world's per-frame travel to the old area moved the streaming one from Loading to
+  // ToDeallocate, so the next TravelToArea(target) would invalidate it and load it again: every
+  // script object of the arrival room deleted and rebuilt right after the spawn below. A script the
+  // spawn had started is lost with it - Dark Falls' save-station "From Load" relay holds the screen
+  // black until Samus's player actor arrives, and the rebuilt room never sends it (the world and
+  // the arm cannon stayed black). Keep the area alive instead.
+  if (area->GetCurChain() != CWorld::kC_Alive) {
+    world->MoveToChain(area, CWorld::kC_Alive);
+  }
 
   // Loaded now, so the move is safe. This is also what makes the world update travel here
   // instead of back to the old area.
@@ -5588,6 +5601,16 @@ void CStateManager::PortWarpSettle() {
 
   if (!PortPlaceKeptTransform()) {
     PortPlaceAtArrival(target);
+  }
+  // A save load spawns in InitializeState and runs the spawn point's script chain before any object
+  // of the room thinks. Do the same here: Dark Falls' "From Load" relay activates the relay that waits
+  // for Samus's player actor, whose suit is already resident on PC, so it arrives in its first Think.
+  // Left queued, that arrival is dispatched ahead of the activation, hits the inactive relay and is
+  // lost, and the "Hold Black" filter and black cinematic camera stay on (world and arm cannon black).
+  if (!mDispatchingScriptMessages) {
+    mDispatchingScriptMessages = true;
+    DispatchScriptMessages();
+    mDispatchingScriptMessages = false;
   }
   for (uint i = 0; i < mNumPlayers; ++i) {
     mCameraManagers[i]->ResetCameras(*this);
