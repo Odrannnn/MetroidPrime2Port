@@ -17,8 +17,10 @@ struct DrawData {
   ClipRect rect{};
 };
 
-constexpr uint32_t ClearPipelineConfigVersion = 4;
+constexpr uint32_t ClearPipelineConfigVersion = 5;
 struct PipelineConfig {
+  // The layout's key without its sample count (msaaSamples holds that), so the pipeline cache can
+  // derive a row's variant at another MSAA setting.
   uint64_t targetLayoutKey = 0;
   std::array<wgpu::TextureFormat, MaxColorAttachments> colorFormats{};
   wgpu::TextureFormat depthStencilFormat = wgpu::TextureFormat::Undefined;

@@ -76,8 +76,10 @@ uniforms, so rows differ only by fog on or off and by whether a reference makes 
 constant (aurora folds an older row's fog type, references and konst selections on load). When aurora bumps a pipeline config version (`clear.hpp`,
 `gx/pipeline.hpp`, `rmlui/pipeline.hpp`), aurora ignores the seed and the `port_pipeline_seed`
 test fails. Re-record from empty caches (needs a GPU path, ~41 min on the dev machine; no mods or texture packs):
-`python3 tools/pipeline_seed.py record`, then the `merge` line it prints. `MP2_PIPELINE_SEED=0`
-starts without the seed.
+`python3 tools/pipeline_seed.py record`, then the `merge` line it prints. The area sweep does not
+reach every spot: the 2026-11-02 seed (1370 rows) also merges the cache of the #44 Torvus underwater
+repro (`tools/smoke/fam.sh`, swamp entrance, teleport to 162.7 -78.4 40), which adds 3 pipelines;
+append such a cache to the merge line. `MP2_PIPELINE_SEED=0` starts without the seed.
 
 ## Release checklist
 

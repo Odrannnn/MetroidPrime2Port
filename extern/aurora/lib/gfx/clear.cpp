@@ -60,8 +60,11 @@ fn fs_main() {
 
 PipelineConfig make_pipeline_config(const RenderTargetLayout& layout, bool clearColor, bool clearAlpha,
                                     bool clearDepth) noexcept {
+  RenderTargetLayout keyLayout = layout;
+  keyLayout.sampleCount = 1;
+  detail::finalize_render_target_layout(keyLayout);
   PipelineConfig config{
-      .targetLayoutKey = layout.key,
+      .targetLayoutKey = keyLayout.key,
       .depthStencilFormat = layout.depthStencilFormat,
       .colorAttachmentCount = layout.colorAttachmentCount,
       .msaaSamples = layout.sampleCount,
