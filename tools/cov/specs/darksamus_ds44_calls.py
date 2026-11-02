@@ -236,7 +236,7 @@ class FindRep(gdb.Command):
             if uid != 0xFFFF:
                 e = gdb.parse_and_eval(
                     '((rstl::auto_ptr<CObjectList>*)$m->mObjectLists.mData)[0].mItem'
-                    '->mObjects[%d].mEntity' % (uid & 0x3FF))
+                    '->mObjects[%d].mEntity' % (uid & 0x7ff))
                 if int(e) != 0:
                     name = str(e.dereference().dynamic_type)
                     if 'CScriptRepulsor' in name and var('crep') == 0:
@@ -246,7 +246,7 @@ class FindRep(gdb.Command):
             print('conn %d: state %08x msg %08x uid %04x %s' % (i, st & 0xFFFFFFFF,
                                                                 ms & 0xFFFFFFFF, uid, name))
         lst = gdb.parse_and_eval('((rstl::auto_ptr<CObjectList>*)$m->mObjectLists.mData)[0].mItem')
-        for i in range(1024):
+        for i in range(2048):
             e = lst['mObjects'][i]['mEntity']
             if int(e) == 0:
                 continue

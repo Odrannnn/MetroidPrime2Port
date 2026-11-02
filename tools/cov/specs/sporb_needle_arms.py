@@ -89,12 +89,12 @@ class Near(gdb.Breakpoint):
     def stop(self):
         mode = int(gdb.parse_and_eval('$sp6_near'))
         if mode:
-            target = '((rstl::reserved_vector<TUniqueId,1024>*)%d)' % int(gdb.parse_and_eval('$rsi'))
+            target = '((rstl::reserved_vector<TUniqueId, 2048>*)%d)' % int(gdb.parse_and_eval('$rsi'))
             NearReturn(gdb.newest_frame(), target, mode)
         return False
 
 
-Near('*' + symbol('CStateManager::BuildNearList(rstl::reserved_vector<TUniqueId, 1024>&, CAABox'),
+Near('*' + symbol('CStateManager::BuildNearList(rstl::reserved_vector<TUniqueId, 2048>&, CAABox'),
      internal=True)
 
 
@@ -144,9 +144,9 @@ Begin()
 Check()
 objlist = '((rstl::auto_ptr<CObjectList>*)$mgr->mObjectLists.mData)[0].mItem->mObjects'
 scenarios.append(([], '($sp6_player=$P,'
-                  '$sp6_top=(CSporbTop*)' + objlist + '[$this->mTopId.value & 1023].mEntity,'
+                  '$sp6_top=(CSporbTop*)' + objlist + '[$this->mTopId.value & 2047].mEntity,'
                   '$sp6_proj=(CSporbProjectile*)' + objlist +
-                  '[$this->mProjectileId.value & 1023].mEntity,1)'))
+                  '[$this->mProjectileId.value & 2047].mEntity,1)'))
 labels.append('bind player/base/children')
 shot_writes = [('$this->mShooting', '1'), ('$this->mShotTimer', '0.5f'),
                ('$this->mTimeBetweenShots', '0.25f'), ('$this->mShotsFired', '0'),

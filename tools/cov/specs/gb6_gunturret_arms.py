@@ -101,7 +101,7 @@ class Prepare(gdb.Function):
         put('$gb6_seg->mId', str(int(segment) & 255))
         table = val('((rstl::auto_ptr<CObjectList>*)((CStateManager*)%d)->mObjectLists.mData)[0].mItem' % int(mgr)).dereference()['mObjects']
         uid = int(actor.dereference()['mTopId']['value'])
-        top = table[uid & 1023]['mEntity'].cast(gdb.lookup_type('CGunTurretTop').pointer())
+        top = table[uid & 2047]['mEntity'].cast(gdb.lookup_type('CGunTurretTop').pointer())
         gdb.set_convenience_variable('gb6_top', top)
         log('3520 real segment%d top%04x' % (int(segment) & 255, uid))
         return 1

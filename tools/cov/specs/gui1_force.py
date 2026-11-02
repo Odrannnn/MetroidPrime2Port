@@ -20,7 +20,7 @@ class Prepare(gdb.Function):
         super().__init__('gui1_prepare')
     def invoke(self,mgr):
         table=ev('((rstl::auto_ptr<CObjectList>*)((CStateManager*)%d)->mObjectLists.mData)[0].mItem'%int(mgr)).dereference()['mObjects']
-        for i in range(1024):
+        for i in range(2048):
             p=table[i]['mEntity']
             if int(p) and 'CScriptGuiPlayerJoinManager' in str(p.dynamic_type):
                 gdb.set_convenience_variable('g1_join',p.cast(gdb.lookup_type('CScriptGuiPlayerJoinManager').pointer()))

@@ -124,7 +124,7 @@ class Prepare(gdb.Function):
 
     def invoke(self, actor, mgr):
         table = ev('((rstl::auto_ptr<CObjectList>*)((CStateManager*)%d)->mObjectLists.mData)[0].mItem' % int(mgr)).dereference()['mObjects']
-        for i in range(1024):
+        for i in range(2048):
             obj = table[i]['mEntity']
             if not int(obj):
                 continue
@@ -150,7 +150,7 @@ class Prepare(gdb.Function):
         assert int(ids['mCount']) == 4
         for i in range(4):
             uid = ev('((TUniqueId*)%d)[%d].value' % (int(ids['mData'].address), i))
-            ent = table[int(uid) & 1023]['mEntity'].cast(gdb.lookup_type('CMediumIngTentacle').pointer())
+            ent = table[int(uid) & 2047]['mEntity'].cast(gdb.lookup_type('CMediumIngTentacle').pointer())
             gdb.set_convenience_variable('m6_t%d' % i, ent)
         log('real actor/tentacles/jump/waypoint fixture objects captured')
         return 1

@@ -101,7 +101,7 @@ class Prepare(gdb.Function):
         log('native Wisp CSPP box count zero, matching disc scan')
         table=ev('((rstl::auto_ptr<CObjectList>*)((CStateManager*)%d)->mObjectLists.mData)[0].mItem'%int(mgr)).dereference()['mObjects']
         found=False
-        for i in range(1024):
+        for i in range(2048):
             obj=table[i]['mEntity']
             if not int(obj):
                 continue

@@ -172,7 +172,7 @@ def kill(console, logpath, rounds):
                 continue
             # The log prints the unique id without its version bits, the console with them.
             for cuid, cx, cy, cz in spots:
-                if (int(cuid.lstrip("u"), 16) & 0x3FF) != int(tag, 16):
+                if (int(cuid.lstrip("u"), 16) & 0x7ff) != int(tag, 16):
                     continue
                 # The hit goes to the joint collision actors: they carry the Ing's health, and
                 # the Ing's own table would take nothing from the console's damage.

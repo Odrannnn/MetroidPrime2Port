@@ -94,7 +94,7 @@ if not hasattr(gdb, '_gb4_installed'):
                         uid = ev('$gb3_ct->mUniqueId.value')
                     elif n == 9:
                         uid = 65534
-                    put('$gb4_near', '(rstl::reserved_vector<TUniqueId, 1024>*)%d' % ptr)
+                    put('$gb4_near', '(rstl::reserved_vector<TUniqueId, 2048>*)%d' % ptr)
                     put('$gb4_near->mCount', 0 if n in (0,11) else 1)
                     write('$gb4_near->mData', struct.pack('<H', uid))
                     if n not in (0,11):
@@ -201,7 +201,7 @@ if not hasattr(gdb, '_gb4_installed'):
                     # Record available real actor types for the dynamic-gather cases.
                     objects = gdb.parse_and_eval('((rstl::auto_ptr<CObjectList>*)$gb4_mgr->mObjectLists.mData)[0].mItem->mObjects')
                     seen = set()
-                    for index in range(1024):
+                    for index in range(2048):
                         entry = objects[index]
                         actor = entry['mEntity']
                         if int(actor) and str(actor.dynamic_type) not in seen:
@@ -326,7 +326,7 @@ if not hasattr(gdb, '_gb4_installed'):
     suite = Suite('*' + symbol('CCollisionTracker::Think('), internal=True)
     Gather('*' + symbol('CSurfaceParticleEffect::GatherCollisionSurfaces('), internal=True)
     Update('*' + symbol('CElementGen::Update('), internal=True)
-    Near('*' + symbol('CStateManager::BuildNearList(rstl::reserved_vector<TUniqueId, 1024>&, CAABox'), internal=True)
+    Near('*' + symbol('CStateManager::BuildNearList(rstl::reserved_vector<TUniqueId, 2048>&, CAABox'), internal=True)
     Primitive('*' + symbol('CScriptActor::GetCollisionPrimitive('), internal=True)
     Cast('CScriptPlatform', 3)
     Cast('CScriptWater', 8)

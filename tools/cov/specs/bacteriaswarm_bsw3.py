@@ -187,7 +187,7 @@ class Think(gdb.Breakpoint):
 
 def find_waypoint(mgr):
     table = ev('((rstl::auto_ptr<CObjectList>*)((CStateManager*)%d)->mObjectLists.mData)[0].mItem' % mgr).dereference()['mObjects']
-    for i in range(1024):
+    for i in range(2048):
         ent = table[i]['mEntity']
         if int(ent) and 'CScriptWaypoint' in str(ent.dynamic_type):
             w = ent.cast(gdb.lookup_type('CScriptWaypoint').pointer())

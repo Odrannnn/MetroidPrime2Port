@@ -21,6 +21,6 @@ FORCE_RET = [
      'the timestamp older than the elapsed time (0x000048F4 not taken)'),
     ('69C0 two slots (forced)', 'CDarkSamus::DeleteGuestUids(', 1,
      [(0, [('$this->mGuest930', '2'), ('$this->mGuest934[0]', '0xffff'),
-           ('$this->mGuest934[1]', '((*(unsigned short*)&$this->mUniqueId) + 0x400) & 0xffff')])],
+           ('$this->mGuest934[1]', '((*(unsigned short*)&$this->mUniqueId) + 0x800) & 0xffff')])],
      'an invalid slot (0x000069F8) and a stale uid deleted (0x00006A0C)'),
 ]

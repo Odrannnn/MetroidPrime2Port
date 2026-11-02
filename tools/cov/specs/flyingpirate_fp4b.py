@@ -27,7 +27,7 @@ CALLS = [
         ([('%s->mActive' % BC, '0'), ('$this->mIsFlyingPirate', '0')], TH),
         ([('%s->mActive' % BC, '0'), ('$this->mIsFlyingPirate', '1')], TH),
         # InFluidId() names an id no object has: the water cast of null
-        ([('$this->mAlive', '1'), ('$this->mIsAquaPirate', '0')], TH, [('CActor::InFluidId(', 1023)]),
+        ([('$this->mAlive', '1'), ('$this->mIsAquaPirate', '0')], TH, [('CActor::InFluidId(', 2047)]),
         # dead: the burst branch's !mAlive arm, the !mAlive else arms (burst timer 22050, 1997 else)
         ([('$this->mAlive', '0'), ('$this->mBurstTimer', '-1.0'), ('$this->mBurstFire.mBurstType', '0')], TH),
         ([('$this->mAlive', '0'), ('$this->mBurstTimer', '5.0'), ('$this->mBurstFire.mBurstType', '0')], TH),

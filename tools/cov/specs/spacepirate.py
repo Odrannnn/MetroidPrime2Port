@@ -60,8 +60,8 @@ SPEC = [
     # DE5C/DFD4/EFD4 end in tail calls (jmp), so their arms are read off the call sites ('calls'):
     # the cast-null arm is the TCastToPtr count minus the count of the call that follows it
     ('DE5C UpdateTeamTarget', 'CSpacePirate::UpdateTeamTarget(', ['$this->xba0_teamAiMgrId.value != 0xffff'], 'calls max=20000'),
-    ('DFD4 SquadJoin', 'CSpacePirate::SquadJoin(', ['$this->xba0_teamAiMgrId.value != 0xffff', '$this->x8f4_27_melee', '$this->mUniqueId.value & 0x3ff'], 'calls max=20000'),
-    ('EFD4 ChooseTeamTarget', 'CSpacePirate::ChooseTeamTarget(', ['$this->xba0_teamAiMgrId.value != 0xffff', '$this->mUniqueId.value & 0x3ff'], 'calls max=20000'),
+    ('DFD4 SquadJoin', 'CSpacePirate::SquadJoin(', ['$this->xba0_teamAiMgrId.value != 0xffff', '$this->x8f4_27_melee', '$this->mUniqueId.value & 0x7ff'], 'calls max=20000'),
+    ('EFD4 ChooseTeamTarget', 'CSpacePirate::ChooseTeamTarget(', ['$this->xba0_teamAiMgrId.value != 0xffff', '$this->mUniqueId.value & 0x7ff'], 'calls max=20000'),
     ('E090 GetOrigin', 'CSpacePirate::GetOrigin(', [], ''),
     ('E3D8 Touch', 'CSpacePirate::Touch(', [], ''),
     ('EDEC ChooseTarget', 'CSpacePirate::ChooseTarget(', [], ''),

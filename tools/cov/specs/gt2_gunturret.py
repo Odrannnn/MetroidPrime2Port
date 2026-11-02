@@ -131,7 +131,7 @@ class Prepare(gdb.Function):
 
     def invoke(self, actor, mgr):
         table = ev('((rstl::auto_ptr<CObjectList>*)((CStateManager*)%d)->mObjectLists.mData)[0].mItem' % int(mgr)).dereference()['mObjects']
-        for index in range(1024):
+        for index in range(2048):
             item = table[index]
             obj = item['mEntity']
             if not int(obj):

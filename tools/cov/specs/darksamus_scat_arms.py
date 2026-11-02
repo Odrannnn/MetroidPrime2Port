@@ -211,12 +211,12 @@ class SweepBp(SafeBp):
             return False
         if state['nsweep'] % 3 != 0:
             return False
-        nl = '((rstl::reserved_vector<TUniqueId, 1024>*)%d)' % near
+        nl = '((rstl::reserved_vector<TUniqueId, 2048>*)%d)' % near
         cnt = int(gdb.parse_and_eval('%s->mCount' % nl))
-        if cnt >= 1023:
+        if cnt >= 2047:
             return False
         uid = int(gdb.parse_and_eval('*(unsigned short*)&((CEntity*)%d)->mUniqueId' % this))
-        stale = (uid + 0x400) & 0xffff
+        stale = (uid + 0x800) & 0xffff
         gdb.execute('set var *(unsigned short*)((char*)%s->mData + 2 * %d) = %d' % (nl, cnt, stale))
         gdb.execute('set var *(unsigned short*)((char*)%s->mData + 2 * %d) = %d' % (nl, cnt + 1, uid))
         gdb.execute('set var %s->mCount = %d' % (nl, cnt + 2))

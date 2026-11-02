@@ -27,7 +27,7 @@ Verify()
 
 # Capture the projectile through the host object list, with no inferior call in a breakpoint.
 proj = ('(CSporbProjectile*)((rstl::auto_ptr<CObjectList>*)$mgr->mObjectLists.mData)'
-        '[0].mItem->mObjects[$this->mProjectileId.value & 1023].mEntity')
+        '[0].mItem->mObjects[$this->mProjectileId.value & 2047].mEntity')
 FORCE_RET = [
     ('71AC capture projectile|once', 'CSporbBase::UpdateGrabber(', 1,
      [(0, [('!$sp3_proj', proj)])], 'capture the first hall Sporb projectile'),

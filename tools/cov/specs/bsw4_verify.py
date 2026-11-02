@@ -110,7 +110,7 @@ def symbol(prefix):
 
 def find_anim(mgr):
     table = ev('((rstl::auto_ptr<CObjectList>*)((CStateManager*)%d)->mObjectLists.mData)[0].mItem' % mgr).dereference()['mObjects']
-    for index in range(1024):
+    for index in range(2048):
         entity = table[index]['mEntity']
         if not int(entity):
             continue

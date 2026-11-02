@@ -206,7 +206,7 @@ def collision(n, label):
         actors = ev('((rstl::auto_ptr<CObjectList>*)&' + mgr +
                     '->mObjectLists.mData[0])[1].mItem')
         actor_list = '((CObjectList*)%#x)' % int(actors)
-        for i in range(1024):
+        for i in range(2048):
             actor = ev(actor_list + '->mObjects[%d].mEntity' % i)
             if not int(actor):
                 continue
