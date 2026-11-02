@@ -190,8 +190,14 @@ CCollisionActorManager::CCollisionActorManager(
           colAct = rs_new CCollisionActor(uid, areaId, mOwnerId, desc.GetBounds(),
                                           desc.GetPivotPoint(), active, desc.GetMass());
         } else if (desc.GetType() == CJointCollisionDescription::kCT_OBBFromMayaPlugIn) {
+#ifdef TARGET_PC
+          // Retail 0x80136D6C lfs f3,lbl_8041C0B4 = 2.0, then fmuls f4,f3,f2 on the bounds.
+          colAct = rs_new CCollisionActor(uid, areaId, mOwnerId, 2.f * desc.GetBounds(),
+                                          CVector3f::Zero(), active, desc.GetMass());
+#else
           colAct = rs_new CCollisionActor(uid, areaId, mOwnerId, 0.5f * desc.GetBounds(),
                                           CVector3f::Zero(), active, desc.GetMass());
+#endif
         } else {
           colAct = rs_new CCollisionActor(uid, areaId, mOwnerId, desc.GetBounds(), active,
                                           desc.GetMass());
