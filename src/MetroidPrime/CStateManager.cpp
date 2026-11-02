@@ -819,6 +819,13 @@ float PortPresentedWorldTime(float time) {
   time -= (1.f - t) * sPortWorldTimeDt;
   return time < 0.f ? time + 900.f : time;
 }
+
+// The field of view SetupViewForDraw draws with: photo mode's, else the camera's widened for a
+// view narrower than 4:3. The frusta PreRender and ResetViewAfterDraw cull by take it too, or an
+// actor in view at the edge would be flagged out of frustum (no lights, swarms not drawn).
+float PortDrawFov(const CGameCamera& camera) {
+  return PortFreeCam::FovOverride() > 0.f ? PortFreeCam::FovOverride() : camera.GetRenderFov();
+}
 } // namespace
 #endif
 
@@ -862,9 +869,17 @@ void CStateManager::PreRender(uint playerIndex) {
   mWorld->PreRender();
   BuildDynamicLightListForWorld();
   const CGameCamera* camera = mCameraManager->GetCurrentCamera(*this, true);
+#ifdef TARGET_PC
+  // Port: cull from where SetupViewForDraw draws (the free camera) with its field of view.
+  const CTransform4f cameraTransform =
+      PortFreeCam::View(mCameraManager->GetCurrentCameraTransform(*this, true));
+  CFrustumPlanes frustum(cameraTransform, CRelAngle::FromDegrees(PortDrawFov(*camera)).AsRadians(),
+                         camera->GetAspectRatio(), camera->GetNearClipDistance(), false, 100.f);
+#else
   const CTransform4f cameraTransform = mCameraManager->GetCurrentCameraTransform(*this, true);
   CFrustumPlanes frustum(cameraTransform, CRelAngle::FromDegrees(camera->GetFov()).AsRadians(),
                          camera->GetAspectRatio(), camera->GetNearClipDistance(), false, 100.f);
+#endif
   mPlanes = frustum;
   SetupAreaFrusta();
 
@@ -1329,8 +1344,7 @@ void CStateManager::SetupViewForDraw(const CViewport& viewport) {
   const float aspect = (widthScale * camera->GetAspectRatio()) / heightScale;
 #ifdef TARGET_PC
   // Port: photo mode's field of view (0 keeps the camera's own).
-  const float fovDegrees =
-      PortFreeCam::FovOverride() > 0.f ? PortFreeCam::FovOverride() : camera->GetRenderFov();
+  const float fovDegrees = PortDrawFov(*camera);
 #endif
 #ifdef TARGET_PC
   const float tangent = static_cast< float >(tan(CMath::Deg2Rad(0.5f * fovDegrees)));
@@ -1548,14 +1562,19 @@ void CStateManager::DrawWorld(const CInGameGuiManagerSet& gui) {
 void CStateManager::ResetViewAfterDraw(const CViewport& viewport, const CTransform4f& viewMatrix) {
   gpRender->SetViewport(viewport.mLeft, viewport.mTop, viewport.mWidth, viewport.mHeight);
   const CGameCamera* camera = mCameraManager->GetCurrentCamera(*this, true);
+#ifdef TARGET_PC
+  CFrustumPlanes frustum(viewMatrix, CRelAngle::FromDegrees(PortDrawFov(*camera)).AsRadians(),
+                         camera->GetAspectRatio(), camera->GetNearClipDistance(), false, 100.f);
+#else
   CFrustumPlanes frustum(viewMatrix, CRelAngle::FromDegrees(camera->GetFov()).AsRadians(),
                          camera->GetAspectRatio(), camera->GetNearClipDistance(), false, 100.f);
+#endif
   mPlanes = frustum;
 
   const float height = CGraphics::GetViewport().mHeight;
   const float width = CGraphics::GetViewport().mWidth;
 #ifdef TARGET_PC
-  gpRender->SetPerspective(camera->GetRenderFov(), width, height, camera->GetNearClipDistance(),
+  gpRender->SetPerspective(PortDrawFov(*camera), width, height, camera->GetNearClipDistance(),
                            camera->GetFarClipDistance());
 #else
   gpRender->SetPerspective(camera->GetFov(), width, height, camera->GetNearClipDistance(),
