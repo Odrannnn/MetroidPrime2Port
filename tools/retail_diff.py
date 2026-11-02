@@ -95,7 +95,30 @@ DOL_ALIAS = {
     "InitializeStateMachine": r"InitializeStateMachine|SetupStateMachine",
     # CPASAnimParmData's ctor defaults its unused parameters to CPASAnimParm::NoParameter()
     "NoParameter": r"NoParameter|CPASAnimParmData",
+    # the hosts' microsecond clock seeds the same CRandom16s
+    "OSGetTime": r"OSGetTime|GetGlobalMicros",
+    # 0x801F585C, CVisualKnowledge::SetVisualTarget before upstream renamed it
+    "SetTarget": r"Set(?:Visual)?Target",
 }
+ALLOW = Path(__file__).with_name("retail_diff_allow.txt")
+
+
+def load_allow():
+    """retail_diff_allow.txt: `fn_<mod>_<off> <kind> <regex over the finding text>  # reason` per
+    line; a reason is required. Returns [(fn key, kind, compiled regex, line number)]."""
+    out = []
+    if not ALLOW.exists():
+        return out
+    for n, line in enumerate(ALLOW.read_text().splitlines(), 1):
+        body, _, why = line.partition("#")
+        if not body.strip():
+            continue
+        parts = body.split(None, 2)
+        if len(parts) != 3 or not why.strip():
+            sys.exit(f"{ALLOW.name}:{n}: want `fn_<mod>_<off> <kind> <regex>  # reason`")
+        out.append((norm_id(parts[0]), parts[1], re.compile(parts[2].strip()), n))
+    return out
+LIBM = {"sin", "cos", "tan", "asin", "acos", "atan", "atan2", "sqrt", "fmod", "floor", "ceil", "pow"}
 SKIP_DOL = ("GetObj",)
 INBODY = set()  # CToken::GetObj: a token dereference (`*tok`, `tok->`), never a behaviour
 # ctor/dtor side effects (`effect` kind, always on): retail callee (current DOL name) -> effect, and
@@ -951,10 +974,14 @@ def check(key, f, retail, ctx):
             if short in SKIP_DOL and not ctx["strict"]:
                 continue
             pat = short if short.startswith("TCastTo") else DOL_ALIAS.get(short, re.escape(short))
+            if short.startswith("SetLoader_"):
+                pat = rf"{short}|Set\w*_FuncPtrs"  # the port's SetSX_FuncPtrs registers the loaders
+            if short in LIBM:
+                pat += "f?"  # the port's float overloads (sinf, acosf)
             if short.startswith("LoadTypedefSLdr") and short not in DOL_ALIAS:
                 # the split's reader names; the port's generated readers drop the SLdr
                 pat = r"LoadTypedef(?:SLdr)?" + re.escape(short[len("LoadTypedefSLdr"):])
-            if not short or re.search(rf"\b{pat}\b", names_text):
+            if not short or re.search(rf"\b(?:{pat})\b", names_text):
                 continue
             out.append(("call", f"{dname[:60]} not named", ck))
     if consts:
@@ -1146,6 +1173,7 @@ def main():
     ap.add_argument("--coverage", action="store_true", help="per-module parse coverage table")
     ap.add_argument("--verbose", action="store_true", help="with --coverage: list unparsed markers")
     ap.add_argument("--strict", action="store_true", help="also show calls to port-model callees")
+    ap.add_argument("--no-allow", action="store_true", help="also show findings retail_diff_allow.txt accepts")
     args = ap.parse_args()
 
     mods = sorted(p.name for p in rm.RELS.iterdir() if p.is_dir())
@@ -1195,9 +1223,15 @@ def main():
         return 0
     kinds = set(args.kinds.split(",")) if args.kinds else None
     totals, rows, hidden = {}, [], 0
+    allow, used, allowed = [] if args.no_allow else load_allow(), set(), 0
     for k in sorted(sel):
         found = []
         for x in found_by[k]:
+            hit = next((a for a in allow if a[0] == k and a[1] == x[0] and a[2].search(x[1])), None)
+            if hit:
+                used.add(hit[3])
+                allowed += 1
+                continue
             if x[0] == "call" and x[2] in model and not args.strict:
                 hidden += 1
                 continue
@@ -1210,7 +1244,12 @@ def main():
     nob = [k for k in nobody if k in sel or ((args.module and ids.get(k[0]) in args.module) or whole)]
     print(f"# {len(sel)} marked function(s) checked ({len(nob)} markers without a parsed body); findings: "
           + (", ".join(f"{a} {b}" for a, b in sorted(totals.items())) or "none")
-          + f"; {hidden} calls to {len(model)} port-model callees hidden (--strict shows them)")
+          + f"; {hidden} calls to {len(model)} port-model callees hidden (--strict shows them)"
+          + (f"; {allowed} allowlisted (--no-allow shows them)" if allowed else ""))
+    if whole and not kinds:
+        for a in allow:
+            if a[3] not in used:
+                print(f"# {ALLOW.name}:{a[3]}: stale, {fid(*a[0]) if a[0] else '?'} {a[1]} matches nothing")
     if whole:
         rows.sort(key=lambda r: -len(r[1]))
         rows = rows[:args.top]

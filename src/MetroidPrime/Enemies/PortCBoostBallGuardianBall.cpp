@@ -1104,8 +1104,6 @@ void CBoostBallGuardianBall::CollidedWith(const TUniqueId& id, const CCollisionI
 // the guardian; kSM_Create sets the scale and picks the bounce counts: mUnknown285D..6D5F rolls,
 // one of them (the first, second, third or fourth by 10/20/70/rest odds out of 100) with
 // mUnknownECB3..A9B1 bounces, the rest with mUnknownE3FF..A6FD.
-// fn_30_F78 is the phase struct's implicit copy (0x38: six floats, six ints, two floats, as the host's).
-// @ fn_30_F78
 // @ fn_30_1466C
 void CBoostBallGuardianBall::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) {
   const EScriptObjectMessage message = msg.GetMessage();
