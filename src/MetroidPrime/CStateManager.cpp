@@ -1232,6 +1232,23 @@ void CStateManager::DrawDarkVisor(const CInGameGuiManagerSet& gui) {
     const int viewportWidth = CGraphics::GetViewport().mWidth;
     const int baseWidth = int(float(viewportWidth) / PortOverlay::AspectWiden() + 0.5f);
     x += (viewportWidth - baseWidth) / 2;
+    // The HUD scale, and a framebuffer narrower than the authored one (whose HUD fits the width,
+    // CGuiCamera::Draw), shrink the lens and its outer mask about the viewport's centre
+    // (CInGameGuiManager::DrawDarkVisorMask); shrink the frame with them, or the highlight shows
+    // between the mask's edge and the frame's (#60).
+    const float widen = PortOverlay::AspectWiden();
+    const float scale = float(PortOverlay::HudScale()) / float(PortOverlay::kHudScaleMax) *
+                        (widen < 1.f ? widen : 1.f);
+    if (scale != 1.f) {
+      const float centerX = 0.5f * float(viewportWidth);
+      const float centerY = 0.5f * float(CGraphics::GetViewport().mHeight);
+      const int right = int(centerX + (float(x + width) - centerX) * scale + 0.5f);
+      const int bottom = int(centerY + (float(y + height) - centerY) * scale + 0.5f);
+      x = int(centerX + (float(x) - centerX) * scale + 0.5f);
+      y = int(centerY + (float(y) - centerY) * scale + 0.5f);
+      width = right - x;
+      height = bottom - y;
+    }
 #endif
   }
 #ifdef TARGET_PC

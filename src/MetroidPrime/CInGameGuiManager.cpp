@@ -203,10 +203,19 @@ void CInGameGuiManager::PreDraw(CStateManager& mgr, bool cameraActive) {
 }
 
 void CInGameGuiManager::DrawDarkVisorMask(const CStateManager& mgr) const {
-  if (mDarkMaskFrame.get() != nullptr) {
+  if (mDarkOuterMask != nullptr) {
     CGraphics::SetDepthRange(1.f / 512.f, 1.f / 256.f);
-    mSamusHud->GetLoadedHudFrame()->GetRootWidget()->Draw(CGuiWidgetDrawParms::Default());
-    mDarkMaskFrame->GetRootWidget()->Draw(CGuiWidgetDrawParms::Default());
+#ifdef TARGET_PC
+    // Port: the HUD camera scales the lens with the HUD scale (CSamusHud::Draw), so the mask that
+    // keeps the visor's highlight inside the lens scales with it.
+    PortOverlay::SetHudScalingActive(PortOverlay::HudScale() != PortOverlay::kHudScaleMax);
+#endif
+    // The HUD frame's camera (not its root, whose Draw draws nothing), then the outer mask under it.
+    mSamusHud->GetLoadedHudFrame()->GetFrameCamera()->Draw(CGuiWidgetDrawParms::Default());
+    mDarkOuterMask->Draw(CGuiWidgetDrawParms::Default());
+#ifdef TARGET_PC
+    PortOverlay::SetHudScalingActive(false);
+#endif
   }
 }
 
