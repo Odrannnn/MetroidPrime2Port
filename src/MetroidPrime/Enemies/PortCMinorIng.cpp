@@ -2316,12 +2316,6 @@ void CMinorIng::SetupStateMachine(CStateManager& mgr) {
   }
 }
 
-// @ fn_44_110
-// The retail's loader is the property loop over the REL's own format; the host reads the same
-// properties with the generated SLdrMinorIng reader, whose ids and their order the analysis
-// checked against the REL id by id: it reads all 20 and fn_44_9B4's packing gives each bool its
-// bit. The check finds the retail's loop (37 calls, 43 conditions) against the generated reader:
-// a tool limit, not a mismatch (the ids and their order were checked by hand).
 // The retail's loader copies the model data it read (asm 0x51C): fn_44_10D4 -> fn_44_1114 ->
 // fn_44_1134 -> fn_44_115C is the REL's own copy of CModelData (the three model slots, the scale
 // and the id; the copy clears the source's byte at +0x0c). The host's CModelData owns its copy,
@@ -2405,6 +2399,11 @@ static void x16C4_SoundDefaults(SLdrMinorIng& sldr) {
   sldr.unknown_0x3da35851.sound_Explode = -1; // fn_44_16C4 0x0000172C (+0x3c)
 }
 
+// @ fn_44_110
+// The retail's loader is the property loop over the REL's own format; the host reads the same
+// properties with the generated SLdrMinorIng reader, whose ids and their order the analysis
+// checked against the REL id by id: it reads all 20 and fn_44_9B4's packing gives each bool its
+// bit.
 static CEntity* PortLoadMinorIng(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {
   SLdrMinorIng sldrThis;
   x1830_SoundDefaults(sldrThis);  // fn_44_1830's -1 sound ids (fn_44_14D8 0x1514)

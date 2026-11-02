@@ -93,6 +93,8 @@ DOL_ALIAS = {
     "BuildTransform4f": r"BuildTransform4f|SetRotation",
     "CheckConnectedObject_if": r"(?:Check|Find)ConnectedObject_if",
     "InitializeStateMachine": r"InitializeStateMachine|SetupStateMachine",
+    # property readers the split named before upstream's SLdr regeneration (f3aab4f48)
+    "LoadTypedefSLdrAnimationParameters": r"LoadTypedef(?:SLdr)?Anim\w*",
 }
 SKIP_DOL = ("GetObj",)
 INBODY = set()  # CToken::GetObj: a token dereference (`*tok`, `tok->`), never a behaviour
@@ -160,14 +162,28 @@ def dol_symbols():
         if m:
             out[int(m.group(2), 16)] = (m.group(1), int(m.group(3), 16))
             byname[m.group(1)] = int(m.group(2), 16)
+    # a name the split had that upstream renamed since (LoadActorParameters__FRC19SLdrActorParameters
+    # is LdrToActorParameters__FRC19SLdrActorParameters now): its mangled signature, when unique
+    sig = {}
+    for n, a in byname.items():
+        k = mangled_sig(n)
+        if k:
+            sig[k] = None if k in sig else a
+    byname.update({("sig", k): a for k, a in sig.items() if a is not None})
     return out, byname
+
+
+def mangled_sig(name):
+    """The parameter part of a mangled free function (`__F...`), None for a method or plain name."""
+    m = re.match(r"[A-Za-z_]\w*?__(F\w+)$", name)
+    return m.group(1) if m and len(m.group(1)) > 8 else None
 
 
 def dol_callee(c, dol):
     """(name to look for in the port, size) of a DOL call target."""
     syms, byname = dol
     m = re.match(r"fn_(8[0-9A-Fa-f]{7})", c)
-    addr = int(m.group(1), 16) if m else byname.get(c)
+    addr = int(m.group(1), 16) if m else byname.get(c, byname.get(("sig", mangled_sig(c))))
     name, size = syms.get(addr, (c, 0x100))
     return name, size
 
@@ -342,6 +358,24 @@ def expand(code, helpers, depth=2, cls=None, file=None):
                     nxt.append(cands[0][1])
         out += nxt
         todo = nxt
+    return "\n".join(out)
+
+
+INC_CACHE = {}
+
+
+def included(f, ctx):
+    """Text of the `#include "X.inc"` files a body pastes in (the generated SLdr property readers
+    an object loader includes after `SLdrX sldrThis;`; the parsed body has them blanked), with the
+    sibling X.hpp, whose inline typedef readers retail's loader inlines or emits as module locals."""
+    out = []
+    raw = "\n".join(ctx["texts"][f.file].split("\n")[f.line - 1:f.line + f.code.count("\n")])
+    incs = re.findall(r'^\s*#\s*include\s+"([^"]+\.inc)"', raw, re.M)
+    for inc in incs + [i[:-len(".inc")] + ".hpp" for i in incs]:
+        if inc not in INC_CACHE:
+            p = next((ROOT / top / inc for top in ("include", "src") if (ROOT / top / inc).is_file()), None)
+            INC_CACHE[inc] = p.read_text(errors="replace") if p else ""
+        out.append(INC_CACHE[inc])
     return "\n".join(out)
 
 
@@ -813,7 +847,7 @@ def check(key, f, retail, ctx):
     mod, fn = retail
     calls, consts, conds, fcmps = retail_facts(mod, fn)
     code = f.code
-    body = expand(code, ctx["helpers"], cls=f.cls, file=f.file)
+    body = expand(code, ctx["helpers"], cls=f.cls, file=f.file) + "\n" + included(f, ctx)
     comments = "\n".join(t for _, t in f.comment_lines)
     names_text = body + "\n" + comments
     out = []
@@ -859,6 +893,9 @@ def check(key, f, retail, ctx):
             if short in SKIP_DOL and not ctx["strict"]:
                 continue
             pat = short if short.startswith("TCastTo") else DOL_ALIAS.get(short, re.escape(short))
+            if short.startswith("LoadTypedefSLdr") and short not in DOL_ALIAS:
+                # the split's reader names; the port's generated readers drop the SLdr
+                pat = r"LoadTypedef(?:SLdr)?" + re.escape(short[len("LoadTypedefSLdr"):])
             if not short or re.search(rf"\b{pat}\b", names_text):
                 continue
             out.append(("call", f"{dname[:60]} not named", ck))
