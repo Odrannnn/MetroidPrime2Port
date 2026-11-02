@@ -315,6 +315,31 @@ bool CGuiModel::PortGetBounds(CAABox& out) const {
   return true;
 }
 
+int CGuiModel::PortGetPositions(CVector3f* out, int max) const {
+  const CGuiFrameModelDatabase* db = GetParentFrame()->GetModelDatabase();
+  const CCubeModel* model = db != nullptr ? db->GetModel(mModelIndex) : nullptr;
+  const uint* positions =
+      model != nullptr ? static_cast< const uint* >(model->GetPositions()) : nullptr;
+  if (positions == nullptr) {
+    return 0;
+  }
+  const uint count = model->GetModelInstance().GetVertexSize() / (3 * sizeof(uint));
+  int written = 0;
+  for (uint i = 0; i < count && written < max; ++i) {
+    float xyz[3];
+    for (int axis = 0; axis < 3; ++axis) {
+      union {
+        uint u;
+        float f;
+      } value;
+      value.u = CBasics::SwapBytes(positions[3 * i + axis]);
+      xyz[axis] = value.f;
+    }
+    out[written++] = CVector3f(xyz[0], xyz[1], xyz[2]);
+  }
+  return written;
+}
+
 #endif
 CGuiWidget::EWidgetUsageFlags CGuiModel::GetWidgetUsageFlags() const { return kWUF_PreDraw; }
 

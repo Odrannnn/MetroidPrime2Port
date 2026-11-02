@@ -25,6 +25,8 @@ public:
 #ifdef TARGET_PC
   // Port: the model's local bounds, for the widescreen HUD spread. False until the frame has loaded.
   bool PortGetBounds(CAABox& out) const;
+  // Port: the model-space vertex positions, at most `max`; 0 until the frame has loaded.
+  int PortGetPositions(CVector3f* out, int max) const;
   // Port (the touch wheels' HUD icons): one textured quad of the model. xz/uv are its four corners
   // in the display list's order (model-space x/z, and the texture coordinates there).
   struct PortIconLayer {

@@ -35,6 +35,10 @@ public:
   void SetShadowColor(const CColor& color);
   void SetIncreaseSpeed(float speed);
   void SetDecreaseSpeed(float speed);
+#ifdef TARGET_PC
+  // Port: the quad's local corners; 0 and 2 are the full end, 1 and 3 the empty end.
+  const rstl::reserved_vector< CVector3f, 4 >& PortGetCoords() const { return mCoords; }
+#endif
 
 private:
   rstl::reserved_vector< CVector3f, 4 > mCoords;

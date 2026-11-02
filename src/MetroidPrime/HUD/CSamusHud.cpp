@@ -39,6 +39,7 @@
 #include "MetroidPrime/Player/CPlayerGun.hpp"
 #include "MetroidPrime/Player/CPlayerState.hpp"
 #ifdef TARGET_PC
+#include "GuiSys/CGuiModel.hpp"
 #include "port_entry.h"
 #include "port_overlay.h"
 #include "port_radial.h"
@@ -213,6 +214,96 @@ void CSamusHud::InitializeFrameGluePermanent() {
   }
 }
 
+#ifdef TARGET_PC
+// Port: the ball HUD's threat fill and its track draw the same texture band across their
+// thickness, but the fill's quad is authored about a third thicker (and a little nearer the
+// camera), so the orange overhung the blue track's bottom edge on every aspect. Fit the fill's
+// thickness to the track's far end as the HUD camera sees it: scale it along the camera's up
+// axis only, so its length and the widescreen spread are untouched. Only a horizontal gauge (the
+// ball HUD's) is fitted; the combat HUD's vertical one already matches its track.
+static void PortFitThreatGauge(CAuiBitmapMeter* gauge, const CGuiWidget* track,
+                               const CGuiCamera* camera) {
+  if (gauge == nullptr || track == nullptr || camera == nullptr || gauge->GetParent() == nullptr ||
+      gauge->PortGetCoords().size() != 4) {
+    return;
+  }
+  const CTransform4f& gaugeXf = gauge->GetWorldTransform();
+  const CTransform4f& cameraXf = camera->GetWorldTransform();
+  const CVector3f eye = cameraXf.GetTranslation();
+  const CVector3f forward = cameraXf.GetColumn(kDY).AsNormalized();
+  const CVector3f up = cameraXf.GetColumn(kDZ).AsNormalized();
+  const rstl::reserved_vector< CVector3f, 4 >& coords = gauge->PortGetCoords();
+  const CVector3f fullEnd = gaugeXf * coords[0];
+  const CVector3f emptyEnd = gaugeXf * coords[1];
+  const CVector3f axisVec = fullEnd - emptyEnd;
+  if (!axisVec.CanBeNormalized()) {
+    return;
+  }
+  const CVector3f axis = axisVec.AsNormalized();
+  if (CMath::AbsF(CVector3f::Dot(axis, up)) > 0.1f) {
+    return;
+  }
+
+  float gaugeMin = 0.f;
+  float gaugeMax = 0.f;
+  float gaugeDepth = 0.f;
+  for (int i = 0; i < 4; ++i) {
+    const CVector3f p = gaugeXf * coords[i] - eye;
+    const float height = CVector3f::Dot(p, up);
+    gaugeMin = i == 0 ? height : rstl::min_val(gaugeMin, height);
+    gaugeMax = i == 0 ? height : rstl::max_val(gaugeMax, height);
+    gaugeDepth += 0.25f * CVector3f::Dot(p, forward);
+  }
+
+  // The track's far end: its vertices furthest along the fill's direction (its other end is the
+  // icon bracket), brought to the fill's depth so both are compared as projected.
+  CVector3f points[128];
+  const int count = static_cast< const CGuiModel* >(track)->PortGetPositions(points, 128);
+  const CTransform4f& trackXf = track->GetWorldTransform();
+  float farthest = 0.f;
+  for (int i = 0; i < count; ++i) {
+    points[i] = trackXf * points[i] - eye;
+    const float along = CVector3f::Dot(points[i], axis);
+    farthest = i == 0 ? along : rstl::max_val(farthest, along);
+  }
+  const float tolerance = 0.01f * axisVec.Magnitude();
+  int ends = 0;
+  float trackMin = 0.f;
+  float trackMax = 0.f;
+  for (int i = 0; i < count; ++i) {
+    const float depth = CVector3f::Dot(points[i], forward);
+    if (CVector3f::Dot(points[i], axis) < farthest - tolerance || depth <= 0.f) {
+      continue;
+    }
+    const float height = CVector3f::Dot(points[i], up) * gaugeDepth / depth;
+    trackMin = ends == 0 ? height : rstl::min_val(trackMin, height);
+    trackMax = ends == 0 ? height : rstl::max_val(trackMax, height);
+    ++ends;
+  }
+  if (ends < 2 || gaugeDepth <= 0.f || gaugeMax - gaugeMin < 0.001f) {
+    return;
+  }
+  const float scale = (trackMax - trackMin) / (gaugeMax - gaugeMin);
+  if (scale < 0.5f || scale > 1.5f) {
+    return;
+  }
+
+  // World map: height' = trackMin + scale * (height - gaugeMin), heights measured from the eye
+  // along `up`; everything else stays.
+  const float s = scale - 1.f;
+  const float shift = trackMin - scale * gaugeMin - s * CVector3f::Dot(eye, up);
+  const CTransform4f fit(1.f + s * up.GetX() * up.GetX(), s * up.GetX() * up.GetY(),
+                         s * up.GetX() * up.GetZ(), shift * up.GetX(),
+                         s * up.GetY() * up.GetX(), 1.f + s * up.GetY() * up.GetY(),
+                         s * up.GetY() * up.GetZ(), shift * up.GetY(),
+                         s * up.GetZ() * up.GetX(), s * up.GetZ() * up.GetY(),
+                         1.f + s * up.GetZ() * up.GetZ(), shift * up.GetZ());
+  // Through the parent's transform, not the gauge's world one: that carries the spread's shift.
+  const CTransform4f& parentXf = gauge->GetParent()->GetWorldTransform();
+  gauge->SetIdleXform(parentXf.GetQuickInverse() * fit * parentXf * gauge->GetO2PTransform());
+}
+#endif
+
 void CSamusHud::InitializeFrameGlueMutable(const CStateManager& mgr) {
   if (mLoadedHudFrame->FindWidget("textpane_visormenu") != nullptr) {
     mVisorMenu =
@@ -366,6 +457,7 @@ void CSamusHud::InitializeFrameGlueMutable(const CStateManager& mgr) {
     mLoadedHudFrame->SetSpreadAnchorTree(mThreatBar, mThreatIcon);
     mLoadedHudFrame->SetSpreadAnchorTree(mThreatGauge, mThreatIcon);
   }
+  PortFitThreatGauge(mThreatGauge, mThreatBar, mHudCamera);
   // The visor frame's glass (model_frame) and the energy bar's U brackets (model_energy) are cut
   // past the energy bar: brackets and ledges slide whole beside the radar and map instead of
   // stretching to reach them.
