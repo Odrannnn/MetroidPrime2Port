@@ -93,6 +93,8 @@ DOL_ALIAS = {
     "BuildTransform4f": r"BuildTransform4f|SetRotation",
     "CheckConnectedObject_if": r"(?:Check|Find)ConnectedObject_if",
     "InitializeStateMachine": r"InitializeStateMachine|SetupStateMachine",
+    # CPASAnimParmData's ctor defaults its unused parameters to CPASAnimParm::NoParameter()
+    "NoParameter": r"NoParameter|CPASAnimParmData",
 }
 SKIP_DOL = ("GetObj",)
 INBODY = set()  # CToken::GetObj: a token dereference (`*tok`, `tok->`), never a behaviour
@@ -175,12 +177,12 @@ def split_fn_addr(name):
     global SPLIT_FNS
     if SPLIT_FNS is None:
         SPLIT_FNS, called = {}, {}
-        for p in sorted((Path(ac.ASM_ROOT) / "asm").glob("*.s")):
+        for p in sorted((Path(ac.ASM_ROOT) / "asm").rglob("*.s")):
             text = p.read_text(errors="replace")
-            for m in re.finditer(r"^\.fn (\S+), \w+\n/\* ([0-9A-F]{8}) ", text, re.M):
+            for m in re.finditer(r'^\.fn "?([^\s"]+)"?, \w+\n/\* ([0-9A-F]{8}) ', text, re.M):
                 SPLIT_FNS[m.group(1)] = int(m.group(2), 16)
             for m in re.finditer(r"^/\* ([0-9A-F]{8}) [0-9A-F]{8}  ([0-9A-F]{2}) ([0-9A-F]{2}) ([0-9A-F]{2}) "
-                                 r"([0-9A-F]{2}) \*/\tbl (\S+)$", text, re.M):
+                                 r'([0-9A-F]{2}) \*/\tbl "?([^\s"]+)"?$', text, re.M):
                 ins = int("".join(m.group(2, 3, 4, 5)), 16)
                 if ins >> 26 == 18 and not ins & 2:
                     off = ins & 0x3FFFFFC
@@ -194,12 +196,28 @@ def split_fn_addr(name):
     return SPLIT_FNS.get(name)
 
 
+REL_FNS = None
+
+
+def rel_fn_size(name):
+    """Size of a function another REL exports under a name the split gave it (PillBug calls the
+    WallCrawler REL's 8-byte CWallCrawler_GetMember838), from the split checkout's rels/*/symbols.txt."""
+    global REL_FNS
+    if REL_FNS is None:
+        REL_FNS = {}
+        for p in (Path(ac.ASM_ROOT).parents[1] / "config/G2ME01/rels").glob("*/symbols.txt"):
+            for m in re.finditer(r"^(\S+) = \.text:0x[0-9A-Fa-f]+; // type:function size:0x([0-9A-Fa-f]+)",
+                                 p.read_text(errors="replace"), re.M):
+                REL_FNS.setdefault(m.group(1), int(m.group(2), 16))
+    return REL_FNS.get(name)
+
+
 def dol_callee(c, dol):
     """(name to look for in the port, size) of a DOL call target."""
     syms, byname = dol
     m = re.match(r"fn_(8[0-9A-Fa-f]{7})", c)
     addr = int(m.group(1), 16) if m else byname.get(c) or split_fn_addr(c)
-    name, size = syms.get(addr, (c, 0x100))
+    name, size = syms.get(addr, (c, addr is None and rel_fn_size(c) or 0x100))
     if re.fullmatch(r"fn_8[0-9A-Fa-f]{7}", name) and not m:
         name = c        # today's symbols have no name for it; the split's says what it is
     return name, size
@@ -875,9 +893,12 @@ def check(key, f, retail, ctx):
             continue
         seen.add(c)
         m = FNID.match(c)
+        local = mod.funcs.get(c) if not m else None
+        if local is not None and local.ins:     # a module function the split named (an inline accessor)
+            m = FNID.match(fid(mid, local.start))
         if m:
             ck = (int(m.group(1)), int(m.group(2), 16))
-            size = ctx["sizes"].get(ck, 0x100)
+            size = ctx["sizes"].get(ck, len(local.ins) * 4 if local is not None else 0x100)
         else:
             ck = c
             dname, size = dol_callee(c, ctx["dol"])
@@ -888,6 +909,8 @@ def check(key, f, retail, ctx):
             off = ck[1]
             if re.search(rf"fn_{ck[0]}_0*{off:X}\b|\bx0*{off:X}_|\b0x0*{off:X}\b", names_text, re.I):
                 continue
+            if local is not None and re.search(rf"\b{re.escape(ac.base_name(c))}\b", names_text):
+                continue    # the split's name for it
             if ck not in ctx["pnames"] and plumbing(ck, ctx) and not ctx["strict"]:
                 continue    # an rstl/string/allocation template instance the port's containers are
             if ck in ctx["pnames"]:
@@ -904,7 +927,9 @@ def check(key, f, retail, ctx):
         else:
             short = ac.base_name(dname)
             if short.startswith("TCastTo"):
-                short = r"TCastTo(?:Const)?Ptr"
+                # or the port's own CastX for a REL class the DOL's TCastToPtr<X> is TryCast(e, id) of
+                cast = re.search(r"<\d+C(\w+)>", dname)
+                short = r"TCastTo(?:Const)?Ptr" + (f"|Cast{cast.group(1)}" if cast else "")
             if ac.is_runtime(dname) or dname.startswith(SKIP_CALL):
                 continue
             if short in SKIP_DOL and not ctx["strict"]:

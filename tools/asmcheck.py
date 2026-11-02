@@ -1751,6 +1751,10 @@ def parse_cpp(path, deep=False):
     dbg_lines = debug_pp_lines(text.split('\n'))
     # blank preprocessor lines (same length) so `#include` / `#if` never join a definition head
     code = re.sub(r'(?m)^[ \t]*#.*$', lambda m: ' ' * len(m.group(0)), code)
+    # and declaration macros written without a `;` (CHECK_SIZEOF(X, 0x40)), which would join the next
+    # `class Y {` into a function head named CHECK_SIZEOF
+    code = re.sub(r'(?m)^[ \t]*(?:(?:NESTED_)?CHECK_\w+|\w+_IMPL|RSTL_DECLARE_\w+)[ \t]*\([^;{}\n]*\)[ \t]*$',
+                  lambda m: ' ' * len(m.group(0)), code)
     lines = text.split('\n')
     starts = [0] + [m.end() for m in re.finditer('\n', text)]
     funcs = []
