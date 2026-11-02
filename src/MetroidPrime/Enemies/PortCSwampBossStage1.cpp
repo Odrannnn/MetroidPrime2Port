@@ -633,9 +633,10 @@ void CSwampBossStage1::UpdateHeadTurn(CStateManager& mgr, float dt) {
       const CVector3f toLook(look.GetX() - xc0c_tonguePos.GetX(),
                              look.GetY() - xc0c_tonguePos.GetY(), 0.f);
       if (toLook.CanBeNormalized()) {
+        // the angle in radians over 25 degrees: `lfs f2, lbl_78_rodata_194` (0.43633232f) at
+        // 0x2F84, `fdivs f29, f1, f2` at 0x2F8C; Rad2Deg(a) / 25.f rounds differently
         const float frac = rstl::min_val(
-            CMath::Rad2Deg(CVector3f::GetAngleDiff(toSelf.AsNormalized(), toLook.AsNormalized())) /
-                25.f,
+            CVector3f::GetAngleDiff(toSelf.AsNormalized(), toLook.AsNormalized()) / 0.43633232f,
             1.f);
         const CVector3f cross = CVector3f::Cross(toSelf, toLook);
         // The mangled signature (EaseInOut(float, EEaseTypes, f, f, f, f, f)) fixes the order:

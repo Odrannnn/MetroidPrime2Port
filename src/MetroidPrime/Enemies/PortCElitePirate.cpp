@@ -1542,8 +1542,8 @@ bool CElitePirate::ShouldAlert(CStateManager&, const CTriggerData&) const {
   return true;
 }
 
-// @ fn_15_6820
 // @ fn_15_6618
+// @ fn_15_6820
 // Every arm ran (ElitePirate.md section 11): the early-outs forced with `var ep.*`, the `true`
 // return 0x67F4 forced with `material -solid` (the ray ends at the player's aim point, inside its
 // own kMT_Solid primitive, and here also crosses two closed doors and the pirate's own collision

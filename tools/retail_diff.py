@@ -78,6 +78,77 @@ FNID = re.compile(r"fn_(\d+)_([0-9A-Fa-f]+)$")
 FLOAT_LIT = re.compile(r"(?<![\w.])(\d+\.\d*(?:[eE][-+]?\d+)?|\.\d+(?:[eE][-+]?\d+)?|\d+[eE][-+]?\d+)[fFlL]?")
 INT_LIT = re.compile(r"(?<![\w.])(\d+)(?![\w.])")
 MAGIC = {4503601774854144.0, 4503599627370496.0}
+# header macros and inline helpers whose rodata constant retail loads where the port names them
+# (CMath.hpp, CRelAngle.hpp, CAbsAngle.hpp, CloseEnough.hpp, CColor.hpp): body regex -> values
+_PI = 3.14159265358979323846
+NAMED_CONSTS = [
+    (re.compile(r"\bM_PIF?\b"), [_PI]),
+    (re.compile(r"\bM_2PIF\b"), [2 * _PI]),
+    (re.compile(r"\b(?:FromDegrees|Deg2Rad)\s*\("), [_PI / 180]),
+    (re.compile(r"\b(?:Rad2Deg|AsDegrees)\s*\("), [180 / _PI]),
+    (re.compile(r"\bclose_enough\s*\("), [1e-5]),                    # float overload: Real32::Epsilon()
+    (re.compile(r"\b(?:Set|Get)(?:Red|Green|Blue|Alpha)\s*\(|\bWithAlphaOf\s*\("), [255.0, 1 / 255.0]),
+]
+_NUM = r"(?:\d+\.\d*|\.\d+|\d+)(?:[eE][-+]?\d+)?"
+# a literal product/quotient after the named constants become numbers: 20.f * 0.017453292f,
+# 80.f * M_PIF / 180.f, M_PIF / 2.f; FromDegrees/Deg2Rad of a literal folds to radians
+LIT_FOLD = re.compile(rf"(?<![\w.])({_NUM})[fF]?((?:\s*[*/]\s*\(?\s*{_NUM}[fF]?\s*\)?)+)")
+DEG_FOLD = re.compile(rf"\b(?:FromDegrees|Deg2Rad)\s*\(\s*(-?{_NUM})[fF]?\s*\)")
+BYTE_FOLD = re.compile(rf"\b(?:Set(?:Red|Green|Blue|Alpha)|WithAlphaOf)\s*\(\s*({_NUM})[fF]?\s*\)")   # CColor: x * 255.f
+NAME_NUM = [(re.compile(r"\bM_2PIF\b"), repr(2 * _PI)), (re.compile(r"\bM_PIF?\b"), repr(_PI))]
+CONST_DEF = re.compile(r"\bconst\s+(?:float|double|f32)\s+(?:\w+::)*(\w+)\s*=\s*([^;{}]+);")
+
+
+def folded_values(code):
+    """Values of the literal folds and FromDegrees(lit) in the code."""
+    for rx, num in NAME_NUM:
+        code = rx.sub(num, code)
+    out = {float(m.group(1)) * _PI / 180 for m in DEG_FOLD.finditer(code)}
+    out |= {float(m.group(1)) * 255 for m in BYTE_FOLD.finditer(code)}
+    for m in LIT_FOLD.finditer(code):
+        v = float(m.group(1))
+        for op, x in re.findall(rf"([*/])\s*\(?\s*({_NUM})", m.group(2)):
+            v = v * float(x) if op == "*" else v / float(x) if float(x) else v
+            out.add(v)   # every prefix: (M_PIF / 180.f) * (720.f * dt) loads pi/180
+    return out
+
+
+_CONST_DEFS = None
+
+
+def const_defs():
+    """Named float constants of the tree (`const float kFacingAngle = 0.34906584f;`): name -> values."""
+    global _CONST_DEFS
+    if _CONST_DEFS is None:
+        _CONST_DEFS = {}
+        for top in ("include", "src"):
+            for p in (ROOT / top).rglob("*"):
+                if p.suffix not in (".h", ".hpp", ".cpp"):
+                    continue
+                try:
+                    text = ac.strip_comments_keep(p.read_text(errors="replace"))
+                except OSError:
+                    continue
+                for m in CONST_DEF.finditer(text):
+                    # a literal expression only: a local `const float frac = angle / 0.43633232f`
+                    # would credit every body that names its own `frac`
+                    if re.search(r"\b(?!(?:M_2?PIF?|FromDegrees|Deg2Rad|Rad2Deg|CMath)\b)[A-Za-z_]\w*",
+                                 re.sub(rf"{_NUM}[fF]?", "", m.group(2))):
+                        continue
+                    vals = named_consts(m.group(2)) | {f32(float(x)) for x in FLOAT_LIT.findall(m.group(2))}
+                    _CONST_DEFS.setdefault(m.group(1), set()).update(vals)
+    return _CONST_DEFS
+
+
+def named_consts(code):
+    """Values the port gets from named constants and inline helpers, and their literal folds."""
+    out = set(folded_values(code))
+    for rx, vals in NAMED_CONSTS:
+        if rx.search(code):
+            out.update(vals)
+    return {f32(v) for v in out}
+
+
 SMALL = 0x10  # callee size at or under which a missing call is not reported
 CONDB = re.compile(r"^b(?:eq|ne|lt|le|gt|ge|nl|ng|so|ns|un|nu)(?:lr|ctr)?$")
 PORT_COND = re.compile(r"\bif\b|\bwhile\b|\bfor\b|\?|&&|\|\||\bcase\b")
@@ -266,7 +337,7 @@ def retail_facts(mod, fn):
     calls, consts, conds, fcmps = [], [], 0, []
     base = {}          # reg -> rodata label from `addi rD, rS, lbl@l`
     live = {}          # cr field -> (fcmp offset, has cror)
-    for i in fn.ins:
+    for n, i in enumerate(fn.ins):
         a = i.args
         if i.op == "bl" and a:
             calls.append(a[0].strip('"'))
@@ -282,7 +353,13 @@ def retail_facts(mod, fn):
                 live[s1f][1] = True
             continue
         if i.op == "mfcr" and live:
+            # `extrwi rD, <mfcr reg>, 1, 4*cf+2` reads the EQ bit: == / !=, NaN arm is C's
+            bits = {int(x.args[3]) for x in fn.ins[n + 1:n + 4]
+                    if x.op.rstrip(".") == "extrwi" and len(x.args) == 4
+                    and x.args[1].strip() == a[0].strip() and x.args[2].strip() == "1"}
             for cf, (off, cr, op) in live.items():
+                if not cr and bits and bits <= {4 * cf + 2}:
+                    continue
                 fcmps.append((off, "nonstrict" if cr else "strict", "mfcr"))
             live = {}
             continue
@@ -394,7 +471,7 @@ def port_functions(paths, display=None):
 def add_header_helpers(helpers, texts):
     """Inline bodies of the headers no marker sits in, as helpers of names the port defines nowhere
     else (CEnergyProjectile::AddCollisionCooldown is the CCollisionCooldowns::Add retail calls)."""
-    have = set(helpers)
+    have, shadowed = set(helpers), {}
     for p in sorted((ROOT / "include").rglob("*.hpp")):
         if p in texts or str(p) in texts:
             continue
@@ -403,8 +480,12 @@ def add_header_helpers(helpers, texts):
         except (OSError, RecursionError):
             continue
         for f in defs:
-            if f.short and f.short not in have and f.code.count("\n") <= 12:
-                helpers.setdefault(f.short, []).append((f.cls, f.code, p))
+            if f.short and f.code.count("\n") <= 12:
+                if f.short not in have:
+                    helpers.setdefault(f.short, []).append((f.cls, f.code, p))
+                elif f.cls:
+                    shadowed[(f.cls, f.short)] = f.code
+    return shadowed
 
 
 def pick_helper(cands, cls, file):
@@ -419,13 +500,19 @@ def pick_helper(cands, cls, file):
     return local or [c for c in cands if c[0] == cls]
 
 
-def expand(code, helpers, depth=2, cls=None, file=None):
+def expand(code, helpers, depth=2, cls=None, file=None, counted=None):
+    """The code with the helper bodies it reaches appended, once each; with counted (the class
+    inlines add_header_helpers shadowed) once per call, as retail inlines them."""
     seen, todo, out = set(), [code], [code]
     for _ in range(depth):
         nxt = []
         for b in todo:
-            for name in set(re.findall(r"(~?\w+)\s*\(", b)):
-                if name not in helpers or name in seen:
+            calls = re.findall(r"(~?\w+)\s*\(", b)
+            for name in calls if counted is not None else set(calls):
+                if counted and (cls, name) in counted:
+                    nxt.append(counted[(cls, name)])
+                    continue
+                if name not in helpers or (name in seen and counted is None):
                     continue
                 cands = pick_helper(helpers[name], cls, file)
                 if len(cands) == 1 and cands[0][1] != code:
@@ -492,10 +579,75 @@ def port_compares(code):
     # as a plain fcmpo + b<cond>; Clamp is two
     s += len(re.findall(r"\b(?:min_val|max_val|CMath::Min|CMath::Max)\s*(?:<[^<>()]*>)?\s*\(", code))
     s += 2 * len(re.findall(r"\bCMath::Clamp\s*(?:<[^<>()]*>)?\s*\(", code))
+    s += len(re.findall(r"\b(?:close_enough|(?:CMath::)?IsEpsilon)\s*\(", code))   # fabs(a - b) < eps
+    # MWCC unrolls a loop with a literal trip count (`for (i = 0; i < 5; ++i)`): its body's
+    # compares appear once per trip in the retail
+    for k, body in const_loops(code):
+        extra = port_compares(body)
+        s, n, ns, nn = (v + (k - 1) * e for v, e in zip((s, n, ns, nn), extra))
     return s, n, ns, nn
 
 
+def const_loops(code):
+    """[(trip count, body)] for each `for (<v> = 0; <v> < N; ++<v>) { body }` in the code."""
+    out = []
+    for m in re.finditer(r"\bfor\s*\(", code):
+        d, j = 1, m.end()
+        while j < len(code) and d:
+            d += {"(": 1, ")": -1}.get(code[j], 0)
+            j += 1
+        head = re.fullmatch(r"[^;]*?(\w+)\s*=\s*0\s*;\s*(\w+)\s*(<=?)\s*(\d+)\s*;[^;]*",
+                            code[m.end():j - 1].strip())
+        b = code.find("{", j)
+        if not head or head.group(1) != head.group(2) or b < 0 or code[j:b].strip():
+            continue
+        d, e = 1, b + 1
+        while e < len(code) and d:
+            d += {"{": 1, "}": -1}.get(code[e], 0)
+            e += 1
+        k = int(head.group(4)) + (head.group(3) == "<=")
+        if 1 < k <= 8:
+            out.append((k, code[b + 1:e - 1]))
+    return out
+
+
 # ---------------------------------------------------------------- effect
+
+AUTO_PTR_MEMBERS = None
+
+
+def auto_ptr_members():
+    """Member names declared rstl::auto_ptr<T> in the headers."""
+    global AUTO_PTR_MEMBERS
+    if AUTO_PTR_MEMBERS is None:
+        decl = re.compile(r"^\s*(?:rstl::)?auto_ptr\s*<[^;]*>\s*(\w+)\s*;", re.M)
+        AUTO_PTR_MEMBERS = {m for p in (ROOT / "include").rglob("*.hpp")
+                            for m in decl.findall(p.read_text(errors="replace"))}
+    return AUTO_PTR_MEMBERS
+
+
+def auto_ptr_assigns(code):
+    """`member = ...` stores into auto_ptr members: retail inlines auto_ptr::operator=, a self
+    test, a delete of the owned old pointer behind two null tests and the temporary's dtor, five
+    conditional branches the port text does not show (fn_10_58C0 at 0x58EC..0x5948)."""
+    names = auto_ptr_members()
+    return sum(1 for m in re.finditer(r"\b(\w+)\s*=(?!=)", code) if m.group(1) in names)
+
+
+# calls MWCC inlines with a branch of their own: operator new's null check before the ctor
+# (fn_56_5060 0x50AC beq after __nw), a string temporary's refcount guard (0x512C beq before
+# internal_dereference), and the CMath/rstl min/max selects (fn_29_3D74's six fcmpo/bge)
+INLINE_BRANCH = re.compile(r"\b(?:rs_)?new\b|\bstring_l\s*\(|\b(?:Min|Max|min_val|max_val)\s*[(<]")
+
+
+INLINE_HEAVY = re.compile(r"\bCTransform4f::\w+\s*\(|\brs_new\b")
+
+
+def jumptable_cases(code):
+    """`case` labels beyond one per switch: retail's jumptable switch (fn_18_AA4 0xAA4 cmplwi/bgt,
+    0xAB4 addi jumptable_18_data_638, bctr) branches once whatever the case count."""
+    return max(0, len(re.findall(r"\bcase\b", code)) - len(re.findall(r"\bswitch\b", code)))
+
 
 def locked_members():
     """Member names declared with a TLockedToken type (bare, optional_object<>, containers):
@@ -689,7 +841,7 @@ def retail_effects(fn, ctx, depth=0, seen=None, base=0):
     out = {}
     regs = {"r3": base} if base is not None else {}   # GPR -> this + offset
     stack = set()                                      # GPRs pointing into the frame
-    for i in fn.ins:
+    for n, i in enumerate(fn.ins):
         a = i.args
         if i.op == "bl" and a:
             r3 = regs.get("r3")
@@ -821,7 +973,7 @@ def value_helper(ck, ctx):
     fn = ctx["retail"][m][1].get(ck[1]) if m else None
     if fn is None:
         return False
-    for i in fn.ins:
+    for n, i in enumerate(fn.ins):
         a = i.args
         if i.op.startswith("b") and i.op != "blr":
             return False
@@ -843,7 +995,7 @@ def retail_call_floats(mod, fn):
     there (a register another instruction wrote, or any state across a label, is dropped)."""
     out, base, fr = [], {}, {}
     targets = set(fn.labels.values())
-    for i in fn.ins:
+    for n, i in enumerate(fn.ins):
         a = i.args
         if i.idx in targets:
             fr = {}
@@ -1014,6 +1166,10 @@ def check(key, f, retail, ctx):
             ctx["lits"][f.file] = {f32(float(x)) for x in FLOAT_LIT.findall(text)}
         lits = ctx["lits"][f.file]
         lits = lits | {f32(1.0 / x) for x in lits if x} | {float(x) for x in INT_LIT.findall(body)} | {f32(float(x)) for x in FLOAT_LIT.findall(body)}
+        lits = lits | named_consts(body)
+        defs = const_defs()
+        for name in set(re.findall(r"\b[A-Za-z_]\w*", body)) & defs.keys():
+            lits = lits | defs[name]
         missing = []
         for v in consts:
             if v != v or v == 0.0 or v in MAGIC or abs(v) > 1e30:
@@ -1028,9 +1184,21 @@ def check(key, f, retail, ctx):
     out += check_effects(fn, f, ctx)
     nonblank = [x for x in code.split("\n") if x.strip()]
     shape_body = code if len(nonblank) > 5 else body
-    pc = len(PORT_COND.findall(strip_strings(shape_body)))
+    # a loader's property switch lives in the generated .inc it includes
+    pc = len(PORT_COND.findall(strip_strings(shape_body + "\n" + included(f, ctx))))
+    pc += 5 * auto_ptr_assigns(strip_strings(shape_body))
+    pc += len(INLINE_BRANCH.findall(strip_strings(shape_body)))
     pc_own = len(PORT_COND.findall(strip_strings(code)))   # too many: the body's own, not its helpers'
-    plines = len([x for x in shape_body.split("\n") if x.strip()])
+    if any("jumptable_" in x for i in fn.ins for x in i.args):
+        # a dense switch is one bounds check and a bctr through the jumptable, not a branch per case
+        pc -= jumptable_cases(strip_strings(shape_body))
+        pc_own -= jumptable_cases(strip_strings(code))
+    # the helpers MWCC inlines are retail's instructions too (fn_56_9660 inlines SpawnBouncingBomb),
+    # and so is the matrix and allocation plumbing (fn_14_1570's Translate * xf * Scale)
+    plines = len([x for x in expand(shape_body, ctx["helpers"], cls=f.cls, file=f.file).split("\n")
+                  if x.strip()])
+    plines += 4 * len(INLINE_HEAVY.findall(strip_strings(shape_body)))
+    plines += 4 * auto_ptr_assigns(strip_strings(shape_body))
     marked_ids = [norm_id(x) for x in f.ids if norm_id(x)]
     if f.short.startswith("~") or key in INBODY or (len(marked_ids) > 1 and key != marked_ids[0]):
         pass        # also a body that carries several ids: its shape is the first one's        # member dtors inline into retail's; an arm marked inside a bigger body
@@ -1042,7 +1210,12 @@ def check(key, f, retail, ctx):
     if len(fn.ins) >= 80 and plines <= 6 and not (f.short.startswith("~") or f.short == f.cls):
         out.append(("shape", f"{len(fn.ins)} retail instructions behind a {plines}-line port body"))
     if fcmps:
-        s, n, ns, nn = port_compares(body)
+        # each inlined call is its own compare site
+        s, n, _, _ = port_compares(expand(code, ctx["helpers"], cls=f.cls, file=f.file,
+                                          counted=ctx["shadowed"]))
+        # the negated forms the body writes itself: an expanded helper may be a real call in retail
+        # (CIng::Listen's safe-zone helper, bl at 0xB3A8), whose compares are not in this function
+        _, _, ns, nn = port_compares(code)
         rs = [x for x in fcmps if x[1] == "strict"]
         rn = [x for x in fcmps if x[1] == "nonstrict"]
         sites = lambda xs: " ".join(f"{o:X}:{w}" for o, _, w in xs[:6])  # noqa: E731
@@ -1203,10 +1376,10 @@ def main():
     mods = sorted(p.name for p in rm.RELS.iterdir() if p.is_dir())
     retail, ids, sizes = load_retail(mods)
     funcs, helpers, texts = port_functions([Path(x).resolve() for x in args.file] if args.file else marker_files())
-    add_header_helpers(helpers, texts)
+    shadowed = add_header_helpers(helpers, texts)
     dol = dol_symbols()
     layouts, members = class_info()
-    ctx = {"helpers": helpers, "texts": texts, "sizes": sizes, "dol": dol, "lits": {}, "sites": {},
+    ctx = {"helpers": helpers, "shadowed": shadowed, "texts": texts, "sizes": sizes, "dol": dol, "lits": {}, "sites": {},
            "pnames": {k: f.short for k, f in funcs.items()}, "funcs": funcs, "strict": args.strict,
            "retail": retail, "ids": ids, "plumb": {}, "locked": locked_members(),
            "layouts": layouts, "members": members,

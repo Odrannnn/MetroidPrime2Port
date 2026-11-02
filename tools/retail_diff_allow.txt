@@ -27,3 +27,18 @@ fn_10_1FA14 call ^fn_10_21104  # A9-103: PhazonVisorToken builds mGuestF6C in it
 fn_18_94C8 call ^fn_18_D794  # A9-103: D794 is the stage data's destructor; the host's implicit member destructors run it
 fn_40_3B18 call ^fn_72_E0AC  # A9-103: DetachActorFromPirate, the SSpacePirate_FuncPtrs proxy to PortDetachActor
 fn_76_59BC call ^fn_76_(6F70|481C)  # A9-103: unreachable in retail (r4 = 0 at 0x5C2C); the TARGET_PC block drops the dead prediction
+
+# Sweep A9 const/nan/shape (A9-5xx): the asm read, the difference is the port's model, not a bug
+fn_3_3104 const 15  # A9-501: the 15 (lfs at 0x3304) feeds a dead AsNormalized whose 0x38(r1) result is never read
+fn_9_E30 const .  # A9-502: 150/360/90/0.8/30/80 are SLdrCommandoPirate.hpp's inline ctor defaults, stored at 0xED0..
+fn_10_50B8 const 1\.3  # A9-503: lfs 1.3f at 0x5128 * scale.z (0x513C) stored at 0x5164..0x516C, overwritten at 0x5360..0x5368 unread: a dead store
+fn_14_B100 const .  # A9-504: the +-pi/4, +-3pi/4 .data words 0x45C..0x468 fill the 0xFF8 vector, which nothing reads (PortCDigitalGuardian.cpp:269)
+fn_40_D70 const 150  # A9-505: re-stores SLdrIngPossessionData's ctor default health 150 (SLdrIngPossessionData.cpp:12)
+fn_74_C3C const 150  # A9-505: re-stores SLdrIngPossessionData's ctor default health 150 (SLdrIngPossessionData.cpp:12)
+fn_72_38E4 nan 39D8  # A8-7: the portal-plane check is unreachable in the port (the plane is never set)
+fn_78_6458 nan 6498  # A9-506: retail duplicates the xd10 > x824/x820 compare into each ternary arm (mfcr/extrwi GT at 0x6498, 0x64B0); one port compare, same NaN arm
+fn_79_7BE0 nan 7C50  # A9-507: retail splits (phase==0 && xd88>x914) || (phase==2 && xd88>x918) per phase (0x7C50 bgt, 0x7C68 ble); the port's one selected compare is equivalent
+fn_79_A438 nan A444  # A9-508: retail tests the four fixed slots xc10..xc1c (ble at 0xA444..0xA480); the port loops size(), and InitGrowths always pushes 4
+fn_63_2D68 nan 2EA8  # A9-509: retail re-tests x20c > 0 in the unrendered arm (0x2F0C); the clamp's NaN arm cannot happen (x20c/0.33 with x20c > 0 is finite or inf)
+fn_10_45F8 shape .  # A9-510: the token/optional build lives in PhazonBeamHitToken's member initializer (PortCDarkSamusHelpers.cpp:454-472)
+fn_82_8C shape .  # A9-511: retail Frees each tweak global (bl Free, single_ptr assign, delete[] loop at REL_FreeTweaks); the port keeps them inside CTweakContents, whose delete frees them
