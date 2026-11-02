@@ -220,6 +220,13 @@ Scripts: `tools/audit/` (see its README).
 | A9-602 | constants | CActorLights.cpp:113 ActivateLights, CScriptSound.cpp:425 GetOccludedVolumeAmount | upstream | minor | 1-ulp literals: retail lbl_8041B64C = 0x40A00001 (5.0000005f) vs 5.f; 0.42f rounds 1 ulp off retail. A8 precedent | wontfix |
 | A9-700 | Model materials | CCubeMaterial.cpp:529 HandleReflection | upstream | render | retail 0x80304040 `rlwinm r0,r0,9,21,22` (0x54004D6C) `cmpwi r0,3` tests `((mColorOps & 3) << 9) == GX_TEVREG2`, never true: retail never takes the TEVREG2 reflection path (always KONST colour arg, no extra stage). Decomp read the outReg field (`>> 9 & 3`). Only two such sites in the DOL | fixed (TARGET_PC) |
 | A9-701 | Model materials | CCubeMaterial.cpp:1033 SetCurrent | upstream | render | retail 0x80303594 `rlwinm. r0,r0,9,21,22` (0x54004D6D) `beq`: DoPassthru when the last stage's `(mColorOps & 3) << 9` (op low bits) is non-zero, not its outReg. Same packing-helper mixup as A9-700. Needs a visual check of materials whose last stage writes a non-PREV register | fixed (TARGET_PC) |
+| A9-800 | Particles | CElementGen.cpp:1696 RenderParticles, :2365 RenderParticlesFlameThrower | upstream | info | retail 0x802D5A64 and 0x802D4DA8 `li r6,0x1` (0x38C00001) = GX_S8 with frac 1 for the packed TEX0 format; decomp passes GX_U8. The packed path only writes `GXTexCoord1s16` 0x0000/0x0002/0x0200/0x0202 (bytes 0 and 2), which decode to 0.0/1.0 under either format. Matching-only difference | not-a-bug |
+| A9-801 | Splines | CMayaSpline.cpp:95/135 CMayaSplineKnot::CalculateTangents | upstream | info | retail compare tree on mFlagA/B (0x80329EE0..: `cmpwi 3` beq, bge -> `cmpwi 5` beq/bge end else set 2; `cmpwi 1` beq, bge -> case 2, `cmpwi 0` bge -> case 0) is the decomp switch with 4 falling into 2 and 5+ / <0 skipped; constants 0.05/1.0/0.0 match | not-a-bug |
+| A9-802 | Animation | CParticlePOINode.hpp:9 default ctor | upstream | info | retail `__defctor__16CParticlePOINode` calls CPOINode(-1, 5 = kPT_Particle, CCharAnimTime(0), -1, false, 1.0, -1, 0) then stores 0 at 0x2C/0x30/0x34, byte 0 at 0x38, 1.0 at 0x3C, 0 at 0x40 = CParticleData(0, SObjectTag(0,0), CSegId(0), 1.f, kPM_Initial); same as the header defaults (the tool did not pair the inline ctor) | not-a-bug |
+| A9-803 | Script loading | ScriptLoader.cpp:64 g_LoaderFuncs | upstream | info | retail `__sinit_ScriptLoader_cpp` simulated (lis/addi/stw into g_LoaderFuncs): all 184 FourCC -> loader pairs equal the source table, in order (RelProxy_ = REL_ENTRY). The 50% objdiff score is scheduling | not-a-bug |
+| A9-804 | Graphics | CGX.cpp:617 SetVtxDescv_Compressed | upstream | info | retail also walks the 8 matrix-index bits 24..31 (attr idx, type `(flags >> bit) & 1`, gated on `clrrwi 24` differing); the port's TARGET_PC loop does the same. Upstream's non-PC build lacks it (matching gap only) | not-a-bug |
+| A9-805 | precision | CSimpleShadow.cpp:68 Calculate, CVisorFlare.cpp:53 UpdateOcclusion | upstream | info | retail calls msl_sqrtf where the decomp inlines a Newton sqrt (0.5/3.0); retail fmadds where the decomp does fmuls+fadds: last-bit precision only | wontfix |
+| A9-806 | unpaired fn_ | 191 NOPAIR symbols (TypesMatch 106, CAnimData 17, main 7, CPortalAreaData/CCEAnimationSet/CCharacterFactory 6 each, rest 1-3) | upstream | info | the large ones (CMapWorld fn_8009646C, CGroundMovement fn_8012C808, CPortalAreaData fn_80255DA8, CRainSplashGenerator, CAuiMeter, CRezbitEffect, CPakFile, CCEAnimationSet, main) are rstl tree/vector/string instantiations (allocate/Free/CCallStack, reserve, copy ctors); CCubeMaterial fn_80304310 is CGX::SetTevIndWarp (args checked: STU bias, ITW_OFF, ITM_0 at HandleReflection 0x80304214). None carry gameplay constants | not-a-bug |
 
 ## Sweep log
 
@@ -249,6 +256,12 @@ tier-3 compare-immediate and call-target hits read, plus the 5 tier-2 functions 
 immediate/constant multisets (295 same, 175 differ, 191 unpaired fn_ symbols); ~35 of the differing ones
 read, all false positives (switch layout, reloads, inlined helpers, mislabels); where the read stopped is
 in the report.
+Sweep A9 upstream-tier3b (2026-11-02, report `/tmp/opencode/reports/a9-upstream-tier3b.md`): the rest of
+the 175 differing tier-3 functions screened by per-function immediate/float-constant multisets (108 with a
+delta, all read against `build/G2ME01/asm`) and call-target/vtable-slot multisets (34, all read); no fix.
+A9-800..806: the tier-3 lane's open questions settled (packed UV format, CalculateTangents, POINode
+defctor), ScriptLoader table simulated, NOPAIR symbols classified. Functions with neither delta were not
+read for branch sense instruction by instruction.
 Sweep A9 constants-notes lane (2026-11-02, plan steps 4-6; report `/tmp/opencode/reports/a9-constants-notes.md`):
 Port companions without markers (retail_diff on 79 unmarked ids, `--strict`: all inlined helpers, already
 marked elsewhere, or dead in shipped data, A9-309), capacity constants 1024->2048 (A9-300, A9-308), and
