@@ -160,6 +160,20 @@ Scripts: `tools/audit/` (see its README).
 | A8-27 | HUD | src/MetroidPrime/CTargetReticles.cpp:2041 | wrong-logic | low | Classic/GameCube crosshair replaced the tweak alpha with the opacity option and dropped the draw-scale fade (retail 0x800AE414..438). Now tweak alpha * opacity * draw scale | fixed |
 | A8-28 | HUD | platform/port_overlay.cpp:142 | port-feature | info | Crosshair style defaults to Remastered (port feature on by default; retail look is Classic). User decision 2026-10-31: keep Remastered as default | won't fix (decision) |
 
+### Sweep A9
+
+| id | area | file:line | class | severity | evidence | status |
+|----|------|-----------|-------|----------|----------|--------|
+| A9-200 | Player | src/MetroidPrime/Player/CPlayer.cpp:841 ResetPlayerState | wrong-call | low | retail 0x8001A038/0x8001A054 `lwz r12,0x10(r12)` = CHintManager vtable slot 0x10 Reset; decomp called RefreshHint (0xC) | fixed 9a8ff5911 |
+| A9-201 | Player | CPlayer.cpp:852 ResetPlayerState (multiplayer) | wrong-const | low | retail 0x8001A088 lfs lbl_8041A4B4 = 3.0 into 0x12f4 (invulnerability); decomp 2.0 | fixed 9a8ff5911 |
+| A9-202 | Player | CPlayer.cpp:1356 UpdatePlayerDrawFlags | wrong-const | visual | retail 0x80017F60 `fdivs f29,f1,f3`, f3 = 3.0 (Double Damage pulse); decomp /2 | fixed 9a8ff5911 |
+| A9-203 | Player | CPlayer.cpp:3963 TakeDamage | wrong-const | visual | retail 0x8000F85C lfs lbl_8041A50C = 0.333f (0x3EAA7EFA) damage colour timer; decomp 1/3 | fixed 9a8ff5911 |
+| A9-204 | Player | CPlayer.cpp:4588 StartTurret | wrong-const | low | retail 0x8000D838 lfs lbl_8041A4BC = 5.0, `fcmpo; bge` (turret occupant radius); decomp 2.0; multiplayer only | fixed 9a8ff5911 |
+| A9-205 | Player | src/MetroidPrime/Player/CPlayerDynamics.cpp:1422 SetIntoBallReadyAnimation | wrong-const | low | retail 0x80185CA8 lfs lbl_8041C9C4 = 45.0, `blt` (then <= 315); decomp 225 | fixed 9a8ff5911 |
+| A9-206 | Gun | src/MetroidPrime/Player/CPlayerGunBase.cpp:313 UpdateTransform | wrong-branch | low | retail 0x801DD9AC `cmpwi r0,0x2` on 0x38c = kMS_Morphing (fast 0.1 s holster); decomp kMS_Morphed | fixed 9a8ff5911 |
+| A9-207 | Gun | src/MetroidPrime/Player/CPlayerGun.cpp:1512, :1724 Render/Update | wrong-branch | visual | retail 0x801D098C / 0x801CFE88 `cmpwi r0,0x4` on mChargePhase 0x694 = kCP_Charged; decomp kCP_ChargeFx | fixed 9a8ff5911 |
+| A9-208 | Collision | src/MetroidPrime/CCollisionActorManager.cpp:195 ctor (OBBFromMayaPlugIn) | wrong-const | med | retail 0x80136D6C `fmuls f4,f3,f2`, f3 = lbl_8041C0B4 = 2.0 on the bounds; decomp 0.5 | fixed 9a8ff5911 |
+
 ## Sweep log
 
 Moved verbatim to `docs/history/AUDIT-to-2026-10-29.md` (one row per lane report: sweeps 1-4, Review 5b
@@ -172,6 +186,11 @@ covered so far: reached stubs (clean), Grenchler parts 1-3 (part 3 clean), Sporb
 constants (none diverge; fn_78_2E38 may round 1 ulp differently), FlyingPirate (clean), ScriptSafeZone
 (clean), the 50 NaN-flagged comparisons (A8-3..7), commits since 2026-10-29 (gate list; the 9 that reach
 gameplay at defaults restore retail behaviour or are port features by design: quick resume, input mapping).
+
+Sweep A9 upstream-decomp (2026-11-02): non-100% functions of port-compiled units from report.json (1649,
+ranked by reach); tier 1 (564: player, state manager, weapons, scan, HUD, collision) read for constant,
+branch-sense and call diffs, tier 2 constant diffs only, tier 3 not read. A9-200..208; report
+`/tmp/opencode/reports/a9-upstream-decomp.md`.
 
 Open: only A1-26 (RadialHud `model_inner_ring`, widget name on the GameCube pak unconfirmed); every other
 row above is `fixed`, `not-a-bug`, `wontfix` or `partly fixed` (state in its status cell).
