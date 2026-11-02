@@ -13,7 +13,9 @@ compares the port body with the retail body (asm and rodata read through tools/a
          >= half of their (>= 3) call sites (port-model differences), unported module callees of a
          ctor or dtor (member ctors/dtors), unported rstl/string/allocation template instances,
          unported value helpers (straight-line stores through r3 only: struct copies, Cross),
-         CToken::GetObj. A marker inside a body (a switch arm) checks that body (no shape check)
+         unported callees whose every transitive effect leaf (DOL call or ported function, past
+         plumbing and a TLockedToken copy's Lock) the body names (inline copies), CToken::GetObj.
+         A marker inside a body (a switch arm) checks that body (no shape check)
   const  a float constant retail loads from module rodata that appears nowhere in the port file
          as a literal (0 and the int->float conversion magic skipped)
   shape  conditional-branch count far from the port's if/?:/loops/&&/|| count, or a big retail body
@@ -986,6 +988,88 @@ def value_helper(ck, ctx):
     return True
 
 
+def mangled_head(d):
+    """`name__Class` of a mangled DOL name, without its argument list."""
+    i = d.find("__", 1)
+    if i < 0:
+        return d
+    j, n = i + 2, 1
+    if d[j:j + 1] == "Q" and d[j + 1:j + 2].isdigit():
+        n, j = int(d[j + 1]), j + 2
+    for _ in range(n):
+        m = re.match(r"\d+", d[j:])
+        if not m:
+            break
+        j += len(m.group(0)) + int(m.group(0))
+    return d[:j]
+
+
+def effect_leaves(ck, ctx, depth=0):
+    """The calls an unported module function makes that can be behaviour, through the unported
+    module functions it reaches: DOL functions other than plumbing (rstl, allocation, ctors, dtors,
+    operators, runtime helpers, a token dereference, and the Lock of a TLockedToken copy - a CToken
+    ctor, the DOL's or a module copy of it, and the Lock that follows it), and ported module
+    functions by their port name. None when a function is unknown or the chain is deeper than 12."""
+    r = token_leaves(ck, ctx, depth)
+    return None if r is None else r[0]
+
+
+def token_leaves(ck, ctx, depth=0):
+    """(effect_leaves, whether the function's chain constructs a CToken), memoized."""
+    memo = ctx.setdefault("leaves", {})
+    if ck in memo:
+        return memo[ck] or (set(), False)     # a recursive cycle adds nothing
+    m = ctx["ids"].get(ck[0])
+    fn = ctx["retail"][m][1].get(ck[1]) if m else None
+    if fn is None or depth > 12:
+        return None
+    memo[ck] = None
+    out, prev, token = set(), False, False
+    for i in fn.ins:
+        if i.op not in ("bl", "b") or not i.args or i.args[0].startswith("."):
+            continue
+        c = i.args[0].strip('"')
+        mm = FNID.match(c)
+        local = ctx["retail"][m][0].funcs.get(c) if not mm else None
+        if local is not None and local.ins:
+            mm = FNID.match(fid(ck[0], local.start))
+        if mm:
+            sub = (int(mm.group(1)), int(mm.group(2), 16))
+            if sub in ctx["pnames"]:
+                pn = ctx["pnames"][sub]
+                if not (pn.startswith(("operator", "~")) or pn == ctx["funcs"][sub].cls):
+                    out.add(pn)
+                prev = False
+            else:
+                sl = token_leaves(sub, ctx, depth + 1)
+                if sl is None:
+                    del memo[ck]
+                    return None
+                out |= sl[0]
+                prev = sl[1]
+                token |= sl[1]
+            continue
+        d = dol_callee(c, ctx["dol"])[0]
+        copy, prev = prev, d.startswith("__ct__6CToken")
+        token |= prev
+        if d.startswith("Lock__6CToken") and copy:
+            continue
+        if (PLUMB.search(mangled_head(d)) or ac.is_runtime(d) or d.startswith(SKIP_CALL)
+                or d.startswith("FreeLockedCache") or ac.base_name(d) in SKIP_DOL):
+            continue
+        out.add(ac.base_name(d) or d)
+    memo[ck] = (out, token)
+    return memo[ck]
+
+
+def leaves_named(ck, body, ctx):
+    """An unported module function every effect leaf of which the port body names (none at all:
+    it only builds, copies or frees values): a module copy of an inline (a TLockedToken or
+    optional copy, a body-state command delivery, a sorted-vector search) the port writes in place."""
+    lv = effect_leaves(ck, ctx)
+    return lv is not None and all(re.search(rf"\b{re.escape(n)}\b", body) for n in lv)
+
+
 FREG = re.compile(r"f(\d+)$")
 FLIT = re.compile(r"^[-+]?(?:\d+\.\d*(?:[eE][-+]?\d+)?|\.\d+(?:[eE][-+]?\d+)?|\d+[eE][-+]?\d+)[fF]?$")
 
@@ -1128,6 +1212,8 @@ def check(key, f, retail, ctx):
                 continue    # an rstl/string/allocation template instance the port's containers are
             if ck not in ctx["pnames"] and value_helper(ck, ctx) and not ctx["strict"]:
                 continue    # a struct copy / vector op the port writes as an expression
+            if ck not in ctx["pnames"] and not ctx["strict"] and leaves_named(ck, body, ctx):
+                continue    # an inline's module copy: the port body makes every call it makes
             if ck in ctx["pnames"]:
                 pn = ctx["pnames"][ck]
                 cf = ctx["funcs"][ck]

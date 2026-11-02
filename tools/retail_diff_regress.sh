@@ -71,4 +71,20 @@ git show "19e3ba672:$E/PortCSwampBossStage1.cpp" > "$TMP/PortCSwampBossStage1.cp
 kflags "SwampBossStage1 pre-A9-500 constant" const "$TMP/PortCSwampBossStage1.cpp" "0.43633232"
 sed 's/!(mTimer <= 0\.f)/!(mTimer < 0.f)/' "$E/PortCElitePirate.cpp" > "$TMP/PortCElitePirate.cpp"
 kflags "ElitePirate planted < for <=" nan "$TMP/PortCElitePirate.cpp" "cror float compares"
+
+# `call` kind, unported module callees whose every effect leaf the port body names hide by default
+# (A9-400): a TLockedToken copy (Lock right after a CToken ctor) and an inlined DeliverCmd copy
+calls() { # name args pattern: the call findings must match pattern
+  if python3 tools/retail_diff.py --kinds call $2 | grep -q -- "$3"; then echo "PASS $1"; else echo "FAIL $1 (no '$3')"; fail=1; fi
+}
+nocall() { # name fn callee: default mode hides the callee
+  if python3 tools/retail_diff.py --kinds call --fn "$2" | grep -q -- "$3"; then echo "FAIL $1"; fail=1; else echo "PASS $1"; fi
+}
+nocall "Kralee token copy hidden" fn_37_13C fn_37_840
+calls "Kralee token copy --strict" "--strict --fn fn_37_13C" "fn_37_840 (unported) not named"
+nocall "SpacePirate DeliverCmd copy hidden" fn_72_5310 fn_72_5418
+calls "ElitePirate unnamed leaf (LdrToDamageInfo) shows" "--no-allow --fn fn_15_1A48" "fn_15_1A84 (unported) not named"
+# a planted slip: Jump without its DeliverCmd no longer names the copy's leaf
+sed '/DeliverCmd($/{N;/CBCJumpCmd(mDestPos, pas::kJT_Normal, pas::kJS_Loop/d}' "$E/PortCSpacePirateStates.cpp" > "$TMP/PortCSpacePirateStates.cpp"
+calls "SpacePirate planted slip" "--file $TMP/PortCSpacePirateStates.cpp" "fn_72_5418 (unported) not named"
 exit $fail
