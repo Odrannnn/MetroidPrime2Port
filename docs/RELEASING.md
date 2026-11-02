@@ -71,8 +71,9 @@ game's shaders in the background instead of skipping draws as it meets them (And
 queues each area's rows when the game prefetches the area). Retail rows only (no
 Remastered-style rows). A row holds the sample count it was recorded at; aurora also queues each
 non-shadow row at the running MSAA setting (`queue_cached_row`), so a seed recorded at either
-setting covers both. The fog curve is a uniform, so rows differ only by fog on or off (aurora
-folds an older row's fog type on load). When aurora bumps a pipeline config version (`clear.hpp`,
+setting covers both. The fog curve and the alpha compare references are uniforms, so rows differ
+only by fog on or off and by whether a reference makes the compare constant (aurora folds an
+older row's fog type and references on load). When aurora bumps a pipeline config version (`clear.hpp`,
 `gx/pipeline.hpp`, `rmlui/pipeline.hpp`), aurora ignores the seed and the `port_pipeline_seed`
 test fails. Re-record from empty caches (needs a GPU path, ~41 min on the dev machine; no mods or texture packs):
 `python3 tools/pipeline_seed.py record`, then the `merge` line it prints. `MP2_PIPELINE_SEED=0`

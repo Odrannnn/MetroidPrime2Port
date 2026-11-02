@@ -655,6 +655,31 @@ static_assert(std::has_unique_object_representations_v<ShaderConfig>);
 constexpr u8 pipeline_fog_type(u32 fogType) noexcept {
   return fogType == GX_FOG_NONE ? GX_FOG_NONE : GX_FOG_PERSP_LIN;
 }
+// An alpha compare reference the shader reads from the alpha_ref uniform (ShaderInfo::usesAlphaRef).
+constexpr u32 AlphaRefUniform = 0x100;
+// The reference as the pipeline sees it: only the values that make the compare constant (0 for
+// LESS/GEQUAL, 255 for LEQUAL/GREATER) stay, any other is the uniform's, so a fading cut-out
+// needs no new pipeline per reference.
+constexpr u32 pipeline_alpha_ref(GXCompare comp, u32 ref) noexcept {
+  switch (comp) {
+  case GX_LESS:
+  case GX_GEQUAL:
+    return ref == 0 ? 0 : AlphaRefUniform;
+  case GX_LEQUAL:
+  case GX_GREATER:
+    return ref == 255 ? 255 : AlphaRefUniform;
+  case GX_EQUAL:
+  case GX_NEQUAL:
+    return AlphaRefUniform;
+  default:
+    return 0;
+  }
+}
+constexpr AlphaCompare pipeline_alpha_compare(AlphaCompare ac) noexcept {
+  ac.ref0 = pipeline_alpha_ref(ac.comp0, ac.ref0);
+  ac.ref1 = pipeline_alpha_ref(ac.comp1, ac.ref1);
+  return ac;
+}
 // Whether a draw samples the sun's shadow map: a lit PBR surface drawn in colour without per-pixel fog.
 inline bool shadow_receives(const ShaderConfig& sc) noexcept {
   return sc.shadow && (sc.pbr != 0 || sc.actorDecal != 0) && sc.volFog == VolFogNone && sc.depthOnly == 0 && sc.lineMode == 0 && !sc.drawId;
@@ -692,6 +717,7 @@ struct ShaderInfo {
   bool shadowReceive : 1 = false; // shadow_receives: group 2 uses the shadow layout
   bool actorDecal : 1 = false;    // actor_decal: group 2 uses the shadow layout with the actor maps
   bool usesHdrTone : 1 = false;   // sceneHdr without pbr: hdr_tone (pbrTone) and hdr_tev_blend
+  bool usesAlphaRef : 1 = false;  // an alpha compare reference is AlphaRefUniform: the alpha_ref uniform
 };
 struct BindGroupRanges {
   std::array<gfx::Range, MaxIndexAttr> vaRanges{};

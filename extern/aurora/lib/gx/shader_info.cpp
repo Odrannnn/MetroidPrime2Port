@@ -405,6 +405,10 @@ ShaderInfo build_shader_info(const ShaderConfig& config) noexcept {
     // The caster and receiver matrices, the sun's direction and colour (GXState::shadowUniform)
     info.uniformSize += sizeof(g_gxState.shadowUniform);
   }
+  if (config.alphaCompare.ref0 == AlphaRefUniform || config.alphaCompare.ref1 == AlphaRefUniform) {
+    info.usesAlphaRef = true;
+    info.uniformSize += sizeof(Vec4<u32>);
+  }
   info.uniformSize = gfx::align_uniform(info.uniformSize);
   if (info.uniformSize > MaxUniformSize) {
     Log.fatal("Uniform size exceeds maximum: {} > {}", info.uniformSize, MaxUniformSize);
@@ -619,6 +623,9 @@ static void fill_uniform(ByteBuffer& buf, const ShaderInfo& info) noexcept {
     for (const auto& v : g_gxState.shadowUniform) {
       buf.append(v);
     }
+  }
+  if (info.usesAlphaRef) {
+    buf.append(Vec4<u32>{g_gxState.alphaCompare.ref0, g_gxState.alphaCompare.ref1, 0, 0});
   }
 }
 

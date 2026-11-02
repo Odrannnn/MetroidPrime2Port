@@ -606,7 +606,7 @@ void populate_pipeline_config(PipelineConfig& config, GXPrimitive primitive, GXV
     config.shaderConfig.tcgs[i] = g_gxState.tcgs[i];
   }
   if (g_gxState.alphaCompare) {
-    config.shaderConfig.alphaCompare = g_gxState.alphaCompare;
+    config.shaderConfig.alphaCompare = pipeline_alpha_compare(g_gxState.alphaCompare);
   }
   const auto cullMode = config.shaderConfig.lineMode == 0 ? g_gxState.cullMode : GX_CULL_NONE;
   const auto [polygonOffset, polygonOffsetScale] = polygon_offset_for_cull_mode(cullMode);
