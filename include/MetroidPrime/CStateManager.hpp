@@ -202,6 +202,8 @@ public:
   // Places the player inside a warp's target area (spawn point, doorway, area centre) and starts
   // the arrival check that logs whether they stand inside it and grounded ~2 s later.
   void PortPlaceAtArrival(TAreaId target);
+  // Static collision closes in on a spawn point: a ceiling and walls on all four sides nearby.
+  bool PortSpawnEnclosed(const CScriptSpawnPoint& spawn) const;
   void PortArrivalCheckTick();
   TAreaId mPortArrivalCheckArea = kInvalidAreaId;
   int mPortArrivalCheckFrame = 0;

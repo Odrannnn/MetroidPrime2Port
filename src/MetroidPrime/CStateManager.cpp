@@ -5252,6 +5252,22 @@ void CStateManager::PortDarkWorldTick() {
 // once it is done: CMFGame clears mPendingDockArea when its transition finishes, and it never spawns
 // the player itself (a dock crossing keeps the player where they were standing), so a warp has to do
 // it - the area the player came from is unloaded, so their position means nothing here.
+bool CStateManager::PortSpawnEnclosed(const CScriptSpawnPoint& spawn) const {
+  const CVector3f origin = spawn.GetTransform().GetTranslation() + CVector3f(0.f, 0.f, 1.f);
+  if (!RayStaticIntersection(origin, CVector3f::Up(), 6.f, CMaterialFilter()).IsValid()) {
+    return false;
+  }
+  static const float kDirs[4][2] = {{1.f, 0.f}, {-1.f, 0.f}, {0.f, 1.f}, {0.f, -1.f}};
+  for (int i = 0; i < 4; ++i) {
+    if (!RayStaticIntersection(origin, CVector3f(kDirs[i][0], kDirs[i][1], 0.f), 6.f,
+                               CMaterialFilter())
+             .IsValid()) {
+      return false;
+    }
+  }
+  return true;
+}
+
 // A warp's arrival (the debug menu's area list, the console's `area`, the sweep's NEXTAREA): put
 // the player inside `target`. The old scan took the first active first-spawn point of *any* loaded
 // area, and a room without one left the player at the old coordinates, outside the new room. Order:
@@ -5279,7 +5295,9 @@ void CStateManager::PortPlaceAtArrival(TAreaId target) {
       if (spawn->GetActive() && spawn->IsFirstSpawn() && firstSpawn == nullptr) {
         firstSpawn = spawn;
       }
-      if (spawn->GetActive() && activeSpawn == nullptr) {
+      if (spawn->GetActive() && spawn != firstSpawn &&
+          (activeSpawn == nullptr ||
+           (PortSpawnEnclosed(*activeSpawn) && !PortSpawnEnclosed(*spawn)))) {
         activeSpawn = spawn;
       }
       if (anySpawn == nullptr) {
@@ -5292,6 +5310,15 @@ void CStateManager::PortPlaceAtArrival(TAreaId target) {
     }
   }
   const char* kind = "first spawn";
+  // Battleground's (Dark Agon) first spawn sits in a closed pocket under the arena floor; the game
+  // never uses it (no save station there). Take an open active spawn over a boxed-in first one.
+  if (firstSpawn != nullptr && activeSpawn != nullptr && PortSpawnEnclosed(*firstSpawn) &&
+      !PortSpawnEnclosed(*activeSpawn)) {
+    std::fprintf(stderr, "[warp] first spawn e%08x is boxed in; using e%08x\n",
+                 static_cast< unsigned >(firstSpawn->GetEditorId().Value()),
+                 static_cast< unsigned >(activeSpawn->GetEditorId().Value()));
+    firstSpawn = nullptr;
+  }
   CScriptSpawnPoint* plain = activeSpawn != nullptr ? activeSpawn : anySpawn;
   if (firstSpawn != nullptr) {
     SpawnPlayer(*firstSpawn, 0);
