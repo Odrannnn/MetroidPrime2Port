@@ -32,6 +32,35 @@
 #include "MetroidPrime/Tweaks/CTweakPlayer.hpp"
 #include "WorldFormat/CMetroidAreaCollider.hpp"
 
+#ifdef TARGET_PC
+#include "MetroidPrime/Player/CGameState.hpp"
+#include "port_mouse.h"
+#include "port_overlay.h"
+#include "port_photo.h"
+#include "port_radial.h"
+
+namespace {
+// Morph Ball camera control (issue #54), per player. Kept out of CBallCamera so the save-state
+// schema's fingerprint for it stays the same; a loaded state starts with no offset.
+struct SPortBallOrbit {
+  float elevationOffset; // added to mElevation by UpdateUsingColliders
+  float hold;            // seconds left with the Chase and Boost yaw pull off after a turn
+  float stickX;          // the right stick's look (left - right) without twin stick, from ProcessInput
+  float stickY;          // up - down, the game's Reverse Y Axis applied
+};
+SPortBallOrbit sPortBallOrbit[4];
+// Long enough to line up a boost after turning; the Chase and Boost cameras swing behind the ball after it.
+const float kPortBallOrbitHold = 1.5f;
+// The right stick's turn at full tilt without twin stick (about 150 degrees a second).
+const float kPortBallStickRate = 2.6f;
+
+SPortBallOrbit& PortBallOrbit(const CPlayer& player) {
+  const int index = player.GetPlayerIndex();
+  return sPortBallOrbit[index >= 0 && index < 4 ? index : 0];
+}
+} // namespace
+#endif
+
 namespace {
 const CMaterialList skLineOfSightInclude = CMaterialList(kMT_Solid);
 const CMaterialList skLineOfSightExclude =
@@ -1283,6 +1312,11 @@ void CBallCamera::UpdateUsingColliders(float dt, CStateManager& mgr) {
                     TCastToConstPtr< CActor >(mgr.GetObjectById(mCollisionActorId)));
 
   float elevation = mElevation;
+#ifdef TARGET_PC
+  if (mBehaviour == kBCB_Default && PortOverlay::BallCamControl()) {
+    elevation += PortBallOrbit(*player).elevationOffset;
+  }
+#endif
   bool interpolateElevation = true;
   if (ConstrainElevationAndDistance(elevation, distance, dt, mgr)) {
     interpolateElevation = false;
@@ -1300,7 +1334,13 @@ void CBallCamera::UpdateUsingColliders(float dt, CStateManager& mgr) {
     } else {
       ballToCam = -player->GetMovementDirection();
     }
+#ifdef TARGET_PC
+    // A Morph Ball camera turn holds off the swing behind the ball for a moment (PortManualOrbit).
+    if (CMath::AbsF(ballToCamFlatMag - mChaseDistance) < 3.f &&
+        !(PortBallOrbit(*player).hold > 0.f)) {
+#else
     if (CMath::AbsF(ballToCamFlatMag - mChaseDistance) < 3.f) {
+#endif
       float yawSpeed = gpTweakBall->GetBallCameraChaseYawSpeed();
       float dampenAngle = gpTweakBall->GetBallCameraChaseDampenAngle();
       if (mState == kBCS_Boost) {
@@ -2035,6 +2075,9 @@ void CBallCamera::Think(float dt, CStateManager& mgr) {
     collisionActor->SetActive(true);
   }
 
+#ifdef TARGET_PC
+  PortManualOrbit(dt, mgr);
+#endif
   const CTransform4f oldTransform = GetTransform();
   if (GetPlayer(mgr).GetBombJumpCounter() != 1) {
     UpdateLookAtPosition(dt, mgr, false);
@@ -2100,6 +2143,10 @@ void CBallCamera::SetState(EBallCameraState state, CStateManager& mgr) {
     const CFirstPersonCamera* fpCam = GetCameraManager(mgr).GetFirstPersonCamera();
     InterpolateFOV(fpCam->GetFov(), 1.f, 0.f, GetUniqueId(), mgr);
     InvalidateSpline();
+#ifdef TARGET_PC
+    // Each morph starts from the game's own framing.
+    PortBallOrbit(GetPlayer(mgr)) = SPortBallOrbit();
+#endif
   }
   case kBCS_Default:
     mgr.SetGameState(CStateManager::kGS_Running);
@@ -2119,6 +2166,63 @@ void CBallCamera::SetState(EBallCameraState state, CStateManager& mgr) {
   mState = state;
 }
 
+#ifdef TARGET_PC
+// Morph Ball camera control (issue #54): mouse, touch swipes, twin stick and the right stick orbit
+// the camera around the ball (yaw) and raise or lower it (an elevation offset). Off by default.
+void CBallCamera::PortManualOrbit(float dt, CStateManager& mgr) {
+  const CPlayer& player = GetPlayer(mgr);
+  SPortBallOrbit& orbit = PortBallOrbit(player);
+  if (orbit.hold > 0.f) {
+    orbit.hold -= dt;
+  }
+  const float stickX = orbit.stickX;
+  const float stickY = orbit.stickY;
+  orbit.stickX = orbit.stickY = 0.f;
+  if (!PortOverlay::BallCamControl() ||
+      player.GetMorphballTransitionState() != CPlayer::kMS_Morphed ||
+      (mState != kBCS_Default && mState != kBCS_Chase && mState != kBCS_Boost) ||
+      mBehaviour != kBCB_Default || mSplineState != kBSS_Invalid ||
+      player.GetBombJumpCounter() != 0 || PortPhoto::Active() ||
+      (player.GetPlayerIndex() == 0 && PortRadial::Capturing())) {
+    return;
+  }
+  // The game's "no free look" hint also keeps this camera where the level put it.
+  const CScriptPlayerHint* hint =
+      TCastToConstPtr< CScriptPlayerHint >(player.GetPlayerHintManager()->GetCurrentHint(mgr));
+  if (hint != nullptr && (hint->GetOverrideFlags() & 0x80000) != 0) {
+    return;
+  }
+  // Spring Ball springs on the right stick's up, so with it on the stick only turns the camera.
+  const bool stickPitch = !PortOverlay::SpringBall();
+  float yaw = 0.f;
+  float pitch = 0.f;
+  PortMouse::TakeBallLook(yaw, pitch, stickPitch, player.GetPlayerIndex());
+  const float speed = PortOverlay::BallCamSpeed() / 100.f;
+  yaw = (yaw + stickX * kPortBallStickRate * dt) * speed;
+  pitch = (pitch + (stickPitch ? stickY : 0.f) * kPortBallStickRate * dt) * speed;
+  if (yaw == 0.f && pitch == 0.f) {
+    return;
+  }
+  orbit.hold = kPortBallOrbitHold;
+  if (yaw != 0.f) {
+    // UpdateUsingColliders trails from where the camera is, so turning it about the ball sticks.
+    const CVector3f ballPos = player.GetBallPosition();
+    const CTransform4f rot = CTransform4f::RotateZ(CRelAngle::FromRadians(yaw));
+    CTransform4f xf = rot * GetTransform();
+    xf.SetTranslation(ballPos + rot.Rotate(GetTranslation() - ballPos));
+    SetTransform(xf);
+    mDampedPos = ballPos + rot.Rotate(mDampedPos - ballPos);
+  }
+  if (pitch != 0.f) {
+    // Up looks up: the camera drops toward the floor; down raises it over the ball.
+    orbit.elevationOffset =
+        CMath::Clamp(0.3f - mElevation,
+                     orbit.elevationOffset - pitch * CMath::Max(mCurMinDistance, 1.f),
+                     1.5f * mMaxDistance);
+  }
+}
+#endif
+
 void CBallCamera::ProcessInput(const CFinalInput& input, CStateManager& mgr) {
   if (const CPlayer* player = TCastToConstPtr< CPlayer >(mgr.GetObjectById(GetWatchedObject()))) {
     bool preventFreeLook = false;
@@ -2128,6 +2232,22 @@ void CBallCamera::ProcessInput(const CFinalInput& input, CStateManager& mgr) {
       preventFreeLook = true;
     }
     if (player->GetMorphballTransitionState() == CPlayer::kMS_Morphed) {
+#ifdef TARGET_PC
+      // Morph Ball camera control's right stick without twin stick (twin stick feeds PortMouse).
+      // Echoes' look inputs are the main stick under R, so this reads the C-stick itself; the
+      // ball has no other use for it but Spring Ball's up (PortManualOrbit leaves that alone).
+      SPortBallOrbit& orbit = PortBallOrbit(*player);
+      orbit.stickX = orbit.stickY = 0.f;
+      if (PortOverlay::BallCamControl() && !PortMouse::StickEnabled(player->GetPlayerIndex())) {
+        CGameOptions& options = gpGameState->GameOptions();
+        const bool invertY =
+            mgr.IsMultiplayer() ? options.PlayerOptions(player->GetPlayerIndex()).GetInvertYAxis()
+                                : options.GetInvertYAxis();
+        const float up = invertY ? -input.GetAnalogRightY() : input.GetAnalogRightY();
+        orbit.stickX = CMath::Clamp(-1.f, -input.GetAnalogRightX(), 1.f);
+        orbit.stickY = CMath::Clamp(-1.f, up, 1.f);
+      }
+#endif
       switch (mState) {
       case kBCS_Chase:
         if (!player->GetControlMapper().GetDigitalInput(CControlMapper::kC_ChaseCamera, input) ||

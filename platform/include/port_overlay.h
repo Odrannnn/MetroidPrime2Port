@@ -129,6 +129,16 @@ bool MapInvertX();
 void SetMapInvertX(bool invert);
 bool MapInvertY();
 void SetMapInvertY(bool invert);
+// Morph Ball camera control (`ball_cam`, env `MP2_BALL_CAM`, off by default and under Original
+// experience; issue #54): the mouse, the right stick and touch aim swipes orbit the Morph Ball
+// camera around the ball and raise or lower it (the stick only turns it while Spring Ball is on).
+// `ball_cam_speed` (percent) scales the turn.
+// Read by CBallCamera::PortManualOrbit.
+const int kBallCamSpeedMin = 25;
+const int kBallCamSpeedMax = 400;
+const int kBallCamSpeedDefault = 100;
+bool BallCamControl();
+int BallCamSpeed();
 // Walk speed (`MP2_WALK_SPEED`, percent, default 100 = retail): scales Samus's on-foot top speed,
 // acceleration and friction together (and the orbit strafe/approach speeds), so she moves k times
 // as fast and gets there in the same time. Jumps, sideways dashes, turning and the Morph Ball are

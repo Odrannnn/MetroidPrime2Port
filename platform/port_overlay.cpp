@@ -71,6 +71,8 @@ bool sMapSwapFingers = false;
 // Controls > Options > Map: flip either map rotate axis, as Prime 1's #225.
 bool sMapInvertX = false;
 bool sMapInvertY = false;
+bool sBallCam = false;
+int sBallCamSpeed = PortOverlay::kBallCamSpeedDefault;
 int sWalkSpeed = PortOverlay::kWalkSpeedDefault;
 int sScanSpeed = PortOverlay::kScanSpeedDefault;
 int sMusicBoost = PortOverlay::kVolumeBoostDefault;
@@ -1145,6 +1147,19 @@ void SetMapInvertY(bool invert) {
   ReadEnv();
   sMapInvertY = invert;
   Persist();
+}
+
+bool BallCamControl() {
+  ReadEnv();
+  if (OriginalExperience()) {
+    return false;
+  }
+  return EnvBool("MP2_BALL_CAM", sBallCam);
+}
+
+int BallCamSpeed() {
+  ReadEnv();
+  return EnvIntIn("MP2_BALL_CAM_SPEED", sBallCamSpeed, kBallCamSpeedMin, kBallCamSpeedMax);
 }
 
 int WalkSpeed() {

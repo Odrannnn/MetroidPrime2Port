@@ -21,6 +21,8 @@ extern bool sPointerMenus;
 extern bool sMapSwapFingers;
 extern bool sMapInvertX;
 extern bool sMapInvertY;
+extern bool sBallCam;
+extern int sBallCamSpeed;
 extern int sWalkSpeed;
 extern int sScanSpeed;
 extern int sMusicBoost;

@@ -13,6 +13,11 @@ class CBallCamera : public CGameCamera {
 #ifdef TARGET_PC
   friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
 #endif
+#ifdef TARGET_PC
+  // Morph Ball camera control (issue #54, PortOverlay::BallCamControl). Its state lives in
+  // CBallCamera.cpp, not here, so the save-state schema's fingerprint stays the same.
+  void PortManualOrbit(float dt, CStateManager& mgr);
+#endif
 public:
   enum EBallCameraState {
     kBCS_Default,

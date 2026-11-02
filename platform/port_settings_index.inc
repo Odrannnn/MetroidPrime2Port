@@ -41,6 +41,8 @@
 {"Controls", "Options", "Rumble", "Rumble", "vibration controller force feedback haptic"},
 {"Controls", "Options", "Map", "Invert map rotate X", "map rotate turn invert flip reverse horizontal"},
 {"Controls", "Options", "Map", "Invert map rotate Y", "map rotate turn invert flip reverse vertical"},
+{"Controls", "Options", "Morph Ball camera", "Morph Ball camera control", "ball camera mouse stick touch orbit rotate look free"},
+{"Controls", "Options", "Morph Ball camera", "Morph Ball camera speed", "ball camera orbit sensitivity rate"},
 {"Controls", "Mouse settings", "Mouse aim", "Mouse aim", "mouselook camera look cursor"},
 {"Controls", "Mouse settings", "Mouse aim", "Sensitivity", "mouse speed dpi"},
 {"Controls", "Mouse settings", "Mouse aim", "Separate vertical speed", "mouse vertical sensitivity split"},

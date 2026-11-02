@@ -308,6 +308,12 @@ void SetPhotoCapture(bool want);
 // Photo mode ends: release the grab and give SetCapture back to the aim.
 void EndPhotoCapture();
 bool TakePhotoLook(float& yawDegrees, float& pitchDegrees);
+// Morph Ball camera control (CBallCamera, PortOverlay::BallCamControl): takes this tick's mouse,
+// twin-stick and touch travel, which the aim leaves alone while the ball owns the view, as a turn
+// in radians (yaw left, pitch up; the aim's sensitivity and inversion). Under gyro aim only the
+// stick's part, so the gyro does not swing the ball camera. `stickPitch` false drops the twin
+// stick's vertical part (Spring Ball owns stick up). False with no travel or the UI open.
+bool TakeBallLook(float& yaw, float& pitch, bool stickPitch, int player = 0);
 // Aim state is per player (the pad port's player in a match): the functions below that take
 // `player` default to 0, which single player and every caller without a player use. The mouse,
 // and touch feed player 0 only; a player above 0 follows its own pad's twin stick and gyro. The

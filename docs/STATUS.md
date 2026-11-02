@@ -3,6 +3,16 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-11-02: Morph Ball camera control (#54)
+
+`ball_cam` / `ball_cam_speed` (docs/SETTINGS.md), `CBallCamera::PortManualOrbit` (TARGET_PC; state in a
+file-static per-player array, not fields, so the save-state schema is unchanged). Yaw rotates the camera and
+`mDampedPos` about the ball (the trailing keeps it); pitch is an elevation offset; a 1.5 s hold skips Chase/Boost's
+`ConstrainYawAngle`. Inputs: `PortMouse::TakeBallLook` (mouse, touch, twin stick; gyro excluded) and the raw C-stick
+in `ProcessInput` without twin stick (Echoes' look inputs are R + main stick, so the mapper's Look reads are 0).
+Verified headless at the new-game landing site (`cstick` -127 0 / 0 127, with and without `twin_stick`): ~130-180
+degrees of yaw per second, pitch -16 -> +6 deg, both persist. Not checked: real mouse/touch, multiplayer, Chase/Boost.
+
 ## 2026-11-01: map pickup tracker (map/pickups, 23360d435)
 
 MP1-style pickup dots: `platform/port_map_pickups.cpp`, `CMapWorld::DrawPortPickups` (TARGET_PC), F1 Tracker

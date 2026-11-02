@@ -613,6 +613,22 @@ bool TakePhotoLook(float& yawDegrees, float& pitchDegrees) {
   return true;
 }
 
+bool TakeBallLook(float& yaw, float& pitch, bool stickPitch, int player) {
+  ReadEnv();
+  Slot& s = SlotFor(player);
+  std::lock_guard< std::mutex > lock(sPendingMutex);
+  const float dx = s.gyroDrivesAim ? s.stickFrameX : s.frameX;
+  const float dy =
+      (s.gyroDrivesAim ? s.stickFrameY : s.frameY) - (stickPitch ? 0.f : s.stickFrameY);
+  s.frameX = s.frameY = s.stickFrameX = s.stickFrameY = 0.f;
+  if (sUiActive || (dx == 0.f && dy == 0.f) || !std::isfinite(dx) || !std::isfinite(dy)) {
+    return false;
+  }
+  yaw = -dx * sSensitivity * (sInvertX ? -1.f : 1.f);
+  pitch = -dy * sSensitivity * (sInvertY ? -1.f : 1.f);
+  return true;
+}
+
 void AddGyroPointer(float yaw, float pitch, float dt, float sweep, float scaleY, int player) {
   if (!std::isfinite(yaw) || !std::isfinite(pitch) || !(dt > 0.f) || !(sweep > 0.f) || !std::isfinite(scaleY)) {
     return;

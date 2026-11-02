@@ -160,6 +160,20 @@ void DrawControlsOptions() {
   SameLineAfterHelp();
   Changed(ImGui::Checkbox("Invert map rotate Y", &sMapInvertY));
   ItemHelp("Flips which way the map tilts up and down. Both on gives camera-style rotation.");
+
+  ImGui::SeparatorText("Morph Ball camera");
+  Changed(ImGui::Checkbox("Morph Ball camera control", &sBallCam));
+  ItemHelp("The mouse, the right stick and touch aim swipes turn the Morph Ball camera around the ball "
+           "and raise or lower it; the game's own camera follows from where you leave it. Hint and fixed "
+           "cameras keep control. With Spring Ball on, the right stick only turns it (stick up springs). "
+           "Off under Original experience.");
+  ImGui::BeginDisabled(!sBallCam);
+  ImGui::SetNextItemWidth(ImGui::GetFontSize() * 10.f);
+  Changed(ImGui::SliderInt("Morph Ball camera speed", &sBallCamSpeed, PortOverlay::kBallCamSpeedMin,
+                           PortOverlay::kBallCamSpeedMax, "%d%%"));
+  ImGui::EndDisabled();
+  ItemHelp("Scales the turn: the mouse and touch at their aim sensitivity, the right stick at its aim speed "
+           "(twin stick) or a free-look rate.");
 }
 
 void DrawControlsKeyboardMouse() {

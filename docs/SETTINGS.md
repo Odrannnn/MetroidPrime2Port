@@ -225,6 +225,12 @@ Controls > Options:
   it, Dark Aether's too, and the universe map lists every world; nothing is saved; default off; env
   `MP2_REVEAL_MAP`; console `tracker reveal 0|1`; off under Original experience).
 - `fast_morph`, `spring_ball`: Enhancements > Morph Ball > Fast Morph, Spring Ball (one row; C-stick up, the Spring Ball binding on the Remap page, touch swipe up, or a gyro flick).
+- `ball_cam`, `ball_cam_speed`: Controls > Options > Morph Ball camera (issue #54; off by default,
+  speed 25-400%, 100 default; env `MP2_BALL_CAM`, `MP2_BALL_CAM_SPEED`; off under Original
+  experience). The mouse, twin stick, touch aim swipes and the C-stick turn the Morph Ball camera
+  around the ball and raise or lower it; the game's camera trails from where it is left, and the
+  Chase/Boost swing behind the ball waits 1.5 s after a turn. Hint, spline and fixed cameras and
+  the "no free look" hint keep control. With `spring_ball` on, the stick only turns it.
 - `map_invert_x`, `map_invert_y`: Map > Invert map rotate X, Invert map rotate Y (off by
   default; env `MP2_MAP_INVERT_X`, `MP2_MAP_INVERT_Y`). They flip which way the map turns on
   the rotate inputs, left/right and up/down: the game turns the map opposite to the stick,
