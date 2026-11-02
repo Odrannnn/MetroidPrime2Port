@@ -93,8 +93,6 @@ DOL_ALIAS = {
     "BuildTransform4f": r"BuildTransform4f|SetRotation",
     "CheckConnectedObject_if": r"(?:Check|Find)ConnectedObject_if",
     "InitializeStateMachine": r"InitializeStateMachine|SetupStateMachine",
-    # property readers the split named before upstream's SLdr regeneration (f3aab4f48)
-    "LoadTypedefSLdrAnimationParameters": r"LoadTypedef(?:SLdr)?Anim\w*",
 }
 SKIP_DOL = ("GetObj",)
 INBODY = set()  # CToken::GetObj: a token dereference (`*tok`, `tok->`), never a behaviour
@@ -162,29 +160,48 @@ def dol_symbols():
         if m:
             out[int(m.group(2), 16)] = (m.group(1), int(m.group(3), 16))
             byname[m.group(1)] = int(m.group(2), 16)
-    # a name the split had that upstream renamed since (LoadActorParameters__FRC19SLdrActorParameters
-    # is LdrToActorParameters__FRC19SLdrActorParameters now): its mangled signature, when unique
-    sig = {}
-    for n, a in byname.items():
-        k = mangled_sig(n)
-        if k:
-            sig[k] = None if k in sig else a
-    byname.update({("sig", k): a for k, a in sig.items() if a is not None})
     return out, byname
 
 
-def mangled_sig(name):
-    """The parameter part of a mangled free function (`__F...`), None for a method or plain name."""
-    m = re.match(r"[A-Za-z_]\w*?__(F\w+)$", name)
-    return m.group(1) if m and len(m.group(1)) > 8 else None
+SPLIT_FNS = None
+
+
+def split_fn_addr(name):
+    """Address of a DOL function under a name a split gave it, read from the split's DOL asm (its
+    `.fn Name, global` and first address, else the target a `bl Name` there encodes) or the split
+    checkout's symbols.txt: the REL asm calls DOL functions by those names, which upstream has
+    renamed since (ShouldRetry__11CTryCommand is CanIssueCommand__15CAnimationState now,
+    LoadActorParameters is LdrToActorParameters)."""
+    global SPLIT_FNS
+    if SPLIT_FNS is None:
+        SPLIT_FNS, called = {}, {}
+        for p in sorted((Path(ac.ASM_ROOT) / "asm").glob("*.s")):
+            text = p.read_text(errors="replace")
+            for m in re.finditer(r"^\.fn (\S+), \w+\n/\* ([0-9A-F]{8}) ", text, re.M):
+                SPLIT_FNS[m.group(1)] = int(m.group(2), 16)
+            for m in re.finditer(r"^/\* ([0-9A-F]{8}) [0-9A-F]{8}  ([0-9A-F]{2}) ([0-9A-F]{2}) ([0-9A-F]{2}) "
+                                 r"([0-9A-F]{2}) \*/\tbl (\S+)$", text, re.M):
+                ins = int("".join(m.group(2, 3, 4, 5)), 16)
+                if ins >> 26 == 18 and not ins & 2:
+                    off = ins & 0x3FFFFFC
+                    called.setdefault(m.group(6), int(m.group(1), 16) + off - (off & 0x2000000) * 2)
+        for k, a in called.items():
+            SPLIT_FNS.setdefault(k, a)
+        sy = Path(ac.ASM_ROOT).parents[1] / "config/G2ME01/symbols.txt"   # the split checkout's names
+        if sy.is_file():
+            for m in re.finditer(r"^(\S+) = \.text:0x([0-9A-Fa-f]{8});", sy.read_text(errors="replace"), re.M):
+                SPLIT_FNS.setdefault(m.group(1), int(m.group(2), 16))
+    return SPLIT_FNS.get(name)
 
 
 def dol_callee(c, dol):
     """(name to look for in the port, size) of a DOL call target."""
     syms, byname = dol
     m = re.match(r"fn_(8[0-9A-Fa-f]{7})", c)
-    addr = int(m.group(1), 16) if m else byname.get(c, byname.get(("sig", mangled_sig(c))))
+    addr = int(m.group(1), 16) if m else byname.get(c) or split_fn_addr(c)
     name, size = syms.get(addr, (c, 0x100))
+    if re.fullmatch(r"fn_8[0-9A-Fa-f]{7}", name) and not m:
+        name = c        # today's symbols have no name for it; the split's says what it is
     return name, size
 
 
