@@ -1226,6 +1226,13 @@ void CStateManager::DrawDarkVisor(const CInGameGuiManagerSet& gui) {
     x = 0;
   } else {
     gpTweakGui->GetDarkVisorFrame(&x, &y, &width, &height);
+#ifdef TARGET_PC
+    // Port: the frame is authored for the 4:3 framebuffer; the widescreen HUD centers the lens in
+    // the wider one, so shift the frame with it (#60: otherwise it stays at the left).
+    const int viewportWidth = CGraphics::GetViewport().mWidth;
+    const int baseWidth = int(float(viewportWidth) / PortOverlay::AspectWiden() + 0.5f);
+    x += (viewportWidth - baseWidth) / 2;
+#endif
   }
 #ifdef TARGET_PC
   if (!fullScreen)
