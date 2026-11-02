@@ -1652,7 +1652,8 @@ void CSplitterCommandModule::PortUpdateCollision(CStateManager& mgr) {
 // no chassis the body ends (0x3F24). The chassis is asked to accept this head (0x3F3C
 // fn_75_E6E4, with the head's own id at 0x8); when it does not (0x3F40, the low byte) the body
 // ends. Then the chassis's id goes to 0xEFA (0x3F50) - the id fn_75_31A8 and the beam-effect
-// gate fn_75_58E8 read - the id at 0xEFC is cleared (0x3F58) and the id goes to 0x12A (0x3F60).
+// gate fn_75_58E8 read - the id at 0xEFC is cleared (0x3F58) and the id goes to CActor 0x12A, the
+// next draw node, so the head draws after the chassis (0x3F60).
 // The docking sound (the sound id at 0x88C) is added when the flag byte 0xF6A's 0x02 bit is clear
 // (0x3F6C extrwi, the word's bit 30) or the data's flag word at 0x7C0 has its 0x1 bit clear
 // (0x3F78 clrlwi, the word's bit 31); the flag byte's 0x02 bit is cleared either way (0x3FB4
@@ -1670,7 +1671,7 @@ void CSplitterCommandModule::PortDockToChassis(CStateManager& mgr) {
   if (chassis != nullptr && chassis->PortAcceptHead(mgr, GetUniqueId())) {
     mChassisId = mCheckedChassisId;
     mCheckedChassisId = kInvalidUniqueId;
-    mClearedId = mChassisId;
+    SetNextDrawNode(mChassisId); // 0x3F60: CActor 0x12A, the head draws after the chassis
     if ((mAutoDestructFlags & 0x2) == 0 || (mData.mUnknownBD80FD94 & 0x1) == 0) {
       // 0x3F80-0x3FA8: the docking sound; its handle is dropped (the retail writes it to a stack
       // slot it never reads).
@@ -1729,9 +1730,9 @@ void CSplitterCommandModule::PortUpdateFlashAndDeath(CStateManager& mgr, float d
 // The command module's chassis check (0x31A8-0x32F4): the id at 0xEFA (0x31D8 lhz) is looked up
 // (0x31E8 GetObjectById) and cast to the main chassis (0x31EC); a null cast or a chassis whose
 // command module id (0xC6C) is not this actor (0x31F8-0x3204, the retail's compare is against
-// this+0x8 - the entity's own id) goes to 0x3238, which clears the id at 0xEFA and the id at
-// 0x12A (0x3240-0x324C) and ends. Ours: the copy at 0xEFE takes the chassis's 0xCC0 when the two
-// differ (0x3208-0x3218), fn_75_1578 runs (0x3224) and the timer 0xF14 is set to 3.0f
+// this+0x8 - the entity's own id) goes to 0x3238, which clears the id at 0xEFA and the next draw
+// node at CActor 0x12A (0x3240-0x324C) and ends. Ours: the copy at 0xEFE takes the chassis's
+// 0xCC0 when the two differ (0x3208-0x3218), fn_75_1578 runs (0x3224) and the timer 0xF14 is set to 3.0f
 // (0x322C-0x3230). With no chassis id, the data's flag bit 0x8 (0x3258 rlwinm 28-28), the timer
 // <= 0.0f (0x326C-0x3274) and the id 0xEFC being invalid (0x327C-0x3280) gate fn_75_2280
 // (0x3284), the timer is set to 3.0f again (0x328C-0x3290) and the function ends (0x3294).
@@ -1744,7 +1745,7 @@ void CSplitterCommandModule::PortUpdateChassis(CStateManager& mgr) {
         TCastToConstPtr< CSplitterMainChassis >(mgr.GetObjectById(mChassisId));
     if (chassis == nullptr || chassis->GetCommandModuleId() != GetUniqueId()) {
       mChassisId = kInvalidUniqueId;
-      mClearedId = kInvalidUniqueId;
+      SetNextDrawNode(kInvalidUniqueId); // 0x324C: CActor 0x12A
       return;
     }
     if (mSyncedId != chassis->GetSyncId()) {

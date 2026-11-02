@@ -3,7 +3,7 @@
 Written by `tools/gen_entity_schema.py`; do not edit. The table itself is
 `platform/generated/port_entity_schema.inc`, its types `platform/include/port_entity_schema.h`.
 
-243 classes (CEntity and every subclass a header defines), 6284 own fields; 4820 of them plain data (`statedump` writes those under `fields` when the object's `kTagFields` block saves them, else under `fields_other`).
+243 classes (CEntity and every subclass a header defines), 6283 own fields; 4819 of them plain data (`statedump` writes those under `fields` when the object's `kTagFields` block saves them, else under `fields_other`).
 
 | kind | fields |
 |---|---|
@@ -12,7 +12,7 @@ Written by `tools/gen_entity_schema.py`; do not edit. The table itself is
 | float | 1788 |
 | bitfield | 1001 |
 | math | 484 |
-| uid | 358 |
+| uid | 357 |
 | pod | 373 |
 | pointer | 61 |
 | smart_ptr | 399 |

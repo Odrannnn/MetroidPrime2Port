@@ -296,7 +296,6 @@ private:
   int mDodgeCount = -1;        // guest 0xEEC (the constructor's -1, 0x6C18/0x6C30)
   int mDodgeDirection = -1;    // guest 0xF30 (FindBestDodgeDirection, fn_75_3B34)
   TUniqueId mCheckedChassisId = kInvalidUniqueId;// guest 0xEFC (the second chassis it checks)
-  TUniqueId mClearedId = kInvalidUniqueId;        // guest 0x12A (cleared with 0xEFA at 0x324C)
   // guest 0xF34: the laser sweep stage. The constructor leaves -1 (0x6CA0, 0x6CE4), fn_75_5AD8
   // sets 0 for a docked head (0x5AF4), the LaserSweep state (fn_75_44DC) advances and ends it,
   // and the ShouldLaserSweep trigger (fn_75_55F8) tests it against -1.

@@ -7207,7 +7207,6 @@ template <> const PortSchemaClass& PortEntitySchema::Describe< CSplitterCommandM
       {"mDodgeCount", "int", PortSchemaKind::int_, 0, kPortSchemaPrivate, sizeof(CSplitterCommandModule::mDodgeCount), PES_ADDR(CSplitterCommandModule, mDodgeCount), PES_GETI(CSplitterCommandModule, mDodgeCount), PES_SETI(CSplitterCommandModule, mDodgeCount)},
       {"mDodgeDirection", "int", PortSchemaKind::int_, 0, kPortSchemaPrivate, sizeof(CSplitterCommandModule::mDodgeDirection), PES_ADDR(CSplitterCommandModule, mDodgeDirection), PES_GETI(CSplitterCommandModule, mDodgeDirection), PES_SETI(CSplitterCommandModule, mDodgeDirection)},
       {"mCheckedChassisId", "TUniqueId", PortSchemaKind::uid, 0, kPortSchemaPrivate, sizeof(CSplitterCommandModule::mCheckedChassisId), PES_ADDR(CSplitterCommandModule, mCheckedChassisId), nullptr, nullptr},
-      {"mClearedId", "TUniqueId", PortSchemaKind::uid, 0, kPortSchemaPrivate, sizeof(CSplitterCommandModule::mClearedId), PES_ADDR(CSplitterCommandModule, mClearedId), nullptr, nullptr},
       {"mLaserSweepStage", "int", PortSchemaKind::int_, 0, kPortSchemaPrivate, sizeof(CSplitterCommandModule::mLaserSweepStage), PES_ADDR(CSplitterCommandModule, mLaserSweepStage), PES_GETI(CSplitterCommandModule, mLaserSweepStage), PES_SETI(CSplitterCommandModule, mLaserSweepStage)},
       {"mLaserSweepStart", "CVector3f", PortSchemaKind::math, 0, kPortSchemaPrivate, sizeof(CSplitterCommandModule::mLaserSweepStart), PES_ADDR(CSplitterCommandModule, mLaserSweepStart), nullptr, nullptr},
       {"mLaserSweepEnd", "CVector3f", PortSchemaKind::math, 0, kPortSchemaPrivate, sizeof(CSplitterCommandModule::mLaserSweepEnd), PES_ADDR(CSplitterCommandModule, mLaserSweepEnd), nullptr, nullptr},
@@ -7226,7 +7225,7 @@ template <> const PortSchemaClass& PortEntitySchema::Describe< CSplitterCommandM
       {"mBeamEffectId", "TUniqueId", PortSchemaKind::uid, 0, kPortSchemaPrivate, sizeof(CSplitterCommandModule::mBeamEffectId), PES_ADDR(CSplitterCommandModule, mBeamEffectId), nullptr, nullptr},
       {"mBeamSfxHandle", "CSfxHandle", PortSchemaKind::other, 0, kPortSchemaPrivate, sizeof(CSplitterCommandModule::mBeamSfxHandle), PES_ADDR(CSplitterCommandModule, mBeamSfxHandle), nullptr, nullptr},
   };
-  static const PortSchemaClass desc = {"CSplitterCommandModule", "CPatterned", fields, 39, 0x87DAA46DE418141Bull};
+  static const PortSchemaClass desc = {"CSplitterCommandModule", "CPatterned", fields, 38, 0x0B0851C20B79FA3Full};
   return desc;
 }
 template <> const PortSchemaClass& PortEntitySchema::Describe< CSplitterMainChassis >() {
@@ -8223,4 +8222,4 @@ const PortSchemaClass* const* PortEntitySchema::Classes(int& count) {
 }
 
 const int PortEntitySchema::kClassCount = 243;
-const int PortEntitySchema::kFieldCount = 6284;
+const int PortEntitySchema::kFieldCount = 6283;

@@ -446,7 +446,7 @@ saved(HV, hover2)
 # fn_75_3EEC PortDockToChassis: no chassis at 0xEFC (0x3F24); a chassis that already has a head
 # (fn_75_E6E4 false, 0x3F40); accepted with 0xF6A's 0x02 bit set and the data's 0x1 bit set (no
 # sound), set and clear (sound), and the 0x02 bit clear (sound).
-DK = [H + '->mChassisId.value', H + '->mCheckedChassisId.value', H + '->mClearedId.value',
+DK = [H + '->mChassisId.value', H + '->mCheckedChassisId.value', H + '->mNextDrawNode.value',
       H + '->mAutoDestructFlags', H + '->mData.mUnknownBD80FD94', BC + '->mLocomotionType',
       C + '->mCommandModuleId.value', C + '->mSecondLinkId.value', C + '->mFlagsD40']
 
