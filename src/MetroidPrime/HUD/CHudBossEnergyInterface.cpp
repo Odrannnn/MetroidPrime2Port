@@ -41,6 +41,11 @@ CHudBossEnergyInterface::CHudBossEnergyInterface(CGuiFrame& frame, int hudState)
     mEnergyBar->SetCoordFunc(BossEnergyCoordFunc);
   }
   mEnergyBar->SetTesselation(0.2f);
+#ifdef TARGET_PC
+  // Port: the bar, its bracket and the name slide as one cluster in the widescreen spread. Judged
+  // alone, the ball HUD's bar (at its origin, the left end) slid out past the bracket (#50).
+  frame.SetSpreadAnchorTree(mRoot, mName);
+#endif
 
   const CTweakGuiColors::SVisorColorScheme& colors =
       gpTweakGuiColors->GetVisorColorScheme(static_cast< CSamusHud::EHudState >(hudState));
