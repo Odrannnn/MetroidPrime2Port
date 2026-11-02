@@ -1,5 +1,6 @@
 #include "port_input_user_presets.h"
 
+#include "port_controls.h"
 #include "port_mouse.h"
 #include "../port_overlay_internal.h"
 #include "port_input_devices.h"
@@ -153,6 +154,8 @@ void Restore(const Layout& l, u32 kPort) {
       PADSetButtonMapping(kPort, {u32(b.native), PADButton(b.pad)});
     for (const auto& a : l.padAxes)
       PADSetAxisMapping(kPort, {{a.axis, PADAxisSign(a.sign)}, a.button, PADAxis(a.pad)});
+    // Not a built-in preset: a controller connected later keeps its own mappings.
+    if (!l.padButtons.empty() || !l.padAxes.empty()) PortControls::SetSavedPadPreset(kPort, {});
   } else {
     for (const auto& b : l.keyButtons) PADSetKeyButtonBindingSlot(kPort, u32(b.slot), {b.key, PADButton(b.pad)});
     for (const auto& a : l.keyAxes)

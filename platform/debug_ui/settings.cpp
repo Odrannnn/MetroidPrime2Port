@@ -5,6 +5,7 @@
 
 #include "../port_overlay_internal.h"
 
+#include "port_controls.h"
 #include "port_discord.h"
 #include "port_env.h"
 #include "port_livesplit.h"
@@ -230,6 +231,16 @@ constexpr SettingKey PlayerStickKey(const char* key, const char* sampleA, const 
           sampleB};
 }
 
+// pad_preset, p<N>.pad_preset: the last controller preset of pad port `Port`, which a
+// controller connected there later gets (PortControls::ApplySavedPadPresets). Per port, not a
+// Player 1 override: an empty one means none.
+template < unsigned Port >
+constexpr SettingKey PadPresetKey(const char* key) {
+  return {key, [](const std::string& value) { PortControls::SetSavedPadPreset(Port, Trim(value)); },
+          [](std::ostream& out) { out << PortControls::SavedPadPreset(Port); }, true, "remastered",
+          "southpaw"};
+}
+
 // Every per-player key of player N (2-4), as p<N>.<Player 1's key>.
 #define PLAYER_SETTING_KEYS(N)                                                                     \
   PlayerStickKey< N - 1, PortMouse::kStick_Enabled >("p" #N ".twin_stick", "1", "0"),              \
@@ -237,6 +248,7 @@ constexpr SettingKey PlayerStickKey(const char* key, const char* sampleA, const 
       PlayerStickKey< N - 1, PortMouse::kStick_Split >("p" #N ".stick_aim_split", "1", "0"),       \
       PlayerStickKey< N - 1, PortMouse::kStick_RateY >("p" #N ".stick_aim_rate_y", "900", "1200"), \
       PlayerStickKey< N - 1, PortMouse::kStick_Flick >("p" #N ".flick_stick", "1", "0"),           \
+      PadPresetKey< N - 1 >("p" #N ".pad_preset"),                                                 \
       PlayerKey< N - 1, PortOverlay::kPlayer_LockOnToggle, kPlayerBool >("p" #N ".lockon_toggle",  \
                                                                          "1", "0"),                \
       PlayerKey< N - 1, PortOverlay::kPlayer_StickyCharge, kPlayerBool >("p" #N ".sticky_charge",  \
@@ -471,6 +483,7 @@ const SettingKey kSettingKeys[] = {
        }
      },
      [](std::ostream& out) { out << PortMouse::MouseDpi(); }, false, "800", "1600"},
+    PadPresetKey< 0 >("pad_preset"),
     {"twin_stick",
      [](const std::string& value) { PortMouse::SetStickEnabled(ParseBool(value)); },
      [](std::ostream& out) { WriteBool(out, PortMouse::StickEnabled()); }, false, "1", "0"},

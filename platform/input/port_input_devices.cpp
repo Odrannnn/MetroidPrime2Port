@@ -3,6 +3,7 @@
 // Ported from the Prime 1 port's platform/input/port_input_devices.cpp. What MP2 has no backend or
 // setting for is left out, each at the place it would go: see the header for the list.
 
+#include "port_controls.h"
 #include "port_custom_actions.h"
 #include "port_debug.h"
 #include "port_input_remap_ui.h"
@@ -266,11 +267,13 @@ void BindController(Profile& p, u32 port) {
   const PADButtonMapping* buttons = PADGetButtonMappings(port, &buttonCount);
   const PADAxisMapping* axes = PADGetAxisMappings(port, &axisCount);
   const PADDeadZones* dz = PADGetDeadZones(port);
-  // No controller on the port: bind the standard defaults anyway, so a remap page
-  // shows what a pad would get (nothing reads them until one connects).
+  // No controller on the port: bind the standard defaults with the port's last pad
+  // preset anyway, so a remap page shows what a pad would get (nothing reads them
+  // until one connects).
   PADDefaultMapping fallback;
   if (buttons == nullptr || axes == nullptr) {
     PADGetDefaultMapping(&fallback, PAD_TYPE_STANDARD);
+    PortControls::ApplySavedPadPreset(port, fallback.buttons, PAD_BUTTON_COUNT, fallback.axes, PAD_AXIS_COUNT);
     buttons = fallback.buttons;
     axes = fallback.axes;
     buttonCount = PAD_BUTTON_COUNT;
@@ -1454,6 +1457,8 @@ SPoll Poll(unsigned mouseHeld, bool focused) {
   static PortInput::Runtime sRuntime;
   static bool sInit = false;
 
+  // Every pad port's, before PollPlayer builds ports 1-3 from them.
+  PortControls::ApplySavedPadPresets();
   Profile next;
   BuildProfile(next);
   ApplyMenuButtons(next);

@@ -273,6 +273,11 @@ Controls > Remap:
   GameCube, Remastered, Modern or Southpaw to all controllers, replacing your own bindings
   there; a selected kind or model keeps its own on top. Reset... removes a device's own
   bindings (after a confirmation), bringing back the Classic and GameCube layouts.
+- `pad_preset` (`p2.`..`p4.pad_preset` for pad ports 2-4): the last controller preset picked
+  there (`gamecube`, `remastered`, `modern`, `southpaw`; empty = none). Aurora keeps mappings per
+  controller model, so a real controller connected to that port later, still on its defaults, gets
+  the preset's mapping (dual-stick ones skip a GameCube adapter), and Remap shows it with no
+  controller. Restoring My presets' controller mapping clears it.
 - My presets... (beside Presets...): "Save current as..." keeps your bindings as a preset of your own. One list; a
   preset covers every device it was saved with: keyboard & mouse, touch (when it has bindings) and, with a
   controller connected, the controller (its bindings, custom actions, button/axis mapping), plus twin stick and
@@ -337,7 +342,7 @@ Multiplayer (Player 1-4 selector; Player 1 edits the Controls keys above):
   `sticky_charge`, `rapid_charge`, `auto_aim`, `lock_on_free_aim`, `gyro_aim`, `gyro_mode`,
   `gyro_sensitivity`, `gyro_split`, `gyro_sensitivity_y`: that player's own value; a missing key follows
   Player 1 ("same as Player 1"; Reset and Reset to Player 1 remove keys). Each player's controller is the
-  pad port assignment, not a settings key; Remap... opens Controls > Remap on that port.
+  pad port assignment, not a settings key (its last controller preset is `p<N>.pad_preset`, above); Remap... opens Controls > Remap on that port.
 
 Video > Display:
 

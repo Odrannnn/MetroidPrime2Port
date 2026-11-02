@@ -96,14 +96,22 @@ s32 OtherStick(s32 axis) {
   }
 }
 
-// `port` is the pad port whose controller is remapped; the twin-stick switch is that port's
-// player's (port 0 sets the global one, other ports their p2-p4 override).
-void ApplyPadPreset(EPadPreset preset, u32 port) {
-  PADRestoreDefaultMapping(port);
-  // The GameCube layouts use the C-stick; the dual-stick ones turn twin-stick
-  // back on. MP2 has no pad beam shift, scan/X-ray swap or pad alt buttons
-  // (MP1 PortDebug settings), so those resets are gone.
-  PortMouse::SetPlayerStickEnabled(port, false);
+void SetButton(PADButtonMapping* buttons, u32 count, PADButtonMapping mapping) {
+  for (u32 i = 0; i < count; ++i) {
+    if (buttons[i].padButton == mapping.padButton) buttons[i] = mapping;
+  }
+}
+
+void SetAxis(PADAxisMapping* axes, u32 count, PADAxisMapping mapping) {
+  for (u32 i = 0; i < count; ++i) {
+    if (axes[i].padAxis == mapping.padAxis) axes[i] = mapping;
+  }
+}
+
+// A preset's button and axis mappings, written over a pad type's defaults (what
+// PADSetButtonMapping does, on any array: Aurora's own, or a stand-in for no controller).
+void ApplyPresetMapping(EPadPreset preset, PADButtonMapping* buttons, u32 buttonCount, PADAxisMapping* axes,
+                        u32 axisCount) {
   switch (preset) {
   case EPadPreset::kGameCube:
     break;
@@ -115,7 +123,7 @@ void ApplyPadPreset(EPadPreset preset, u32 port) {
     // GameCube button, so the Remap preset adds the rest as engine rows (fire
     // on the right face button, jump on LB, the top face button's beam shift and
     // Spring Ball: port_input_remap_ui's ApplyRemasteredRows).
-    const PADButtonMapping buttons[] = {
+    const PADButtonMapping mappings[] = {
         {PAD_NATIVE_BUTTON_TRIGGER_RIGHT, PAD_BUTTON_A},
         {SDL_GAMEPAD_BUTTON_SOUTH, PAD_BUTTON_B},
         {SDL_GAMEPAD_BUTTON_WEST, PAD_BUTTON_X},
@@ -123,18 +131,17 @@ void ApplyPadPreset(EPadPreset preset, u32 port) {
         {SDL_GAMEPAD_BUTTON_BACK, PAD_TRIGGER_Z},
         {SDL_GAMEPAD_BUTTON_RIGHT_STICK, PAD_TRIGGER_R},
     };
-    for (const PADButtonMapping& mapping : buttons) {
-      PADSetButtonMapping(port, mapping);
+    for (const PADButtonMapping& mapping : mappings) {
+      SetButton(buttons, buttonCount, mapping);
     }
-    PADSetAxisMapping(port, {{-1, AXIS_SIGN_POSITIVE}, SDL_GAMEPAD_BUTTON_RIGHT_STICK, PAD_AXIS_TRIGGER_R});
-    PortMouse::SetPlayerStickEnabled(port, true);
+    SetAxis(axes, axisCount, {{-1, AXIS_SIGN_POSITIVE}, SDL_GAMEPAD_BUTTON_RIGHT_STICK, PAD_AXIS_TRIGGER_R});
     break;
   }
   case EPadPreset::kModern: {
     // Fire on RT and lock on with LT (the default L), jump and morph on the
     // face buttons, free look on the right stick click, which also drives the
     // R analog so RT doesn't press R as well.
-    const PADButtonMapping buttons[] = {
+    const PADButtonMapping mappings[] = {
         {PAD_NATIVE_BUTTON_TRIGGER_RIGHT, PAD_BUTTON_A},
         {SDL_GAMEPAD_BUTTON_SOUTH, PAD_BUTTON_B},
         {SDL_GAMEPAD_BUTTON_EAST, PAD_BUTTON_X},
@@ -142,24 +149,62 @@ void ApplyPadPreset(EPadPreset preset, u32 port) {
         {SDL_GAMEPAD_BUTTON_NORTH, PAD_TRIGGER_Z},
         {SDL_GAMEPAD_BUTTON_RIGHT_STICK, PAD_TRIGGER_R},
     };
-    for (const PADButtonMapping& mapping : buttons) {
-      PADSetButtonMapping(port, mapping);
+    for (const PADButtonMapping& mapping : mappings) {
+      SetButton(buttons, buttonCount, mapping);
     }
-    PADSetAxisMapping(port, {{-1, AXIS_SIGN_POSITIVE}, SDL_GAMEPAD_BUTTON_RIGHT_STICK, PAD_AXIS_TRIGGER_R});
-    // The right stick aims; without twin-stick it would be the C-stick.
-    PortMouse::SetPlayerStickEnabled(port, true);
+    SetAxis(axes, axisCount, {{-1, AXIS_SIGN_POSITIVE}, SDL_GAMEPAD_BUTTON_RIGHT_STICK, PAD_AXIS_TRIGGER_R});
     break;
   }
-  case EPadPreset::kSouthpaw: {
-    u32 count = 0;
-    PADAxisMapping* axes = PADGetAxisMappings(port, &count);
-    for (u32 i = 0; axes != nullptr && i < count; ++i) {
+  case EPadPreset::kSouthpaw:
+    for (u32 i = 0; i < axisCount; ++i) {
       axes[i].nativeAxis.nativeAxis = OtherStick(axes[i].nativeAxis.nativeAxis);
     }
     break;
   }
-  }
-  PADSerializeMappings();
+}
+
+// The controller on `port`, unless there is none or it is a virtual one (the touch
+// overlay's or a vpad: Aurora keeps no mappings for those).
+SDL_Gamepad* PhysicalPad(u32 port) {
+  const s32 index = PADGetIndexForPort(port);
+  SDL_Gamepad* pad = index >= 0 ? PADGetSDLGamepadForIndex(static_cast< u32 >(index)) : nullptr;
+  return pad == nullptr || SDL_IsJoystickVirtual(SDL_GetGamepadID(pad)) ? nullptr : pad;
+}
+
+// The controller on `port` back to its type's defaults with the preset on top.
+bool WritePresetMapping(EPadPreset preset, u32 port) {
+  if (PhysicalPad(port) == nullptr) return false;
+  PADRestoreDefaultMapping(port);
+  u32 buttonCount = 0;
+  u32 axisCount = 0;
+  PADButtonMapping* buttons = PADGetButtonMappings(port, &buttonCount);
+  PADAxisMapping* axes = PADGetAxisMappings(port, &axisCount);
+  if (buttons == nullptr || axes == nullptr) return false;
+  ApplyPresetMapping(preset, buttons, buttonCount, axes, axisCount);
+  return true;
+}
+
+// The last controller preset picked per pad port (settings.cfg `pad_preset`, `p2.pad_preset`...),
+// -1 for none or a custom layout.
+int sSavedPadPreset[PAD_CHAN3 + 1] = {-1, -1, -1, -1};
+
+constexpr const char* kPadPresetNames[] = {"gamecube", "remastered", "modern", "southpaw"};
+
+bool SavedPresetApplies(int preset) {
+  return preset > static_cast< int >(EPadPreset::kGameCube) && preset <= static_cast< int >(EPadPreset::kSouthpaw);
+}
+
+// `port` is the pad port whose controller is remapped; the twin-stick switch is that port's
+// player's (port 0 sets the global one, other ports their p2-p4 override).
+void ApplyPadPreset(EPadPreset preset, u32 port) {
+  // The GameCube layouts use the C-stick; the dual-stick ones turn twin-stick
+  // back on. MP2 has no pad beam shift, scan/X-ray swap or pad alt buttons
+  // (MP1 PortDebug settings), so those resets are gone.
+  PortMouse::SetPlayerStickEnabled(port, preset == EPadPreset::kRemastered || preset == EPadPreset::kModern);
+  // Remembered, so a controller connected later (or none at all, on the Remap
+  // page) gets the same mappings: Aurora keeps them per controller model.
+  sSavedPadPreset[port] = static_cast< int >(preset);
+  if (WritePresetMapping(preset, port)) PADSerializeMappings();
 }
 
 // A deadzone as a percentage of full travel; Aurora keeps raw SDL axis units.
@@ -426,6 +471,45 @@ bool ApplyKeyPresetNamed(std::string_view name, unsigned port) {
   // The presets turn mouse aim and Twin Stick Aim on or off; settings.cfg keeps them.
   PortOverlaySettings::MarkDirty();
   return true;
+}
+
+void ApplySavedPadPresets() {
+  // SDL joystick ids are never reused, so a reconnect counts as a new controller.
+  static SDL_JoystickID sSeen[PAD_CHAN3 + 1] = {};
+  for (u32 port = 0; port <= PAD_CHAN3; ++port) {
+    SDL_Gamepad* pad = PhysicalPad(port);
+    const SDL_JoystickID id = pad != nullptr ? SDL_GetGamepadID(pad) : 0;
+    if (id == sSeen[port]) continue;
+    sSeen[port] = id;
+    const int preset = sSavedPadPreset[port];
+    if (id == 0 || !SavedPresetApplies(preset) || PADIsDefaultMapping(port) == FALSE) continue;
+    // A GameCube controller has no right stick click for the dual-stick layouts.
+    const bool dualStick = preset == static_cast< int >(EPadPreset::kRemastered) ||
+                           preset == static_cast< int >(EPadPreset::kModern);
+    if (dualStick && PADIsGCAdapter(port) != FALSE) continue;
+    if (WritePresetMapping(static_cast< EPadPreset >(preset), port)) PADSerializeMappings();
+  }
+}
+
+void ApplySavedPadPreset(unsigned port, PADButtonMapping* buttons, unsigned buttonCount, PADAxisMapping* axes,
+                         unsigned axisCount) {
+  const int preset = port <= PAD_CHAN3 ? sSavedPadPreset[port] : -1;
+  if (SavedPresetApplies(preset)) {
+    ApplyPresetMapping(static_cast< EPadPreset >(preset), buttons, buttonCount, axes, axisCount);
+  }
+}
+
+std::string_view SavedPadPreset(unsigned port) {
+  const int preset = port <= PAD_CHAN3 ? sSavedPadPreset[port] : -1;
+  return preset >= 0 ? kPadPresetNames[preset] : std::string_view{};
+}
+
+void SetSavedPadPreset(unsigned port, std::string_view name) {
+  if (port > PAD_CHAN3) return;
+  sSavedPadPreset[port] = -1;
+  for (int i = 0; i < int(std::size(kPadPresetNames)); ++i) {
+    if (name == kPadPresetNames[i]) sSavedPadPreset[port] = i;
+  }
 }
 
 bool ApplyPadPresetNamed(std::string_view name, unsigned port) {
