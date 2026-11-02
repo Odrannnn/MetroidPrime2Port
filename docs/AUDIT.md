@@ -160,6 +160,20 @@ Scripts: `tools/audit/` (see its README).
 | A8-27 | HUD | src/MetroidPrime/CTargetReticles.cpp:2041 | wrong-logic | low | Classic/GameCube crosshair replaced the tweak alpha with the opacity option and dropped the draw-scale fade (retail 0x800AE414..438). Now tweak alpha * opacity * draw scale | fixed |
 | A8-28 | HUD | platform/port_overlay.cpp:142 | port-feature | info | Crosshair style defaults to Remastered (port feature on by default; retail look is Classic). User decision 2026-10-31: keep Remastered as default | won't fix (decision) |
 
+### Sweep A9
+
+`tools/retail_diff.py` triage (retail vs port calls/constants). Accepted model differences live in
+`tools/retail_diff_allow.txt`, one line per finding with its id and asm reason.
+
+| id | area | file:line | class | severity | evidence | status |
+|----|------|-----------|-------|----------|----------|--------|
+| A9-100 | ElitePirate | src/MetroidPrime/Enemies/PortCElitePirate.cpp:1051,1089 DoUserAnimEvent | logic | minor | shakes (events 16 IS01/ATCH, 26 FOOT/ATCH) took the shaker from CPatterned::GetConnectedObject (random pick, one RNG draw per shake); retail fn_15_7BFC calls CEntity::FindConnectedObject (bl at 0x7DAC, 0x7DFC). Smoke: `uevent` 16/26 in Sanctuary 0c_cliff_hall reach FindConnectedObject (IS01, FOOT), 0 crashes | fixed fe7b15710 |
+| A9-101 | Retail dead math | fn_3_3104, fn_16_601C, fn_83_1098, fn_55_3434, fn_55_37F4, fn_61_2630 | logic | info | retail calls a pure function and never reads the result (Magnitude/AsNormalized, GetCurrentCameraTransform, FromMatrix, GetLctrTransform, IsMultiplayer; offsets in the allowlist) | not-a-bug |
+| A9-102 | Inlined / restated helpers | fn_79_A13C, fn_79_66DC, fn_78_48A8, fn_79_6B78, fn_29_2414, fn_30_CC34, fn_30_CD10, fn_56_D690, fn_56_E764, fn_55_D208 | logic | info | same behaviour written another way (Dot written out, lookups inlined, vulnerability hoisted, AddObject in the caller, optional/copy assignments, Render split) | not-a-bug |
+| A9-103 | Callee elsewhere | fn_10_1FA14, fn_18_94C8, fn_40_3B18, fn_76_59BC | logic | info | member initializer (PhazonVisorToken), implicit member dtor, FuncPtrs proxy (DetachActorFromPirate), retail-unreachable prediction (r4 = 0 at 0x5C2C) | not-a-bug |
+| A9-104 | Tool names | ElitePirate/SafeZone/Tryclops libm, GeomBlobV2 OSGetTime, 5 SetLoader_*, DigitalGuardianHead SetTarget, IngBoostBallGuardian fn_30_F78 | logic | info | the port calls sinf/acosf/cosf, CStopwatch::GetGlobalMicros, Set*_FuncPtrs, SetVisualTarget; the phase copy marker sat on the wrong function | not-a-bug (aliases eb85716eb) |
+| A9-105 | Value helpers | 83 findings (Cross, struct copies, aggregate ctors) | logic | info | unported straight-line helpers that only store through r3: the port's `=`/operators; hidden by default since 304b3a87b, `--strict` shows them | not-a-bug |
+
 ## Sweep log
 
 Moved verbatim to `docs/history/AUDIT-to-2026-10-29.md` (one row per lane report: sweeps 1-4, Review 5b
@@ -172,6 +186,11 @@ covered so far: reached stubs (clean), Grenchler parts 1-3 (part 3 clean), Sporb
 constants (none diverge; fn_78_2E38 may round 1 ulp differently), FlyingPirate (clean), ScriptSafeZone
 (clean), the 50 NaN-flagged comparisons (A8-3..7), commits since 2026-10-29 (gate list; the 9 that reach
 gameplay at defaults restore retail behaviour or are port features by design: quick resume, input mapping).
+
+Sweep A9 (retail vs decomp vs port, 2026-11-02): tooling-port lane (`/tmp/opencode/reports/a9-tooling-port.md`):
+retail_diff effect kind (ctor/dtor Locks, `tools/retail_diff_regress.sh`), DOL-named call findings
+all triaged (A9-100..104), value helpers hidden (A9-105); default calls 546 -> 338, strict 2174 -> 1381.
+Untriaged: the 254 module-local `(unported) not named` callees that make calls, const/nan/shape kinds.
 
 Open: only A1-26 (RadialHud `model_inner_ring`, widget name on the GameCube pak unconfirmed); every other
 row above is `fixed`, `not-a-bug`, `wontfix` or `partly fixed` (state in its status cell).
