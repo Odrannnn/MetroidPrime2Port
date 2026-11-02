@@ -2722,21 +2722,54 @@ COrbitPointMarker::COrbitPointMarker(int playerIndex)
 
 bool COrbitPointMarker::CheckLoadComplete() { return mOrbitPointModel.TryCache(); }
 
+#ifdef TARGET_PC
+// port (MP1 2183f90b2, #250): an empty lock that keeps the camera pitch (mouse aim, twin stick)
+// holds the orbit point level at eye height, so the marker sat above or below the screen centre by
+// the pitch. Lift it onto the view ray at the point's horizontal distance, where retail's
+// SetOrbitPosition puts it.
+static CVector3f PortOrbitMarkerTargetPos(const CPlayer& player, const CGameCamera& camera) {
+  const CVector3f pos = player.GetHUDOrbitTargetPosition();
+  if (!player.PortEmptyLockKeepsPitch()) {
+    return pos;
+  }
+  const CVector3f camPos = camera.GetTranslation();
+  const CVector3f fwd = camera.GetTransform().GetForward();
+  const float flatLen = CMath::SqrtF(fwd.GetX() * fwd.GetX() + fwd.GetY() * fwd.GetY());
+  if (flatLen < 0.01f) {
+    return pos;
+  }
+  const float dx = pos.GetX() - camPos.GetX();
+  const float dy = pos.GetY() - camPos.GetY();
+  const float dist = CMath::SqrtF(dx * dx + dy * dy);
+  return CVector3f(pos.GetX(), pos.GetY(), camPos.GetZ() + fwd.GetZ() * dist / flatLen);
+}
+#endif
+
 void COrbitPointMarker::Update(float dt, const CStateManager& mgr) {
   mCurrentTime += dt;
   const CPlayer* player = mgr.GetPlayer(mPlayerIndex);
   CPlayer::EPlayerOrbitState orbitState = player->GetOrbitState();
   const CGameCamera& camera = *mgr.GetCameraManager(mPlayerIndex)->GetCurrentCamera(mgr, true);
   bool freeOrbit = orbitState == CPlayer::kOS_OrbitPoint || orbitState == CPlayer::kOS_OrbitCarcass;
+#ifdef TARGET_PC
+  const CVector3f hudOrbitPos = PortOrbitMarkerTargetPos(*player, camera);
+#endif
 
   if (mLastFreeOrbit != freeOrbit) {
     if (orbitState == CPlayer::kOS_OrbitPoint || orbitState == CPlayer::kOS_OrbitCarcass) {
       ResetInterpolationTimer(gpTweakTargeting->GetOrbitPointInterpolateInTime());
+#ifdef TARGET_PC
+      mLagTargetPosition = !mCameraRelativeZ
+                               ? hudOrbitPos + CVector3f(0.f, 0.f, mZOffset)
+                               : CVector3f(hudOrbitPos.GetX(), hudOrbitPos.GetY(),
+                                           mZOffset + camera.GetTranslation().GetZ());
+#else
       mLagTargetPosition = !mCameraRelativeZ
                                ? player->GetHUDOrbitTargetPosition() + CVector3f(0.f, 0.f, mZOffset)
                                : CVector3f(player->GetHUDOrbitTargetPosition().GetX(),
                                            player->GetHUDOrbitTargetPosition().GetY(),
                                            mZOffset + camera.GetTranslation().GetZ());
+#endif
       CEulerAngles euler =
           CEulerAngles::FromQuaternion(CQuaternion::FromMatrix(camera.GetTransform()));
       mLagAzimuth = CMath::Deg2Rad(45.f) + euler.GetZ();
@@ -2753,7 +2786,11 @@ void COrbitPointMarker::Update(float dt, const CStateManager& mgr) {
   }
 
   if (!mCameraRelativeZ) {
+#ifdef TARGET_PC
+    CVector3f orbitPosition = hudOrbitPos;
+#else
     CVector3f orbitPosition = player->GetHUDOrbitTargetPosition();
+#endif
     float targetZ = mZOffset + orbitPosition.GetZ();
     float delta = targetZ - mLagTargetPosition.GetZ();
     if (delta < 0.1f) {
@@ -2766,9 +2803,14 @@ void COrbitPointMarker::Update(float dt, const CStateManager& mgr) {
           CVector3f(orbitPosition.GetX(), orbitPosition.GetY(), mLagTargetPosition.GetZ() + 0.1f);
     }
   } else {
+#ifdef TARGET_PC
+    mLagTargetPosition =
+        CVector3f(hudOrbitPos.GetX(), hudOrbitPos.GetY(), mZOffset + hudOrbitPos.GetZ());
+#else
     mLagTargetPosition = CVector3f(player->GetHUDOrbitTargetPosition().GetX(),
                                    player->GetHUDOrbitTargetPosition().GetY(),
                                    mZOffset + player->GetHUDOrbitTargetPosition().GetZ());
+#endif
   }
 
   if (mLastFreeOrbit) {
