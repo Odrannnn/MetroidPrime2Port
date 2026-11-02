@@ -189,6 +189,9 @@ CSwampBossStage2::CSwampBossStage2(TUniqueId uid, const rstl::string& name,
 , mDropFlyerCooldown(0.f)
 , mPendingFlinch(0.f)
 , mLastTouched(kInvalidUniqueId) {
+  // 0xC5B8: LaunchProjectile's TryCache needs a held lock; without it a spit before the first
+  // PredictInterceptPos (which locks through GetObj) never spawns (#59).
+  mSpitProjectile.Token().Lock();
   if (data.scanInfoLight != kInvalidAssetId) {
     mScanLight = TLockedToken< CScannableObjectInfo >(
         gpSimplePool->GetObj(SObjectTag('SCAN', data.scanInfoLight)));
@@ -989,9 +992,10 @@ void CSwampBossStage2::FireSpit(CStateManager& mgr, const rstl::string& locator)
                     : CImpactVisorEffect::None();
   CEnergyProjectile* projectile =
       LaunchProjectile(xf, mgr, 0x40, 0x400, true, visorEffect, CVector3f(1.f, 1.f, 1.f));
-  // TODO(uncertain): retail writes the phase's spitProjectileRadius (mData.spitProjectileRadius)
-  // into the projectile at +0x3d4; the host CEnergyProjectile exposes no such field.
-  (void)projectile;
+  // 0x4640: spitProjectileRadius (+0x8ec) into the projectile's extent (+0x3d4).
+  if (projectile) {
+    projectile->SetProjExtent(mData.spitProjectileRadius);
+  }
 }
 
 // fn_79_5030: put every chain node on its recorded position. The retail walks the *nodes* vector

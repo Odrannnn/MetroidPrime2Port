@@ -252,6 +252,8 @@ CSwampBossStage1::CSwampBossStage1(TUniqueId uid, const rstl::string& name,
 , xd78_waitStart(-1000.f)
 , xd7c_projectileInfo(data.spitProjectile, LdrToDamageInfo(data.spitDamage))
 , xda4_spitVisor(MakeGenToken(data.spitVisorEffect)) {
+  // fn_78_141C locks the spit token after building it; LaunchProjectile's TryCache needs the lock.
+  xd7c_projectileInfo.Token().Lock();
   // Retail clears these +0x681 bits (0x40/0x10/0x08/0x04/0x02, then 0x80); shock stays enabled.
   CAiKnockBackMgr& kb = KnockBackController();
   kb.EnableFreeze(false);

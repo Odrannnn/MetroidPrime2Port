@@ -290,7 +290,6 @@ B4 GetOrigin, D0 GetHealthInfo.
 - **Remaining `TODO(uncertain)`:**
   - 5D58 head vulnerability swap.
   - 3900 splash → water link.
-  - 4324 spit radius.
   - ZeroHealth index field.
   - Riding-platform clear in water.
   - Actor +0x150 draw gate.
