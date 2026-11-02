@@ -193,6 +193,9 @@ Scripts: `tools/audit/` (see its README).
 | A9-308 | CStateManager warp | src/MetroidPrime/CStateManager.cpp:4425,5071,5089-5099,5126,5467-5474,5601 | port-limit | minor | kPortWarpMinFreeIds 256 / kPortWarpComfortIds 700 heuristics have comments measured at 1024 slots; still valid lower bounds at 2048. CDarkCommando.cpp:1064 reserved_vector<TUniqueId,128> holds candidates, not slots | not-a-bug (stale comments only) |
 | A9-309 | unmarked companions | SnakeWeedSwarm, Splitter fn_75_5F18/5418/CB30, BoostBallSwooshToken fn_10_895C, ctor/dtor helpers | target-pc | minor | retail_diff/`--strict` hits are inlined container/token helpers, a wrapper whose body (PortListen) is marked, or Bounce/DoubleSnap (dead in shipped data); no marker without every arm run, so none added | not-a-bug |
 | A9-310 | guessed names | PortCDigitalGuardianHead.cpp:1964, PortCSplitterCommandModule.cpp:297, CActor.hpp "Guessed names" | upstream | minor | remaining notes only question member names, not behaviour; no other TODO(uncertain) in src | not-a-bug |
+| A9-600 | Platforms | CScriptPlatform.cpp:855 Move | upstream | minor | retail unit 0x17CC/0x1828 `lwz r12,0x5c(r12); bctrl` = CActor slot 0x5C GetScanObjectIndicatorPosition for the look-at target; decomp called GetOrbitPosition (0x50). Not reached in smoke (no look-at platform) | fixed 301d76296 (TARGET_PC) |
+| A9-601 | AI base | CPatterned.cpp:202 ctor | upstream | gameplay | retail unit 0x6CC0-0x6CEC `lbz 0x2a4(pinfo); extrwi. 1,24` (SEchoParameters.mIsEchoEmitter, bit 0x80) `beq; CAABox(pos,pos); li r4,1; bl AllocateEchoEmitter`; decomp never allocated the echo emitter. Smoke: 9 ctor calls in Agon 0i_sand_hall | fixed 4179dca39 (TARGET_PC) |
+| A9-602 | constants | CActorLights.cpp:113 ActivateLights, CScriptSound.cpp:425 GetOccludedVolumeAmount | upstream | minor | 1-ulp literals: retail lbl_8041B64C = 0x40A00001 (5.0000005f) vs 5.f; 0.42f rounds 1 ulp off retail. A8 precedent | wontfix |
 
 ## Sweep log
 
@@ -211,6 +214,11 @@ Sweep A9 upstream-decomp (2026-11-02): non-100% functions of port-compiled units
 ranked by reach); tier 1 (564: player, state manager, weapons, scan, HUD, collision) read for constant,
 branch-sense and call diffs, tier 2 constant diffs only, tier 3 not read. A9-200..208; report
 `/tmp/opencode/reports/a9-upstream-decomp.md`.
+Sweep A9 upstream-tier2 (2026-11-02, report `/tmp/opencode/reports/a9-upstream-tier2.md`): tier 2 (424)
+read for branch sense, compare immediates, call targets and vtable slots (A9-600..602; rest false
+positives: tail duplication, inlined helpers, switch-tree shape, NaN-only). Tier 3 (661) scanned by
+vtable-slot, call-target and compare-immediate bags only; 3/3, ~14/61 and ~8/52 hits read, all false
+positives; the unread hits are listed in the report.
 Sweep A9 constants-notes lane (2026-11-02, plan steps 4-6; report `/tmp/opencode/reports/a9-constants-notes.md`):
 Port companions without markers (retail_diff on 79 unmarked ids, `--strict`: all inlined helpers, already
 marked elsewhere, or dead in shipped data, A9-309), capacity constants 1024->2048 (A9-300, A9-308), and

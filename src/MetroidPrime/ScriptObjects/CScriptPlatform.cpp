@@ -852,9 +852,19 @@ CQuaternion CScriptPlatform::Move(float dt, CStateManager& mgr) {
     SetTransformExplicitly(xf);
   }
   if (const CActor* actor = TCastToConstPtr< CActor >(mgr.GetObjectById(mLookAtTarget))) {
+#ifdef TARGET_PC
+    // Retail 0x17CC and 0x1828 (unit offsets): lwz r12,0x5c(r12); bctrl = CActor vtable slot 0x5C,
+    // GetScanObjectIndicatorPosition (0x50 is GetOrbitPosition).
+    const CVector3f lookAtPos = actor->GetScanObjectIndicatorPosition(mgr);
+    if ((lookAtPos - GetTranslation()).CanBeNormalized()) {
+      CTransform4f xf = CTransform4f::LookAt(GetTranslation(),
+                                             actor->GetScanObjectIndicatorPosition(mgr),
+                                             CVector3f::Up());
+#else
     if ((actor->GetOrbitPosition(mgr) - GetTranslation()).CanBeNormalized()) {
       CTransform4f xf =
           CTransform4f::LookAt(GetTranslation(), actor->GetOrbitPosition(mgr), CVector3f::Up());
+#endif
       xf.SetTranslation(GetTranslation());
       SetTransform(xf);
     }
