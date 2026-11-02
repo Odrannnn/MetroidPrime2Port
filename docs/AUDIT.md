@@ -164,6 +164,15 @@ Scripts: `tools/audit/` (see its README).
 
 | id | area | file:line | class | severity | evidence | status |
 |----|------|-----------|-------|----------|----------|--------|
+| A9-200 | Player | src/MetroidPrime/Player/CPlayer.cpp:841 ResetPlayerState | wrong-call | low | retail 0x8001A038/0x8001A054 `lwz r12,0x10(r12)` = CHintManager vtable slot 0x10 Reset; decomp called RefreshHint (0xC) | fixed 9a8ff5911 |
+| A9-201 | Player | CPlayer.cpp:852 ResetPlayerState (multiplayer) | wrong-const | low | retail 0x8001A088 lfs lbl_8041A4B4 = 3.0 into 0x12f4 (invulnerability); decomp 2.0 | fixed 9a8ff5911 |
+| A9-202 | Player | CPlayer.cpp:1356 UpdatePlayerDrawFlags | wrong-const | visual | retail 0x80017F60 `fdivs f29,f1,f3`, f3 = 3.0 (Double Damage pulse); decomp /2 | fixed 9a8ff5911 |
+| A9-203 | Player | CPlayer.cpp:3963 TakeDamage | wrong-const | visual | retail 0x8000F85C lfs lbl_8041A50C = 0.333f (0x3EAA7EFA) damage colour timer; decomp 1/3 | fixed 9a8ff5911 |
+| A9-204 | Player | CPlayer.cpp:4588 StartTurret | wrong-const | low | retail 0x8000D838 lfs lbl_8041A4BC = 5.0, `fcmpo; bge` (turret occupant radius); decomp 2.0; multiplayer only | fixed 9a8ff5911 |
+| A9-205 | Player | src/MetroidPrime/Player/CPlayerDynamics.cpp:1422 SetIntoBallReadyAnimation | wrong-const | low | retail 0x80185CA8 lfs lbl_8041C9C4 = 45.0, `blt` (then <= 315); decomp 225 | fixed 9a8ff5911 |
+| A9-206 | Gun | src/MetroidPrime/Player/CPlayerGunBase.cpp:313 UpdateTransform | wrong-branch | low | retail 0x801DD9AC `cmpwi r0,0x2` on 0x38c = kMS_Morphing (fast 0.1 s holster); decomp kMS_Morphed | fixed 9a8ff5911 |
+| A9-207 | Gun | src/MetroidPrime/Player/CPlayerGun.cpp:1512, :1724 Render/Update | wrong-branch | visual | retail 0x801D098C / 0x801CFE88 `cmpwi r0,0x4` on mChargePhase 0x694 = kCP_Charged; decomp kCP_ChargeFx | fixed 9a8ff5911 |
+| A9-208 | Collision | src/MetroidPrime/CCollisionActorManager.cpp:195 ctor (OBBFromMayaPlugIn) | wrong-const | med | retail 0x80136D6C `fmuls f4,f3,f2`, f3 = lbl_8041C0B4 = 2.0 on the bounds; decomp 0.5 | fixed 9a8ff5911 |
 | A9-300 | cov tooling | tools/cov/specs/*.py, tools/drivers/{dg31_echo,ing_drive,spacepirate_drive}.py | port-limit | minor | gdb specs/drivers decoded TUniqueId with the retail 10/6 packing (& 0x3ff, 1024 slots, version +0x400) after the PC moved to 11/5 (kMaxObjects 2048): slot indices above 1023 aliased. Left as-is: splinter_grab_force.py hard-coded ids, elitepirate_shouldfire.con `ep.target 1024` (fixture values) | fixed 921d82799 |
 | A9-301 | Chykka 2 | src/MetroidPrime/Enemies/PortCSwampBossStage2.cpp:685 UpdateWater (fn_79_3900) | render | visual | asm 0x3D58-0x3D68 `lhz 0xd3c` (mWater) -> `sth 0x12a` of the splash before AddObject; port dropped it (TODO), so splashes sorted independently of the water. Smoke: 109/109 splashes linked | fixed a5f03ba7c |
 | A9-302 | Chykka 2 | src/MetroidPrime/Enemies/PortCSwampBossStage2.cpp:2427 Render (fn_79_A78C) | render | minor | asm 0xA7B4-0xA7CC queries GetCharacterRenderMaskAndTarget only when 0x421 bit 0x01 (mDrawParticles); port always queried | fixed a5f03ba7c |
@@ -189,6 +198,10 @@ constants (none diverge; fn_78_2E38 may round 1 ulp differently), FlyingPirate (
 (clean), the 50 NaN-flagged comparisons (A8-3..7), commits since 2026-10-29 (gate list; the 9 that reach
 gameplay at defaults restore retail behaviour or are port features by design: quick resume, input mapping).
 
+Sweep A9 upstream-decomp (2026-11-02): non-100% functions of port-compiled units from report.json (1649,
+ranked by reach); tier 1 (564: player, state manager, weapons, scan, HUD, collision) read for constant,
+branch-sense and call diffs, tier 2 constant diffs only, tier 3 not read. A9-200..208; report
+`/tmp/opencode/reports/a9-upstream-decomp.md`.
 Sweep A9 constants-notes lane (2026-11-02, plan steps 4-6; report `/tmp/opencode/reports/a9-constants-notes.md`):
 Port companions without markers (retail_diff on 79 unmarked ids, `--strict`: all inlined helpers, already
 marked elsewhere, or dead in shipped data, A9-309), capacity constants 1024->2048 (A9-300, A9-308), and

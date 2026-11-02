@@ -1417,7 +1417,12 @@ void CPlayer::SetIntoBallReadyAnimation(float dt, EPlayerMorphBallState state) {
       const float angle =
           CMath::Rad2Deg(CMath::WrapTwoPi(atan2f(-flatVelocity.GetX(), flatVelocity.GetY())));
       const float maxSpeed = GetActualFirstPersonMaxVelocity(dt);
+#ifdef TARGET_PC
+      // Retail 0x80185CA8 lfs f0,lbl_8041C9C4 = 45.0; fcmpo f30,f0; blt skips (then <= 315.0).
+      if (angle >= 45.f && angle <= 315.f) {
+#else
       if (angle >= 225.f && angle <= 315.f) {
+#endif
         commandMgr.DeliverCmd(CPBCMorphToBallCmd(0, 4));
       } else if (speed >= 0.5f * maxSpeed) {
         commandMgr.DeliverCmd(CPBCMorphToBallCmd(0, 3));

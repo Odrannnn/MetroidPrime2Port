@@ -835,12 +835,24 @@ void CPlayer::ResetPlayerState(CStateManager& mgr, int state) {
       cameraId = mCameraManager->GetBallCamera()->GetUniqueId();
     }
     mCameraManager->Reset(cameraId, mgr);
+#ifdef TARGET_PC
+    // Retail 0x8001A038 / 0x8001A054 lwz r12,0x10(r12): vtable slot 0x10 of __vt__12CHintManager
+    // is Reset (0xC is RefreshHint).
+    GetPlayerHintManager()->Reset(mgr);
+    GetControlHintManager()->Reset(mgr);
+#else
     GetPlayerHintManager()->RefreshHint(mgr);
     GetControlHintManager()->RefreshHint(mgr);
+#endif
     ResetPlayerHintState(mgr);
     mMorphBall->SetBallState(CMorphBall::kBS_Normal);
     if (mgr.IsMultiplayer()) {
+#ifdef TARGET_PC
+      // Retail 0x8001A088 lfs f0,lbl_8041A4B4 = 3.0, stored by stfs f0,0x12f4(r30).
+      mInvulnerabilityTimer = 3.f;
+#else
       mInvulnerabilityTimer = 2.f;
+#endif
     }
     mControlMapper.ResetCommandOverrides();
     ClearFluidList(mgr);
@@ -1339,7 +1351,12 @@ void CPlayer::UpdatePlayerDrawFlags(CStateManager& mgr) {
       mPlayerDrawFlags = CModelFlags::AlphaBlended(alpha);
     }
   } else if (playerState.GetItemAmount(CPlayerState::kIT_DoubleDamage, true) != 0) {
+#ifdef TARGET_PC
+    // Retail 0x80017F50 lfs f3,lbl_8041A4B4 = 3.0; 0x80017F60 fdivs f29,f1,f3.
+    const float pulse = (1.f + CMath::FastSinR(M_PIF * CGraphics::GetSecondsMod900())) / 3.f;
+#else
     const float pulse = (1.f + CMath::FastSinR(M_PIF * CGraphics::GetSecondsMod900())) / 2.f;
+#endif
     const float timeLeft = playerState.GetTimeLeft(CPlayerState::kIT_DoubleDamage);
     if (!(timeLeft < 2.f) || (static_cast< int >(20.f * timeLeft) & 1) == 0) {
       mPlayerDrawFlags = CModelFlags(CModelFlags::kT_Two,
@@ -3941,7 +3958,12 @@ void CPlayer::TakeDamage(bool significant, const CVector3f& location, float dama
       if (type != kWT_AreaDark || mDamageWeaponType == uint(kWT_None)) {
         mDamageWeaponType = type;
       }
+#ifdef TARGET_PC
+      // Retail 0x8000F85C lfs f0,lbl_8041A50C = 0.333f (0x3EAA7EFA), stored to 0x12e4.
+      mDamageColorTimer = 0.333f;
+#else
       mDamageColorTimer = 0.33333334f;
+#endif
 
       ushort suitDamageSfx = damageInfo.GetDamageSfxId();
       ushort damageLoopSfx = damageInfo.GetDamageLoopSfxId();
@@ -4561,7 +4583,12 @@ void CPlayer::StartTurret(TUniqueId turret, CStateManager& mgr) {
       CPlayer* player = mgr.GetPlayer(i);
       CVector3f displacement = player->GetTranslation() - GetTranslation();
       displacement.SetZ(0.f);
+#ifdef TARGET_PC
+      // Retail 0x8000D838 lfs f0,lbl_8041A4BC = 5.0; fcmpo; bge skips the kill.
+      if (displacement.Magnitude() < 5.f) {
+#else
       if (displacement.Magnitude() < 2.f) {
+#endif
         mgr.KillPlayer(player->mPlayerState->GetHealthInfo().GetHP(), player->GetUniqueId(),
                        GetUniqueId());
       }

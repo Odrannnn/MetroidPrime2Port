@@ -1507,7 +1507,12 @@ void CPlayerGun::Render(const CStateManager& mgr, const CVector3f& cameraTransla
   gpRender->SetModelMatrix(CTransform4f::Identity());
 
   if (mChargeEffectVisible) {
+#ifdef TARGET_PC
+    // Retail 0x801D0988 lwz r0,0x694(r27); 0x801D098C cmpwi r0,0x4 = kCP_Charged.
+    if (mAuxMuzzleGenerators[mCurrentBeamId].get() != nullptr && mChargePhase == kCP_Charged) {
+#else
     if (mAuxMuzzleGenerators[mCurrentBeamId].get() != nullptr && mChargePhase == kCP_ChargeFx) {
+#endif
       mAuxMuzzleGenerators[mCurrentBeamId]->Render();
     }
     if (mMuzzleEffectVisTimer > 0.f ||
@@ -1714,7 +1719,12 @@ void CPlayerGun::Update(float dt, CStateManager& mgr) {
         }
       }
     }
+#ifdef TARGET_PC
+    // Retail 0x801CFE84 lwz r0,0x694(r31); 0x801CFE88 cmpwi r0,0x4 = kCP_Charged.
+    if (mAuxMuzzleGenerators[mCurrentBeamId].get() && mChargePhase == kCP_Charged) {
+#else
     if (mAuxMuzzleGenerators[mCurrentBeamId].get() && mChargePhase == kCP_ChargeFx) {
+#endif
       mAuxMuzzleGenerators[mCurrentBeamId]->SetGlobalOrientAndTrans(mBeamLocalXf);
       mAuxMuzzleGenerators[mCurrentBeamId]->SetGlobalScale(scale);
       mAuxMuzzleGenerators[mCurrentBeamId]->SetParticleEmission(emitting);
