@@ -531,7 +531,8 @@ float PortTriXhairAlpha(float alpha) {
   return std::min(alpha * static_cast< float >(PortOverlay::CrosshairOpacity()) / 100.f, 1.f);
 }
 float PortTriXhairSize(int playerIndex) {
-  return PortMouse::Aiming(playerIndex) ? static_cast< float >(PortOverlay::CrosshairSize()) / 100.f : 1.f;
+  return PortMouse::Aiming(playerIndex) || PortMouse::LockFreeAimActive(playerIndex)
+             ? static_cast< float >(PortOverlay::CrosshairSize()) / 100.f : 1.f;
 }
 } // namespace
 
@@ -2034,7 +2035,7 @@ void CCompoundTargetReticle::DrawCrosshairs(const CMatrix3f& rotation,
     return;
   }
   float scale = mCrosshairsDrawScale;
-  if (PortMouse::Aiming(mPlayerIndex)) {
+  if (PortMouse::Aiming(mPlayerIndex) || PortMouse::LockFreeAimActive(mPlayerIndex)) {
     scale *= static_cast< float >(PortOverlay::CrosshairSize()) / 100.f;
   }
   CColor color = gpTweakTargeting->GetCrosshairsColor();

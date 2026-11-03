@@ -1521,7 +1521,8 @@ void CPlayer::UpdateCrosshairsState(const CFinalInput& input) {
   // pressed with the look control, and the port never presses it - the mouse, the twin stick and
   // the touch drag own the view instead - so the reticle would stay faded out for the whole game
   // (on the phone it is the only way to play). PortMouse::Aiming is true on exactly the ticks the
-  // port turned the body to the aim, so a lock-on, the morph ball or a cinematic still hide it.
+  // port turned the body to the aim, so a lock-on, the morph ball or a cinematic still hide it
+  // (except a lock under lock-on free aim, whose pointer it is).
   if (PortAimCrosshairsOpen()) {
     mDrawCrosshairs = true;
   }
@@ -2968,7 +2969,10 @@ bool CPlayer::PortAimCrosshairsOpen() const {
       PortOverlay::CrosshairStyle() == PortOverlay::kCrosshairStyle_Classic) {
     return false;
   }
-  return PortMouse::Aiming(mPlayerIndex) && PortOverlay::AimCrosshair();
+  // Lock-on free aim: the lock owns the view, so Aiming is false, but the crosshair is what the
+  // pointer moves over it (#66).
+  return (PortMouse::Aiming(mPlayerIndex) || PortMouse::LockFreeAimActive(mPlayerIndex)) &&
+         PortOverlay::AimCrosshair();
 }
 
 bool CPlayer::PortLockFreeAim(const CStateManager& mgr) const {
