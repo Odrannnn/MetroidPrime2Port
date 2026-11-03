@@ -133,8 +133,8 @@ public:
   // same tokens in the ctor at 0x80259b70). The orbit button is not readable from the reticle, so
   // a release is "lock ended and not by a damage orbit break".
   void PortTriUpdateCombat(float dt, const CStateManager& mgr);
-  void PortTriDrawNext(const CMatrix3f& rotation) const;
-  void PortTriDrawLocked(const CMatrix3f& rotation) const;
+  void PortTriDrawNext(const CMatrix3f& rotation, const CStateManager& mgr) const;
+  void PortTriDrawLocked(const CMatrix3f& rotation, const CStateManager& mgr) const;
   void PortTriDrawLockAt(const CMatrix3f& rotation, const CVector3f& pos, float lockTime,
                          const CColor& color, float alpha) const;
   void PortTriDrawAiming(const CMatrix3f& rotation, const CStateManager& mgr) const;
@@ -147,13 +147,11 @@ public:
   float mPortTriAimArmScale = 1.f, mPortTriAimCenterScale = 1.f, mPortTriAimTarget = 0.f;
   CColor mPortTriAimArmColor = CColor::White(), mPortTriAimCenterColor = CColor::White();
   float mPortTriAimArmAlpha = 0.f, mPortTriAimCenterAlpha = 0.f;
-  CVector3f mPortTriNextPos = CVector3f::Zero(), mPortTriNextWorld = CVector3f::Zero(),
-            mPortTriNextFrom = CVector3f::Zero();
+  CVector3f mPortTriNextWorld = CVector3f::Zero(), mPortTriNextFrom = CVector3f::Zero();
   TUniqueId mPortTriNext = kInvalidUniqueId;
   float mPortTriNextAlpha = 0.f, mPortTriNextAngle = 0.f, mPortTriNextTime = 0.f;
   bool mPortTriNextMoving = false;
   TUniqueId mPortTriLocked = kInvalidUniqueId;
-  CVector3f mPortTriLockPos = CVector3f::Zero();
   CColor mPortTriLockColor = CColor::White();
   float mPortTriLockAlpha = 0.f, mPortTriLockTime = 0.f, mPortTriReleaseAlpha = 0.f;
   float mPortTriLockFade = 0.f, mPortTriReleaseFade = 0.f, mPortTriPrevYaw = 0.f,

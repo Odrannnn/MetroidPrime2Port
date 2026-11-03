@@ -590,10 +590,9 @@ void CCompoundTargetReticle::PortTriUpdateCombat(float dt, const CStateManager& 
   const TUniqueId next = player.GetOrbitNextTargetId();
   const CActor* nextActor = TCastToConstPtr< CActor >(mgr.GetObjectById(next));
   const CVector3f world = nextActor ? nextActor->GetOrbitPosition(mgr) : mPortTriNextWorld;
-  const CVector3f projected = PortTriProjectNear(mgr, world);
   if (next != kInvalidUniqueId && next != mPortTriNext) {
     if (mPortTriNextAlpha == 0.f) {
-      mPortTriNextFrom = projected;
+      mPortTriNextFrom = world;
     } else {
       mPortTriNextFrom = mPortTriNextWorld;
       mPortTriNextMoving = true;
@@ -603,20 +602,21 @@ void CCompoundTargetReticle::PortTriUpdateCombat(float dt, const CStateManager& 
   mPortTriNextAlpha = Clamp(
       mPortTriNextAlpha + (next != kInvalidUniqueId ? dt : -dt) * (100.f / 255.f) / .25f, 0.f,
       100.f / 255.f);
+  // Kept as a world point and put on the 1.25 plane when drawn (PortTriDrawNext): placed there
+  // now, the drawn camera's travel since this update (a step, head bob, smooth frames) moved it
+  // by that travel over 1.25 units, so it shook and trailed far from what it marks.
   if (mPortTriNextMoving) {
     mPortTriNextTime = Clamp(mPortTriNextTime + dt, 0.f, .25f);
     if (mPortTriNextTime < .25f) {
       const float q = mPortTriNextTime / .25f;
-      mPortTriNextPos = PortTriProjectNear(mgr, mPortTriNextFrom) * (1.f - q) + projected * q;
-      mPortTriNextWorld =
-          eye + (mPortTriNextPos - eye).AsNormalized() * (world - eye).Magnitude();
+      const CVector3f nearPos =
+          PortTriProjectNear(mgr, mPortTriNextFrom) * (1.f - q) + PortTriProjectNear(mgr, world) * q;
+      mPortTriNextWorld = eye + (nearPos - eye).AsNormalized() * (world - eye).Magnitude();
     } else {
       mPortTriNextMoving = false;
-      mPortTriNextPos = projected;
       mPortTriNextWorld = world;
     }
   } else {
-    mPortTriNextPos = projected;
     mPortTriNextWorld = world;
   }
   mPortTriNext = next;
@@ -635,7 +635,6 @@ void CCompoundTargetReticle::PortTriUpdateCombat(float dt, const CStateManager& 
     }
     hideArms = IsGrappleTarget(locked, mgr);
   }
-  mPortTriLockPos = cam * CVector3f(0.f, 1.25f, 0.f);
   if (has && locked == mPortTriLocked) {
     mPortTriLockTime += dt;
   } else if (!has && mPortTriLocked != kInvalidUniqueId) {
@@ -689,16 +688,25 @@ void CCompoundTargetReticle::PortTriUpdateCombat(float dt, const CStateManager& 
   mPortTriLocked = locked;
 }
 
-void CCompoundTargetReticle::PortTriDrawNext(const CMatrix3f& rotation) const {
+void CCompoundTargetReticle::PortTriDrawNext(const CMatrix3f& rotation,
+                                             const CStateManager& mgr) const {
   if (mNoDrawTicks > 0) {
     return;
   }
+  // The drawn camera's points: the next target where its actor is drawn, the release at the centre.
+  CVector3f nextWorld = mPortTriNextWorld;
+  if (const CActor* actor = TCastToConstPtr< CActor >(mgr.GetObjectById(mPortTriNext))) {
+    nextWorld = actor->PortPresentedPoint(nextWorld);
+  }
+  const CVector3f nextPos = PortTriProjectNear(mgr, nextWorld);
+  const CVector3f lockPos = mgr.GetCameraManager(mPlayerIndex)->GetCurrentCameraTransform(mgr, true) *
+                            CVector3f(0.f, 1.25f, 0.f);
   for (int group = 0; group < 2; ++group) {
     const float alpha = group == 0 ? mPortTriNextAlpha : mPortTriReleaseAlpha;
     if (alpha <= 0.f) {
       continue;
     }
-    const CTransform4f base(rotation, group == 0 ? mPortTriNextPos : mPortTriLockPos);
+    const CTransform4f base(rotation, group == 0 ? nextPos : lockPos);
     for (int i = 0; i < 3; ++i) {
       const float angle = (group == 0 ? mPortTriNextAngle : 0.f) + i * 120.f * (M_PIF / 180.f);
       PortTriDrawModel(mPortTriLockArm,
@@ -735,12 +743,15 @@ void CCompoundTargetReticle::PortTriDrawLockAt(const CMatrix3f& rotation, const 
   }
 }
 
-void CCompoundTargetReticle::PortTriDrawLocked(const CMatrix3f& rotation) const {
+void CCompoundTargetReticle::PortTriDrawLocked(const CMatrix3f& rotation,
+                                               const CStateManager& mgr) const {
   if (mNoDrawTicks > 0 || mPortTriLocked == kInvalidUniqueId || mPortTriLockAlpha <= 0.f) {
     return;
   }
-  PortTriDrawLockAt(rotation, mPortTriLockPos, mPortTriLockTime, mPortTriLockColor,
-                    mPortTriLockAlpha);
+  PortTriDrawLockAt(rotation,
+                    mgr.GetCameraManager(mPlayerIndex)->GetCurrentCameraTransform(mgr, true) *
+                        CVector3f(0.f, 1.25f, 0.f),
+                    mPortTriLockTime, mPortTriLockColor, mPortTriLockAlpha);
 }
 
 void CCompoundTargetReticle::PortTriDrawAiming(const CMatrix3f& rotation,
@@ -1304,8 +1315,8 @@ void CCompoundTargetReticle::Draw(const CStateManager& mgr, bool hideLockOn) con
     if (!hideLockOn) {
 #ifdef TARGET_PC
       if (mPortTri) {
-        PortTriDrawNext(rotation);
-        PortTriDrawLocked(rotation);
+        PortTriDrawNext(rotation, mgr);
+        PortTriDrawLocked(rotation, mgr);
       } else
 #endif
       DrawCurrLockOnGroup(rotation, mgr);
