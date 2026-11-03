@@ -50,6 +50,9 @@ OUT = ROOT / "platform" / "include" / "port_rando_logic.inc"
 ITEM_SRC = ROOT / "platform" / "port_randomizer.cpp"
 TERRAIN_ACCEPTED = "terrain_accepted.txt"    # in the rules dir: refutations reviewed as model gaps
 MAX_TERMS = 256
+# items that only work with another: Screw Attack starts out of a double jump
+# (CPlayerDynamics::JumpInput), so every ScrewAttack literal also asks for SpaceJumpBoots
+IMPLIES = {"ScrewAttack": "SpaceJumpBoots"}
 KINDS = {"dock": "Dock", "loc": "Location", "tel": "Teleporter", "@": "Named"}
 
 
@@ -155,7 +158,10 @@ class ReqParser:
             if not num.isdigit() or int(num) < 1:
                 raise RuleError(f"'{tok}>=' needs a count of at least 1, found '{num}'")
             count = int(num)
-        return (((self.items[tok], count),),)
+        lits = [(self.items[tok], count)]
+        if tok in IMPLIES:
+            lits.append((self.items[IMPLIES[tok]], 1))
+        return (norm_term(lits),)
 
 
 # ---- file parsing ---------------------------------------------------------------------------------

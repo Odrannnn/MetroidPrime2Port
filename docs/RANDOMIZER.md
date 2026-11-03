@@ -93,6 +93,7 @@ is no longer the only source of locations. Plan, each step checkable on its own:
 
    - Requirements: `any`, `never`, item names as spelled in `port_randomizer.cpp`'s table,
      `Name>=N` for counts, `&`, `|`, parentheses. `Missile` means at least one Missile.
+     `ScrewAttack` also asks for `SpaceJumpBoots` (IMPLIES: it starts out of a double jump).
    - Every obstacle of the area (`--dump-obstacles`) must be in a `covers` or an `ignore` line,
      and every `dockN`/`locX`/`telX` must exist in the area, or the compiler fails.
    - Fail closed: an area with no block connects nothing, so its docks are dead ends.

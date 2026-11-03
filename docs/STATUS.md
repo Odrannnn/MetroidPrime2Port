@@ -17,8 +17,8 @@ appended, dated as in the heading there.
   (the bomb-jump climb out of the pit stays; the mesh's screw route morphs into the tunnel mid-hop);
   0f_swamp_hall dock1/dock3 > its pickup keep Space Jump & MorphBall with Screw Attack as a third breaker;
   10_sand_alamostorage_dark's Temple Key needs ScrewAttack & SpaceJumpBoots.
-- Open: other ScrewAttack terms (barrier breakers, Temple Key chests) don't name SpaceJumpBoots; the logic
-  could make ScrewAttack imply it.
+- tools/rando_rules.py IMPLIES: every ScrewAttack literal also asks for SpaceJumpBoots (barrier breakers and
+  Temple Key chests named it alone); vanilla 114/114 in 9 spheres, gen 200/200 unchanged.
 - Full run: ok 569, refuted 16 (all accepted), nopath 208, unanchored 28, virtual 138; vanilla 114/114 in
   9 spheres, gen 200/200.
 - Next, one item per session: Grapple Beam, platform motion (and ball triggers/cannons), swimming. Loop:
