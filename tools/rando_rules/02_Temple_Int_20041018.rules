@@ -53,8 +53,8 @@ area 0h_temple_hall
 
 area 0i_temple_hall
     dock0 - dock1: any
-    dock0 > loc0x000500CF: any
-    dock1 > loc0x000500CF: any  # unsure: loc 13 units above the dock level; assumed reachable without jumping
+    dock0 > loc0x000500CF: MorphBall & MorphBallBombs  # terrain: the ball route drops into a 5-unit-high pit and leaves by a tunnel mouth 3 units up (z -22.7 to -19.8 at (88.5, -66), then -19.8 to -16.7 at (93, -70)); standing Samus hits the ceiling before she can morph into it, so only a bomb jump climbs out
+    dock1 > loc0x000500CF: MorphBall & MorphBallBombs  # terrain: as above
 
 area 0j_temple_hall_top
     # Single dock (the Transport B link); nothing to cross.

@@ -6,9 +6,9 @@ The hand rules guess what movement inside a room needs: how high a ledge is, whe
 jumped. This tool measures it instead. For each area it reads the static collision (the MREA's
 CAreaOctTree section), finds where Samus can stand, links those spots by walking, falling, rolling
 and jumping, and works out what a rule edge needs from the mesh alone: the smallest sets of
-MorphBall, SpaceJumpBoots, GravityBoost, SpiderBall, LightSuit and BoostBall that make it, or no
-path at all (the edge relies on something the static mesh does not have: a moving platform, an
-elevator, a grapple point, a spinner, a ball cannon, a bomb slot).
+MorphBall, SpaceJumpBoots, GravityBoost, SpiderBall, LightSuit, BoostBall and MorphBallBombs that
+make it, or no path at all (the edge relies on something the static mesh does not have: a moving
+platform, an elevator, a grapple point, a spinner, a ball cannon, a bomb slot).
 
     tools/rando_terrain.py                    report every rule edge whose terms the terrain refutes
     tools/rando_terrain.py --area NAME        check one area only
@@ -34,7 +34,15 @@ The model, and its limits (docs/RANDOMIZER.md, "Terrain check"):
   cell, off onto any floor beside a cell up to PIPE_LIP (ballHalfPipeBoostHeight 3.2) above it or
   below: boosting builds up to 95 a second there, enough for any half-pipe on the disc. Boosted gap
   crossings, ramps and spider-track boosts are not modelled.
-- Swimming, Screw Attack, bomb jumps, dash and slope jumps are not modelled: the result only ever
+- Bomb jumps (MorphBallBombs): a bomb under the ball sets its speed to straight up
+  sqrt(2 * 35 * bombJumpHeight 7.9) against ball gravity 76 (CPlayer::BombJump, disc TweakPlayer and
+  TweakBall): the ball rises BOMB_RISE (3.64) from any spot and drifts at the ball's air speed (10)
+  onto a spot of another roll component, crossing low or near the apex. One bomb only: the 1.0 s
+  fuse outlasts the 0.62 s air time, so a bomb dropped in the air goes off after landing (a double
+  bomb jump, a second bomb laid early to catch the falling ball, is a timing trick). Dry height
+  in fluids too (water lowers it), as for jumps. Power Bombs don't bomb-jump (ApplyDamageToWorld
+  calls BombJump for kPA_TriggerBomb only, DOL 0x8003CA5C), so Powerbomb counts for nothing here.
+- Swimming, Screw Attack, dash, wall and slope bomb jumps are not modelled: the result only ever
   needs more than the game does, never less.
 - Static mesh plus script platforms and solid actors (PLAT, ACTR with isSolid: DCLN, collision box
   or model bounds) at their initial place on the default layers, in two states: as the area starts
@@ -44,7 +52,7 @@ The model, and its limits (docs/RANDOMIZER.md, "Terrain check"):
 - A jump may end in a ball-only spot (a tunnel mouth above the floor): Samus rises standing, morphs
   near the apex and crosses at ball height; both legs are checked against the mesh. A ball rolls
   off a tunnel lip onto a lower floor up to DROP_REACH (1.5) ahead.
-- Terms with an UNMODELLED item (grapple, Screw Attack, bombs, ...) are not refuted.
+- Terms with an UNMODELLED item (grapple, Screw Attack) are not refuted.
 - Enforced by tools/rando_rules.py: a refuted edge fails unless tools/rando_rules/terrain_accepted.txt
   lists it as a gap of this model.
 """
@@ -80,13 +88,13 @@ FLIPPED = 1 << 24
 SPIDER_TRACK = 1 << 61   # kMT_Unknown61: the Spider Ball sticks to it
 HALF_PIPE = 1 << 13      # kMT_HalfPipe: CMorphBall::UpdateHalfPipeStatus, boosting up to 95 a second
 
-NONE, MORPH, SJ, GRAV, SPIDER, LIGHT, BOOST = 0, 1, 2, 4, 8, 16, 32     # ability bits
-ALL = MORPH | SJ | GRAV | SPIDER | LIGHT | BOOST
+NONE, MORPH, SJ, GRAV, SPIDER, LIGHT, BOOST, BOMB = 0, 1, 2, 4, 8, 16, 32, 64     # ability bits
+ALL = MORPH | SJ | GRAV | SPIDER | LIGHT | BOOST | BOMB
 BIT_ITEMS = {"MorphBall": MORPH, "SpaceJumpBoots": SJ, "GravityBoost": GRAV, "SpiderBall": SPIDER,
-             "LightSuit": LIGHT, "BoostBall": BOOST}
-# movement the mesh check does not model (Screw Attack, grapple, bomb jumps): a rule term with one
-# of these is not refuted
-UNMODELLED = ["ScrewAttack", "GrappleBeam", "MorphBallBombs"]
+             "LightSuit": LIGHT, "BoostBall": BOOST, "MorphBallBombs": BOMB}
+# movement the mesh check does not model (Screw Attack, grapple): a rule term with one of these is
+# not refuted
+UNMODELLED = ["ScrewAttack", "GrappleBeam"]
 
 
 def set_text(s):
@@ -474,7 +482,7 @@ def curve(abil, key):
     return jump_sim(abil) if key < 0 else jump_sim(abil, (key // 2) * DEPTH_STEP, bool(key & 1))
 
 
-def reach(dz, curve):
+def reach(dz, curve, speed=AIR_SPEED):
     """Horizontal distance a jump along curve can cover to land dz higher (NaN when it cannot)."""
     t, z = curve.T
     # last time the feet are still RISE_MARGIN above the landing: search the running maximum from
@@ -482,7 +490,7 @@ def reach(dz, curve):
     late = np.maximum.accumulate(z[::-1])
     i = np.searchsorted(late, dz + RISE_MARGIN)
     ok = i < len(late)
-    return np.where(ok, SPEED_FACTOR * AIR_SPEED * t[::-1][np.minimum(i, len(t) - 1)], np.nan)
+    return np.where(ok, SPEED_FACTOR * speed * t[::-1][np.minimum(i, len(t) - 1)], np.nan)
 
 
 # ---- one area ------------------------------------------------------------------------------------
@@ -500,6 +508,14 @@ SPIDER_SIDE = 3       # floor columns (GRID) this far beside a track cell to get
 PIPE_TOUCH = 1.0      # a ball on a floor this far below a half-pipe cell rolls onto it
 PIPE_LIP = 3.2        # ballHalfPipeBoostHeight (disc TweakBall): a boost carries the ball this far
                       # over a half-pipe cell onto a floor beside it
+BALL_GRAVITY = 76.0   # ballGravity (disc TweakBall)
+BOMB_SPEED = (2 * GRAVITY * 7.9) ** 0.5   # CPlayer::BombJump: normalGravAccel, bombJumpHeight
+BOMB_RISE = BOMB_SPEED ** 2 / (2 * BALL_GRAVITY)   # 3.64
+BALL_AIR_SPEED = 10.0  # forwardMaxSpeedAir (disc TweakBall); the blast zeroes the ball's speed
+BOMB_DROP = 2.0       # deepest bomb jump down considered (a hop over a lip; drops cover the rest)
+BOMB_CURVE = np.array([(t, BOMB_SPEED * t - BALL_GRAVITY / 2 * t * t)
+                       for t in np.arange(1, 1200) / 600 if BOMB_SPEED * t - BALL_GRAVITY / 2 * t * t >= -BOMB_DROP])
+BOMB_REACH = float(np.nanmax(reach(np.array([-BOMB_DROP]), BOMB_CURVE, BALL_AIR_SPEED)))
 
 
 def components(n, u, v):
@@ -574,12 +590,13 @@ class Terrain:
         self.rmax = {k: max(curve(s, k)[:, 1].max() for s in JUMP_SETS) for k in np.unique(self.wkey).tolist()}
         self.jumps = tuple(np.concatenate(x) for x in zip(self._jumps(self.stand & (deg < 8), ~self.stand),
                                                            self._drops(), self._ride(tris, flags, SPIDER),
-                                                           self._ride(tris, flags, BOOST)))
+                                                           self._ride(tris, flags, BOOST), self._bombs()))
         # items that change anything here (the rest are masked off before building a graph)
         jl = self.jumps[2]
         self.relevant = (MORPH | SJ | (GRAV if (self.wkey >= 0).any() else 0)
                          | (LIGHT if (self.wkey % 2 == 1).any() else 0)
-                         | (SPIDER if (jl & SPIDER).any() else 0) | (BOOST if (jl & BOOST).any() else 0))
+                         | (SPIDER if (jl & SPIDER).any() else 0) | (BOOST if (jl & BOOST).any() else 0)
+                         | (BOMB if (jl & BOMB).any() else 0))
 
     def rise(self, pts, abil):
         """Highest a jump with abil takes the feet from each of pts."""
@@ -732,6 +749,72 @@ class Terrain:
         blocked |= self.seg.blocked(a, c)
         p, q = p[~blocked], q[~blocked]
         return p, q, np.full(len(p), MORPH)
+
+    def _bombs(self):
+        """(p, q, MORPH | BOMB) bomb jumps: the ball rises straight up from p (BOMB_CURVE), drifts at
+        BALL_AIR_SPEED and comes down on q, a spot of another roll component at most BOMB_RISE less
+        RISE_MARGIN higher or BOMB_DROP lower; the nearest few of each component pair are checked
+        against the mesh, crossing just above the higher spot or near the apex."""
+        none = np.zeros(0, int), np.zeros(0, int), np.zeros(0, int)
+        if not self.n:
+            return none
+        o = np.lexsort((self.ixy[:, 1], self.ixy[:, 0]))
+        key = (self.ixy[o, 0] + (1 << 20)) * (1 << 21) + (self.ixy[o, 1] + (1 << 20))
+        r = int(np.ceil(BOMB_REACH / GRID))
+        P, Q = [], []
+        for dx in range(-r, r + 1):
+            for dy in range(-r, r + 1):
+                d = GRID * np.hypot(dx, dy)
+                if d > BOMB_REACH:
+                    continue
+                k = (self.ixy[:, 0] + dx + (1 << 20)) * (1 << 21) + (self.ixy[:, 1] + dy + (1 << 20))
+                s, t = np.searchsorted(key, k, "left"), np.searchsorted(key, k, "right")
+                cnt = t - s
+                src = np.repeat(np.arange(self.n), cnt)
+                dst = o[np.repeat(s, cnt) + np.arange(cnt.sum()) - np.repeat(np.cumsum(cnt) - cnt, cnt)]
+                dz = self.pos[dst, 2] - self.pos[src, 2]
+                ok = (self.roll[src] != self.roll[dst]) & (dz >= -BOMB_DROP) & (dz <= BOMB_RISE - RISE_MARGIN)
+                src, dst, dz = src[ok], dst[ok], dz[ok]
+                ok = d <= reach(dz, BOMB_CURVE, BALL_AIR_SPEED)
+                P.append(src[ok])
+                Q.append(dst[ok])
+        p, q = np.concatenate(P), np.concatenate(Q)
+        if not len(p):
+            return none
+        d = np.hypot(*(self.pos[q, :2] - self.pos[p, :2]).T)
+        group = self.roll[p].astype(np.int64) * self.n + self.roll[q]
+        o = np.lexsort((d, group))
+        p, q, group = p[o], q[o], group[o]
+        rank = np.arange(len(group)) - np.searchsorted(group, group, "left")
+        done = np.zeros(0, np.int64)
+        P, Q = [], []
+        for r0 in range(0, 64, 8):
+            pick = (rank >= r0) & (rank < r0 + 8) & ~np.isin(group, done)
+            if not pick.any():
+                break
+            pp, qq = p[pick], q[pick]
+            good = self._bomb_clear(pp, qq)
+            P.append(pp[good])
+            Q.append(qq[good])
+            done = np.union1d(done, group[pick][good])
+        p, q = np.concatenate(P), np.concatenate(Q)
+        return p, q, np.full(len(p), MORPH | BOMB)
+
+    def _bomb_clear(self, p, q):
+        """Whether the ball can bomb-jump from p to q: straight up at p, across, down at q, the
+        crossing with the ball's bottom just above the higher spot or just under the apex."""
+        a, b = self.pos[p], self.pos[q]
+        top = np.maximum(a[:, 2], b[:, 2])
+        out = np.zeros(len(p), bool)
+        for low in (top + 0.1, np.maximum(top + 0.1, a[:, 2] + BOMB_RISE - 0.3)):
+            blocked = np.zeros(len(p), bool)
+            for s0, s1 in (((a, a[:, 2] + 0.3), (a, low + BALL)), ((a, low + BALL / 2), (b, low + BALL / 2)),
+                           ((b, low + BALL / 2), (b, b[:, 2] + 0.3))):
+                x0, x1 = s0[0].copy(), s1[0].copy()
+                x0[:, 2], x1[:, 2] = s0[1], s1[1]
+                blocked |= self.seg.blocked(x0, x1)
+            out |= ~blocked
+        return out
 
     def _ride(self, tris, flags, item):
         """(p, q, MORPH | item) rides along a surface the ball sticks to or boosts up.

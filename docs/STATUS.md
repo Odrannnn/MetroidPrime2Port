@@ -4,6 +4,24 @@ The Status section of AGENTS.md links here: this is the per-session detail, rewr
 appended, dated as in the heading there.
 
 
+## 2026-11-03: rando terrain models bomb jumps
+
+- tools/rando_terrain.py: MorphBallBombs is an ability bit (no longer UNMODELLED). A bomb jump lifts the ball
+  3.64 (CPlayer::BombJump: sqrt(2 * 35 * bombJumpHeight 7.9) against ballGravity 76), drifting at the ball's
+  air speed 10 onto a spot up to 3.24 higher or 2 lower; one bomb (double bomb jumps are a trick). Power
+  Bombs don't bomb-jump (only kPA_TriggerBomb calls BombJump, DOL 0x8003CA5C).
+- Rule fixes, all measured: morph tunnels that drop into 5-unit pits and leave by a mouth 3 up need bombs
+  (standing Samus hits the ceiling before morphing): 0q_temple_hall dock0 > dock3 (with Space Jump),
+  0i_temple_hall's pickup, 0c_swamp_hall and its dark twin dock0 - dock2, 0f_swamp_hall dock1 - dock3 (Power
+  Bomb term dropped) and its dark twin, 0k_sand_hall_dark dock0 - dock1 (Boost/PB terms dropped),
+  07cliff_gyro dock0 > dock2. 0h_sand_hall dock2 > dock4: the 4.0 mouth is past a bomb jump, so bombs or a
+  PB only break the grates after Space Jump. Accepted: 0l_sand_hall dock1 > dock0's bomb term (bomb jump into
+  Ball Trigger 0x003300BE; ball triggers not modelled).
+- Full run: ok 569, refuted 16 (all accepted), nopath 208, unanchored 28, virtual 138; vanilla 114/114 in
+  9 spheres, gen 200/200 (tests built directly, as below).
+- Next, one item per session: Screw Attack, Grapple Beam, platform motion (and ball triggers/cannons),
+  swimming. Same loop as below.
+
 ## 2026-11-03: rando terrain models Boost Ball half-pipes
 
 - tools/rando_terrain.py: BoostBall is an ability bit. Half-pipes (material bit 13, kMT_HalfPipe) ride like

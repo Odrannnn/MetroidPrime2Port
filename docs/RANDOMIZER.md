@@ -136,16 +136,21 @@ is no longer the only source of locations. Plan, each step checkable on its own:
      within 1.9 below them to every floor beside or below the same track (needs MorphBall and
      SpiderBall). Half-pipes (material bit 13) join the floors within 1.0 below them to every
      floor beside a cell of the same pipe up to 3.2 (ballHalfPipeBoostHeight) above or below it
-     (needs MorphBall and BoostBall; boosted gap jumps and ramps are not modelled). Each edge's
-     verdict is the minimal sets of MorphBall, SpaceJumpBoots, GravityBoost, SpiderBall, LightSuit
-     and BoostBall that make it. Terms with grapple, Screw Attack or bombs are not refuted
+     (needs MorphBall and BoostBall; boosted gap jumps and ramps are not modelled). Bomb jumps
+     (MorphBallBombs) lift the ball 3.64 (CPlayer::BombJump: sqrt(2 * 35 * bombJumpHeight 7.9)
+     against ball gravity 76) from any spot, drifting at the ball's air speed 10 onto a spot up to
+     3.24 higher; one bomb only (the 1.0 s fuse outlasts the 0.62 s air time; double bomb jumps are a
+     timing trick). Power Bombs don't
+     bomb-jump in Echoes (only kPA_TriggerBomb calls BombJump, DOL 0x8003CA5C). Each edge's
+     verdict is the minimal sets of MorphBall, SpaceJumpBoots, GravityBoost, SpiderBall, LightSuit,
+     BoostBall and MorphBallBombs that make it. Terms with grapple or Screw Attack are not refuted
      (UNMODELLED). Not modelled: swimming, moving platforms, story layer switches (GFMC
      Compound's Kinetic Orb Cannon sits on "Load After Movie"), cannons, elevators,
      air drift during a long fall (Sanctum Access).
      Verdicts are cached per area in `~/.cache/mp2-rando-terrain/` (key: the tool's bytes, mesh,
      edges, platforms): a cold run takes ~17 min, a warm one seconds; the key holds rule line
      numbers, so a rule edit rechecks every area below it in that file. Full run: 959 edge
-     directions, ok 547, refuted 13, nopath 233, unanchored 28, virtual 138.
+     directions, ok 569, refuted 16, nopath 208, unanchored 28, virtual 138.
      `tools/rando_rules.py` fails on a refuted edge unless `tools/rando_rules/terrain_accepted.txt`
      lists it (`area src > dst: reason`), and on an accepted line nothing refutes any more
      (`--no-terrain` skips; no disc skips too). Every one of the 65 refutations of the 2026-11-03

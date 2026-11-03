@@ -36,7 +36,7 @@ area 0q_temple_hall
     dock2 > dock0: MorphBall & MorphBallBombs  # terrain: the tunnel mouth is 3.0 units above the dock2-side step under 5.1 units of headroom, so a standing jump hits the ceiling first; bomb jump in
     dock2 > dock1: MorphBall & MorphBallBombs  # as above
     dock3 > dock0: MorphBall
-    dock0 > dock3: MorphBall & SpaceJumpBoots  # unsure: morph tunnel 12.5 units above the floor; ledge reach not verified
+    dock0 > dock3: MorphBall & SpaceJumpBoots & MorphBallBombs  # terrain: Space Jump to the ledge at -28.3 (7.2 up), then the morph tunnel climbs two 3-unit steps (-29 to -26.1 to -23.1) that only a bomb jump clears
     dock4 > dock0: MorphBall
     dock0 > dock4: MorphBall & SpaceJumpBoots  # unsure: morph tunnel 6.6 units above the floor; ledge reach not verified
 

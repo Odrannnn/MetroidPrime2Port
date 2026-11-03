@@ -43,7 +43,7 @@ area 0d_swamp_hall
     dock0 - dock1: any
 
 area 0c_swamp_hall
-    dock0 - dock2: any
+    dock0 - dock2: MorphBall & MorphBallBombs  # terrain: the ball route drops into a 5-unit-high pit and leaves by a tunnel mouth 3 units up (z 35.3 to 38.3 at (80.5, -85) and to 38.1 at (90.5, -85)); standing Samus hits the ceiling before she can morph into it, so only a bomb jump climbs out
     dock0 > dock1: DarkBeam
     dock2 > dock1: DarkBeam
     dock1 > dock0: any
@@ -109,7 +109,7 @@ area 0f_swamp_hall
     dock0 - dock2: any
     dock0 > dock1: any
     dock2 > dock3: any
-    dock1 - dock3: MorphBall & (MorphBallBombs | Powerbomb) | ScrewAttack  # unsure: lower route through the tunnel plug
+    dock1 - dock3: MorphBall & MorphBallBombs | ScrewAttack  # terrain: the ball route drops into a 5-unit-high pit and leaves by a tunnel mouth 3 units up (z 29.2 to 32.1 at (-40.5, -124.5) and to 32.2 at (-61, -124.5)); standing Samus hits the ceiling before she can morph into it, so only a bomb jump climbs out; Power Bombs don't bomb-jump
     dock1 > dock0: SpaceJumpBoots  # unsure: 15-unit climb
     dock3 > dock2: SpaceJumpBoots  # unsure: 12-unit climb
     dock0 > loc0x00110076: MorphBall & (MorphBallBombs | Powerbomb) | ScrewAttack
@@ -291,7 +291,7 @@ area 00_elev_swamp_cliff_f
 # ----------------------------------------------------------------- dark world
 
 area 0c_swamp_hall_dark
-    dock0 - dock2: any
+    dock0 - dock2: MorphBall & MorphBallBombs  # terrain: as in 0c_swamp_hall
     dock1 > dock0: any
     dock1 > dock2: any
     dock0 > dock1: LightBeam
@@ -364,7 +364,7 @@ area 0h_swamp_hall_dark
 
 area 0f_swamp_hall_dark
     dock0 - dock2: any
-    dock1 - dock3: any
+    dock1 - dock3: MorphBall & MorphBallBombs  # terrain: as in 0f_swamp_hall
     dock0 > dock1: any
     dock2 > dock3: any
     dock1 > dock0: SpaceJumpBoots  # unsure: 15-unit climb

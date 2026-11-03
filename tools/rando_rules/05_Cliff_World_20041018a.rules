@@ -218,7 +218,7 @@ area 07cliff_gyro
     dock0 - dock3: any
     dock0 - dock4: any
     dock3 - dock4: any
-    dock0 > dock2: MorphBall & BoostBall    # unsure: spinner by dock0 stops the gyro
+    dock0 > dock2: MorphBall & BoostBall & MorphBallBombs    # unsure: spinner by dock0 stops the gyro; terrain: the ball route drops into a 5-unit-high pit and leaves by a tunnel mouth 3 units up (z -11.2 to -8.2 at (90.5, 250.5)); standing Samus hits the ceiling before she can morph into it, so only a bomb jump climbs out
     dock2 > dock0: MorphBall & BoostBall    # unsure
     dock2 - dock1: MorphBall & BoostBall & MorphBallBombs    # glass ring + bomb slots
     dock2 > loc0x08240088: MorphBall & BoostBall & MorphBallBombs & SpiderBall & EchoVisor    # unsure: layer-2 item

@@ -180,7 +180,7 @@ area 0h_sand_hall
     # The tunnel mouth on the dock2 side is 4.0 above its 3.4 floor (5.4 standing):
     # bomb jump, Boost Ball, or Space Jump then morph.
     dock4 > dock2: (MorphBall & MorphBallBombs) | (MorphBall & Powerbomb) | (MorphBall & BoostBall)  # unsure: grates assumed to close the morph tunnel (Screw Attack dropped for a ball path)
-    dock2 > dock4: (MorphBall & MorphBallBombs) | (MorphBall & Powerbomb & SpaceJumpBoots) | (MorphBall & BoostBall)
+    dock2 > dock4: (MorphBall & SpaceJumpBoots & (MorphBallBombs | Powerbomb)) | (MorphBall & BoostBall)  # terrain: a bomb jump rises 3.64, short of the 4.0 mouth; Space Jump reaches it, bombs or a Power Bomb break the grates
     covers 0x00250035 0x0025003E
 
 area 00_sand_generator
@@ -569,7 +569,7 @@ area 00_pickup_sand_b_dark
 
 area 0k_sand_hall_dark
     # Rock Blockers near both doors.
-    dock0 - dock1: ((MorphBall & MorphBallBombs) | (MorphBall & Powerbomb) | (MorphBall & BoostBall) | ScrewAttack)
+    dock0 - dock1: (MorphBall & MorphBallBombs) | ScrewAttack  # terrain: past the rocks the tunnel climbs two 3-unit steps in 5-unit pits (z 33.3 to 36.2 at (490.5, -66), 37.3 to 40.3 at (507.5, -31.5)) that only a bomb jump clears; Power Bombs don't bomb-jump
     covers 0x00440035 0x00440047
     ignore 0x00440010: safe zone crystal, not a barrier
 
