@@ -10,7 +10,7 @@ SpaceJumpBoots, both, or no path at all (the edge relies on something the static
 have: a moving platform, an elevator, a grapple point, a spinner, a bomb slot).
 
     tools/rando_terrain.py                    report every rule edge whose terms the terrain refutes
-    tools/rando_terrain.py --area NAME        also print the regions and node anchors of one area
+    tools/rando_terrain.py --area NAME        check one area only
     tools/rando_terrain.py --all              print every checked edge, not only the refuted ones
 
 The model, and its limits (docs/RANDOMIZER.md, "Terrain check"):
@@ -20,7 +20,10 @@ The model, and its limits (docs/RANDOMIZER.md, "Terrain check"):
 - Floors are what CGameCollision::IsFloor says: the Floor material, or normal z > 0.85; collision is two-sided, as the game's is.
 - Water (no Gravity Boost), Screw Attack, bomb jumps, dash and slope jumps are not modelled: the
   result only ever needs more than the game does, never less.
-- Static mesh only: platforms (DCLN, PLAT), doors, gates and script obstacles are not in it.
+- Static mesh plus script platforms (PLAT: DCLN, collision box or model bounds) that start
+  present or are activated, at their initial place; an edge is also tried on the static mesh
+  alone, so a platform only ever adds paths. Destructible platforms, doors, gates, elevators and
+  other script obstacles are not modelled.
 - A jump may end in a ball-only spot (a tunnel mouth above the floor): Samus rises standing, morphs
   near the apex and crosses at ball height; both legs are checked against the mesh.
 - Advisory: not yet enforced by tools/rando_rules.py. Known false refutations are listed in
@@ -35,6 +38,8 @@ import numpy as np
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 import echoes_disc as ed  # noqa: E402
+import rando_models as rm  # noqa: E402
+import savw_diff  # noqa: E402
 
 GRID = 0.5            # floor sample spacing
 FLOOR_NZ = 0.85       # |normal z| of a floor without the Floor material (CGameCollision::IsFloor)
@@ -88,8 +93,13 @@ def area_mesh(mrea):
     assert magic == 0xDEAFBABE
     p = 8 + 24
     _ttype, tsize = struct.unpack_from(">II", c, p)
-    p += 8 + tsize
+    tris, flags, p = index_tris(c, p + 8 + tsize)
+    assert p == len(c), (p, len(c))
+    return tris, flags
 
+
+def index_tris(c, p):
+    """(triangles, material flags, end offset) of the CCollisionIndexData at c[p:], players' only."""
     def u32():
         nonlocal p
         p += 4
@@ -110,14 +120,91 @@ def area_mesh(mrea):
     sidx = arr(">u2", nt * 3).reshape(-1, 3).astype(np.int64)
     arr(">u2", u32())               # extra indices
     verts = arr(">f4", u32() * 3).reshape(-1, 3).astype(np.float64)
-    assert p == len(c), (p, len(c))
     flags = mats[smat[:nt]]
     e0, e1 = edges[sidx[:, 0]], edges[sidx[:, 1]]
     flip = ((flags & np.uint64(FLIPPED)) != 0)
     tri = np.where(flip[:, None], np.stack([e0[:, 1], e0[:, 0], e1[:, 0]], 1),
                    np.stack([e0[:, 0], e0[:, 1], e1[:, 1]], 1))
     keep = (flags & np.uint64(NO_PLAYER)) == 0
-    return verts[tri[keep]], flags[keep]
+    return verts[tri[keep]], flags[keep], p
+
+
+# ---- script platforms ----------------------------------------------------------------------------
+
+PLAT_BOX, PLAT_OFFSET = 0xF344C0B0, 0x2E686C2A    # SLdrPlatform.inc collisionBox, collisionOffset
+PLAT_MODEL, PLAT_DCLN = 0xC27FFA8F, 0x0FC966DC    # model, collisionModel
+EDITOR_ACTIVE = 0x41435456                         # EditorProperties active
+
+
+def euler(deg):
+    """ConvertEditorEulerToTransform4f's rotation: Z * Y * X, degrees."""
+    x, y, z = np.radians(deg)
+    rx = np.array([[1, 0, 0], [0, np.cos(x), -np.sin(x)], [0, np.sin(x), np.cos(x)]])
+    ry = np.array([[np.cos(y), 0, np.sin(y)], [0, 1, 0], [-np.sin(y), 0, np.cos(y)]])
+    rz = np.array([[np.cos(z), -np.sin(z), 0], [np.sin(z), np.cos(z), 0], [0, 0, 1]])
+    return rz @ ry @ rx
+
+
+def box_tris(lo, hi):
+    c = np.array([[(lo, hi)[i >> k & 1][k] for k in range(3)] for i in range(8)], float)
+    quads = [(0, 2, 6, 4), (1, 5, 7, 3), (0, 4, 5, 1), (2, 3, 7, 6), (0, 1, 3, 2), (4, 6, 7, 5)]
+    return np.array([c[[q[0], q[i], q[i + 1]]] for q in quads for i in (1, 2)])
+
+
+def dcln_tris(d):
+    """Triangles and flags of a DCLN (COBBTreeGroup): u32 count, then per tree DEAFBABE, version,
+    size, the collision index data and an OBB tree (skipped by finding the next magic)."""
+    (count,) = struct.unpack_from(">I", d, 0)
+    p, tris, flags = 4, [], []
+    for i in range(count):
+        magic, _ver, _size = struct.unpack_from(">III", d, p)
+        assert magic == 0xDEAFBABE, hex(magic)
+        t, f, p = index_tris(d, p + 12)
+        tris.append(t)
+        flags.append(f)
+        if i + 1 < count:
+            p = d.index(b"\xde\xaf\xba\xbe", p)
+    return np.concatenate(tris), np.concatenate(flags)
+
+
+def platforms(ents, layer_on, get):
+    """(triangles, flags, names) of the PLATs that may stand in the area, as CScriptPlatform collides:
+    its DCLN under the object's rotation and position, else the collision box (unrotated), else the
+    scaled model's bounds under the rotation. A PLAT counts when its layer is on by default and it
+    starts active or something sends it ACTV, wherever it starts (motion is not followed); one that
+    a DEAD removes (DECR, DCTV) is an obstacle for the hand rules and does not count."""
+    import rando_world as rw
+    sent = {(m, t) for *_x, conns, _p in ents for _s, m, t in conns}
+    killed = {t for *_x, conns, _p in ents for s, m, t in conns if s == "DEAD" and m in rw.KILL_MSGS}
+    tris, flags, names = [], [], []
+    for layer, t4, eid, _conns, props in ents:
+        if t4 != "PLAT" or not layer_on >> layer & 1 or eid in killed:
+            continue
+        if rw.editor(props, EDITOR_ACTIVE)[-1:] == b"\0" and ("ACTV", eid) not in sent:
+            continue
+        x = struct.unpack(">9f", rw.editor(props, rw.XFRM)[:36])
+        pos, rot, scale = np.array(x[:3]), euler(x[3:6]), np.array(x[6:])
+        dcln = get(struct.unpack(">I", props[PLAT_DCLN][-4:])[0]) if PLAT_DCLN in props else None
+        box = np.array(struct.unpack(">3f", props[PLAT_BOX])) if PLAT_BOX in props else np.zeros(3)
+        if dcln is not None:
+            t, f = dcln_tris(dcln)
+            t = t @ rot.T + pos
+        elif box.any():
+            off = np.array(struct.unpack(">3f", props[PLAT_OFFSET])) if PLAT_OFFSET in props else 0
+            t, f = box_tris(pos + off - box / 2, pos + off + box / 2), None
+        else:
+            cmdl = get(struct.unpack(">I", props[PLAT_MODEL][-4:])[0]) if PLAT_MODEL in props else None
+            if cmdl is None:
+                continue
+            b = np.array(struct.unpack_from(">6f", cmdl, 12)).reshape(2, 3) * scale
+            corners = box_tris(b[0], b[1]).reshape(-1, 3) @ rot.T
+            t, f = box_tris(pos + corners.min(0), pos + corners.max(0)), None
+        tris.append(t)
+        flags.append(np.zeros(len(t), np.uint64) if f is None else f)
+        names.append(rw.editor(props, rw.INAM).rstrip(b"\0").decode("latin1"))
+    if not tris:
+        return None
+    return np.concatenate(tris), np.concatenate(flags), names
 
 
 # ---- geometry ------------------------------------------------------------------------------------
@@ -499,15 +586,25 @@ def node_points(T, kind, pos):
 def check_area(job):
     """Verdicts of one area's rule edges: (line, text of src, text of dst, reach per set) or an
     unanchored node."""
-    name, mrea, edges = job
-    T = Terrain(*area_mesh(mrea))
+    name, mrea, edges, plats = job
+    tris, flags = area_mesh(mrea)
+    T = Terrain(tris, flags)
+    P = Terrain(np.concatenate([tris, plats[0]]), np.concatenate([flags, plats[1]])) if plats else None
     out = []
     for line, a, c, apos, cpos, terms in edges:
-        src, dst = node_points(T, a[0], apos), node_points(T, c[0], cpos)
-        if not len(src) or not len(dst):
-            out.append((line, a, c, None, terms, (len(src), len(dst))))
+        r, miss, helped = {s: False for s in SETS}, None, False
+        for t in (T, P) if P else (T,):
+            src, dst = node_points(t, a[0], apos), node_points(t, c[0], cpos)
+            if not len(src) or not len(dst):
+                miss = miss or (len(src), len(dst))
+                continue
+            for s in SETS:
+                if not r[s] and t.reachable(src, dst, s):
+                    r[s], helped = True, helped or t is P
+        if not any(r.values()) and miss:
+            out.append((line, a, c, None, terms, miss, False))
             continue
-        out.append((line, a, c, {s: T.reachable(src, dst, s) for s in SETS}, terms, None))
+        out.append((line, a, c, r, terms, None, helped))
     return name, T.n, out
 
 
@@ -531,8 +628,13 @@ def main():
     for pk in ed.load_paks(iso):
         if rw.SINGLE_PLAYER_PAKS.search(pk.path):
             for rid, (kind, *_x) in pk.res.items():
-                if kind == "MREA":
+                if kind in ("MREA", "MLVL"):
                     mrea_pak[rid] = pk
+    first = {}
+    for g, a in enumerate(areas):
+        first.setdefault(a[0], g)
+    layer_on = {wi: savw_diff.parse_mlvl(mrea_pak[m].get(m))["layerDefaults"] for wi, (m, _n) in enumerate(worlds)
+                if m in mrea_pak}
     jobs, skipped = [], 0
     only = args[args.index("--area") + 1] if "--area" in args else None
     for path in sorted(rr.RULES_DIR.glob("*.rules")):
@@ -557,7 +659,12 @@ def main():
                         skipped += 1
                         continue
                     edges.append((line, x, y, np.array(px), np.array(py), terms))
-            jobs.append((f"{path.name}:{b.line} {b.name}", mrea_pak[areas[gi][1]].get(areas[gi][1]), edges))
+            pk = mrea_pak[areas[gi][1]]
+            mrea = pk.get(areas[gi][1])
+            ents = [(layer, *e[:3], rm.pickup_props(e[3]))
+                    for layer, sec in enumerate(ed.mrea_layers(mrea)) for e in rw.scly_entities(sec)]
+            plats = platforms(ents, layer_on[wi][gi - first[wi]], lambda r: pk.get(r) if r in pk.res else None)
+            jobs.append((f"{path.name}:{b.line} {b.name}", mrea, edges, plats))
     with multiprocessing.Pool() as pool:
         results = pool.map(check_area, jobs, chunksize=1)
     names = {v: k for k, v in items.items()}
@@ -567,8 +674,8 @@ def main():
     counts = {"ok": 0, "refuted": 0, "nopath": 0, "unanchored": 0}
     for area, _n, out in results:
         lines = []
-        for line, a, c, r, terms, miss in out:
-            head = f"  line {line}: {node_text(a)} > {node_text(c)}"
+        for line, a, c, r, terms, miss, helped in out:
+            head = f"  line {line}: {node_text(a)} > {node_text(c)}" + (" (with platforms)" if helped else "")
             if r is None:
                 counts["unanchored"] += 1
                 lines.append(f"{head}: no floor at {'source' if not miss[0] else 'target'}")

@@ -119,12 +119,13 @@ is no longer the only source of locations. Plan, each step checkable on its own:
      static collision (MREA CAreaOctTree), finds standable spots (`IsFloor`: Floor material or
      normal z > 0.85), and links them by walking (step 1.0), falling, rolling and analytical jumps
      (apex 3.78, Space Jump 7.68), including a jump that morphs into a raised tunnel mouth. For
-     each rule edge it reports what the mesh alone needs (nothing, MorphBall, SpaceJumpBoots, both,
-     no path). A full run takes ~6 min: 956 edge directions, ok 384, refuted 131, nopath 253
-     (platforms, grapple, spinners, etc. are not in the static mesh), unanchored 188 (dock or
-     pickup not near a standable spot). Not enforced yet. Known false refutation: Landing Site
-     dock1 > dock0 "needs SpaceJumpBoots" (the only links into dock 0's ledge region are 6-9 unit
-     drops near x -80..-106, y -159..-172; the real way up is missing from the walk graph).
+     each rule edge it reports what the mesh needs (nothing, MorphBall, SpaceJumpBoots, both,
+     no path). Script platforms (PLAT) that start present or get ACTV are added at their initial
+     place (DCLN, else collision box, else model bounds), indestructible ones only; an edge that
+     passes only with them says "(with platforms)". Landing Site dock1 > dock0 needed this (the
+     climb is the Red Eye Statue's DCLN). A full run takes ~6 min: 956 edge directions, ok 404,
+     refuted 143, nopath 226 (grapple, spinners, elevators, moved platforms), unanchored 183
+     (dock or pickup not near a standable spot). Not enforced yet.
      Likely real: Service Access (`0q_temple_hall`, Temple Grounds lines 33-34) dock0/1 <> dock2
      needs MorphBall, plus SpaceJumpBoots from dock2, where the rules say `any`.
    - State (2026-10-27): all five worlds have rules (284 areas). With every item, all 114
