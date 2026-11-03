@@ -123,9 +123,13 @@ is no longer the only source of locations. Plan, each step checkable on its own:
      no path). Script platforms (PLAT) that start present or get ACTV are added at their initial
      place (DCLN, else collision box, else model bounds), indestructible ones only; an edge that
      passes only with them says "(with platforms)". Landing Site dock1 > dock0 needed this (the
-     climb is the Red Eye Statue's DCLN). A full run takes ~6 min: 956 edge directions, ok 404,
-     refuted 143, nopath 226 (grapple, spinners, elevators, moved platforms), unanchored 183
-     (dock or pickup not near a standable spot). Not enforced yet.
+     climb is the Red Eye Statue's DCLN). Docks are anchored by shape (DOCK XFRM scale): a wall
+     door to floor next to it, a floor or ceiling hole to floor below it; virtual docks (borders in
+     open space) are skipped. A pickup is reached within touch range of a jump (6.2, 10.1 with Space
+     Jump), so its anchor depends on the abilities. `never` edges count as ok. A full run takes
+     ~17 min: 956 edge directions, ok 414, refuted 147, nopath 230 (grapple, spinners, elevators,
+     moved platforms), unanchored 27 (spider tracks, bomb-slot jets, carried Temple Key, shaft
+     docks), virtual 138. Not enforced yet.
      Likely real: Service Access (`0q_temple_hall`, Temple Grounds lines 33-34) dock0/1 <> dock2
      needs MorphBall, plus SpaceJumpBoots from dock2, where the rules say `any`.
    - State (2026-10-27): all five worlds have rules (284 areas). With every item, all 114

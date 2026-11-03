@@ -577,10 +577,29 @@ class Terrain:
 
 # ---- the rules check -----------------------------------------------------------------------------
 
-def node_points(T, kind, pos):
-    if kind == "dock":
-        return T.anchor(pos, 2.5, 4.0, 0.5)
-    return T.anchor(pos, 1.5, HEIGHT + 0.3, 1.0)       # a pickup Samus can touch
+SHAPES = {"wall": "door", "floor": "floor or ceiling dock", "loc": "pickup"}
+
+
+def node_points(T, node, source):
+    """{ability set: anchor points} of a rule node, or None for a node the mesh cannot place.
+    node: ("wall" | "floor" | "virtual" | "loc", position, editor scale)."""
+    shape, pos, scale = node
+    if shape == "virtual":      # a boundary in open space shared with the next area, placed anywhere
+        return None
+    if shape == "wall":         # a door: Samus stands on the floor at its foot
+        pts = T.anchor(pos, 2.5, 4.0, 0.5)
+        return {s: pts for s in SETS}
+    if shape == "floor":        # a hole in a floor or ceiling: falls through it reach whatever is below
+        r = max(scale[0], scale[1]) / 2
+        below = T.anchor(pos, r, 1e4, 0.5)
+        if source:
+            return {s: below for s in SETS}
+        rim = T.anchor(pos, r + 1.5, 4.0, 1e4)  # or a rim at any height above, to drop in from
+        pts = np.union1d(below[T.pos[below, 2] >= pos[2] - 4.0], rim)
+        return {s: pts for s in SETS}
+    # a pickup Samus can touch: standing, jumping (any), or double jumping (SpaceJumpBoots)
+    reach = {s: HEIGHT + CURVES[s & SJ][:, 1].max() - 0.3 for s in SETS}
+    return {s: T.anchor(pos, 1.5, reach[s], 1.0) for s in SETS}
 
 
 def check_area(job):
@@ -593,13 +612,20 @@ def check_area(job):
     out = []
     for line, a, c, apos, cpos, terms in edges:
         r, miss, helped = {s: False for s in SETS}, None, False
+        if not terms:               # never: too strict at worst
+            out.append((line, a, c, "never", terms, None, False))
+            continue
+        if apos[0] == "virtual" or cpos[0] == "virtual":
+            out.append((line, a, c, "virtual", terms, None, False))
+            continue
         for t in (T, P) if P else (T,):
-            src, dst = node_points(t, a[0], apos), node_points(t, c[0], cpos)
-            if not len(src) or not len(dst):
-                miss = miss or (len(src), len(dst))
+            src, dst = node_points(t, apos, True), node_points(t, cpos, False)
+            n_src, n_dst = len(src[MORPH | SJ]), len(dst[MORPH | SJ])
+            if not n_src or not n_dst:
+                miss = miss or (n_src, n_dst, apos[0], cpos[0])
                 continue
             for s in SETS:
-                if not r[s] and t.reachable(src, dst, s):
+                if not r[s] and t.reachable(src[s], dst[s], s):
                     r[s], helped = True, helped or t is P
         if not any(r.values()) and miss:
             out.append((line, a, c, None, terms, miss, False))
@@ -636,6 +662,7 @@ def main():
     layer_on = {wi: savw_diff.parse_mlvl(mrea_pak[m].get(m))["layerDefaults"] for wi, (m, _n) in enumerate(worlds)
                 if m in mrea_pak}
     jobs, skipped = [], 0
+    dock_number, dock_virtual = rw.sldr_prop("Dock", "dockNumber"), rw.sldr_prop("Dock", "isVirtual")
     only = args[args.index("--area") + 1] if "--area" in args else None
     for path in sorted(rr.RULES_DIR.glob("*.rules")):
         wi = by_world[path.stem]
@@ -644,11 +671,25 @@ def main():
                 continue
             gi = next(g for g, a in enumerate(areas) if a[0] == wi and a[3] == b.name)
 
+            pk = mrea_pak[areas[gi][1]]
+            mrea = pk.get(areas[gi][1])
+            ents = [(layer, *e[:3], rm.pickup_props(e[3]))
+                    for layer, sec in enumerate(ed.mrea_layers(mrea)) for e in rw.scly_entities(sec)]
+            shapes = {}
+            for _l, t4, _e, _c, props in ents:
+                if t4 == "DOCK":
+                    x = struct.unpack(">9f", rw.editor(props, rw.XFRM)[:36])
+                    flat = x[8] < min(x[6], x[7]) and not any(x[3:6])
+                    virtual = props.get(dock_virtual, b"\0")[-1:] == b"\1"
+                    shapes[rw.i32(props, dock_number, -1)] = ("virtual" if virtual else "floor" if flat else "wall",
+                                                             np.array(x[6:]))
+
             def pos(n):
-                if n[0] == "dock":
-                    return dock_pos.get((gi, n[1]))
-                if n[0] == "loc":
-                    return loc_pos.get((gi, n[1]))
+                if n[0] == "dock" and (gi, n[1]) in dock_pos:
+                    shape, scale = shapes.get(n[1], ("wall", np.ones(3)))
+                    return shape, np.array(dock_pos[gi, n[1]]), scale
+                if n[0] == "loc" and (gi, n[1]) in loc_pos:
+                    return "loc", np.array(loc_pos[gi, n[1]]), np.ones(3)
                 return None
             edges = []
             for line, a, c, dnf, both in b.edges:
@@ -658,11 +699,7 @@ def main():
                     if px is None or py is None:
                         skipped += 1
                         continue
-                    edges.append((line, x, y, np.array(px), np.array(py), terms))
-            pk = mrea_pak[areas[gi][1]]
-            mrea = pk.get(areas[gi][1])
-            ents = [(layer, *e[:3], rm.pickup_props(e[3]))
-                    for layer, sec in enumerate(ed.mrea_layers(mrea)) for e in rw.scly_entities(sec)]
+                    edges.append((line, x, y, px, py, terms))
             plats = platforms(ents, layer_on[wi][gi - first[wi]], lambda r: pk.get(r) if r in pk.res else None)
             jobs.append((f"{path.name}:{b.line} {b.name}", mrea, edges, plats))
     with multiprocessing.Pool() as pool:
@@ -671,14 +708,25 @@ def main():
 
     def term_text(t):
         return " & ".join(names[i] + (f">={n}" if n > 1 else "") for i, n in t) or "any"
-    counts = {"ok": 0, "refuted": 0, "nopath": 0, "unanchored": 0}
+    counts = {"ok": 0, "refuted": 0, "nopath": 0, "unanchored": 0, "virtual": 0}
     for area, _n, out in results:
         lines = []
         for line, a, c, r, terms, miss, helped in out:
             head = f"  line {line}: {node_text(a)} > {node_text(c)}" + (" (with platforms)" if helped else "")
+            if r == "never":
+                counts["ok"] += 1
+                if "--all" in args:
+                    lines.append(f"{head}: never, not checked")
+                continue
+            if r == "virtual":
+                counts["virtual"] += 1
+                if "--all" in args:
+                    lines.append(f"{head}: virtual dock, not checked")
+                continue
             if r is None:
                 counts["unanchored"] += 1
-                lines.append(f"{head}: no floor at {'source' if not miss[0] else 'target'}")
+                lines.append(f"{head}: no floor at {'source' if not miss[0] else 'target'}"
+                             f" ({SHAPES[miss[2] if not miss[0] else miss[3]]})")
                 continue
             if not r[MORPH | SJ]:
                 counts["nopath"] += 1
