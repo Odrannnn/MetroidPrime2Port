@@ -59,7 +59,7 @@ area 09_temple_thirdleg
     dock0 - dock3: any
     dock1 - dock3: any
     dock2 > dock0: MorphBall
-    dock0 > dock2: MorphBall & SpaceJumpBoots  # unsure: morph tunnel 13.6 units above dock0
+    dock0 > dock2: MorphBall & BoostBall  # terrain: morph tunnel 13.6 units above dock0, out of Space Jump reach; the half-pipe beside it climbs 16.4 (z -37.3 to -20.9)
 
 area 0u_temple_hall
     dock0 - dock2: any

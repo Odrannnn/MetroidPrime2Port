@@ -82,8 +82,8 @@ area 0d_sand_hall
 
 area 0q_sand_hall
     dock0 - dock1: any
-    dock0 > dock2: SpaceJumpBoots  # unsure: elevator door 16 units above dock0
-    dock1 > dock2: SpaceJumpBoots  # unsure: elevator door 10 units above dock1
+    dock0 > dock2: MorphBall & BoostBall  # terrain: elevator door 16 units above dock0, out of Space Jump reach; the half-pipe climbs to its ledge (z -24 to 4.1)
+    dock1 > dock2: MorphBall & BoostBall  # terrain: as dock0 > dock2 (door 10 above dock1)
     dock2 > dock0: any
     dock2 > dock1: any
     dock1 > dock3: DarkBeam & SpaceJumpBoots  # unsure: portal at z 3.8, 20 above dock1
@@ -263,7 +263,7 @@ area 0m_sand_hall
 
 area 0l_sand_hall
     dock0 > dock1: any
-    dock1 > dock0: MorphBall & MorphBallBombs  # unsure: dock0 15 above dock1; bomb slot assumed to raise the platform
+    dock1 > dock0: (MorphBall & MorphBallBombs) | (MorphBall & BoostBall)  # unsure: dock0 15 above dock1; bomb slot assumed to raise the platform; terrain: the half-pipe reaches dock0 with Boost Ball
     dock1 > loc0x00330034: Missile  # unsure: Missile behind a Missile false wall
     covers 0x003300BE 0x003300C9
 
@@ -357,7 +357,7 @@ area 0q_sand_hall_dark
     dock0 - dock1: any
     dock1 > dock3: LightBeam & SpaceJumpBoots  # unsure: portal height mirrors the light area (20 above dock1)
     dock3 > dock1: any
-    dock1 > loc0x0014007C: SpaceJumpBoots  # unsure: Missile 21 above dock1
+    dock1 > loc0x0014007C: MorphBall & BoostBall  # terrain: Missile 21 above dock1, out of Space Jump reach; the half-pipe reaches it
     ignore 0x00140005: safe zone crystal, not a barrier
     ignore 0x00140009: safe zone crystal, not a barrier
     ignore 0x0014000B: safe zone crystal, not a barrier
@@ -527,7 +527,7 @@ area 0m_sand_hall_dark
 
 area 0l_sand_hall_dark
     dock0 > dock1: any
-    dock1 > dock0: SpaceJumpBoots  # unsure: dock0 15 above dock1
+    dock1 > dock0: SpaceJumpBoots | (MorphBall & BoostBall)  # unsure: dock0 15 above dock1, out of Space Jump reach on the static mesh (vanilla returns here before Boost Ball, presumably on the Beam Platform); terrain: the half-pipe reaches it
     ignore 0x003A00A8: safe zone crystal, not a barrier
     ignore 0x003A00AB: safe zone crystal, not a barrier
 

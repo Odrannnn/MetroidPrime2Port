@@ -6,9 +6,9 @@ The hand rules guess what movement inside a room needs: how high a ledge is, whe
 jumped. This tool measures it instead. For each area it reads the static collision (the MREA's
 CAreaOctTree section), finds where Samus can stand, links those spots by walking, falling, rolling
 and jumping, and works out what a rule edge needs from the mesh alone: the smallest sets of
-MorphBall, SpaceJumpBoots, GravityBoost, SpiderBall and LightSuit that make it, or no path at all
-(the edge relies on something the static mesh does not have: a moving platform, an elevator, a
-grapple point, a spinner, a ball cannon, a bomb slot).
+MorphBall, SpaceJumpBoots, GravityBoost, SpiderBall, LightSuit and BoostBall that make it, or no
+path at all (the edge relies on something the static mesh does not have: a moving platform, an
+elevator, a grapple point, a spinner, a ball cannon, a bomb slot).
 
     tools/rando_terrain.py                    report every rule edge whose terms the terrain refutes
     tools/rando_terrain.py --area NAME        check one area only
@@ -29,8 +29,13 @@ The model, and its limits (docs/RANDOMIZER.md, "Terrain check"):
   the simulated walk jump (jump_sim), so water only adds height.
 - Spider Ball: tracks (material bit 61) sampled into cells, a track is its connected cells; the ball
   gets on from a floor at most SPIDER_TOUCH below a cell and gets off onto any floor beside or below
-  the track. Swimming, Screw Attack, bomb jumps, Boost Ball, dash and slope jumps are not modelled:
-  the result only ever needs more than the game does, never less.
+  the track.
+- Boost Ball: half-pipes (material bit 13) the same way, on from a floor at most PIPE_TOUCH below a
+  cell, off onto any floor beside a cell up to PIPE_LIP (ballHalfPipeBoostHeight 3.2) above it or
+  below: boosting builds up to 95 a second there, enough for any half-pipe on the disc. Boosted gap
+  crossings, ramps and spider-track boosts are not modelled.
+- Swimming, Screw Attack, bomb jumps, dash and slope jumps are not modelled: the result only ever
+  needs more than the game does, never less.
 - Static mesh plus script platforms and solid actors (PLAT, ACTR with isSolid: DCLN, collision box
   or model bounds) at their initial place on the default layers, in two states: as the area starts
   (breakable crates included), and once its switches are thrown (activated, never deactivated or
@@ -73,14 +78,15 @@ FLOOR = 1 << 31
 FLIPPED = 1 << 24
 
 SPIDER_TRACK = 1 << 61   # kMT_Unknown61: the Spider Ball sticks to it
+HALF_PIPE = 1 << 13      # kMT_HalfPipe: CMorphBall::UpdateHalfPipeStatus, boosting up to 95 a second
 
-NONE, MORPH, SJ, GRAV, SPIDER, LIGHT = 0, 1, 2, 4, 8, 16     # ability bits
-ALL = MORPH | SJ | GRAV | SPIDER | LIGHT
+NONE, MORPH, SJ, GRAV, SPIDER, LIGHT, BOOST = 0, 1, 2, 4, 8, 16, 32     # ability bits
+ALL = MORPH | SJ | GRAV | SPIDER | LIGHT | BOOST
 BIT_ITEMS = {"MorphBall": MORPH, "SpaceJumpBoots": SJ, "GravityBoost": GRAV, "SpiderBall": SPIDER,
-             "LightSuit": LIGHT}
-# movement the mesh check does not model (Screw Attack, grapple, half-pipes, bomb jumps): a rule
-# term with one of these is not refuted
-UNMODELLED = ["ScrewAttack", "GrappleBeam", "BoostBall", "MorphBallBombs"]
+             "LightSuit": LIGHT, "BoostBall": BOOST}
+# movement the mesh check does not model (Screw Attack, grapple, bomb jumps): a rule term with one
+# of these is not refuted
+UNMODELLED = ["ScrewAttack", "GrappleBeam", "MorphBallBombs"]
 
 
 def set_text(s):
@@ -491,6 +497,9 @@ SPIDER_CELL = 0.5     # spider track sample spacing
 SPIDER_GAP = 2        # track cells this far apart (in cells) are one track
 SPIDER_TOUCH = 1.9    # a ball on a floor this far below a track cell gets on
 SPIDER_SIDE = 3       # floor columns (GRID) this far beside a track cell to get on or off at
+PIPE_TOUCH = 1.0      # a ball on a floor this far below a half-pipe cell rolls onto it
+PIPE_LIP = 3.2        # ballHalfPipeBoostHeight (disc TweakBall): a boost carries the ball this far
+                      # over a half-pipe cell onto a floor beside it
 
 
 def components(n, u, v):
@@ -564,11 +573,13 @@ class Terrain:
                                                                DEPTH_MAX / DEPTH_STEP).astype(int) * 2 + dark)
         self.rmax = {k: max(curve(s, k)[:, 1].max() for s in JUMP_SETS) for k in np.unique(self.wkey).tolist()}
         self.jumps = tuple(np.concatenate(x) for x in zip(self._jumps(self.stand & (deg < 8), ~self.stand),
-                                                           self._drops(), self._spider(tris, flags)))
+                                                           self._drops(), self._ride(tris, flags, SPIDER),
+                                                           self._ride(tris, flags, BOOST)))
         # items that change anything here (the rest are masked off before building a graph)
+        jl = self.jumps[2]
         self.relevant = (MORPH | SJ | (GRAV if (self.wkey >= 0).any() else 0)
-                         | (LIGHT if (self.wkey % 2 == 1).any() else 0) | (SPIDER if len(self.jumps[2]) and
-                                                                          (self.jumps[2] & SPIDER).any() else 0))
+                         | (LIGHT if (self.wkey % 2 == 1).any() else 0)
+                         | (SPIDER if (jl & SPIDER).any() else 0) | (BOOST if (jl & BOOST).any() else 0))
 
     def rise(self, pts, abil):
         """Highest a jump with abil takes the feet from each of pts."""
@@ -722,12 +733,15 @@ class Terrain:
         p, q = p[~blocked], q[~blocked]
         return p, q, np.full(len(p), MORPH)
 
-    def _spider(self, tris, flags):
-        """(p, q, MORPH | SPIDER) rides along a spider track: from a spot where the ball touches a
-        track (one within SPIDER_TOUCH above the floor) to any spot beside or below the same track,
-        where it lets go."""
+    def _ride(self, tris, flags, item):
+        """(p, q, MORPH | item) rides along a surface the ball sticks to or boosts up.
+        SPIDER, a spider track: from a spot where the ball touches the track (a cell within
+        SPIDER_TOUCH above the floor) to any spot beside or below the same track, where it lets go.
+        BOOST, a half-pipe: from a spot at its foot (a cell within PIPE_TOUCH above the floor) to any
+        spot beside it at most PIPE_LIP above one of its cells (boosted over the lip) or below."""
         none = np.zeros(0, int), np.zeros(0, int), np.zeros(0, int)
-        t = tris[(flags & np.uint64(SPIDER_TRACK)) != 0]
+        touch_max, lip = (SPIDER_TOUCH, 0.5) if item == SPIDER else (PIPE_TOUCH, PIPE_LIP)
+        t = tris[(flags & np.uint64(SPIDER_TRACK if item == SPIDER else HALF_PIPE)) != 0]
         if not len(t) or not self.n:
             return none
         # sample every track triangle at SPIDER_CELL, as 3D cells
@@ -764,13 +778,15 @@ class Terrain:
             for dy in range(-SPIDER_SIDE, SPIDER_SIDE + 1):
                 if dx * dx + dy * dy > SPIDER_SIDE * SPIDER_SIDE:
                     continue
-                h = self._below(col + (dx, dy), ctr[:, 2] + 0.5)
-                q = np.where(h >= 0, self.hit_pt[np.maximum(h, 0)], -1)
-                c = np.nonzero(q >= 0)[0]
-                q = q[c]
-                touch = ctr[c, 2] - self.pos[q, 2] <= SPIDER_TOUCH
-                on.append(np.stack([track[c[touch]], q[touch]], 1))
-                off.append(np.stack([track[c], q], 1))
+                for zmax, out in ((ctr[:, 2] + 0.5, on), (ctr[:, 2] + lip, off)):
+                    h = self._below(col + (dx, dy), zmax)
+                    q = np.where(h >= 0, self.hit_pt[np.maximum(h, 0)], -1)
+                    c = np.nonzero(q >= 0)[0]
+                    q = q[c]
+                    if out is on:
+                        near = ctr[c, 2] - self.pos[q, 2] <= touch_max
+                        c, q = c[near], q[near]
+                    out.append(np.stack([track[c], q], 1))
         # one point per (track, roll component) on each side
         P, Q = [], []
         for pairs, out in ((np.concatenate(on), P), (np.concatenate(off), Q)):
@@ -788,7 +804,7 @@ class Terrain:
         if not p:
             return none
         p, q = np.concatenate(p), np.concatenate(q)
-        return p, q, np.full(len(p), MORPH | SPIDER)
+        return p, q, np.full(len(p), MORPH | item)
 
     def _jump_clear(self, p, q):
         a, b = self.pos[p], self.pos[q]

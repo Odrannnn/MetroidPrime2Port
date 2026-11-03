@@ -134,9 +134,12 @@ is no longer the only source of locations. Plan, each step checkable on its own:
      0r_swamp_hall's underwater stairs, steps 1.5 to 2.5, before Gravity Boost: the simulated 1.65
      walk jump can't, step-up and slopes being unmodelled), so water only adds height. Spider tracks (material bit 61) join the floors
      within 1.9 below them to every floor beside or below the same track (needs MorphBall and
-     SpiderBall). Each edge's verdict is the minimal sets of MorphBall, SpaceJumpBoots,
-     GravityBoost, SpiderBall and LightSuit that make it. Terms with grapple, Screw Attack, Boost
-     Ball or bombs are not refuted (UNMODELLED). Not modelled: swimming, moving platforms, story layer switches (GFMC
+     SpiderBall). Half-pipes (material bit 13) join the floors within 1.0 below them to every
+     floor beside a cell of the same pipe up to 3.2 (ballHalfPipeBoostHeight) above or below it
+     (needs MorphBall and BoostBall; boosted gap jumps and ramps are not modelled). Each edge's
+     verdict is the minimal sets of MorphBall, SpaceJumpBoots, GravityBoost, SpiderBall, LightSuit
+     and BoostBall that make it. Terms with grapple, Screw Attack or bombs are not refuted
+     (UNMODELLED). Not modelled: swimming, moving platforms, story layer switches (GFMC
      Compound's Kinetic Orb Cannon sits on "Load After Movie"), cannons, elevators,
      air drift during a long fall (Sanctum Access).
      Verdicts are cached per area in `~/.cache/mp2-rando-terrain/` (key: the tool's bytes, mesh,

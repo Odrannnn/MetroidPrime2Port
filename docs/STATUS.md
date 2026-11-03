@@ -4,6 +4,23 @@ The Status section of AGENTS.md links here: this is the per-session detail, rewr
 appended, dated as in the heading there.
 
 
+## 2026-11-03: rando terrain models Boost Ball half-pipes
+
+- tools/rando_terrain.py: BoostBall is an ability bit. Half-pipes (material bit 13, kMT_HalfPipe) ride like
+  spider tracks: on from a floor within 1.0 below a cell, off onto floors beside a cell up to 3.2 above
+  (disc ballHalfPipeBoostHeight) or below. Boosted gap jumps, ramps and spider boosts are not modelled.
+- Rule fixes: 09_temple_thirdleg dock0 > dock2 and 0q_sand_hall dock0/dock1 > dock2 need MorphBall & BoostBall
+  (13.6 to 16 up, out of Space Jump reach; the half-pipe climbs there); dark 0q_sand_hall's Missile (21 up)
+  likewise; 0l_sand_hall dock1 > dock0 also opens with Boost. Accepted: 0h_sand_hall dock2 > dock4's Boost
+  term (no half-pipe, boost ramps not modelled), dark 0l_sand_hall dock1 > dock0's Space Jump (vanilla
+  climbs it before Boost; Beam Platform PLAT 0x003A003A, motion not modelled).
+- Full run: ok 551, refuted 15 (all accepted), nopath 227, unanchored 28, virtual 138; vanilla 114/114 in
+  9 spheres, gen 200/200. The logic/gen tests aren't configured in build-port-link: build them directly,
+  `c++ -std=c++20 -Iplatform/include tests/port_rando_logic.cpp platform/port_rando_{logic,world}.cpp`
+  (gen: tests/port_rando_gen.cpp + port_rando_{gen,logic,world}.cpp).
+- Next, one item per session: bombs and Power Bomb jumps (disc bombJumpHeight 7.9, bombJumpRadius 1.5),
+  Screw Attack, Grapple Beam, platform motion, swimming. Same loop as below.
+
 ## 2026-11-03: rando terrain models water, Gravity Boost, dark water, Spider Ball
 
 - tools/rando_terrain.py: verdicts are minimal sets of MorphBall, SpaceJumpBoots, GravityBoost, SpiderBall,

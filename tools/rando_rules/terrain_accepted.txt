@@ -16,6 +16,8 @@
 # 03_Sand_World_20041018.rules
 08_sand_casualpirates dock1 > dock0: rides the Elevator platform (PLAT 0x003601C1) from z 1.4 to 11.6 (TRGR 0x003601B6 starts it, waypoints 0x003601B5/0x003601B3); platform motion is not modelled  # line 266: needs SpaceJumpBoots; refuted terms (any)
 08_sand_casualpirates dock1 > dock2: rides the Elevator platform (PLAT 0x003601C1) from z 1.4 to 11.6 (TRGR 0x003601B6 starts it, waypoints 0x003601B5/0x003601B3); platform motion is not modelled  # line 268: needs SpaceJumpBoots; refuted terms (any)
+0h_sand_hall dock2 > dock4: Boost Ball into the tunnel mouth 4.0 above its 3.4 floor needs a boost off a slope, and the room has no half-pipe; boost ramps are not modelled (bombs and Power Bomb with Space Jump are the measured routes)  # line 183: needs MorphBall & SpaceJumpBoots; refuted terms (MorphBall & BoostBall)
+0l_sand_hall_dark dock1 > dock0: the vanilla route climbs back to dock0 (15 up) before Boost Ball; the room's Beam Platform (PLAT 0x003A003A, waypoints 0x003A0036/0x003A0037, moved by the light and dark crystals) is the likely lift, and platform motion is not modelled  # line 530: needs MorphBall & BoostBall; refuted terms (SpaceJumpBoots)
 
 # 04_Swamp_World_20041018.rules
 01_swamp_entrance dock4 > dock0: crosses on the Swamp Bridge (PLAT 0x00020086, waypoints 0x0002007B at z 31.2 to 0x00020044 at 36.2), raised by scanning POIN 0x0002013F (SQTR 0x000200A1 'Bridge & Gate Control' 0x0002007D also lowers Swamp Gate 1 0x00020045 before dock0 and Exit Gate 0x00020047 before dock1); platform motion is not modelled  # line 36: needs SpaceJumpBoots; refuted terms (any)
