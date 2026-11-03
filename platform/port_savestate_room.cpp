@@ -529,7 +529,17 @@ struct DeferredFields {
 bool ApplyObject(CStateManager& mgr, CEntity& ent, const RoomObject& obj, ChangeLog& log,
                  bool holdTimers, std::vector< uint32_t >& held, std::vector< DeferredFields >& later) {
   bool changed = false;
-  if (ent.GetActive() != obj.active) {
+  CScriptCamera* camera = TCastToPtr< CScriptCamera >(&ent);
+  if (ent.GetActive() != obj.active && obj.active && camera != nullptr &&
+      FindBlock(obj, kTagCinematic) == nullptr) {
+    // A script camera's kSM_Activate starts its cinematic, and the camera stays active after the
+    // shot ends: only the one driving the cinematic at save time plays again (issue #67: Sanctuary
+    // Entrance's door cinematic replayed after every load).
+    camera->SetActive(true);
+    mgr.UpdateActorInSortedLists(camera);
+    log.Note(obj.editorId, "activated (no cinematic)");
+    changed = true;
+  } else if (ent.GetActive() != obj.active) {
     // Through the message, as a relay does: an object's own kSM_Activate sets up what its Think
     // relies on (a patterned enemy's body controller, helper actors); flipping the flag alone
     // left it thinking without that.
