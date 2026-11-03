@@ -3229,9 +3229,22 @@ std::string build_shader_source(const ShaderConfig& config) noexcept {
         "\n    out.pos = vec4f(clip.xy + offset_ndc * clip.w, clip.zw);";
   } else {
     // GX_LINES / GX_LINESTRIP: expand line segment perpendicular to direction
+    // Port: GX clips a line at the near plane before widening it. An endpoint behind the eye has a
+    // negative w, so its NDC flips to the far side and the widened quad spans the screen (Echo
+    // Visor sound waves around Quadraxis filled the view, #65): move it onto w = eps along the
+    // segment first, and drop a segment with both ends behind (z = -2w is clipped).
     vtxXfrAttrsPre +=
-        "\n    let clip_a = vec4f(mv_pos_a, 1.0) * ubuf.proj;"
-        "\n    let clip_b = vec4f(mv_pos_b, 1.0) * ubuf.proj;"
+        "\n    var clip_a = vec4f(mv_pos_a, 1.0) * ubuf.proj;"
+        "\n    var clip_b = vec4f(mv_pos_b, 1.0) * ubuf.proj;"
+        "\n    let line_near_w = 1e-4;"
+        "\n    if (clip_a.w < line_near_w && clip_b.w < line_near_w) {"
+        "\n        clip_a = vec4f(0.0, 0.0, -2.0, 1.0);"
+        "\n        clip_b = clip_a;"
+        "\n    } else if (clip_a.w < line_near_w) {"
+        "\n        clip_a = mix(clip_a, clip_b, (line_near_w - clip_a.w) / (clip_b.w - clip_a.w));"
+        "\n    } else if (clip_b.w < line_near_w) {"
+        "\n        clip_b = mix(clip_b, clip_a, (line_near_w - clip_b.w) / (clip_a.w - clip_b.w));"
+        "\n    }"
         "\n    let ndc_a = clip_a.xy / clip_a.w;"
         "\n    let ndc_b = clip_b.xy / clip_b.w;"
         "\n    let viewport_scale = ubuf.render_viewport_size / max(ubuf.logical_viewport_size, vec2f(1.0));"
