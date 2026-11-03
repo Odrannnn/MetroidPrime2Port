@@ -181,9 +181,9 @@ area 07_swamp_shaft
     dock0 > dock3: any
     dock1 - dock2: any  # unsure: underwater ledges
     dock2 - dock3: any  # unsure: underwater ledges
-    dock1 > dock0: GravityBoost | SpaceJumpBoots  # unsure: 15-unit climb out of the water
-    dock2 > dock0: GravityBoost | SpaceJumpBoots  # unsure: as above
-    dock3 > dock0: GravityBoost | SpaceJumpBoots  # unsure: as above
+    dock1 > dock0: GravityBoost  # 15-unit climb out of the water: the Space Jump reaches 7.7 (rando_terrain)
+    dock2 > dock0: GravityBoost  # as above
+    dock3 > dock0: GravityBoost  # as above
     dock0 > dock6: any  # unsure: three scanned locks open the main lock
     dock6 > dock0: MorphBall  # unsure: water cannon from the floor slot to the top
     dock2 > loc0x002800C7: SeekerLauncher  # unsure: pickup gated by the Seeker target counter
@@ -466,7 +466,7 @@ area 0q_swamp_hall_dark
     dock0 > dock2: any
     dock2 > dock0: LightBeam
     dock1 > dock0: LightBeam
-    dock2 > loc0x003500F0: GravityBoost  # unsure: key 22 units below the top dock beside the portal, possibly underwater
+    dock2 > loc0x003500F0: SpaceJumpBoots  # key on a ledge 12 above the lower floor (z -103 to -91); no water in the room
     covers 0x00350107
 
 area 10_swamp_hiddenhalfpipe_dark

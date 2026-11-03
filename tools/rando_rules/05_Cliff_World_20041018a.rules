@@ -66,7 +66,7 @@ area 02_cliff_reactorcore
     # balcony 30 units up reached by the spider track.
     dock3 - dock0: any
     dock3 - dock4: MorphBall    # cannon + ball trigger by the pickup room door
-    dock3 > dock1: MorphBall & SpiderBall    # unsure: 30-unit climb
+    dock3 > dock1: MorphBall & SpiderBall    # the track foot hangs 11 above the floor: the ball cannon (Grab Ball) lifts onto it
     dock1 > dock3: any
     dock1 - dock2: any
     dock1 > loc0x00050063: MorphBall & SpiderBall    # unsure: spider track ends near the tank

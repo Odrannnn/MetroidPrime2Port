@@ -4,6 +4,24 @@ The Status section of AGENTS.md links here: this is the per-session detail, rewr
 appended, dated as in the heading there.
 
 
+## 2026-11-03: rando terrain models water, Gravity Boost, dark water, Spider Ball
+
+- tools/rando_terrain.py: verdicts are minimal sets of MorphBall, SpaceJumpBoots, GravityBoost, SpiderBall,
+  LightSuit. WATR boxes (default layers, never deactivated) give per-depth-bucket jump curves simulated from
+  CPlayerDynamics (disc Standard.ntwk: fluid gravity -10, waterJumpFactor 0.37; GB 45 for 1.5 s; dark water
+  low gravity unless Light Suit), never below the dry jump: the vanilla route climbs 0r_swamp_hall's
+  underwater stairs (1.5 to 2.5) before GB, past the simulated 1.65. Spider tracks (material bit 61) join
+  floors within 1.9 below to any floor beside/below.
+- Rule fixes: 07_swamp_shaft dock1/2/3 > dock0 GravityBoost only (15-unit climb; SJ reaches 7.7),
+  0q_swamp_hall_dark key needs SpaceJumpBoots (ledge 12 up, no water). Accepted: 07_swamp_shaft dock6 > dock0
+  (water cannon). Reactor Core spider lines stay nopath (a ball cannon starts the climb).
+- Full run: ok 547, refuted 13 (all accepted), nopath 233, unanchored 28, virtual 138; vanilla 114/114 in
+  9 spheres, gen 200/200.
+- Next (not modelled), one item per session: Boost Ball, bombs and Power Bomb jumps, Screw Attack, Grapple
+  Beam, platform motion, swimming. Loop: model it in rando_terrain.py, `python3 tools/rando_terrain.py`
+  (cold ~17 min), triage refutations (rule fix or measured reason in terrain_accepted.txt),
+  `python3 tools/rando_rules.py --write`, then the logic/gen C++ tests (vanilla 114/114, gen 200/200).
+
 ## 2026-11-03: terrain triage done (Sand, Swamp, Cliff)
 
 - Rule fixes, Space Jump ledges measured on the mesh: 02_sand_sandfalls dock0/dock2 > dock1, 0g_sand_hall

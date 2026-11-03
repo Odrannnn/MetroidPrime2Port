@@ -5,9 +5,10 @@ hand rules (tools/rando_rules/*.rules).
 The hand rules guess what movement inside a room needs: how high a ledge is, whether a gap can be
 jumped. This tool measures it instead. For each area it reads the static collision (the MREA's
 CAreaOctTree section), finds where Samus can stand, links those spots by walking, falling, rolling
-and jumping, and works out what a rule edge needs from the mesh alone: nothing, MorphBall,
-SpaceJumpBoots, both, or no path at all (the edge relies on something the static mesh does not
-have: a moving platform, an elevator, a grapple point, a spinner, a bomb slot).
+and jumping, and works out what a rule edge needs from the mesh alone: the smallest sets of
+MorphBall, SpaceJumpBoots, GravityBoost, SpiderBall and LightSuit that make it, or no path at all
+(the edge relies on something the static mesh does not have: a moving platform, an elevator, a
+grapple point, a spinner, a ball cannon, a bomb slot).
 
     tools/rando_terrain.py                    report every rule edge whose terms the terrain refutes
     tools/rando_terrain.py --area NAME        check one area only
@@ -20,8 +21,16 @@ The model, and its limits (docs/RANDOMIZER.md, "Terrain check"):
   radius 0.7. Analytical, not measured in game; the margins below are deliberately wide.
 - Floors are what CGameCollision::IsFloor says: the Floor material, or normal z > 0.85, facing up (a
   ceiling's top is no floor); collision blocks from both sides, as the game's does.
-- Water (no Gravity Boost), Screw Attack, bomb jumps, dash and slope jumps are not modelled: the
-  result only ever needs more than the game does, never less.
+- Water: WATR boxes on the default layers that are never deactivated. Underwater jumps follow
+  CPlayerDynamics (fluid gravity 10, jump factor 0.37 while submerged, depth from the box top), with
+  Gravity Boost (force 45 for 1.5 s, from an apex or an early trigger, both counted) and dark water
+  (low gravity everywhere in it unless the Light Suit, no jump factor), simulated per depth bucket.
+  A fluid never lowers a jump below the dry one: the vanilla route climbs underwater stairs past
+  the simulated walk jump (jump_sim), so water only adds height.
+- Spider Ball: tracks (material bit 61) sampled into cells, a track is its connected cells; the ball
+  gets on from a floor at most SPIDER_TOUCH below a cell and gets off onto any floor beside or below
+  the track. Swimming, Screw Attack, bomb jumps, Boost Ball, dash and slope jumps are not modelled:
+  the result only ever needs more than the game does, never less.
 - Static mesh plus script platforms and solid actors (PLAT, ACTR with isSolid: DCLN, collision box
   or model bounds) at their initial place on the default layers, in two states: as the area starts
   (breakable crates included), and once its switches are thrown (activated, never deactivated or
@@ -34,6 +43,7 @@ The model, and its limits (docs/RANDOMIZER.md, "Terrain check"):
 - Enforced by tools/rando_rules.py: a refuted edge fails unless tools/rando_rules/terrain_accepted.txt
   lists it as a gap of this model.
 """
+import functools
 import struct
 import sys
 import pathlib
@@ -62,11 +72,19 @@ NO_PLAYER = 1 << 58
 FLOOR = 1 << 31
 FLIPPED = 1 << 24
 
-NONE, MORPH, SJ = 0, 1, 2     # ability bits
-LEVELS = ["walk", "MorphBall", "SpaceJumpBoots", "MorphBall & SpaceJumpBoots"]
-# movement the mesh check does not model (swimming, Screw Attack, grapple, half-pipes, bomb jumps,
-# spider tracks): a rule term with one of these is not refuted
-UNMODELLED = ["GravityBoost", "ScrewAttack", "GrappleBeam", "BoostBall", "MorphBallBombs", "SpiderBall"]
+SPIDER_TRACK = 1 << 61   # kMT_Unknown61: the Spider Ball sticks to it
+
+NONE, MORPH, SJ, GRAV, SPIDER, LIGHT = 0, 1, 2, 4, 8, 16     # ability bits
+ALL = MORPH | SJ | GRAV | SPIDER | LIGHT
+BIT_ITEMS = {"MorphBall": MORPH, "SpaceJumpBoots": SJ, "GravityBoost": GRAV, "SpiderBall": SPIDER,
+             "LightSuit": LIGHT}
+# movement the mesh check does not model (Screw Attack, grapple, half-pipes, bomb jumps): a rule
+# term with one of these is not refuted
+UNMODELLED = ["ScrewAttack", "GrappleBeam", "BoostBall", "MorphBallBombs"]
+
+
+def set_text(s):
+    return " & ".join(n for n, b in BIT_ITEMS.items() if s & b) or "walk"
 
 
 # ---- the collision section -----------------------------------------------------------------------
@@ -237,6 +255,27 @@ def platforms(ents, layer_on, get):
     return out
 
 
+WATR_FLUID = 0x7D606B78    # SLdrWater.inc fluidType: 0 water, 1 Fluid (Echoes' water), 2 Dark Water
+
+
+def waters(ents, layer_on):
+    """(lo, hi, dark) boxes of the WATRs in the area for good: layer on by default, active, never
+    sent DCTV or killed (water a switch drains or raises later is left out, the generous way)."""
+    import rando_world as rw
+    sent = {(m, t) for *_x, conns, _p in ents for _s, m, t in conns}
+    killed = {t for *_x, conns, _p in ents for s, m, t in conns if s == "DEAD" and m in rw.KILL_MSGS}
+    lo, hi, dark = [], [], []
+    for layer, t4, eid, _conns, props in ents:
+        if (t4 != "WATR" or not layer_on >> layer & 1 or rw.editor(props, EDITOR_ACTIVE)[-1:] == b"\0"
+                or ("DCTV", eid) in sent or eid in killed):
+            continue
+        x = struct.unpack(">9f", rw.editor(props, rw.XFRM)[:36])    # centre and full size
+        lo.append(np.array(x[:3]) - np.abs(x[6:]) / 2)
+        hi.append(np.array(x[:3]) + np.abs(x[6:]) / 2)
+        dark.append(WATR_FLUID in props and struct.unpack(">i", props[WATR_FLUID][-4:])[0] == 2)
+    return np.array(lo).reshape(-1, 3), np.array(hi).reshape(-1, 3), np.array(dark, bool)
+
+
 # ---- geometry ------------------------------------------------------------------------------------
 
 def column_hits(tris):
@@ -350,17 +389,94 @@ def jump_curve(double):
 
 CURVES = {NONE: jump_curve(False), SJ: jump_curve(True)}
 
+# Fluids (CPlayer::GetGravity, JumpInput, ApplyGravityBoost; Tweaks.inc motion defaults)
+JUMP_TIME = 0.2495     # allowedJumpTime
+EYE = 2.5              # eye height: CheckSubmerged is half of it, the camera's fluid test all of it
+WATER_GRAVITY = 10.0   # fluidGravitationalAccel
+WATER_JUMP = 0.37      # water/lavaJumpFactor (Dark Water sets the Lava restraint)
+GB_ACCEL, GB_TIME, GB_CANCEL = 45.0, 1.5, 0.3   # gravityBoostForce / mass 200, time, cancel dampening
+DEPTH_STEP, DEPTH_MAX = 0.25, 24.0              # take-off depth buckets
+JUMP_SETS = [s for s in range(LIGHT * 2) if s & ~(SJ | GRAV | LIGHT) == 0]
 
-def reach(dz, level):
-    """Horizontal distance a jump can cover to land dz higher (NaN when it cannot)."""
-    t, z = CURVES[level].T
-    # last time the feet are still RISE_MARGIN above the landing: the curve falls monotonically after
-    # its apex, so search the falling half reversed
-    top = z.argmax()
-    fall_t, fall_z = t[top:][::-1], z[top:][::-1]
-    i = np.searchsorted(fall_z, dz + RISE_MARGIN)
-    ok = i < len(fall_z)
-    return np.where(ok, SPEED_FACTOR * AIR_SPEED * fall_t[np.minimum(i, len(fall_t) - 1)], np.nan)
+
+def _sim(abil, depth, dark, early):
+    """Times and heights of a held jump taken `depth` under a fluid surface. Dark Water without the
+    Light Suit: low gravity and the jump factor while in it at all (Gravity Boost lifts the factor,
+    not the gravity). Water (or Dark Water with the Light Suit): both only when submerged (feet 1.25
+    under) without Gravity Boost, the factor not in Dark Water. Then the double jump (SJ), then the
+    Gravity Boost while the eye is in the fluid: at the apex, or with `early` as soon as allowed."""
+    sj, grav, light = abil & SJ, abil & GRAV, abil & LIGHT
+    dt = 1 / 600
+    t = z = vz = 0.0
+    dj = gb = None
+    out = []
+    while z >= -12 and t <= 10:
+        d = depth - z
+        if dark and not light:
+            g = WATER_GRAVITY if d > 0 else GRAVITY
+            scale = WATER_JUMP if d > 0 and not grav else 1.0
+        else:
+            sub = d >= EYE / 2 and not grav
+            g = WATER_GRAVITY if sub else GRAVITY
+            scale = WATER_JUMP if sub and not dark else 1.0
+        if t < JUMP_TIME:
+            a = scale * 50.0
+        elif dj is not None and t < dj + 0.1:
+            a = scale * 60.0
+        elif gb is not None and gb >= 0:
+            if t - gb >= GB_TIME or d <= EYE:
+                vz, gb, a = vz * GB_CANCEL, -1.0, -g
+            else:
+                a = GB_ACCEL - g
+        else:
+            a = -g
+            if sj and dj is None and vz <= 0 and t < 2:
+                dj, vz, a = t, 8.0 * (scale if d >= 0.8 * EYE else 1.0), scale * 60.0
+            elif grav and gb is None and d > EYE and (early or vz <= 0) and (not sj or dj is not None):
+                gb, vz, a = t, vz * 0.1, GB_ACCEL - g
+        vz += a * dt
+        z += vz * dt
+        t += dt
+        out.append((t, z))
+    return np.array(out)
+
+
+@functools.lru_cache(maxsize=None)
+def jump_sim(abil, depth=None, dark=False):
+    """Height envelope of the held jumps with abilities abil from `depth` under a fluid (None: dry).
+    Never below the dry jump: the vanilla route climbs Torvus's underwater stairs (0r_swamp_hall,
+    steps 1.5 to 2.5) before Gravity Boost, past the simulated 1.65 walk jump (step-up and slopes
+    are not modelled), so a fluid only adds height (Gravity Boost, low gravity)."""
+    if depth is None:
+        return CURVES[abil & SJ]
+    abil &= SJ | GRAV | (LIGHT if dark else 0)
+    out = _envelope(CURVES[abil & SJ], _sim(abil, depth, dark, False))
+    return _envelope(out, _sim(abil, depth, dark, True)) if abil & GRAV else out
+
+
+def _envelope(a, b):
+    """Pointwise higher of two curves on the same time step (the longer one's tail kept)."""
+    if len(a) < len(b):
+        a, b = b, a
+    a = a.copy()
+    a[:len(b), 1] = np.maximum(a[:len(b), 1], b[:, 1])
+    return a
+
+
+def curve(abil, key):
+    """jump_sim for a take-off depth key (Terrain.wkey: -2 dry, else depth bucket * 2 + dark)."""
+    return jump_sim(abil) if key < 0 else jump_sim(abil, (key // 2) * DEPTH_STEP, bool(key & 1))
+
+
+def reach(dz, curve):
+    """Horizontal distance a jump along curve can cover to land dz higher (NaN when it cannot)."""
+    t, z = curve.T
+    # last time the feet are still RISE_MARGIN above the landing: search the running maximum from
+    # the end (non-increasing), reversed
+    late = np.maximum.accumulate(z[::-1])
+    i = np.searchsorted(late, dz + RISE_MARGIN)
+    ok = i < len(late)
+    return np.where(ok, SPEED_FACTOR * AIR_SPEED * t[::-1][np.minimum(i, len(t) - 1)], np.nan)
 
 
 # ---- one area ------------------------------------------------------------------------------------
@@ -370,7 +486,11 @@ JUMP_MAX = 10.0       # horizontal search radius for jumps
 JUMP_DROP = 12.0      # deepest jump down considered
 DROP_REACH = 1.5      # horizontal reach of a ball rolling off a ledge
 NEIGHBOURS = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
-SETS = [NONE, MORPH, SJ, MORPH | SJ]
+SETS = sorted(range(ALL + 1), key=lambda s: bin(s).count("1"))   # every ability set, subsets first
+SPIDER_CELL = 0.5     # spider track sample spacing
+SPIDER_GAP = 2        # track cells this far apart (in cells) are one track
+SPIDER_TOUCH = 1.9    # a ball on a floor this far below a track cell gets on
+SPIDER_SIDE = 3       # floor columns (GRID) this far beside a track cell to get on or off at
 
 
 def components(n, u, v):
@@ -393,7 +513,7 @@ def components(n, u, v):
 
 
 class Terrain:
-    def __init__(self, tris, flags):
+    def __init__(self, tris, flags, water=(np.zeros((0, 3)), np.zeros((0, 3)), np.zeros(0, bool))):
         nrm = np.cross(tris[:, 1] - tris[:, 0], tris[:, 2] - tris[:, 0])
         nz = nrm[:, 2] / (np.linalg.norm(nrm, axis=1) + 1e-12)   # signed: a ceiling is no floor
         floor_tri = (nz > FLOOR_NZ) | (((flags & np.uint64(FLOOR)) != 0) & (nz >= FLOOR_FLAGGED_NZ))
@@ -431,8 +551,32 @@ class Terrain:
         bp, bq = self.links["ball"]
         bboth = np.isin(bp * self.n + bq, bq * self.n + bp)
         self.roll = components(self.n, bp[bboth], bq[bboth])
+        # fluid over each point: depth of the surface above the feet (a point just under a box's
+        # bottom counts: the box is the volume, its floor the mesh's), Dark Water or not
+        depth, dark = np.full(self.n, np.nan), np.zeros(self.n, bool)
+        z = self.pos[:, 2]
+        for lo, hi, dk in zip(*water):
+            dd = hi[2] - z
+            inside = (np.all((self.pos[:, :2] >= lo[:2]) & (self.pos[:, :2] <= hi[:2]), axis=1)
+                      & (z >= lo[2] - 0.5) & (z < hi[2]) & ~(depth >= dd))
+            depth[inside], dark[inside] = dd[inside], dk
+        self.wkey = np.where(np.isnan(depth), -2, np.minimum(np.round(np.nan_to_num(depth) / DEPTH_STEP),
+                                                               DEPTH_MAX / DEPTH_STEP).astype(int) * 2 + dark)
+        self.rmax = {k: max(curve(s, k)[:, 1].max() for s in JUMP_SETS) for k in np.unique(self.wkey).tolist()}
         self.jumps = tuple(np.concatenate(x) for x in zip(self._jumps(self.stand & (deg < 8), ~self.stand),
-                                                           self._drops()))
+                                                           self._drops(), self._spider(tris, flags)))
+        # items that change anything here (the rest are masked off before building a graph)
+        self.relevant = (MORPH | SJ | (GRAV if (self.wkey >= 0).any() else 0)
+                         | (LIGHT if (self.wkey % 2 == 1).any() else 0) | (SPIDER if len(self.jumps[2]) and
+                                                                          (self.jumps[2] & SPIDER).any() else 0))
+
+    def rise(self, pts, abil):
+        """Highest a jump with abil takes the feet from each of pts."""
+        k = self.wkey[pts]
+        out = np.zeros(len(pts))
+        for key in np.unique(k).tolist():
+            out[k == key] = curve(abil, key)[:, 1].max()
+        return out
 
     def _below(self, ixy, zmax):
         """Hit index of the highest hit at or below zmax in column ixy, or -1."""
@@ -498,19 +642,35 @@ class Terrain:
             d = np.hypot(*(self.pos[q, :2] - self.pos[p, :2]).T)
             dz = self.pos[q, 2] - self.pos[p, 2]
             apart = np.where(self.stand[q], self.walk[p] != self.walk[q], self.roll[p] != self.roll[q])
-            ok = apart & (d <= JUMP_MAX) & (dz >= -JUMP_DROP) & (dz < 7.7)
+            top = np.vectorize(self.rmax.get, otypes=[float])(self.wkey[p]) if len(p) else np.zeros(0)
+            ok = apart & (d <= JUMP_MAX) & (dz >= -JUMP_DROP) & (dz < top + 0.02)
             P.append(p[ok])
             Q.append(q[ok])
         p, q = np.concatenate(P), np.concatenate(Q)
+        if not len(p):
+            return np.zeros(0, int), np.zeros(0, int), np.zeros(0, int)
         d = np.hypot(*(self.pos[q, :2] - self.pos[p, :2]).T)
         dz = self.pos[q, 2] - self.pos[p, 2]
-        level = np.where(d <= reach(dz, NONE), NONE, np.where(d <= reach(dz, SJ), SJ, -1))
-        ok = level >= 0
-        p, q, d, level = p[ok], q[ok], d[ok], level[ok]
+        # one candidate per minimal jump set that makes it, per take-off depth
+        wk = self.wkey[p]
+        rows, levels = [], []
+        for key in np.unique(wk).tolist():
+            m = np.nonzero(wk == key)[0]
+            sets = [s for s in JUMP_SETS if s & ~(SJ | (GRAV if key >= 0 else 0) | (LIGHT if key % 2 else 0)) == 0]
+            works = {s: d[m] <= reach(dz[m], curve(s, key)) for s in sets}
+            for s in sets:
+                minimal = works[s].copy()
+                for x in sets:
+                    if x != s and x & s == x:
+                        minimal &= ~works[x]
+                rows.append(m[minimal])
+                levels.append(np.full(minimal.sum(), s))
+        idx, level = np.concatenate(rows), np.concatenate(levels)
+        p, q, d = p[idx], q[idx], d[idx]
         level = level | np.where(self.stand[q], NONE, MORPH)
         # test the nearest few candidates of each (component, component, level) at a time
         dcomp = np.where(self.stand[q], self.walk[q], self.n + self.roll[q])
-        group = (self.walk[p] * 2 * self.n + dcomp) * 4 + level
+        group = (self.walk[p] * 2 * self.n + dcomp) * 64 + level
         o = np.lexsort((d, group))
         p, q, level, group = p[o], q[o], level[o], group[o]
         rank = np.arange(len(group)) - np.searchsorted(group, group, "left")
@@ -562,6 +722,74 @@ class Terrain:
         p, q = p[~blocked], q[~blocked]
         return p, q, np.full(len(p), MORPH)
 
+    def _spider(self, tris, flags):
+        """(p, q, MORPH | SPIDER) rides along a spider track: from a spot where the ball touches a
+        track (one within SPIDER_TOUCH above the floor) to any spot beside or below the same track,
+        where it lets go."""
+        none = np.zeros(0, int), np.zeros(0, int), np.zeros(0, int)
+        t = tris[(flags & np.uint64(SPIDER_TRACK)) != 0]
+        if not len(t) or not self.n:
+            return none
+        # sample every track triangle at SPIDER_CELL, as 3D cells
+        span = np.linalg.norm(t[:, [1, 2, 0]] - t, axis=2).max(1)
+        steps = np.clip(np.ceil(span / SPIDER_CELL), 1, 400).astype(int)
+        cells = []
+        for n in np.unique(steps).tolist():
+            i, j = np.meshgrid(np.arange(n + 1), np.arange(n + 1), indexing="ij")
+            keep = i + j <= n
+            w = np.stack([i[keep], j[keep]], 1) / n
+            tt = t[steps == n]
+            s = tt[:, None, 0] + w[None, :, :1] * (tt[:, None, 1] - tt[:, None, 0]) + \
+                w[None, :, 1:] * (tt[:, None, 2] - tt[:, None, 0])
+            cells.append(np.floor(s.reshape(-1, 3) / SPIDER_CELL).astype(np.int64))
+        cells = np.unique(np.concatenate(cells), axis=0)
+
+        def key(c):
+            return ((c[:, 0] + (1 << 16)) << 34) | ((c[:, 1] + (1 << 16)) << 17) | (c[:, 2] + (1 << 16))
+        k = key(cells)    # sorted: np.unique sorts rows lexicographically
+        u, v = [], []
+        r = range(-SPIDER_GAP, SPIDER_GAP + 1)
+        for off in [(a, b, c) for a in r for b in r for c in r if (a, b, c) > (0, 0, 0)]:
+            k2 = key(cells + off)
+            i = np.minimum(np.searchsorted(k, k2), len(k) - 1)
+            hit = k[i] == k2
+            u.append(np.nonzero(hit)[0])
+            v.append(i[hit])
+        track = components(len(cells), np.concatenate(u), np.concatenate(v))
+        # floors beside or below each cell: on when the ball touches the cell, off anywhere
+        ctr = (cells + 0.5) * SPIDER_CELL
+        col = np.round(ctr[:, :2] / GRID).astype(np.int64)
+        on, off = [], []
+        for dx in range(-SPIDER_SIDE, SPIDER_SIDE + 1):
+            for dy in range(-SPIDER_SIDE, SPIDER_SIDE + 1):
+                if dx * dx + dy * dy > SPIDER_SIDE * SPIDER_SIDE:
+                    continue
+                h = self._below(col + (dx, dy), ctr[:, 2] + 0.5)
+                q = np.where(h >= 0, self.hit_pt[np.maximum(h, 0)], -1)
+                c = np.nonzero(q >= 0)[0]
+                q = q[c]
+                touch = ctr[c, 2] - self.pos[q, 2] <= SPIDER_TOUCH
+                on.append(np.stack([track[c[touch]], q[touch]], 1))
+                off.append(np.stack([track[c], q], 1))
+        # one point per (track, roll component) on each side
+        P, Q = [], []
+        for pairs, out in ((np.concatenate(on), P), (np.concatenate(off), Q)):
+            lab = pairs[:, 0] * self.n + self.roll[pairs[:, 1]]
+            _l, first = np.unique(lab, return_index=True)
+            out.append(pairs[first])
+        a, b = P[0], Q[0]
+        p, q = [], []
+        for tr in np.intersect1d(a[:, 0], b[:, 0]).tolist():
+            src, dst = a[a[:, 0] == tr, 1], b[b[:, 0] == tr, 1]
+            sp, dp = np.repeat(src, len(dst)), np.tile(dst, len(src))
+            ok = self.roll[sp] != self.roll[dp]
+            p.append(sp[ok])
+            q.append(dp[ok])
+        if not p:
+            return none
+        p, q = np.concatenate(p), np.concatenate(q)
+        return p, q, np.full(len(p), MORPH | SPIDER)
+
     def _jump_clear(self, p, q):
         a, b = self.pos[p], self.pos[q]
         top = np.maximum(a[:, 2], b[:, 2])
@@ -594,6 +822,7 @@ class Terrain:
 
     def graph(self, abil):
         """(component label per point, set of directed component edges) with abilities abil."""
+        abil &= self.relevant
         if not hasattr(self, "_graphs"):
             self._graphs = {}
         if abil in self._graphs:
@@ -663,18 +892,24 @@ def node_points(T, node, source):
         rim = T.anchor(pos, r + 1.5, 4.0, 1e4)  # or a rim at any height above, to drop in from
         pts = np.union1d(below[T.pos[below, 2] >= pos[2] - 4.0], rim)
         return {s: pts for s in SETS}
-    # a pickup Samus can touch: standing, jumping (any), or double jumping (SpaceJumpBoots)
-    reach = {s: HEIGHT + CURVES[s & SJ][:, 1].max() - 0.3 for s in SETS}
-    return {s: T.anchor(pos, 1.5, reach[s], 1.0) for s in SETS}
+    # a pickup Samus can touch from a spot, standing or at the top of the best jump from there
+    near = T.anchor(pos, 1.5, HEIGHT + max(T.rmax.values()) - 0.3, 1.0)
+    out = {}
+    for s in SETS:
+        k = s & T.relevant & (SJ | GRAV | LIGHT)
+        if k not in out:
+            out[k] = near[T.pos[near, 2] + HEIGHT + T.rise(near, k) - 0.3 >= pos[2]]
+        out[s] = out[k]
+    return {s: out[s] for s in SETS}
 
 
 def check_area(job):
     """Verdicts of one area's rule edges: (line, text of src, text of dst, reach per set) or an
     unanchored node."""
-    name, mrea, edges, plats = job
+    name, mrea, edges, plats, water = job
     tris, flags = area_mesh(mrea)
-    T = Terrain(tris, flags)
-    Ps = [Terrain(np.concatenate([tris, p[0]]), np.concatenate([flags, p[1]])) for p in plats]
+    T = Terrain(tris, flags, water)
+    Ps = [Terrain(np.concatenate([tris, p[0]]), np.concatenate([flags, p[1]]), water) for p in plats]
     out = []
     for line, a, c, apos, cpos, terms in edges:
         r, miss, helped = {s: False for s in SETS}, None, False
@@ -686,12 +921,21 @@ def check_area(job):
             continue
         for t in [T] + Ps:
             src, dst = node_points(t, apos, True), node_points(t, cpos, False)
-            n_src, n_dst = len(src[MORPH | SJ]), len(dst[MORPH | SJ])
+            n_src, n_dst = len(src[ALL]), len(dst[ALL])
             if not n_src or not n_dst:
                 miss = miss or (n_src, n_dst, apos[0], cpos[0])
                 continue
-            for s in SETS:
-                if not r[s] and t.reachable(src[s], dst[s], s):
+            seen = {}               # items irrelevant here change nothing
+            for s in SETS:          # subsets first: an ability set does what any of its subsets does
+                if r[s]:
+                    continue
+                if any(r[x] for x in SETS if x != s and x & s == x):
+                    r[s] = True
+                    continue
+                k = s & t.relevant
+                if k not in seen:
+                    seen[k] = t.reachable(src[s], dst[s], s)
+                if seen[k]:
                     r[s], helped = True, helped or t is not T
         if not any(r.values()) and miss:
             out.append((line, a, c, None, terms, miss, False))
@@ -717,7 +961,7 @@ def check(rules_dir=None, only=None, cached=True):
     rules_dir = rules_dir or rr.RULES_DIR
     items = rr.item_table()
     items = {**items, **rr.scan_events(rules_dir, items)}
-    sj = items["SpaceJumpBoots"]
+    bit_of = {items[n]: b for n, b in BIT_ITEMS.items()}
     unmodelled = {items[n] for n in UNMODELLED}
     worlds, areas, _d, _t, _l, _dl, _o, dock_pos, loc_pos, _r = rw.collect()
     by_world = {name: i for i, (_m, name) in enumerate(worlds)}
@@ -766,7 +1010,8 @@ def check(rules_dir=None, only=None, cached=True):
             for line, a, c, dnf, both in b.edges:
                 # MorphBall is in the start inventory (port_rando_logic StartInventory) and never placed;
                 # a term with an item the mesh cannot model gets no bits and is never refuted
-                terms = [(t, None if any(i in unmodelled for i, _n in t) else MORPH | (SJ if dict(t).get(sj) else 0))
+                terms = [(t, None if any(i in unmodelled for i, _n in t) else
+                          functools.reduce(lambda x, y: x | y, (bit_of.get(i, 0) for i, _n in t), MORPH))
                          for t in dnf]
                 for x, y in [(a, c), (c, a)] if both else [(a, c)]:
                     px, py = pos(x), pos(y)
@@ -775,10 +1020,12 @@ def check(rules_dir=None, only=None, cached=True):
                         continue
                     edges.append((line, x, y, px, py, terms))
             plats = platforms(ents, layer_on[wi][gi - first[wi]], lambda r: pk.get(r) if r in pk.res else None)
+            water = waters(ents, layer_on[wi][gi - first[wi]])
             key = hashlib.sha1(pathlib.Path(__file__).read_bytes() + mrea + pickle.dumps(
                 ([(e[0], e[1], e[2], e[3][0], e[3][1].tolist(), e[3][2].tolist(), e[4][0], e[4][1].tolist(),
-                   e[4][2].tolist(), e[5]) for e in edges], [(p[0].tobytes(), p[1].tobytes()) for p in plats]))).hexdigest()
-            jobs.append((path.name, b.name, key, (b.name, mrea, edges, plats)))
+                   e[4][2].tolist(), e[5]) for e in edges], [(p[0].tobytes(), p[1].tobytes()) for p in plats],
+                 [w.tobytes() for w in water]))).hexdigest()
+            jobs.append((path.name, b.name, key, (b.name, mrea, edges, plats, water)))
     hit = {}
     if cached:
         for _f, _a, key, _j in jobs:
@@ -807,11 +1054,11 @@ def check(rules_dir=None, only=None, cached=True):
             elif r is None:
                 rows.append((fname, area, line, edge, "unanchored", f"no floor at {'source' if not miss[0] else 'target'}"
                              f" ({SHAPES[miss[2] if not miss[0] else miss[3]]})", False))
-            elif not r[MORPH | SJ]:
+            elif not r[ALL]:
                 rows.append((fname, area, line, edge, "nopath", "no path in the static mesh; terms " +
                              " | ".join(f"({term_text(t)})" for t, _b in terms), helped))
             else:
-                need = " or ".join(LEVELS[s] for s in SETS
+                need = " or ".join(set_text(s) for s in SETS
                                    if r[s] and not any(r[x] for x in SETS if x != s and x & s == x))
                 bad = [t for t, bits in terms if bits is not None and not r[bits]]
                 if bad:

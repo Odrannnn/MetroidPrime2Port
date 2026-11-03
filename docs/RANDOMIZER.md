@@ -120,27 +120,34 @@ is no longer the only source of locations. Plan, each step checkable on its own:
      z > 0.85, facing up: a ceiling's top is no floor), and links them by walking (step 1.0),
      falling straight down, rolling and analytical jumps (apex 3.78, Space Jump 7.68), including a
      jump that morphs into a raised tunnel mouth and a ball rolling off a tunnel lip. For each rule
-     edge it reports what the mesh needs (nothing, MorphBall, SpaceJumpBoots, both, no path);
-     MorphBall is in the start inventory, so only SpaceJumpBoots can refute. Script platforms and
+     edge it reports what the mesh needs (the item sets below, or no path); MorphBall is in the
+     start inventory, so it never refutes. Script platforms and
      solid actors (PLAT, ACTR with isSolid) on default-on layers are added at their initial place
      (DCLN, else collision box, else model bounds) in two states: as the area starts (breakable
      crates included) and once switches are thrown (ACTV, never DCTV or destroyed); an edge that
      passes only with them says "(with platforms)". Docks are anchored by shape (DOCK XFRM scale;
      a tall door's floor is searched deeper);
      virtual docks are skipped; a pickup is reached within jump touch range (6.2, 10.1 with Space
-     Jump). Terms with grapple, Screw Attack, Gravity Boost, Boost Ball, bombs or Spider Ball are
-     not refuted (UNMODELLED). Not modelled: moving platforms, story layer switches (GFMC
+     Jump). Water (WATR boxes that stay on) changes the jump per take-off depth, simulated from
+     CPlayerDynamics: fluid gravity 10, jump factor 0.37 submerged, Gravity Boost 45 for 1.5 s, dark
+     water low gravity unless the Light Suit; never below the dry jump (the vanilla route climbs
+     0r_swamp_hall's underwater stairs, steps 1.5 to 2.5, before Gravity Boost: the simulated 1.65
+     walk jump can't, step-up and slopes being unmodelled), so water only adds height. Spider tracks (material bit 61) join the floors
+     within 1.9 below them to every floor beside or below the same track (needs MorphBall and
+     SpiderBall). Each edge's verdict is the minimal sets of MorphBall, SpaceJumpBoots,
+     GravityBoost, SpiderBall and LightSuit that make it. Terms with grapple, Screw Attack, Boost
+     Ball or bombs are not refuted (UNMODELLED). Not modelled: swimming, moving platforms, story layer switches (GFMC
      Compound's Kinetic Orb Cannon sits on "Load After Movie"), cannons, elevators,
      air drift during a long fall (Sanctum Access).
      Verdicts are cached per area in `~/.cache/mp2-rando-terrain/` (key: the tool's bytes, mesh,
      edges, platforms): a cold run takes ~17 min, a warm one seconds; the key holds rule line
-     numbers, so a rule edit rechecks every area below it in that file. Full run: 957 edge
-     directions, ok 544, refuted 12, nopath 237, unanchored 28, virtual 138.
+     numbers, so a rule edit rechecks every area below it in that file. Full run: 959 edge
+     directions, ok 547, refuted 13, nopath 233, unanchored 28, virtual 138.
      `tools/rando_rules.py` fails on a refuted edge unless `tools/rando_rules/terrain_accepted.txt`
      lists it (`area src > dst: reason`), and on an accepted line nothing refutes any more
      (`--no-terrain` skips; no disc skips too). Every one of the 65 refutations of the 2026-11-03
      baseline is triaged: most were Space Jump ledges the rules missed (measured steps of 4.2 to
-     7.2 in each rule's comment); signed floors cleared 11. The 12 accepted ones are model gaps
+     7.2 in each rule's comment); signed floors cleared 11. The accepted ones (13 with Hydrodynamo Shaft's water cannon) are model gaps
      with reasons: moving platforms (Kinetic Orb Cannons, Sacred Path's ball cannon, the Elevator
      platforms of 0h_temple_hall and 08_sand_casualpirates, Torvus Lagoon's Swamp Bridge, the hidden half-pipe's Sliding Coffins), a
      drifting fall. Rule fixes also moved Torvus's 0f_swamp_hall energy tank to the upper
