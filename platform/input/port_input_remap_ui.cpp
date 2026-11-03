@@ -723,6 +723,10 @@ void DrawAdvancedEditor(const Binding& parsed, bool inputsOk) {
     ImGui::TextDisabled("Works only in Morph Ball, where its inputs do nothing else.");
     return;
   }
+  if (PortInput::FindMapRow(sDraft.action) != nullptr) {
+    ImGui::TextDisabled("Works only on the map screen, where its inputs do nothing else.");
+    return;
+  }
   bool everywhere = sDraft.contexts == PortInput::kCtxAll;
   if (ImGui::Checkbox("Works everywhere", &everywhere)) {
     sDraft.contexts = everywhere ? PortInput::kCtxAll : PortInput::kCtxGameplay;
@@ -1262,6 +1266,11 @@ const std::vector<SGroup>& Groups() {
           Action::MenuLAnalog, Action::MenuRAnalog, Action::MenuUp, Action::MenuDown, Action::MenuLeft,
           Action::MenuRight},
          true},
+        // Issue #31: the map's own stick directions; an input on one does only that on the map.
+        {"Map",
+         {Action::MapRotateUp, Action::MapRotateDown, Action::MapRotateLeft, Action::MapRotateRight,
+          Action::MapPanUp, Action::MapPanDown, Action::MapPanLeft, Action::MapPanRight},
+         true},
         {"Port", {Action::PortMenu, Action::SaveState, Action::LoadState, Action::Screenshot, Action::ToggleOriginal,
           Action::ToggleTexturePack, Action::PhotoMode, Action::PrevStateSlot, Action::NextStateSlot}, true},
         {"Layers (shift keys, advanced)", {Action::Layer1, Action::Layer2, Action::Layer3, Action::Layer4}, false},
@@ -1323,6 +1332,14 @@ const char* GameHint(Action a) {
   case Action::MenuDown:
   case Action::MenuLeft:
   case Action::MenuRight: return "Navigate";
+  case Action::MapRotateUp:
+  case Action::MapRotateDown:
+  case Action::MapRotateLeft:
+  case Action::MapRotateRight: return "Control stick when unset";
+  case Action::MapPanUp:
+  case Action::MapPanDown:
+  case Action::MapPanLeft:
+  case Action::MapPanRight: return "C-stick when unset";
   default: break;
   }
   const PortInput::BallRow* ball = PortInput::FindBallRow(a);

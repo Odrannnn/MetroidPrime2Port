@@ -231,6 +231,25 @@ const BallRow* BallRowForGame(Action game);
 // layers). A row that isn't bound changes nothing.
 void ApplyBallButtons(Profile& profile);
 
+// The map rows (issue #31): each tilts a stick direction, only on the map screen,
+// where its inputs do nothing else. Unbound, the stick's own inputs rotate and pan
+// as before. The game rotates the map with the control stick, pans with the C-stick.
+struct MapRow {
+  Action row;
+  Action game;
+};
+inline constexpr MapRow kMapRows[] = {
+    {Action::MapRotateUp, Action::MainUp},     {Action::MapRotateDown, Action::MainDown},
+    {Action::MapRotateLeft, Action::MainLeft}, {Action::MapRotateRight, Action::MainRight},
+    {Action::MapPanUp, Action::CUp},           {Action::MapPanDown, Action::CDown},
+    {Action::MapPanLeft, Action::CLeft},       {Action::MapPanRight, Action::CRight},
+};
+// The row of `a`, or nullptr.
+const MapRow* FindMapRow(Action a);
+// Before a poll: scopes the map rows to the map (layers are dropped) and blocks the
+// map for the other bindings on their inputs.
+void ApplyMapRows(Profile& profile);
+
 // The touch overlay's stock buttons (TouchControlsView's C_* ids) and Turbo's
 // pulse (kTouchTurboCode): fixed GameCube actions in all three layouts (default,
 // GameCube, twin stick), not remappable; the layout editor shows, hides and adds

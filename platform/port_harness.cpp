@@ -34,6 +34,7 @@ int sIntroBudget = 3600;  // game updates
 int sIntroUpdates = 0;    // game updates seen while armed
 bool sFlowInGame = false;
 std::atomic< int > sFlowState{-1}; // GameFlowState's last state, read by FlowState()
+std::atomic< bool > sMapScreen{false}; // GameMapScreen since the last flow state change
 int sPlayingUpdates = 0;  // consecutive game updates that were "playing"
 int sDismissed = 0;
 constexpr int kSettleUpdates = 120;
@@ -152,7 +153,12 @@ void IdleCheck() {
 
 int FlowState() { return sFlowState.load(std::memory_order_acquire); }
 
+void GameMapScreen() { sMapScreen.store(true, std::memory_order_release); }
+
+bool MapScreenOpen() { return sMapScreen.load(std::memory_order_acquire); }
+
 void GameFlowState(int state, bool inGame) {
+  sMapScreen.store(false, std::memory_order_release);
   sFlowState.store(state, std::memory_order_release);
   sFlowInGame = inGame;
   if (!inGame) {

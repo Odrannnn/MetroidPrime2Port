@@ -611,9 +611,13 @@ CPlayerState* PlayerInPlay(int player = 0) {
 // publishes it) adds Morph Ball, which the Morph Ball rows and the touch overlay's
 // Ball page need. The scan text (CStateManager::Update publishes the scan freeze) adds
 // scan text to gameplay and scan rather than switching to menu, so the held lock keeps
-// its gameplay binding (#11). MP1 also tells the map screen apart, which reads the
-// CStateManager. Players 2-4 read their own visor and morph state; the scan text is Player 1's.
+// its gameplay binding (#11). The map screen (CMFGame publishes it) is the map context
+// rather than menu, so the Map rows and Map-only bindings apply there (#31).
+// Players 2-4 read their own visor and morph state; the scan text is Player 1's.
 uint16_t GameContexts(int player) {
+  if (PortHarness::MapScreenOpen() && PortHarness::FlowState() == 2 /* CMFGame::kFS_Paused */) {
+    return PortInput::kCtxMap;
+  }
   const CPlayerState* state = PlayerInPlay(player);
   if (state == nullptr || PortTouch::PauseScreenOpen()) return PortInput::kCtxMenu;
   uint16_t contexts = PortInput::kCtxGameplay;
@@ -1360,10 +1364,18 @@ static PADStatus SynthesizeStatus(const PortInput::Output& out, bool radial) {
   for (const SMenuAction& m : kMenuActions) {
     if (m.padButton != 0 && out.Held(m.menu)) s.button |= static_cast<u16>(m.padButton);
   }
-  s.stickX = StickX(out.Value(Action::MainRight), out.Value(Action::MainLeft));
-  s.stickY = StickY(out.Value(Action::MainDown), out.Value(Action::MainUp));
-  s.substickX = StickX(out.Value(Action::CRight), out.Value(Action::CLeft));
-  s.substickY = StickY(out.Value(Action::CDown), out.Value(Action::CUp));
+  // A stick direction or its map row (only live on the map), the stronger.
+  const auto stick = [&](Action game) {
+    float v = out.Value(game);
+    for (const PortInput::MapRow& m : PortInput::kMapRows) {
+      if (m.game == game) v = std::max(v, out.Value(m.row));
+    }
+    return v;
+  };
+  s.stickX = StickX(stick(Action::MainRight), stick(Action::MainLeft));
+  s.stickY = StickY(stick(Action::MainDown), stick(Action::MainUp));
+  s.substickX = StickX(stick(Action::CRight), stick(Action::CLeft));
+  s.substickY = StickY(stick(Action::CDown), stick(Action::CUp));
   if (radial && (PortRadial::Capturing() || sConsumeRadialPoll)) s.substickX = s.substickY = 0;
   s.triggerLeft = Trigger(std::max(out.Value(Action::LAnalog), out.Value(Action::MenuLAnalog)),
                           (s.button & PAD_TRIGGER_L) != 0);
@@ -1422,10 +1434,9 @@ static void ApplyTwinStickFreeAim(Profile& p, uint16_t contexts, int player = 0)
 // PortMouse::StickOwnsCStick.
 static bool KeyboardCStickHeld(const Profile& p, const PortInput::RawState& raw, uint16_t contexts) {
   for (const Binding& b : p.bindings) {
-    if (b.action != Action::CUp && b.action != Action::CDown && b.action != Action::CLeft &&
-        b.action != Action::CRight) {
-      continue;
-    }
+    const PortInput::MapRow* map = PortInput::FindMapRow(b.action);
+    const Action a = map != nullptr ? map->game : b.action;
+    if (a != Action::CUp && a != Action::CDown && a != Action::CLeft && a != Action::CRight) continue;
     if (b.count == 0 || (b.contexts & contexts) == 0 || (b.blocked & contexts) != 0) continue;
     if (std::all_of(b.inputs.begin(), b.inputs.begin() + b.count,
                     [&](const Input& in) { return IsKeyboardFamily(in) && raw.Value(in) > 0.f; })) {
@@ -1464,6 +1475,7 @@ SPoll Poll(unsigned mouseHeld, bool focused) {
   BuildProfile(next);
   ApplyMenuButtons(next);
   PortInput::ApplyBallButtons(next);
+  PortInput::ApplyMapRows(next);
   const uint16_t contexts = GameContexts();
   ApplyTwinStickFreeAim(next, contexts);
   if (!sInit || next != sProfile) {
@@ -1524,6 +1536,7 @@ bool PollPlayer(int port, PADStatus& status) {
   BuildProfile(next, port);
   ApplyMenuButtons(next, port);
   PortInput::ApplyBallButtons(next);
+  PortInput::ApplyMapRows(next);
   const uint16_t contexts = GameContexts(port);
   ApplyTwinStickFreeAim(next, contexts, port);
   if (!sInit[port] || next != profile) {

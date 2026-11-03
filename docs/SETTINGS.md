@@ -301,6 +301,14 @@ Controls > Remap:
   overlay's Morph Ball page (Bomb, Boost, Power Bomb, Spider, Unmorph; touch codes 40..44)
   presses the rows; a remap moves a row off its button and relabels it. A touch: binding on a control
   counts as taking it over only where it applies.
+- Map rows (issue #31: Map rotate up/down/left/right, Map pan up/down/left/right;
+  `map_rotate_up`.. `map_rotate_right`, `map_pan_up`.. `map_pan_right` in controls.toml)
+  tilt the control stick (rotate) or the C-stick (pan) only on the map screen. They start
+  unbound and add to the sticks: their own inputs keep rotating and panning. An input bound
+  to a map row does only that on the map, bindings scoped to the map included, and what it
+  did before everywhere else, so WASD can pan the map without moving the gameplay C-stick.
+  Zoom stays on L/R (or the "Menus and map" L/R rows). The map screen is its own context
+  (Map), not Menus: a binding scoped to Menus alone no longer applies there.
 - Custom actions (advanced) (as MP1 issue #218) holds actions the player makes, as many as
   wanted: "+ Add action" picks what one does from a searchable list, then it binds like any
   row (chords, layers, triggers and touch buttons included); Edit and Delete are on its row,

@@ -79,6 +79,10 @@ void GameFlowState(int state, bool inGame);
 // The last flow state published there (CMFGame::EFlowState: 1 kFS_InGame, 2 kFS_Paused), -1
 // before the first; safe from any thread (the touch overlay polls it from Android's UI thread).
 int FlowState();
+// CMFGame::EnterMapScreen and PauseGame (the teleport map) publish the map screen here after they
+// pause for it; the next flow state clears it. True while the map screen is up; safe from any thread.
+void GameMapScreen();
+bool MapScreenOpen();
 
 // CMFGame::EnterMessageScreen asks this before pausing for a HUD memo (message is its STRG id).
 // True: dismiss it (logged).

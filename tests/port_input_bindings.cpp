@@ -781,11 +781,60 @@ void TestStockTouch() {
   raw.touch.set(kTouchTurboCode);
   REQUIRE(runtime.Poll(raw, kCtxGameplay, 1048).Held(Action::PadA));
 }
+
+// Issue #31: a key on a map row does only that on the map, scoped bindings
+// included, and everything it did before elsewhere; an unbound row changes nothing.
+void TestMapRows() {
+  REQUIRE(FindMapRow(Action::MapPanUp)->game == Action::CUp);
+  REQUIRE(FindMapRow(Action::MapRotateLeft)->game == Action::MainLeft);
+  REQUIRE(FindMapRow(Action::CUp) == nullptr);
+  REQUIRE(ActionFromKey("map_pan_right") == Action::MapPanRight);
+
+  const Input w = In(Device::Key, 26), i = In(Device::Key, 12);
+  Binding scoped = Bind(Action::PadZ, {w});
+  scoped.contexts = kCtxMap | kCtxMenu;
+  Profile base;
+  base.chordWindowMs = 0;
+  base.bindings = {Bind(Action::MainUp, {w}), Bind(Action::CUp, {i}), scoped};
+  Profile p = base;
+  ApplyMapRows(p);
+  REQUIRE(p == base);
+
+  Binding pan = Bind(Action::MapPanUp, {w});
+  pan.contexts = kCtxGameplay | kCtxLayer1;
+  p.bindings.push_back(pan);
+  ApplyMapRows(p);
+  REQUIRE(p.bindings[3].contexts == kCtxMap && p.bindings[3].blocked == 0);
+  REQUIRE(p.bindings[0].blocked == kCtxMap && p.bindings[1].blocked == 0 && p.bindings[2].blocked == kCtxMap);
+  Runtime runtime;
+  runtime.SetProfile(&p);
+  RawState raw;
+  raw.keys.set(26);
+  const Output& play = runtime.Poll(raw, kCtxGameplay, 1000);
+  REQUIRE(play.Value(Action::MainUp) == 1.f && play.Value(Action::MapPanUp) == 0.f);
+  raw.keys.reset();
+  runtime.Poll(raw, kCtxMap, 1008);
+  raw.keys.set(26);
+  const Output& map = runtime.Poll(raw, kCtxMap, 1016);
+  REQUIRE(map.Value(Action::MapPanUp) == 1.f);
+  REQUIRE(map.Value(Action::MainUp) == 0.f);
+  REQUIRE(!map.Held(Action::PadZ));
+  raw.keys.reset();
+  runtime.Poll(raw, kCtxMenu, 1024);
+  raw.keys.set(26);
+  REQUIRE(runtime.Poll(raw, kCtxMenu, 1032).Held(Action::PadZ));
+  // The C-stick's own key still pans the map.
+  raw.keys.reset();
+  runtime.Poll(raw, kCtxMap, 1040);
+  raw.keys.set(12);
+  REQUIRE(runtime.Poll(raw, kCtxMap, 1048).Value(Action::CUp) == 1.f);
+}
 } // namespace
 
 int main() {
   TestCustomActions();
   TestBallButtons();
+  TestMapRows();
   TestTouchButtons();
   TestStockTouch();
   TestDuplicateBindings();

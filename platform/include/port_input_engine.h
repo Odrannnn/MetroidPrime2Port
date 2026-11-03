@@ -187,7 +187,15 @@ enum class ActionKind : uint8_t {
   X(ToggleTexturePack, Digital, "toggle_texture_pack", "Texture pack") /* appended: IDs persist */ \
   X(NextStateSlot, Digital, "next_state_slot", "Next save state slot")                            \
   X(PrevStateSlot, Digital, "prev_state_slot", "Previous save state slot")                        \
-  X(Dodge, Digital, "dodge", "Dodge (with strafe)") /* appended: IDs persist */
+  X(Dodge, Digital, "dodge", "Dodge (with strafe)") /* appended: IDs persist */                    \
+  X(MapRotateUp, HalfAxis, "map_rotate_up", "Map rotate up")                                       \
+  X(MapRotateDown, HalfAxis, "map_rotate_down", "Map rotate down")                                 \
+  X(MapRotateLeft, HalfAxis, "map_rotate_left", "Map rotate left")                                 \
+  X(MapRotateRight, HalfAxis, "map_rotate_right", "Map rotate right")                              \
+  X(MapPanUp, HalfAxis, "map_pan_up", "Map pan up")                                                \
+  X(MapPanDown, HalfAxis, "map_pan_down", "Map pan down")                                          \
+  X(MapPanLeft, HalfAxis, "map_pan_left", "Map pan left")                                          \
+  X(MapPanRight, HalfAxis, "map_pan_right", "Map pan right")
 
 enum class Action : uint16_t {
 #define PORT_INPUT_ACTION_ENUM(id, kind, key, label) id,

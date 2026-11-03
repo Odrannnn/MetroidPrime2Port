@@ -1021,6 +1021,10 @@ void CMFGame::EnterMapScreen() {
   gui.GetAutoMapper().SetMapMode(CAutoMapper::kMM_Normal);
   gui.PauseGame(*mStateManager, kIGGS_MapScreen);
   mStateManager->SetInMapScreen(true);
+#ifdef TARGET_PC
+  // Port: the input's Map context (issue #31).
+  PortHarness::GameMapScreen();
+#endif
 }
 
 void CMFGame::PauseGame() {
@@ -1029,6 +1033,9 @@ void CMFGame::PauseGame() {
   gui.GetAutoMapper().SetMapMode(CAutoMapper::kMM_Teleport);
   gui.PauseGame(*mStateManager, kIGGS_MapScreen);
   mStateManager->SetInMapScreen(true);
+#ifdef TARGET_PC
+  PortHarness::GameMapScreen();
+#endif
 }
 
 void CMFGame::EnterLogBook() {
