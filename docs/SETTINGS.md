@@ -76,11 +76,20 @@ Game page:
 
 - `original_experience`: Cutscenes > Original experience (default off); env
   `MP2_ORIGINAL_EXPERIENCE`, console `original`. While on, the port's gameplay and cutscene tweaks read
-  as retail and their rows are greyed: skippable cutscenes, world name on load, walk speed, hint
+  as retail and their rows are greyed: skippable cutscenes, seamless item pickups, world name on load, walk speed, hint
   delay, scan speed, elevator ride, portal transition, rotating rooms, fast morph, spring ball, the Enhancements page, toggle lock-on, sticky charge, remastered
   charge, auto-aim (on). Your saved values are kept and return when it is switched off. Mods, input,
   video and audio settings are not affected.
 - `skip_cinematics`: Enhancements > Pace > Skippable cutscenes.
+- `seamless_pickups`: Enhancements > Pace > Seamless item pickups (default off); env
+  `MP2_SEAMLESS_PICKUPS`, console `seamlesspickups`. Single player, as in the Prime 1 randomizer:
+  picking up an item keeps control (its "Disable Controls" hint is dropped), shows the message box's
+  headline ("Missile Expansion acquired!") as a HUD memo instead of pausing, and skips the cinematic
+  some items start (20 of the 124 item pickups) the way the skip button does, so the doors, platforms
+  and layers the scene changes still change. `CScriptPickup::Touch` walks the pickup's Arrived chain
+  through relays, memory relays, timers and sequence timers and marks those three targets
+  (`platform/port_pickup_presentation.cpp`); `tools/pickup_presentation.py` checks the rule against
+  every pickup on the disc.
 - Boot logos and the world name card on load: no setting; they end on A or Start (shown as retail
   under Original experience). Env `MP2_BOOT_LOGOS`, `MP2_WORLD_NAME` (`show`, `skip`, `off`).
 - `walk_speed`: Enhancements > Pace > Walk speed (50 to 200 percent, default 100 = retail); env

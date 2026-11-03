@@ -309,6 +309,7 @@ bool sGameOptionsRestored = false;
 const SettingKey kSettingKeys[] = {
     BoolKey< &sOriginalExperience >("original_experience"),
     BoolKey< &sSkipCinematics >("skip_cinematics"),
+    BoolKey< &sSeamlessPickups >("seamless_pickups"),
     BoolKey< &sUnlockHardMode >("unlock_hard_mode"),
     BoolKey< &sUnlockGalleries >("unlock_galleries"),
     BoolKey< &sUnlockBeamDoors >("unlock_beam_doors"),

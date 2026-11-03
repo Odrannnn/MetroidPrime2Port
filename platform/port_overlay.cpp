@@ -59,6 +59,7 @@ extern "C" void AIPortSetOutputGain(float gain);
 namespace PortOverlayState {
 
 bool sSkipCinematics = false;
+bool sSeamlessPickups = false;
 // `MP2_LOG_FILE`: whether stdout and stderr also go to a file (F1 > Testing, console `logfile`).
 // PortLogFile::Start reads it before Aurora comes up, so the row only reports the state the next
 // launch will take.
@@ -723,6 +724,20 @@ bool TakeSkipConfirmTap() { return sSkipConfirmTapped.exchange(false); }
 void SetSkipCinematics(bool skip) {
   ReadEnv();
   sSkipCinematics = skip;
+  Persist();
+}
+
+bool SeamlessPickups() {
+  ReadEnv();
+  if (OriginalExperience()) {
+    return false;
+  }
+  return EnvBool("MP2_SEAMLESS_PICKUPS", sSeamlessPickups);
+}
+
+void SetSeamlessPickups(bool seamless) {
+  ReadEnv();
+  sSeamlessPickups = seamless;
   Persist();
 }
 

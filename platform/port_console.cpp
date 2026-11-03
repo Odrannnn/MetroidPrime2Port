@@ -1512,6 +1512,13 @@ void CmdSkipCine(CStateManager&, const Args& args, std::string& out) {
   out += enabled ? "skip cutscenes on\n" : "skip cutscenes off\n";
 }
 
+void CmdSeamlessPickups(CStateManager&, const Args& args, std::string& out) {
+  if (args.size() >= 2) {
+    PortOverlay::SetSeamlessPickups(ArgToInt(args[1], 1) != 0);
+  }
+  out += PortOverlay::SeamlessPickups() ? "seamless pickups on\n" : "seamless pickups off\n";
+}
+
 // skipprompt: show the "Press [A] to skip" prompt as a first press in a cinematic would, for screenshots.
 void CmdSkipPrompt(CStateManager&, const Args&, std::string& out) {
   PortOverlay::SkipConfirmArm();
@@ -5369,6 +5376,8 @@ const CommandSpec kCommands[] = {
       "credits [1|2]               end the game into the credits (<75% / <100% route)\n"},
     {"skipcine", CmdSkipCine,
       "skipcine <0|1>              skip cutscenes the player has not seen (the F1 setting)\n"},
+    {"seamlesspickups", CmdSeamlessPickups,
+      "seamlesspickups [0|1]       pickups without control lock, message box or cutscene (the F1 setting)\n"},
     {"sfx", CmdSfx,
       "sfx                         CSfxManager channel, mMuted, live sounds per channel, MusyX voices\n"},
     {"skipprompt", CmdSkipPrompt,

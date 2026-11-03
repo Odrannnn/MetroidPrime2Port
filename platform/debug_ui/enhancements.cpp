@@ -32,6 +32,8 @@ void DrawEnhancementsTab() {
   ImGui::SeparatorText("Pace");
   // The game reads this every frame in its cinematic flow state.
   Changed(ImGui::Checkbox("Skippable cutscenes", &sSkipCinematics));
+  // Read when a pickup is touched.
+  Changed(ImGui::Checkbox("Seamless item pickups", &sSeamlessPickups));
   int walkSpeed = sWalkSpeed;
   if (ImGui::SliderInt("Walk speed", &walkSpeed, PortOverlay::kWalkSpeedMin,
                        PortOverlay::kWalkSpeedMax, "%d%%", ImGuiSliderFlags_AlwaysClamp)) {

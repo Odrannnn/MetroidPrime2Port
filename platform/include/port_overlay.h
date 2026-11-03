@@ -56,6 +56,12 @@ void Wheel(float steps);
 // story beats along with the intro.
 bool SkipCinematics();
 void SetSkipCinematics(bool skip);
+// Seamless pickups (`MP2_SEAMLESS_PICKUPS`, F1 > Enhancements > Pace): an item pickup gives its item
+// without the control lock, the pausing message box or the acquisition cinematic, as the Prime 1
+// randomizer does; the text shows as a HUD memo and a cinematic is skipped as its skip button would
+// (port_pickup_presentation.h). Off under Original experience.
+bool SeamlessPickups();
+void SetSeamlessPickups(bool seamless);
 // Two-press cinematic skip: the first A/Start press only arms a "Skip [A]" prompt for
 // kSkipConfirmSeconds (real time, bottom centre); a second press while armed skips. Armed state
 // lives here so CMFGame, CMFGameLoader and the overlay (and a tap on the prompt) share it.

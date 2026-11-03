@@ -52,6 +52,7 @@ hp, hp_max, visor, beam, freecam) for scripts.
 - `reloadroom` — rebuild the room from the disc, as leaving and coming back does, with Samus kept where she stands (the F1 Cheats page's Reload button)
 - `resume [status|save|load|clear]` — quick resume (savestates/resume.mp2ss): show, snapshot now, load, delete
 - `skipcine <0|1>` — skip cutscenes the player has not seen (the F1 setting)
+- `seamlesspickups [0|1]` — item pickups without control lock, message box or cutscene (the F1 setting)
 - `sfx` — CSfxManager state (channel, mMuted, mDoUpdate, live sounds per channel, free wrapper-pool slots) and the active MusyX voice count, for lost-sound bugs
 - `skipprompt` — show the cutscene skip prompt for a few seconds
 - `hudopacity <echo|dark|scan> <visor|0..100>` — HUD opacity for that visor; `visor` follows the HUD opacity setting

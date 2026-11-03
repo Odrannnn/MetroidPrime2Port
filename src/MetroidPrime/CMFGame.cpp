@@ -9,6 +9,7 @@
 #include "port_radial.h"
 #include "port_overlay.h"
 #include "port_photo.h"
+#include "port_pickup_presentation.h"
 #include "port_savestate.h"
 #include "port_touch.h"
 #include "port_pipeline_context.h"
@@ -283,6 +284,16 @@ CIOWin::EMessageReturn CMFGame::OnMessage(const CArchitectureMessage& message,
         CMidiManager::StopAll();
         mSkippedCineCam = introCam->GetScriptCameraId();
         sHarnessCinematicSkip = true;
+        SetFlowState(kFS_CinematicSkip);
+        mFlowTime = 0.f;
+      } else if (introCam && PortPickupPresentation::Take(PortPickupPresentation::kCamera,
+                                                          introCam->GetScriptCameraId().Value())) {
+        // Seamless pickups: a cinematic the item's pickup chain started is skipped the way the
+        // skip button skips it, so everything the scene changes still changes.
+        PortOverlay::SkipConfirmDisarm();
+        CMidiManager::StopAll();
+        mSkippedCineCam = introCam->GetScriptCameraId();
+        sPortUserCinematicSkip = true;
         SetFlowState(kFS_CinematicSkip);
         mFlowTime = 0.f;
       }

@@ -6,6 +6,9 @@
 #include "MetroidPrime/ScriptLoader.hpp"
 #include "MetroidPrime/ScriptLoader/SLdrControlHint.hpp"
 #include "MetroidPrime/TCastTo.hpp"
+#ifdef TARGET_PC
+#include "port_pickup_presentation.h"
+#endif
 
 CScriptControlHint::CScriptControlHint(TUniqueId uid, const rstl::string& name,
                                        const CEntityInfo& info, const CTransform4f& xf,
@@ -112,6 +115,12 @@ void CScriptControlHint::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& m
     break;
   }
   case kSM_Increment:
+#ifdef TARGET_PC
+    // Seamless pickups: the item's "Disable Controls" hint is dropped (its Decrement is harmless).
+    if (PortPickupPresentation::Take(PortPickupPresentation::kControlHint, GetUniqueId().Value())) {
+      break;
+    }
+#endif
     if (GetActive()) {
       CPlayer* player = TCastToPtr< CPlayer >(mgr.ObjectById(msg.GetOriginator()));
       if (!player || !mgr.IsMultiplayer()) {

@@ -35,9 +35,14 @@
 #ifdef TARGET_PC
 #include "MetroidPrime/CWorld.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptHUDMemo.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptCamera.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptControlHint.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptMemoryRelay.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptRelay.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptSequenceTimer.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptTimer.hpp"
 #include "port_overlay.h"
+#include "port_pickup_presentation.h"
 #include "port_randomizer.h"
 #include "port_rando_models.h"
 #include <set>
@@ -404,7 +409,12 @@ void CScriptPickup::Touch(CActor& act, CStateManager& mgr) {
               mgr.GetWorld()->IGetAreaAlways(GetCurrentAreaId())->IGetAreaAssetId()),
           static_cast< uint32_t >(GetEditorId().value), static_cast< int >(itemType), randoText);
     }
-    if (randoMemo) {
+    // Seamless pickups mark the chain's presentation the same way: the control hint it increments,
+    // the message box it zeroes and the cinematic cameras it activates, which it reaches through
+    // memory relays and sequence timers as well (the cinematic and its end relay; the per-target
+    // rule and the disc check are in port_pickup_presentation.h).
+    const bool seamless = PortOverlay::SeamlessPickups() && !mgr.IsMultiplayer();
+    if (randoMemo || seamless) {
       std::set< uint16_t > visited;
       std::vector< const CEntity* > pending;
       pending.push_back(this);
@@ -419,15 +429,34 @@ void CScriptPickup::Touch(CActor& act, CStateManager& mgr) {
           CStateManager::TIdListResult found = mgr.GetIdListForScript(it->objId);
           for (CStateManager::TIdList::const_iterator c = found.first; c != found.second; ++c) {
             const CEntity* next = mgr.GetObjectById(c->second);
-            if (next == nullptr || !visited.insert(next->GetUniqueId().Value()).second) {
+            if (next == nullptr) {
               continue;
             }
-            // dynamic_cast: host-only, TCastTo has no visitor for these types.
+            const uint16_t uid = next->GetUniqueId().Value();
+            // dynamic_cast: host-only, TCastTo has no visitor for these types. Targets are marked
+            // per message (a control hint gets both Increment and Decrement); only relays and
+            // timers are visited once.
             if (dynamic_cast< const CScriptHUDMemo* >(next) != nullptr) {
-              PortRandomizer::SuppressMemoOnce(next->GetUniqueId().Value());
+              if (randoMemo) {
+                PortRandomizer::SuppressMemoOnce(uid);
+              } else if (it->msg == kSM_SetToZero) {
+                PortPickupPresentation::Mark(PortPickupPresentation::kMemo, uid);
+              }
+            } else if (dynamic_cast< const CScriptControlHint* >(next) != nullptr) {
+              if (seamless && it->msg == kSM_Increment) {
+                PortPickupPresentation::Mark(PortPickupPresentation::kControlHint, uid);
+              }
+            } else if (dynamic_cast< const CScriptCamera* >(next) != nullptr) {
+              if (seamless && it->msg == kSM_Activate) {
+                PortPickupPresentation::Mark(PortPickupPresentation::kCamera, uid);
+              }
             } else if (dynamic_cast< const CScriptRelay* >(next) != nullptr ||
-                       dynamic_cast< const CScriptTimer* >(next) != nullptr) {
-              pending.push_back(next); // only plain relays and timers forward the chain
+                       dynamic_cast< const CScriptTimer* >(next) != nullptr ||
+                       (seamless && (dynamic_cast< const CScriptMemoryRelay* >(next) != nullptr ||
+                                     dynamic_cast< const CScriptSequenceTimer* >(next) != nullptr))) {
+              if (visited.insert(uid).second) {
+                pending.push_back(next);
+              }
             }
           }
         }
