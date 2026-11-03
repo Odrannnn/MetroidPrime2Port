@@ -506,7 +506,7 @@ area 10_sand_alamostorage_dark
     dock0 - dock3: MorphBall & Powerbomb  # unsure: wall assumed to close the way to dock3
     dock0 > dock4: LightBeam
     dock4 > dock0: any
-    dock0 > loc0x143500B5: ScrewAttack  # unsure: layer-5 Temple Key with a layer-5 War Chest beside it; when the layer turns on is not known
+    dock0 > loc0x143500B5: ScrewAttack & SpaceJumpBoots  # terrain: Screw Attack starts out of a double jump, so it needs the boots; unsure: layer-5 Temple Key with a layer-5 War Chest beside it; when the layer turns on is not known
     covers 0x0035004C 0x00350061
     ignore 0x143500D5: layer 5 is off by default (folded into the TempleKey2 rule)
     ignore 0x003500E1: safe zone crystal, not a barrier
@@ -569,7 +569,7 @@ area 00_pickup_sand_b_dark
 
 area 0k_sand_hall_dark
     # Rock Blockers near both doors.
-    dock0 - dock1: (MorphBall & MorphBallBombs) | ScrewAttack  # terrain: past the rocks the tunnel climbs two 3-unit steps in 5-unit pits (z 33.3 to 36.2 at (490.5, -66), 37.3 to 40.3 at (507.5, -31.5)) that only a bomb jump clears; Power Bombs don't bomb-jump
+    dock0 - dock1: MorphBall & MorphBallBombs  # terrain: past the rocks the tunnel climbs two 3-unit steps in 5-unit pits (z 33.3 to 36.2 at (490.5, -66), 37.3 to 40.3 at (507.5, -31.5)) that only a bomb jump clears; Power Bombs don't bomb-jump; a Screw Attack hop only gets there by morphing into the tunnel mid-hop
     covers 0x00440035 0x00440047
     ignore 0x00440010: safe zone crystal, not a barrier
 

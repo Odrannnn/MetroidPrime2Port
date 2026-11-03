@@ -109,13 +109,13 @@ area 0f_swamp_hall
     dock0 - dock2: any
     dock0 > dock1: any
     dock2 > dock3: any
-    dock1 - dock3: MorphBall & MorphBallBombs | ScrewAttack  # terrain: the ball route drops into a 5-unit-high pit and leaves by a tunnel mouth 3 units up (z 29.2 to 32.1 at (-40.5, -124.5) and to 32.2 at (-61, -124.5)); standing Samus hits the ceiling before she can morph into it, so only a bomb jump climbs out; Power Bombs don't bomb-jump
+    dock1 - dock3: MorphBall & MorphBallBombs  # terrain: the ball route drops into a 5-unit-high pit and leaves by a tunnel mouth 3 units up (z 29.2 to 32.1 at (-40.5, -124.5) and to 32.2 at (-61, -124.5)); standing Samus hits the ceiling before she can morph into it, so only a bomb jump climbs out (Screw Attack can't either); Power Bombs don't bomb-jump
     dock1 > dock0: SpaceJumpBoots  # unsure: 15-unit climb
     dock3 > dock2: SpaceJumpBoots  # unsure: 12-unit climb
     dock0 > loc0x00110076: MorphBall & (MorphBallBombs | Powerbomb) | ScrewAttack
     dock2 > loc0x00110076: MorphBall & (MorphBallBombs | Powerbomb) | ScrewAttack
-    dock1 > loc0x00110076: SpaceJumpBoots & MorphBall & (MorphBallBombs | Powerbomb) | ScrewAttack
-    dock3 > loc0x00110076: SpaceJumpBoots & MorphBall & (MorphBallBombs | Powerbomb) | ScrewAttack
+    dock1 > loc0x00110076: SpaceJumpBoots & MorphBall & (MorphBallBombs | Powerbomb | ScrewAttack)  # terrain: from the lower corridor only a Space Jump reaches the chamber's ball route, Screw Attack or not
+    dock3 > loc0x00110076: SpaceJumpBoots & MorphBall & (MorphBallBombs | Powerbomb | ScrewAttack)
     covers 0x0011007D 0x00110044
 
 area 00_map_swamp

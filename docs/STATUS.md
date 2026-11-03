@@ -4,6 +4,29 @@ The Status section of AGENTS.md links here: this is the per-session detail, rewr
 appended, dated as in the heading there.
 
 
+## 2026-11-03: rando terrain models Screw Attack
+
+- tools/rando_terrain.py: ScrewAttack is an ability bit (UNMODELLED is grapple only). Screw Attack starts out
+  of a double jump, dry; each hop (up to 5, 20 u/s across) peaks 5.0 over the double jump's spot and may land
+  4.5 under it (CMorphBall::ComputeScrewAttackMovement), so it needs SJ and reaches 8.78 over the take-off,
+  searched 40 away (spots thinned to one per component per 2-unit cell). SETS is 256 sets: cold run ~60 min.
+- An edge only a Screw Attack set crosses reads nopath for its other terms (84 such edges: the mesh misses
+  their route, mostly moving platforms); screw terms there are still judged. The cache key is now the file
+  above `check()`, so editing the report logic keeps the cache.
+- Rule fixes, measured: 0f_swamp_hall dock1 - dock3 and 0k_sand_hall_dark dock0 - dock1 drop `| ScrewAttack`
+  (the bomb-jump climb out of the pit stays; the mesh's screw route morphs into the tunnel mid-hop);
+  0f_swamp_hall dock1/dock3 > its pickup keep Space Jump & MorphBall with Screw Attack as a third breaker;
+  10_sand_alamostorage_dark's Temple Key needs ScrewAttack & SpaceJumpBoots.
+- Open: other ScrewAttack terms (barrier breakers, Temple Key chests) don't name SpaceJumpBoots; the logic
+  could make ScrewAttack imply it.
+- Full run: ok 569, refuted 16 (all accepted), nopath 208, unanchored 28, virtual 138; vanilla 114/114 in
+  9 spheres, gen 200/200.
+- Next, one item per session: Grapple Beam, platform motion (and ball triggers/cannons), swimming. Loop:
+  model it in rando_terrain.py, `python3 tools/rando_terrain.py` (cold ~60 min), triage refutations (rule
+  fix or measured reason in terrain_accepted.txt), `python3 tools/rando_rules.py --write`, then the
+  logic/gen C++ tests built directly: `c++ -std=c++20 -Iplatform/include tests/port_rando_logic.cpp
+  platform/port_rando_{logic,world}.cpp` (gen: tests/port_rando_gen.cpp + port_rando_{gen,logic,world}.cpp).
+
 ## 2026-11-03: rando terrain models bomb jumps
 
 - tools/rando_terrain.py: MorphBallBombs is an ability bit (no longer UNMODELLED). A bomb jump lifts the ball
@@ -19,8 +42,7 @@ appended, dated as in the heading there.
   Ball Trigger 0x003300BE; ball triggers not modelled).
 - Full run: ok 569, refuted 16 (all accepted), nopath 208, unanchored 28, virtual 138; vanilla 114/114 in
   9 spheres, gen 200/200 (tests built directly, as below).
-- Next, one item per session: Screw Attack, Grapple Beam, platform motion (and ball triggers/cannons),
-  swimming. Same loop as below.
+- Same loop as below.
 
 ## 2026-11-03: rando terrain models Boost Ball half-pipes
 

@@ -141,16 +141,22 @@ is no longer the only source of locations. Plan, each step checkable on its own:
      against ball gravity 76) from any spot, drifting at the ball's air speed 10 onto a spot up to
      3.24 higher; one bomb only (the 1.0 s fuse outlasts the 0.62 s air time; double bomb jumps are a
      timing trick). Power Bombs don't
-     bomb-jump in Echoes (only kPA_TriggerBomb calls BombJump, DOL 0x8003CA5C). Each edge's
+     bomb-jump in Echoes (only kPA_TriggerBomb calls BombJump, DOL 0x8003CA5C). Screw Attack
+     starts on the third press out of a double jump, dry; each hop (up to 5, 20 a second across)
+     peaks 5.0 over the double jump's spot and is allowed down to 4.5 under it
+     (CMorphBall::ComputeScrewAttackMovement, disc TweakBall), so it needs the Space Jump Boots
+     (without them that spot is stale) and reaches spots up to 8.78 over the take-off, searched
+     40 away; screw wall jumps are a trick. Each edge's
      verdict is the minimal sets of MorphBall, SpaceJumpBoots, GravityBoost, SpiderBall, LightSuit,
-     BoostBall and MorphBallBombs that make it. Terms with grapple or Screw Attack are not refuted
-     (UNMODELLED). Not modelled: swimming, moving platforms, story layer switches (GFMC
+     BoostBall, MorphBallBombs and ScrewAttack that make it. Terms with grapple are not refuted
+     (UNMODELLED). An edge only a Screw Attack set crosses reads nopath for its other terms (the
+     mesh misses their route, mostly moving platforms). Not modelled: swimming, moving platforms, story layer switches (GFMC
      Compound's Kinetic Orb Cannon sits on "Load After Movie"), cannons, elevators,
      air drift during a long fall (Sanctum Access).
-     Verdicts are cached per area in `~/.cache/mp2-rando-terrain/` (key: the tool's bytes, mesh,
-     edges, platforms): a cold run takes ~17 min, a warm one seconds; the key holds rule line
+     Verdicts are cached per area in `~/.cache/mp2-rando-terrain/` (key: the tool's model, i.e. its
+     bytes above `check()`, mesh, edges, platforms): a cold run takes ~60 min, a warm one seconds; the key holds rule line
      numbers, so a rule edit rechecks every area below it in that file. Full run: 959 edge
-     directions, ok 569, refuted 16, nopath 208, unanchored 28, virtual 138.
+     directions, ok 569, refuted 16, nopath 208 (84 crossed only by Screw Attack), unanchored 28, virtual 138.
      `tools/rando_rules.py` fails on a refuted edge unless `tools/rando_rules/terrain_accepted.txt`
      lists it (`area src > dst: reason`), and on an accepted line nothing refutes any more
      (`--no-terrain` skips; no disc skips too). Every one of the 65 refutations of the 2026-11-03

@@ -6,7 +6,8 @@ The hand rules guess what movement inside a room needs: how high a ledge is, whe
 jumped. This tool measures it instead. For each area it reads the static collision (the MREA's
 CAreaOctTree section), finds where Samus can stand, links those spots by walking, falling, rolling
 and jumping, and works out what a rule edge needs from the mesh alone: the smallest sets of
-MorphBall, SpaceJumpBoots, GravityBoost, SpiderBall, LightSuit, BoostBall and MorphBallBombs that
+MorphBall, SpaceJumpBoots, GravityBoost, SpiderBall, LightSuit, BoostBall, MorphBallBombs and
+ScrewAttack that
 make it, or no path at all (the edge relies on something the static mesh does not have: a moving
 platform, an elevator, a grapple point, a spinner, a ball cannon, a bomb slot).
 
@@ -42,8 +43,14 @@ The model, and its limits (docs/RANDOMIZER.md, "Terrain check"):
   bomb jump, a second bomb laid early to catch the falling ball, is a timing trick). Dry height
   in fluids too (water lowers it), as for jumps. Power Bombs don't bomb-jump (ApplyDamageToWorld
   calls BombJump for kPA_TriggerBomb only, DOL 0x8003CA5C), so Powerbomb counts for nothing here.
-- Swimming, Screw Attack, dash, wall and slope bomb jumps are not modelled: the result only ever
-  needs more than the game does, never less.
+- Screw Attack (CPlayerDynamics::JumpInput, CMorphBall::ComputeScrewAttackMovement, disc TweakBall):
+  it starts on the third press out of a double jump, dry, and every hop (up to 5, 20 a second
+  across) peaks 5.0 over the double jump's spot and is allowed down to 4.5 under it; without the
+  Space Jump Boots that spot is stale and the first hop ends it, so it needs SpaceJumpBoots. From a
+  dry stand spot to any spot up to SCREW_APEX (8.78) less RISE_MARGIN higher, SCREW_MAX (40) away,
+  crossing low, midway or near the apex. Screw wall jumps are a trick, not modelled.
+- Swimming, dash, wall and slope bomb jumps are not modelled: the result only ever needs more than
+  the game does, never less.
 - Static mesh plus script platforms and solid actors (PLAT, ACTR with isSolid: DCLN, collision box
   or model bounds) at their initial place on the default layers, in two states: as the area starts
   (breakable crates included), and once its switches are thrown (activated, never deactivated or
@@ -52,7 +59,7 @@ The model, and its limits (docs/RANDOMIZER.md, "Terrain check"):
 - A jump may end in a ball-only spot (a tunnel mouth above the floor): Samus rises standing, morphs
   near the apex and crosses at ball height; both legs are checked against the mesh. A ball rolls
   off a tunnel lip onto a lower floor up to DROP_REACH (1.5) ahead.
-- Terms with an UNMODELLED item (grapple, Screw Attack) are not refuted.
+- Terms with an UNMODELLED item (grapple) are not refuted.
 - Enforced by tools/rando_rules.py: a refuted edge fails unless tools/rando_rules/terrain_accepted.txt
   lists it as a gap of this model.
 """
@@ -88,13 +95,12 @@ FLIPPED = 1 << 24
 SPIDER_TRACK = 1 << 61   # kMT_Unknown61: the Spider Ball sticks to it
 HALF_PIPE = 1 << 13      # kMT_HalfPipe: CMorphBall::UpdateHalfPipeStatus, boosting up to 95 a second
 
-NONE, MORPH, SJ, GRAV, SPIDER, LIGHT, BOOST, BOMB = 0, 1, 2, 4, 8, 16, 32, 64     # ability bits
-ALL = MORPH | SJ | GRAV | SPIDER | LIGHT | BOOST | BOMB
+NONE, MORPH, SJ, GRAV, SPIDER, LIGHT, BOOST, BOMB, SCREW = 0, 1, 2, 4, 8, 16, 32, 64, 128   # ability bits
+ALL = MORPH | SJ | GRAV | SPIDER | LIGHT | BOOST | BOMB | SCREW
 BIT_ITEMS = {"MorphBall": MORPH, "SpaceJumpBoots": SJ, "GravityBoost": GRAV, "SpiderBall": SPIDER,
-             "LightSuit": LIGHT, "BoostBall": BOOST, "MorphBallBombs": BOMB}
-# movement the mesh check does not model (Screw Attack, grapple): a rule term with one of these is
-# not refuted
-UNMODELLED = ["ScrewAttack", "GrappleBeam"]
+             "LightSuit": LIGHT, "BoostBall": BOOST, "MorphBallBombs": BOMB, "ScrewAttack": SCREW}
+# movement the mesh check does not model (grapple): a rule term with one of these is not refuted
+UNMODELLED = ["GrappleBeam"]
 
 
 def set_text(s):
@@ -516,6 +522,15 @@ BOMB_DROP = 2.0       # deepest bomb jump down considered (a hop over a lip; dro
 BOMB_CURVE = np.array([(t, BOMB_SPEED * t - BALL_GRAVITY / 2 * t * t)
                        for t in np.arange(1, 1200) / 600 if BOMB_SPEED * t - BALL_GRAVITY / 2 * t * t >= -BOMB_DROP])
 BOMB_REACH = float(np.nanmax(reach(np.array([-BOMB_DROP]), BOMB_CURVE, BALL_AIR_SPEED)))
+# Screw Attack (CMorphBall::ComputeScrewAttackMovement, disc TweakBall): every hop sets the ball's
+# vertical speed to reach 20 ** 2 / (2 * 40) = 5.0 over the last double jump's spot, so the hops
+# peak at take-off + 3.78 (a double jump at the jump's apex) + 5.0, whatever the hop count; a hop
+# is allowed down to 4.5 under that spot, at 20 a second across (a cycle covers 27.6, up to 5 hops)
+SCREW_SJ = float(CURVES[NONE][:, 1].max())      # 3.78: the double jump's spot over the take-off
+SCREW_APEX = SCREW_SJ + 20.0 ** 2 / (2 * 40.0)  # 8.78
+SCREW_LOW = SCREW_SJ - 4.5                       # lowest hop: -0.72
+SCREW_MAX = 40.0      # horizontal search radius for Screw Attack crossings (two hops and more)
+SCREW_CELL = 2.0      # take-off and landing spots are thinned to one per component per cell
 
 
 def components(n, u, v):
@@ -590,10 +605,11 @@ class Terrain:
         self.rmax = {k: max(curve(s, k)[:, 1].max() for s in JUMP_SETS) for k in np.unique(self.wkey).tolist()}
         self.jumps = tuple(np.concatenate(x) for x in zip(self._jumps(self.stand & (deg < 8), ~self.stand),
                                                            self._drops(), self._ride(tris, flags, SPIDER),
-                                                           self._ride(tris, flags, BOOST), self._bombs()))
+                                                           self._ride(tris, flags, BOOST), self._bombs(),
+                                                           self._screws(deg < 8)))
         # items that change anything here (the rest are masked off before building a graph)
         jl = self.jumps[2]
-        self.relevant = (MORPH | SJ | (GRAV if (self.wkey >= 0).any() else 0)
+        self.relevant = (MORPH | SJ | (SCREW if (jl & SCREW).any() else 0) | (GRAV if (self.wkey >= 0).any() else 0)
                          | (LIGHT if (self.wkey % 2 == 1).any() else 0)
                          | (SPIDER if (jl & SPIDER).any() else 0) | (BOOST if (jl & BOOST).any() else 0)
                          | (BOMB if (jl & BOMB).any() else 0))
@@ -810,6 +826,85 @@ class Terrain:
             blocked = np.zeros(len(p), bool)
             for s0, s1 in (((a, a[:, 2] + 0.3), (a, low + BALL)), ((a, low + BALL / 2), (b, low + BALL / 2)),
                            ((b, low + BALL / 2), (b, b[:, 2] + 0.3))):
+                x0, x1 = s0[0].copy(), s1[0].copy()
+                x0[:, 2], x1[:, 2] = s0[1], s1[1]
+                blocked |= self.seg.blocked(x0, x1)
+            out |= ~blocked
+        return out
+
+    def _screws(self, edge):
+        """(p, q, SJ | SCREW) Screw Attack crossings: from a dry edge stand point p (it starts on the
+        third jump press out of a double jump, never in a fluid, and needs a double jump's spot to
+        hop from: SJ) to a spot q of another component at most SCREW_MAX away, at most SCREW_APEX
+        less RISE_MARGIN higher or JUMP_DROP lower (MORPH too for a ball-only q); spots are thinned
+        to SCREW_CELL and the nearest few of each component pair checked against the mesh."""
+        none = np.zeros(0, int), np.zeros(0, int), np.zeros(0, int)
+        e = np.nonzero(self.stand & edge & (self.wkey < 0))[0]
+        f = np.nonzero((self.stand & edge) | ~self.stand)[0]
+        if not len(e) or not len(f):
+            return none
+        comp = np.where(self.stand, self.walk, self.n + self.roll)
+
+        def thin(idx):
+            c = np.floor(self.pos[idx, :2] / SCREW_CELL).astype(np.int64) + (1 << 20)
+            k = (comp[idx].astype(np.int64) * (1 << 21) + c[:, 0]) * (1 << 21) + c[:, 1]
+            return idx[np.unique(k, return_index=True)[1]]
+
+        e, f = thin(e), thin(f)
+        cell = np.floor(self.pos[f, :2] / SCREW_MAX).astype(np.int64)
+        key = (cell[:, 0] + (1 << 20)) * (1 << 21) + (cell[:, 1] + (1 << 20))
+        o = np.argsort(key, kind="stable")
+        f, key = f[o], key[o]
+        P, Q = [], []
+        for c0 in range(0, len(e), 4096):
+            ec = e[c0:c0 + 4096]
+            ecell = np.floor(self.pos[ec, :2] / SCREW_MAX).astype(np.int64)
+            for dx, dy in NEIGHBOURS + [(0, 0)]:
+                k2 = (ecell[:, 0] + dx + (1 << 20)) * (1 << 21) + (ecell[:, 1] + dy + (1 << 20))
+                s, t = np.searchsorted(key, k2, "left"), np.searchsorted(key, k2, "right")
+                cnt = t - s
+                p = np.repeat(ec, cnt)
+                q = f[np.repeat(s, cnt) + np.arange(cnt.sum()) - np.repeat(np.cumsum(cnt) - cnt, cnt)]
+                d = np.hypot(*(self.pos[q, :2] - self.pos[p, :2]).T)
+                dz = self.pos[q, 2] - self.pos[p, 2]
+                apart = np.where(self.stand[q], self.walk[p] != self.walk[q], self.roll[p] != self.roll[q])
+                ok = apart & (d <= SCREW_MAX) & (dz >= -JUMP_DROP) & (dz <= SCREW_APEX - RISE_MARGIN)
+                P.append(p[ok])
+                Q.append(q[ok])
+        p, q = np.concatenate(P), np.concatenate(Q)
+        if not len(p):
+            return none
+        d = np.hypot(*(self.pos[q, :2] - self.pos[p, :2]).T)
+        group = self.walk[p].astype(np.int64) * 2 * self.n + comp[q]
+        o = np.lexsort((d, group))
+        p, q, group = p[o], q[o], group[o]
+        rank = np.arange(len(group)) - np.searchsorted(group, group, "left")
+        done = np.zeros(0, np.int64)
+        P, Q = [], []
+        for r0 in range(0, 64, 8):
+            pick = (rank >= r0) & (rank < r0 + 8) & ~np.isin(group, done)
+            if not pick.any():
+                break
+            pp, qq = p[pick], q[pick]
+            good = self._screw_clear(pp, qq)
+            P.append(pp[good])
+            Q.append(qq[good])
+            done = np.union1d(done, group[pick][good])
+        p, q = np.concatenate(P), np.concatenate(Q)
+        return p, q, SJ | SCREW | np.where(self.stand[q], NONE, MORPH)
+
+    def _screw_clear(self, p, q):
+        """Whether a Screw Attack can carry Samus from p to q: up at p, across with the ball's
+        bottom just above the higher spot (and the lowest hop), midway, or just under the hops'
+        apex, down at q."""
+        a, b = self.pos[p], self.pos[q]
+        low = np.maximum(np.maximum(a[:, 2], b[:, 2]), a[:, 2] + SCREW_LOW) + 0.1
+        high = np.maximum(low, a[:, 2] + SCREW_APEX - 0.3)
+        out = np.zeros(len(p), bool)
+        for h in (low, (low + high) / 2, high):
+            blocked = np.zeros(len(p), bool)
+            for s0, s1 in (((a, a[:, 2] + 0.3), (a, h + BALL)), ((a, h + BALL / 2), (b, h + BALL / 2)),
+                           ((b, h + BALL / 2), (b, b[:, 2] + 0.3))):
                 x0, x1 = s0[0].copy(), s1[0].copy()
                 x0[:, 2], x1[:, 2] = s0[1], s1[1]
                 blocked |= self.seg.blocked(x0, x1)
@@ -1051,8 +1146,11 @@ def node_text(n):
 def check(rules_dir=None, only=None, cached=True):
     """Verdicts of every rule edge: ([(rules file, area, line, edge text, kind, detail, helped)], skipped).
     kind is ok, refuted, nopath, unanchored or virtual; a never edge is ok. With cached, an area
-    whose mesh, platforms, edges and this file are unchanged reuses its last verdicts (CACHE)."""
+    whose mesh, platforms, edges and the model (this file above check) are unchanged reuses its
+    last verdicts (CACHE)."""
     import hashlib
+    model = pathlib.Path(__file__).read_bytes()
+    model = model[:model.index(b"\ndef check(")]
     import multiprocessing
     import pickle
     import rando_rules as rr
@@ -1120,7 +1218,7 @@ def check(rules_dir=None, only=None, cached=True):
                     edges.append((line, x, y, px, py, terms))
             plats = platforms(ents, layer_on[wi][gi - first[wi]], lambda r: pk.get(r) if r in pk.res else None)
             water = waters(ents, layer_on[wi][gi - first[wi]])
-            key = hashlib.sha1(pathlib.Path(__file__).read_bytes() + mrea + pickle.dumps(
+            key = hashlib.sha1(model + mrea + pickle.dumps(
                 ([(e[0], e[1], e[2], e[3][0], e[3][1].tolist(), e[3][2].tolist(), e[4][0], e[4][1].tolist(),
                    e[4][2].tolist(), e[5]) for e in edges], [(p[0].tobytes(), p[1].tobytes()) for p in plats],
                  [w.tobytes() for w in water]))).hexdigest()
@@ -1159,8 +1257,14 @@ def check(rules_dir=None, only=None, cached=True):
             else:
                 need = " or ".join(set_text(s) for s in SETS
                                    if r[s] and not any(r[x] for x in SETS if x != s and x & s == x))
-                bad = [t for t, bits in terms if bits is not None and not r[bits]]
-                if bad:
+                # an edge only Screw Attack crosses is nopath for the other terms: the mesh misses
+                # their route (moving platforms, mostly), as it did before Screw Attack was modelled
+                free = r[ALL & ~SCREW]
+                bad = [t for t, bits in terms if bits is not None and not r[bits] and (free or bits & SCREW)]
+                if not free and not bad:
+                    rows.append((fname, area, line, edge, "nopath", f"only {need} crosses; terms " +
+                                 " | ".join(f"({term_text(t)})" for t, _b in terms), helped))
+                elif bad:
                     rows.append((fname, area, line, edge, "refuted", f"needs {need}; refuted terms " +
                                  " | ".join(f"({term_text(t)})" for t in bad), helped))
                 else:
