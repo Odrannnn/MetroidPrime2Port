@@ -66,7 +66,6 @@ body:
         - It never starts (closes or errors right away)
         - Before reaching gameplay (disc picker, menus, intro)
         - During gameplay
-        - Only with a mod or the randomizer
     validations:
       required: true
 
@@ -78,7 +77,6 @@ body:
       options:
         - label: My disc is Metroid Prime 2 USA v1.00 (G2ME01)
         - label: My disc is PAL (G2MP01) or Metroid Prime Trilogy (R3ME01, R3MP01)
-        - label: Using a mod or the randomizer
         - label: Using a controller (not keyboard/mouse or touch)
         - label: It worked in an earlier version
 
