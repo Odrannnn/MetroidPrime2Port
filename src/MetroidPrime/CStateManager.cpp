@@ -906,9 +906,13 @@ void CStateManager::PreRender(uint playerIndex) {
     {
       CScopedProfiler profile(rstl::string_l("*PreRender:Portals"), true);
       if (CPortalArea* portal = area.GetPostConstructed()->mPortalArea.get()) {
+#ifdef TARGET_PC
+        portal->PreRender(*this, *camera, cameraTransform, PortDrawFov(*camera));
+#else
         const CCameraManager* cameraManager = mCameraManager;
         portal->PreRender(*this, *cameraManager->GetCurrentCamera(*this, true),
                           cameraManager->GetCurrentCameraTransform(*this, true));
+#endif
       }
     }
     {

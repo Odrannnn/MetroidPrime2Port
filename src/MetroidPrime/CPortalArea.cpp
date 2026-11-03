@@ -15,6 +15,15 @@
 #include <string.h>
 
 static int sPortalTraversalDepth;
+#ifdef TARGET_PC
+#include "Kyoto/Graphics/CGraphics.hpp"
+
+// Port: the drawn view PreRender walks the portals from (ClipPortal reads it); retail takes the
+// game camera's own transform and projection, which vert+, photo mode and the free camera change.
+static CTransform4f sPortView(1.f, 0.f, 0.f, 0.f, 0.f, 1.f, 0.f, 0.f, 0.f, 0.f, 1.f, 0.f);
+static CMatrix4f sPortPerspective(1.f, 0.f, 0.f, 0.f, 0.f, 1.f, 0.f, 0.f, 0.f, 0.f, 1.f, 0.f, 0.f,
+                                  0.f, 0.f, 1.f);
+#endif
 
 CPortalArea::SActorPool::SActorPool() : mNodes(SActorNode()) {
   for (int i = 0; i < mNodes.capacity() - 1; ++i) {
@@ -111,6 +120,25 @@ void CPortalArea::UpdateActor(CStateManager& mgr, CActor& actor) {
   AddActor(mgr, actor);
 }
 
+#ifdef TARGET_PC
+void CPortalArea::PreRender(CStateManager& mgr, const CGameCamera& camera, const CTransform4f& xf,
+                            float fovDegrees) {
+  mVisibleActors.Clear();
+  ++mVisibilityGeneration;
+
+  sPortView = xf;
+  sPortPerspective = CGraphics::CalculatePerspectiveMatrix(
+      fovDegrees, camera.GetAspectRatio(), camera.GetNearClipDistance(),
+      camera.GetFarClipDistance());
+  const float radius = 0.25f * camera.GetNearClipDistance();
+  const CVector3f extent(radius, radius, radius);
+  const CAABox bounds(xf.GetTranslation() - extent, xf.GetTranslation() + extent);
+  rstl::reserved_vector< short, 64 > volumes;
+  mData->FindOverlappingVolumes(bounds, volumes);
+
+  const CFrustumPlanes frustum(xf, CRelAngle::FromDegrees(fovDegrees).AsRadians(),
+                               camera.GetAspectRatio(), camera.GetNearClipDistance(), false, 100.f);
+#else
 void CPortalArea::PreRender(CStateManager& mgr, const CGameCamera& camera, const CTransform4f& xf) {
   mVisibleActors.Clear();
   ++mVisibilityGeneration;
@@ -123,6 +151,7 @@ void CPortalArea::PreRender(CStateManager& mgr, const CGameCamera& camera, const
 
   const CFrustumPlanes frustum(xf, CRelAngle::FromDegrees(camera.GetFov()).AsRadians(),
                                camera.GetAspectRatio(), camera.GetNearClipDistance(), false, 100.f);
+#endif
   if (volumes.empty()) {
     for (short i = 0; i < mVolumes.size(); ++i) {
       BuildVisibleActorList(mgr, camera, i, frustum, true, xf.GetTranslation());
@@ -189,7 +218,11 @@ static rstl::pair< bool, CFrustumPlanes > ClipPortal(const CGameCamera& camera,
                                                      const CFrustumPlanes& frustum,
                                                      const CPortalAreaData::SPortal& portal) {
   typedef rstl::pair< bool, CFrustumPlanes > Result;
+#ifdef TARGET_PC
+  const CVector3f position = sPortView.GetTranslation();
+#else
   const CVector3f& position = camera.GetTranslation();
+#endif
   if (!portal.mPlane.IsFacing(position)) {
     return Result(false, CFrustumPlanes());
   }
@@ -246,7 +279,14 @@ static rstl::pair< bool, CFrustumPlanes > ClipPortal(const CGameCamera& camera,
   float minY = FLT_MAX;
   float maxY = -FLT_MAX;
   for (int i = 0; i < polygon.size(); ++i) {
+#ifdef TARGET_PC
+    // CGameCamera::ConvertToScreenSpace through the drawn view.
+    const CVector3f local = sPortView.TransposeMultiply(polygon[i]);
+    const CVector3f screen = local.IsNonZero() ? sPortPerspective.MultiplyOneOverW(local)
+                                               : CVector3f(-1.f, -1.f, 1.f);
+#else
     const CVector3f screen = camera.ConvertToScreenSpace(polygon[i]);
+#endif
     minX = rstl::min_val(minX, screen.GetX());
     maxX = rstl::max_val(maxX, screen.GetX());
     maxY = rstl::max_val(maxY, screen.GetY());
@@ -261,8 +301,13 @@ static rstl::pair< bool, CFrustumPlanes > ClipPortal(const CGameCamera& camera,
   }
 
   const float nearZ = camera.GetNearClipDistance();
+#ifdef TARGET_PC
+  const CMatrix4f inverse = sPortPerspective.GetInverse();
+  const CTransform4f& xf = sPortView;
+#else
   const CMatrix4f inverse = camera.GetPerspectiveMatrix().GetInverse();
   const CTransform4f& xf = camera.GetTransform();
+#endif
   const CVector3f lowerRight = xf * inverse.MultiplyOneOverW(CVector3f(maxX, minY, nearZ));
   const CVector3f upperLeft = xf * inverse.MultiplyOneOverW(CVector3f(minX, maxY, nearZ));
   const CVector3f upperRight = xf * inverse.MultiplyOneOverW(CVector3f(maxX, maxY, nearZ));

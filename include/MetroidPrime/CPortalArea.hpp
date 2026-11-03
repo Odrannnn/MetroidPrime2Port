@@ -20,7 +20,14 @@ public:
   void AddActor(CStateManager& mgr, CActor& actor);
   bool RemoveActor(CStateManager& mgr, const TUniqueId& uid);
   void UpdateActor(CStateManager& mgr, CActor& actor);
+#ifdef TARGET_PC
+  // Port: `xf` and `fovDegrees` are the view the world is drawn with (free camera, photo mode's
+  // or vert+'s field of view); actors culled here are not drawn at all.
+  void PreRender(CStateManager& mgr, const CGameCamera& camera, const CTransform4f& xf,
+                 float fovDegrees);
+#else
   void PreRender(CStateManager& mgr, const CGameCamera& camera, const CTransform4f& xf);
+#endif
 
   const CObjectList& GetVisibleActors() const { return mVisibleActors; }
 
