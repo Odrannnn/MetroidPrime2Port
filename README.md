@@ -5,7 +5,7 @@
 > decompilation, but they don't maintain or support this port: please report
 > problems here, not to them.
 
-**[Latest release: 0.6.2](https://github.com/Odrannnn/MetroidPrime2Port/releases)**
+**[Latest release](https://github.com/Odrannnn/MetroidPrime2Port/releases)**
 
 **Looking for the first game? See the [Metroid Prime Unbound](https://github.com/Odrannnn/MetroidPrimePort).**
 
