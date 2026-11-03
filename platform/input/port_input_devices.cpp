@@ -1348,7 +1348,14 @@ bool PromptButtonInput(unsigned padButton, PortInput::Family family, Input& out)
 }
 
 bool PromptAxisInput(PADAxis axis, PortInput::Family family, Input& out) {
-  return PromptInputFor({PadAxisAction(axis)}, family, out);
+  // On the map a bound map row (rotate on the control stick, pan on the C-stick) comes first.
+  const Action game = PadAxisAction(axis);
+  if ((GameContexts() & PortInput::kCtxMap) != 0) {
+    for (const PortInput::MapRow& m : PortInput::kMapRows) {
+      if (m.game == game && PromptInputFor({m.row}, family, out)) return true;
+    }
+  }
+  return PromptInputFor({game}, family, out);
 }
 
 // `radial`: Player 1's radial selectors own the C-stick while they capture.

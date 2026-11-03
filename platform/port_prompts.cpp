@@ -5,6 +5,7 @@
 #include "port_entry.h"
 #include "port_embedded.h"
 #include "port_env.h"
+#include "port_harness.h"
 #include "port_overlay.h"
 
 #include "input/port_input_devices.h"
@@ -1061,15 +1062,19 @@ void Poll() {
   }
   const char* device = ActiveDevice();
   // Resolving every action's binding builds strings and rescans the bindings, so it runs when
-  // the device changes and otherwise a few times a second, which still follows a rebind.
+  // the device changes or the map opens or closes (the map rows name the sticks there), and
+  // otherwise a few times a second, which still follows a rebind.
   static std::string sLastDevice;
+  static bool sLastMap = false;
   static uint64_t sLastResolveNs = 0;
   const uint64_t nowNs = SDL_GetTicksNS();
-  const bool deviceChanged = sLastDevice != device;
-  if (!deviceChanged && sLastResolveNs != 0 && nowNs - sLastResolveNs < 250000000ull) {
+  const bool map = PortHarness::MapScreenOpen();
+  const bool changed = sLastDevice != device || sLastMap != map;
+  if (!changed && sLastResolveNs != 0 && nowNs - sLastResolveNs < 250000000ull) {
     return;
   }
   sLastDevice = device;
+  sLastMap = map;
   sLastResolveNs = nowNs != 0 ? nowNs : 1;
   for (size_t a = 0; a < std::size(kActions); ++a) {
     const PromptAction& action = kActions[a];
