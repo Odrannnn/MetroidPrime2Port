@@ -3,6 +3,7 @@
 #ifdef TARGET_PC
 #include "MetroidPrime/PortEfbCopy.hpp"
 #include "port_overlay.h"
+#include "rstl/math.hpp"
 #endif
 #include "MetroidPrime/Cameras/CCameraFilterPass.hpp"
 
@@ -366,8 +367,16 @@ void CCameraFilterPass::DrawDialogBox(const CColor& color, const CTexture* textu
       gpRender->SetViewportOrtho(true, -4096.f, 4096.f);
   const CVector2f& min = viewport.first;
   const CVector2f& max = viewport.second;
+#ifdef TARGET_PC
+  // Port: the box is authored for 640x448; one scale for both axes so a widened (or narrower
+  // than 4:3) viewport keeps its shape instead of stretching it. 640x448 is unchanged.
+  const float scaleX = rstl::min_val((max.GetX() - min.GetX()) / 640.f,
+                                     (max.GetY() - min.GetY()) / 448.f);
+  const float scaleY = scaleX;
+#else
   const float scaleX = (max.GetX() - min.GetX()) / 640.f;
   const float scaleY = (max.GetY() - min.GetY()) / 448.f;
+#endif
   const float halfWidth = 0.5f * sDialogBoxWidth;
   const float innerWidth = halfWidth - sDialogBoxBorder;
   const float halfHeight = 0.5f * sDialogBoxHeight;
