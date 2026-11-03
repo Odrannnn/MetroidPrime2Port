@@ -50,11 +50,15 @@ inline void delete_db_files(const std::string& file, Module& log) {
 // Opens a cache database, deleting and recreating it when PRAGMA quick_check finds
 // it damaged. A cache can always be rebuilt; a damaged one must never be fed to the
 // GPU. Other failures (locked, unwritable) leave the files alone. Returns SQLITE_OK
-// with *db open, or an error code with *db closed.
-inline int open_cache_db(const std::string& file, sqlite3** db, Module& log) {
+// with *db open, or an error code with *db closed. quick_check reads every page, so
+// a large cache passes quickCheck = false and relies on per-row checks instead.
+inline int open_cache_db(const std::string& file, sqlite3** db, Module& log, bool quickCheck = true) {
   for (int attempt = 0;; ++attempt) {
     int ret = sqlite3_open(file.c_str(), db);
     bool damaged = false;
+    if (ret == SQLITE_OK && !quickCheck) {
+      return SQLITE_OK;
+    }
     if (ret == SQLITE_OK) {
       bool ok = false;
       ret = exec(*db, "PRAGMA quick_check;", [&ok](int argc, char** argv, char**) {
