@@ -2649,7 +2649,12 @@ void CSamusHud::DrawLockOnIndicators(const CStateManager& mgr,
   if (targets.empty() || mLockedOnIndicator->GetObject() == nullptr) {
     return;
   }
+#ifdef TARGET_PC
+  // Port: retail binds the whole texture, repeating (retail asm: Load, r5 = 1).
+  mLockedOnIndicator->GetObject()->Load(GX_TEXMAP0, CTexture::kCM_Repeat);
+#else
   mLockedOnIndicator->GetObject()->LoadMipLevel(0, GX_TEXMAP0, CTexture::kCM_Clamp);
+#endif
   CGraphics::SetTevOp(kTS_Stage0, CGraphics::kEnvModulate);
   CGraphics::SetTevOp(kTS_Stage1, CGraphics::kEnvPassthru);
   CGraphics::SetCullMode(kCM_None);
@@ -2845,7 +2850,13 @@ void CSamusHud::Draw(const CStateManager& mgr, float alpha, uint helmetVisibilit
     return;
   }
 
+#ifdef TARGET_PC
+  // Port: retail binds the ring repeating (Load, r5 = 1); its texcoords run to v = 2, so a
+  // clamped bind smeared the texture's edge row over the outer half of the ring.
+  mDamageRingTexture.GetObject()->Load(GX_TEXMAP0, CTexture::kCM_Repeat);
+#else
   mDamageRingTexture.GetObject()->LoadMipLevel(0, GX_TEXMAP0, CTexture::kCM_Clamp);
+#endif
   const rstl::pair< CVector2f, CVector2f > bounds =
       gpRender->SetViewportOrtho(true, -4096.f, 4096.f);
   const float scale = (bounds.second.GetX() - bounds.first.GetX()) * 0.125f;
