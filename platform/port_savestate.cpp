@@ -1205,6 +1205,22 @@ bool ResumeBootArea(uint32_t& world, uint32_t& area) {
       gpMain == nullptr || PortWarp::Pending()) {
     return false;
   }
+  // The game boots the card's state, and the resume's load only replaces it once that world runs.
+  // A new game's card (0%, never saved) would first play its whole opening there: the mission text
+  // of the level load (CMFGameLoader shows it while the first spawn is still to come) and Landing
+  // Site's intro cinematic layer. Boot with the resume's own first-spawn flag, and its layer bits
+  // and mailbox for its world.
+  {
+    CMemoryInStream stream(s.blob.data(), s.blob.size());
+    CBitStreamReader reader(stream);
+    CGameState* saved = rs_new CGameState(reader);
+    CWorldState& from = saved->StateForWorld(s.worldId);
+    CWorldState& to = gpGameState->StateForWorld(s.worldId);
+    to.GetLayerState() = from.GetLayerState();
+    to.Mailbox() = from.Mailbox();
+    gpGameState->SetDeferPowerupInit(saved->GetInitPowerupsAtFirstSpawn());
+    delete saved;
+  }
   world = static_cast< uint32_t >(s.worldId);
   area = static_cast< uint32_t >(s.areaAssetId);
   return true;
