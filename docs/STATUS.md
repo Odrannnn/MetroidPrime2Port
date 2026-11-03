@@ -4,6 +4,21 @@ The Status section of AGENTS.md links here: this is the per-session detail, rewr
 appended, dated as in the heading there.
 
 
+## 2026-11-03: terrain triage done (Sand, Swamp, Cliff)
+
+- Rule fixes, Space Jump ledges measured on the mesh: 02_sand_sandfalls dock0/dock2 > dock1, 0g_sand_hall
+  dock1 > dock0, 0h_sand_hall dock2 > dock4 (tunnel mouth 4.0 up: bombs, PB with SJ, or Boost), dark 0e/0g/0n
+  sand halls, 02_sand_sandfalls_dark (ledges 5.0 up), 08_sand_casualpirates_dark (Beam Platforms only sink);
+  0m_swamp_hall dock0 > dock1 (6.2 wall), 09_swamp_catacombs dock1 > dock0/dock2 (ledges 5.0 up),
+  01_swamp_entrance_dark (unsure: jumps off the false floor), 02_swamp_greatbridge_dark dock0 > dock1 (unsure:
+  dark-water pit 4.2 below), 0q_swamp_hall_dark dock1 > dock2 (5.8 step), 07cliff_gyro_dark (gyro static:
+  rings and platforms 4.8 to 5.5 steps). 0f_swamp_hall's energy tank opens from the upper corridor (Tunnel
+  Plug in its floor; the lower blocker only lets you out): from dock1/dock3 it needs Space Jump too.
+- Accepted (platform motion): 08_sand_casualpirates Elevator, 01_swamp_entrance Swamp Bridge (scan-raised),
+  10_swamp_hiddenhalfpipe_dark Sliding Coffins.
+- Full run: ok 544, refuted 12 (all accepted with reasons, none unverified), nopath 237, unanchored 28,
+  virtual 138. Vanilla 114/114 in 9 spheres, gen 200/200 (avg 9.38).
+
 ## 2026-11-03: terrain triage, Temple Grounds done
 
 - Rule fixes (all Space Jump ledges, measured on the mesh): 0t_temple_hall (+dark) dock0 > dock3,

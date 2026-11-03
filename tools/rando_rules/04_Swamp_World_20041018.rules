@@ -102,16 +102,20 @@ area 02_swamp_greatbridge
     covers 0x000901A0 0x000901AF 0x000900B5 0x00090207 0x000901A8
 
 area 0f_swamp_hall
-    # Upper corridor d0-d2 (z 48-51), lower d1-d3 (z 35.6) over deep water;
-    # the energy tank sits behind the bombable tunnel plug in the lower part.
+    # Upper corridor d0-d2 (z 48-51), lower d1-d3 (z 35.6) over deep water.
+    # The energy tank chamber opens only from above: the Tunnel Plug sits in the
+    # upper corridor floor (z 43.7); the Lower Entrance Blocker 0x0011009C turns
+    # off only from inside (Fade Wall trigger 0x00110083), so it lets you out.
     dock0 - dock2: any
     dock0 > dock1: any
     dock2 > dock3: any
     dock1 - dock3: MorphBall & (MorphBallBombs | Powerbomb) | ScrewAttack  # unsure: lower route through the tunnel plug
     dock1 > dock0: SpaceJumpBoots  # unsure: 15-unit climb
     dock3 > dock2: SpaceJumpBoots  # unsure: 12-unit climb
-    dock1 > loc0x00110076: MorphBall & (MorphBallBombs | Powerbomb) | ScrewAttack
-    dock3 > loc0x00110076: MorphBall & (MorphBallBombs | Powerbomb) | ScrewAttack
+    dock0 > loc0x00110076: MorphBall & (MorphBallBombs | Powerbomb) | ScrewAttack
+    dock2 > loc0x00110076: MorphBall & (MorphBallBombs | Powerbomb) | ScrewAttack
+    dock1 > loc0x00110076: SpaceJumpBoots & MorphBall & (MorphBallBombs | Powerbomb) | ScrewAttack
+    dock3 > loc0x00110076: SpaceJumpBoots & MorphBall & (MorphBallBombs | Powerbomb) | ScrewAttack
     covers 0x0011007D 0x00110044
 
 area 00_map_swamp
@@ -201,7 +205,10 @@ area ok_swamp_hall
     dock0 - dock1: any  # unsure: flooded corridor
 
 area 0m_swamp_hall
-    dock0 - dock1: any  # unsure: flooded corridor
+    # Dock1's side is a 6.2 wall above the dry east floor (z -34 to -27.8);
+    # the water (WATR 0x002E0076, z -37.85 to -27.95) lies west of it.
+    dock1 > dock0: any
+    dock0 > dock1: SpaceJumpBoots
 
 area 00_save_swamp_b
     # single dock
@@ -249,8 +256,11 @@ area 08_swamp_grappleguardian
     covers 0x00370082 0x00370087 0x003700FA 0x00000000
 
 area 09_swamp_catacombs
-    dock1 - dock0: any
-    dock1 - dock2: any
+    # dock0 and dock2 sit on ledges at z -30.2, 5.0 above the -35.2 walkway.
+    dock0 > dock1: any
+    dock2 > dock1: any
+    dock1 > dock0: SpaceJumpBoots
+    dock1 > dock2: SpaceJumpBoots
     dock1 > dock3: DarkBeam & MorphBall & MorphBallBombs  # unsure: bomb slot beside the portal
     dock3 > dock1: any
     dock4 > dock1: any
@@ -307,8 +317,13 @@ area 03_swamp_forgottenbridge_dark
     ignore 0x2C0D006F: safe zone crystal, not a barrier
 
 area 01_swamp_entrance_dark
-    dock1 - dock0: any
-    dock1 - dock3: any
+    # Only Space Jumps link dock1's walkway to the others: 7.2 up from the False
+    # Floor ACTR 0x000F0007 (top 30.5, dark water to 31.5) to 37.6, or 5.6 from
+    # 32.6 to 38.1.
+    dock1 > dock0: SpaceJumpBoots  # unsure: jumps from the false floor in the dark water
+    dock0 > dock1: SpaceJumpBoots  # unsure: jumps from the false floor in the dark water
+    dock1 > dock3: any
+    dock3 > dock1: SpaceJumpBoots  # unsure: jumps from the false floor in the dark water
     dock1 > loc0x000F00C7: ScrewAttack & GravityBoost  # unsure: Temple Key chest in the dark lagoon water (z 23.9, water to ~31.5)
     covers 0x000F0069
     ignore 0x000F0083: safe zone crystal, not a barrier
@@ -322,7 +337,7 @@ area 02_swamp_greatbridge_dark
     dock1 - dock3: any
     dock1 - dock5: any
     dock1 > dock0: GrappleBeam  # unsure: upper level via the grapple point
-    dock0 > dock1: any
+    dock0 > dock1: SpaceJumpBoots  # unsure: off the ledge lands in the dark-water pit (floor 28.9), 4.2 below the lower walkway
     dock0 > loc0x001001B6: any  # unsure: key 7 units from the upper dock
     covers 0x00100017
     ignore 0x0010009D: safe zone crystal, not a barrier
@@ -445,7 +460,8 @@ area 00_save_swamp_b_dark
     # single dock
 
 area 0q_swamp_hall_dark
-    dock2 - dock1: any
+    dock2 > dock1: any
+    dock1 > dock2: SpaceJumpBoots  # sheer 5.8 step (z -99.7 to -94)
     dock0 > dock1: any
     dock0 > dock2: any
     dock2 > dock0: LightBeam

@@ -101,8 +101,12 @@ area 05_portalpuzzle
 area 02_sand_sandfalls
     # dock0/dock2 at z 7.2, dock1 at 14.7, dock4 at -0.3, dock3 at -7.8.
     dock0 - dock2: any
-    dock0 - dock1: any  # unsure: dock1 7.5 above dock0
-    dock2 - dock1: any  # unsure: as above
+    # dock1's ledge (floor 12.2) is reached only by Space Jumps: 5.0 steps from the
+    # 2.2 floor, nothing walkable within 9 units of it stands higher.
+    dock0 > dock1: SpaceJumpBoots
+    dock2 > dock1: SpaceJumpBoots
+    dock1 > dock0: any
+    dock1 > dock2: any
     dock3 - dock4: any
     dock0 > dock3: any
     dock0 > dock4: any
@@ -122,7 +126,8 @@ area 0c_sand_hall
     dock0 - dock1: any
 
 area 0g_sand_hall
-    dock0 - dock1: any
+    dock0 > dock1: any
+    dock1 > dock0: SpaceJumpBoots  # sheer 6.0 step (9.2 to 15.2)
 
 area 00_save_sand_a
     dock0 > loc0x00170014: any
@@ -172,7 +177,10 @@ area 0h_sand_hall
     dock4 > dock3: SpaceJumpBoots  # unsure: 12-unit climb to the upper doors
     dock0 > dock1: SpaceJumpBoots  # unsure: 8-unit climb, ramp not verified
     # Two weak grates between dock4 and the morph tunnel.
-    dock4 - dock2: (MorphBall & MorphBallBombs) | (MorphBall & Powerbomb) | (MorphBall & BoostBall)  # unsure: grates assumed to close the morph tunnel (Screw Attack dropped for a ball path)
+    # The tunnel mouth on the dock2 side is 4.0 above its 3.4 floor (5.4 standing):
+    # bomb jump, Boost Ball, or Space Jump then morph.
+    dock4 > dock2: (MorphBall & MorphBallBombs) | (MorphBall & Powerbomb) | (MorphBall & BoostBall)  # unsure: grates assumed to close the morph tunnel (Screw Attack dropped for a ball path)
+    dock2 > dock4: (MorphBall & MorphBallBombs) | (MorphBall & Powerbomb & SpaceJumpBoots) | (MorphBall & BoostBall)
     covers 0x00250035 0x0025003E
 
 area 00_sand_generator
@@ -307,7 +315,8 @@ area 01_sand_entrance_dark
     ignore 0x00070210: safe zone crystal, not a barrier
 
 area 0e_sand_hall_dark
-    dock0 - dock1: any
+    dock0 > dock1: any
+    dock1 > dock0: SpaceJumpBoots  # 3.8 up across 8.6, or 5.3 to 6.0 steps
     ignore 0x000B0088: safe zone crystal, not a barrier
     ignore 0x000B008B: safe zone crystal, not a barrier
     ignore 0x000B0091: safe zone crystal, not a barrier
@@ -354,9 +363,14 @@ area 0q_sand_hall_dark
     ignore 0x0014000B: safe zone crystal, not a barrier
 
 area 02_sand_sandfalls_dark
-    dock0 - dock2: any
-    dock0 - dock1: any  # unsure: dock1 7.5 above dock0
-    dock3 - dock4: any
+    # dock0 and dock2 sit on ledges 5.0 above the low floor, dock1 higher still,
+    # and dock4's floor is a 5.0 step above dock3's; no platforms here.
+    dock0 > dock2: any
+    dock2 > dock0: SpaceJumpBoots
+    dock0 > dock1: SpaceJumpBoots
+    dock1 > dock0: SpaceJumpBoots
+    dock4 > dock3: any
+    dock3 > dock4: SpaceJumpBoots
     dock0 > dock3: any
     dock0 > dock4: any
     dock3 > dock0: SpaceJumpBoots  # unsure: 15-unit climb from the low door
@@ -397,7 +411,8 @@ area 0c_sand_hall_dark
     ignore 0x001E011B: safe zone crystal, not a barrier
 
 area 0g_sand_hall_dark
-    dock0 - dock1: any
+    dock0 > dock1: any
+    dock1 > dock0: SpaceJumpBoots  # sheer 6.0 step, as in the light hall
     dock1 > loc0x001F004C: any
     ignore 0x001F0075: safe zone crystal, not a barrier
     ignore 0x001F003E: safe zone crystal, not a barrier
@@ -407,7 +422,8 @@ area 00_save_sand_a_dark
     # Single dock, nothing to collect.
 
 area 0n_sand_hall_dark
-    dock0 - dock1: any
+    dock1 > dock0: any
+    dock0 > dock1: SpaceJumpBoots  # 3.3 up across 8.2, or a 6.9 step
 
 area 03_sand_temple_dark
     # Dark Agon Temple (Amorbis). The three Dark Agon Keys open the arena;
@@ -520,9 +536,14 @@ area 00_pickup_sand_d_dark
     ignore 0x003B003C: safe zone crystal, not a barrier
 
 area 08_sand_casualpirates_dark
-    dock0 - dock2: any
-    dock0 - dock1: any
-    dock1 - dock2: any
+    # dock0 is up a 4.7 to 5.0 step from the 5.8 floor, dock1 up 6.9 from the -6.2
+    # pit; the Beam Platforms only sink into the pit, and there is no lift as in light.
+    dock0 > dock1: any
+    dock0 > dock2: any
+    dock1 > dock2: any
+    dock1 > dock0: SpaceJumpBoots
+    dock2 > dock0: SpaceJumpBoots
+    dock2 > dock1: SpaceJumpBoots
     dock1 > loc0x003E0055: SpaceJumpBoots  # unsure: Power Bomb 13.6 below the lowest door; climb back assumed to need Space Jump
     ignore 0x003E007F: safe zone crystal, not a barrier
     ignore 0x003E02B2: safe zone crystal, not a barrier

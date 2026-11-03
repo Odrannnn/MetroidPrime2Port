@@ -383,9 +383,14 @@ area 05_cliff_engineroom_dark
     covers 0x003400B7 0x00340122 0x00340108 0x00340110 0x00340112 0x0034011B
 
 area 07cliff_gyro_dark
-    dock0 - dock3: any
-    dock0 - dock1: any    # unsure: gyro static in the dark room
-    dock1 - dock2: any
+    # The gyro is static here: lower floor (z -11.2) to the Ring Platforms
+    # (top -5.7) is a 4.8 to 5.0 step, rings to the two Platform 001 by the
+    # upper doors (top -0.2) 5.5; dock0 and dock1 are reached only by Space Jumps.
+    dock0 > dock3: any
+    dock3 > dock0: SpaceJumpBoots
+    dock0 - dock1: SpaceJumpBoots
+    dock1 > dock2: any
+    dock2 > dock1: SpaceJumpBoots
     dock0 > loc0x0032010B: MorphBall & SpiderBall
     covers 0x00320026 0x00000000
 
