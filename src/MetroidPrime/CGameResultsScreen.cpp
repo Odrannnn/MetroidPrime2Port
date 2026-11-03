@@ -65,6 +65,36 @@ static float skPlayerPulseSpeed = 1.5f;
 static float skTitlePulseSpeed = 1.5f;
 static float skPromptPulseSpeed = 1.5f;
 
+#ifdef TARGET_PC
+// Port: CColor(uint) stores the 0xRRGGBBAA word as is, so on a little-endian host it reads back
+// byte-reversed (0x3c3b38ff became a red multiply over the whole screen, cyan text a pale yellow
+// at half alpha, the ambient light red; #64). Same colours, built per channel.
+#define RESULTS_RGBA(c)                                                                            \
+  CColor(static_cast< uchar >((c) >> 24), static_cast< uchar >((c) >> 16),                         \
+         static_cast< uchar >((c) >> 8), static_cast< uchar >(c))
+static CColor skTitleColor = RESULTS_RGBA(0x89d6ffffu);
+static CColor skTitleOutlineColor = RESULTS_RGBA(0x000000ffu);
+static CColor skTitlePulseColor = RESULTS_RGBA(0xff6705ffu);
+static CColor skTitlePulseOutlineColor = RESULTS_RGBA(0x000000ffu);
+static CColor skPromptColor = RESULTS_RGBA(0xff6705ffu);
+static CColor skPromptOutlineColor = RESULTS_RGBA(0x000000ffu);
+static CColor skLoserTextColor = RESULTS_RGBA(0x89d6ffffu);
+static CColor skLoserTextOutlineColor = RESULTS_RGBA(0x000000ffu);
+static CColor skWinnerTextColor = RESULTS_RGBA(0x89d6ffffu);
+static CColor skWinnerTextOutlineColor = RESULTS_RGBA(0x000000ffu);
+static CColor skWinnerPulseColor = RESULTS_RGBA(0xff6705ffu);
+static CColor skWinnerPulseOutlineColor = RESULTS_RGBA(0x000000ffu);
+static CColor skWinnerGeometryColor(static_cast< uchar >(255), static_cast< uchar >(255),
+                                    static_cast< uchar >(255), static_cast< uchar >(200));
+static CColor skLoserGeometryColor(static_cast< uchar >(200), static_cast< uchar >(200),
+                                   static_cast< uchar >(200), static_cast< uchar >(200));
+static CColor skFramePulseColor = RESULTS_RGBA(0xff6705ffu);
+static CColor skFrameColor = RESULTS_RGBA(0x89d6ffffu);
+static CColor skBackgroundColor = RESULTS_RGBA(0x3c3b38ffu);
+static CColor skAmbientColor = RESULTS_RGBA(0x151515ffu);
+static CColor skLightColor = RESULTS_RGBA(0xffffffffu);
+#undef RESULTS_RGBA
+#else
 static CColor skTitleColor(0x89d6ffffu);
 static CColor skTitleOutlineColor(0x000000ffu);
 static CColor skTitlePulseColor(0xff6705ffu);
@@ -86,6 +116,7 @@ static CColor skFrameColor(0x89d6ffffu);
 static CColor skBackgroundColor(0x3c3b38ffu);
 static CColor skAmbientColor(0x151515ffu);
 static CColor skLightColor(0xffffffffu);
+#endif
 static CGameResultsScreen::SFragSorter sFragSorter;
 static CGameResultsScreen::SCoinSorter sCoinSorter;
 
