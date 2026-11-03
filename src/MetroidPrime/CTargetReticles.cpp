@@ -2106,6 +2106,7 @@ void CCompoundTargetReticle::DrawCrosshairs(const CMatrix3f& rotation,
   }
 #ifdef TARGET_PC
   CTransform4f xf(rotation, PortPresentedTarget(mgr));
+  CTransform4f scaleXf = CTransform4f::Scale(scale);
   if (mPortTri && PortOverlay::CrosshairStyle() == PortOverlay::kCrosshairStyle_GameCube) {
     // In place of the aiming cursor: the model (built out along its Y) turned down the pointer
     // ray as drawn, so it marks the aim where the cursor would (MP1 255afaf13).
@@ -2114,8 +2115,12 @@ void CCompoundTargetReticle::DrawCrosshairs(const CMatrix3f& rotation,
     const CVector3f eye = cam.GetTranslation();
     xf = CTransform4f::LookAt(
         eye, eye + PortTriPointerDir(cam, *camMgr->GetCurrentCamera(mgr, true), mPlayerIndex), cam.GetUp());
+    // Placed at the eye, a scale about the origin moves the model out with its size and its
+    // apparent size never changes (MP1 2ec8fa64f, #255): scale it about its own centre instead.
+    const CVector3f centre = model->GetAABB().GetCenterPoint();
+    scaleXf = CTransform4f::Translate(centre) * scaleXf * CTransform4f::Translate(-centre);
   }
-  gpRender->SetModelMatrix(xf * CTransform4f::Scale(scale));
+  gpRender->SetModelMatrix(xf * scaleXf);
   model->Draw(CModelFlags::Additive(color).DepthCompareUpdate(false, false));
 #else
   const CColor& color = gpTweakTargeting->GetCrosshairsColor();

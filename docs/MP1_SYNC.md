@@ -175,6 +175,14 @@ Each needs MP2 game-side hooks found fresh; a row with no possible MP2 backend i
     `bf49ed7d2` is our #44 work (42fea9ab1/472b1cf1a) ported to MP1: nothing differs, nothing taken.
     Skipped: `4512ddbf8` (R-jump), every remastered/roomfx/roomenv commit,
     third person `8b42ffa6c 35de50d42`, `cfa7a69eb` FUNDING.yml.
+31. **Range `5e1a88514..16eb691fe`** (2026-11-03). Taken: `db00839c7` Dawn cache without the startup
+    `quick_check`, LRU-pruned to 256 MiB 30 s after start (clean apply; schema 3 files are replaced;
+    `Dawn cache: N entries` seen at 30 s with `MP2_PIPELINE_LAZY=1`, rows reused on the next launch);
+    `565e5fa2c` parent-matrix half (CreateNewParticles grows `mParentMatrices` past MAXP's first
+    value; Echoes' ADV reserve already covers a burst; build only); `2ec8fa64f` Trilogy GameCube
+    crosshair scales about its centre (MP1 issue 255; build only, not seen on screen). Not taken again:
+    `4ab18ced5` (see 28). Skipped: remastered/roomfx/effects import (`7b191f9a7 366d01363`),
+    `bc800213d` release.
 
 Skipped from this range: Phazon Beam cheat and stacked beam rate (MP1 items), mods page/import
 fixes (wait for package 8), decomp matches.
@@ -184,9 +192,9 @@ set differs; the approach can be reused), Archipelago, MP1 randomizer logic.
 
 ## Status
 
-Packages 1-30 are merged; the dated per-merge log moved verbatim to
+Packages 1-31 are merged; the dated per-merge log moved verbatim to
 `docs/history/MP1_SYNC-to-2026-10-29.md`. MP1 was last reviewed through `e3d8c8940`
-(2026-10-29), then through `5e1a88514` (2026-11-02, package 30); take later commits by `git -C ../MetroidPrimePort log --no-merges 5e1a88514..HEAD`.
+(2026-10-29), then through `5e1a88514` (2026-11-02, package 30), then through `16eb691fe` (2026-11-03, package 31); take later commits by `git -C ../MetroidPrimePort log --no-merges 16eb691fe..HEAD`.
 
 Still unrun/unverified per that log (no device or hardware available then):
 
