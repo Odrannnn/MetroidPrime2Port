@@ -249,6 +249,9 @@ SDL_Window* GameWindow() {
 }
 
 bool sPhotoOwnsCapture = false;
+// A pointer screen (pause, map, a GUI menu) is up: its cursor must stay free and visible. The
+// game does not tick the player while paused, so nothing else would release the aim's grab.
+bool sPointerScreen = false;
 
 // Relative capture is what makes the motion relative and keeps the desktop cursor out of the
 // game; leaving it off outside gameplay keeps the cursor usable for menus and the desktop.
@@ -274,7 +277,7 @@ void ApplyCapture(bool captured) {
 // every frame) is shut out while photo mode owns the grab.
 void SetCapture(bool captured) {
   if (!sPhotoOwnsCapture) {
-    ApplyCapture(captured);
+    ApplyCapture(captured && !sPointerScreen);
   }
 }
 
@@ -646,6 +649,13 @@ void SetUiActive(bool active) {
 }
 
 bool UiActive() { return sUiActive; }
+
+void SetPointerScreen(bool active) {
+  sPointerScreen = active;
+  if (active) {
+    SetCapture(false);
+  }
+}
 
 bool Captured() { return sCaptured; }
 

@@ -316,6 +316,9 @@ void SetTouchAimSpeedY(float pixelsPerDp);
 // The debug overlay owns the cursor while it is open: no capture, no aim applied.
 void SetUiActive(bool active);
 bool UiActive();
+// Once per loop iteration: a pointer screen (pause, map, a GUI menu) is up, so the aim's grab is
+// released and not taken again until it closes (MP1's pointerMenu). Photo mode's grab is its own.
+void SetPointerScreen(bool active);
 // Mouse aim holds the pointer (cursor hidden, motion turns the view). Our own state, not
 // SDL's relative mode, which Android can report off while its pointer capture is on.
 bool Captured();

@@ -615,6 +615,7 @@ bool PortPumpEvents() {
     // No warp hotkeys: warping is driven from the F1 menu's Game page (as in the Prime 1 port),
     // so the function keys stay free for the input engine's bindings (F8 is photo mode's).
   }
+  PortMouse::SetPointerScreen(PortPointer::Enabled() && PortPointer::ScreenActive());
   PortMouse::UpdateIdleCursor(mouseInput, PortPhoto::PanelWantsCursor());
   // Pad 0 is the input engine's (keyboard, mouse buttons and the controller through controls.toml),
   // read once per iteration, before the game's PADRead; Aurora still merges the console's and
