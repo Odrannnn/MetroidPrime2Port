@@ -26,6 +26,11 @@ one covers/ignore line. Nothing else is checked: an area with no block simply co
     tools/rando_rules.py --rules-dir DIR       read DIR instead of tools/rando_rules
     tools/rando_rules.py --out FILE            write FILE instead of the .inc (with --write)
     tools/rando_rules.py --exposure            also print the ten worst Dark Aether areas
+    tools/rando_rules.py --no-terrain          skip the terrain check (tools/rando_terrain.py)
+
+Every edge is also checked against the collision mesh (tools/rando_terrain.py, cached per area: a
+first run takes ~17 min, later ones seconds): a refuted edge fails unless terrain_accepted.txt in
+the rules dir lists it (`area src > dst: reason`) as a gap of the mesh model.
 
 Every edge of a Dark Aether area's block also needs the area's atmosphere requirement: generated from
 the safe zones and distances (atmosphere_reqs), or the block's own `atmosphere <req>` line.
@@ -43,6 +48,7 @@ import rando_world as rw  # noqa: E402
 RULES_DIR = ROOT / "tools" / "rando_rules"
 OUT = ROOT / "platform" / "include" / "port_rando_logic.inc"
 ITEM_SRC = ROOT / "platform" / "port_randomizer.cpp"
+TERRAIN_ACCEPTED = "terrain_accepted.txt"    # in the rules dir: refutations reviewed as model gaps
 MAX_TERMS = 256
 KINDS = {"dock": "Dock", "loc": "Location", "tel": "Teleporter", "@": "Named"}
 
@@ -488,6 +494,36 @@ def render(validated, atmo=None, events=None):
     return "\n".join(lines) + "\n"
 
 
+def terrain_check(rules_dir):
+    """Fail on a rule edge the collision mesh refutes (tools/rando_terrain.py) unless TERRAIN_ACCEPTED
+    lists it with a reason, and on an accepted line nothing refutes any more."""
+    import rando_terrain as rt
+    if rt.ed.find_iso() is None:
+        print("terrain check skipped: no disc (MP2_DISC)")
+        return
+    path = rules_dir / TERRAIN_ACCEPTED
+    accepted = {}
+    for n, raw in enumerate(path.read_text().splitlines() if path.exists() else [], 1):
+        text = raw.split("#", 1)[0].strip()
+        if not text:
+            continue
+        m = re.fullmatch(r"(\S+) (\S+ > \S+): (.+)", text)
+        if not m:
+            raise RuleError(f"{path}:{n}: expected 'area src > dst: reason'")
+        if (m[1], m[2]) in accepted:
+            raise RuleError(f"{path}:{n}: {m[1]} {m[2]} is already on line {accepted[m[1], m[2]]}")
+        accepted[m[1], m[2]] = n
+    rows, _skipped = rt.check(rules_dir)
+    refuted = {(area, edge): f"{fname}:{line} {area} {edge}: {detail}"
+               for fname, area, line, edge, kind, detail, _h in rows if kind == "refuted"}
+    errors = [f"terrain refutes {text}" for key, text in sorted(refuted.items()) if key not in accepted]
+    errors += [f"{path}:{n}: nothing refutes {' '.join(key)} any more" for key, n in accepted.items()
+               if key not in refuted]
+    if errors:
+        raise RuleError("\n".join(errors))
+    print(f"terrain check: {len(rows)} edge directions, {len(refuted)} refuted, all accepted in {path.name}")
+
+
 def main():
     args = sys.argv[1:]
 
@@ -501,7 +537,7 @@ def main():
     except RuleError as e:
         sys.exit(f"[rando_rules] {e}")
     items = {**items, **events}
-    worlds, areas, docks, teleporters, locations, dock_locks, obstacles, dock_pos, loc_pos = rw.collect()
+    worlds, areas, docks, teleporters, locations, dock_locks, obstacles, dock_pos, loc_pos, _relay = rw.collect()
     data = (worlds, areas, docks, teleporters, locations, dock_locks, obstacles)
     by_world = {name: i for i, (_m, name) in enumerate(worlds)}
     validated, stats = [], {}
@@ -534,6 +570,11 @@ def main():
         for gi, (_dnf, ((s, a, b, t), (s2, _a2, _b2, t2))) in rows[:10]:
             print(f"  {areas[gi][3]:32} {s:6.1f}s {a}..{b}: {tanks(t[0])}/{tanks(t[1])}"
                   f"  (with LightBeam {s2:.1f}s: {tanks(t2[0])}/{tanks(t2[1])})")
+    if "--no-terrain" not in args:
+        try:
+            terrain_check(rules_dir)
+        except RuleError as e:
+            sys.exit(f"[rando_rules] {e}")
     if "--write" in args:
         try:
             text = render(validated, atmo, events)

@@ -4,6 +4,14 @@ The Status section of AGENTS.md links here: this is the per-session detail, rewr
 appended, dated as in the heading there.
 
 
+## 2026-11-03: randomizer terrain check enforced
+
+- Landing Site dock1 > dock0's earlier pass came only from intro-cinematic PLATs; platforms now count in two
+  states (area start, switches thrown), solid ACTRs and breakable crates (start state) count too, terms with an
+  unmodelled item are not refuted. Refuted 147 -> 65 (unanchored 183 -> 27 in 2ae1b7fec).
+- `rando_rules.py` runs the cached check; `tools/rando_rules/terrain_accepted.txt` accepts all 65 as a baseline,
+  only GFMC Compound's four (Kinetic Orb Cannon on a story layer) with a checked reason.
+
 ## 2026-11-03: AGENTS.md Status bullets as of 2026-11-03 (moved here verbatim)
 
 - 2026-11-03: retail-vs-port audits (user-approved). Pushed at 2675e0bf9: 4f712e868 (culling uses the draw FOV),

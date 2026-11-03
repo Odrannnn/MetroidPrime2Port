@@ -12,6 +12,7 @@ have: a moving platform, an elevator, a grapple point, a spinner, a bomb slot).
     tools/rando_terrain.py                    report every rule edge whose terms the terrain refutes
     tools/rando_terrain.py --area NAME        check one area only
     tools/rando_terrain.py --all              print every checked edge, not only the refuted ones
+    tools/rando_terrain.py --no-cache         recheck every area (verdicts are cached in CACHE)
 
 The model, and its limits (docs/RANDOMIZER.md, "Terrain check"):
 - Physics from Standard.ntwk: gravity 35, jump force 50 for 0.25 s (apex 3.78), double jump impulse
@@ -20,14 +21,16 @@ The model, and its limits (docs/RANDOMIZER.md, "Terrain check"):
 - Floors are what CGameCollision::IsFloor says: the Floor material, or normal z > 0.85; collision is two-sided, as the game's is.
 - Water (no Gravity Boost), Screw Attack, bomb jumps, dash and slope jumps are not modelled: the
   result only ever needs more than the game does, never less.
-- Static mesh plus script platforms (PLAT: DCLN, collision box or model bounds) that start
-  present or are activated, at their initial place; an edge is also tried on the static mesh
-  alone, so a platform only ever adds paths. Destructible platforms, doors, gates, elevators and
-  other script obstacles are not modelled.
+- Static mesh plus script platforms and solid actors (PLAT, ACTR with isSolid: DCLN, collision box
+  or model bounds) at their initial place on the default layers, in two states: as the area starts
+  (breakable crates included), and once its switches are thrown (activated, never deactivated or
+  destroyed); an edge is also tried on the static mesh alone, so these only ever add paths. Moving
+  platforms, story layer switches, cannons, doors, gates and elevators are not modelled.
 - A jump may end in a ball-only spot (a tunnel mouth above the floor): Samus rises standing, morphs
   near the apex and crosses at ball height; both legs are checked against the mesh.
-- Advisory: not yet enforced by tools/rando_rules.py. Known false refutations are listed in
-  docs/RANDOMIZER.md; calibrate before trusting a result.
+- Terms with an UNMODELLED item (grapple, Screw Attack, bombs, ...) are not refuted.
+- Enforced by tools/rando_rules.py: a refuted edge fails unless tools/rando_rules/terrain_accepted.txt
+  lists it as a gap of this model.
 """
 import struct
 import sys
@@ -41,6 +44,7 @@ import echoes_disc as ed  # noqa: E402
 import rando_models as rm  # noqa: E402
 import savw_diff  # noqa: E402
 
+CACHE = pathlib.Path.home() / ".cache" / "mp2-rando-terrain"    # verdicts per area, keyed by inputs
 GRID = 0.5            # floor sample spacing
 FLOOR_NZ = 0.85       # |normal z| of a floor without the Floor material (CGameCollision::IsFloor)
 FLOOR_FLAGGED_NZ = 0.3  # a Floor-material triangle steeper than this is a wall for standing
@@ -58,6 +62,9 @@ FLIPPED = 1 << 24
 
 NONE, MORPH, SJ = 0, 1, 2     # ability bits
 LEVELS = ["walk", "MorphBall", "SpaceJumpBoots", "MorphBall & SpaceJumpBoots"]
+# movement the mesh check does not model (swimming, Screw Attack, grapple, half-pipes, bomb jumps,
+# spider tracks): a rule term with one of these is not refuted
+UNMODELLED = ["GravityBoost", "ScrewAttack", "GrappleBeam", "BoostBall", "MorphBallBombs", "SpiderBall"]
 
 
 # ---- the collision section -----------------------------------------------------------------------
@@ -134,6 +141,7 @@ def index_tris(c, p):
 PLAT_BOX, PLAT_OFFSET = 0xF344C0B0, 0x2E686C2A    # SLdrPlatform.inc collisionBox, collisionOffset
 PLAT_MODEL, PLAT_DCLN = 0xC27FFA8F, 0x0FC966DC    # model, collisionModel
 EDITOR_ACTIVE = 0x41435456                         # EditorProperties active
+ACTR_SOLID = 0x1D8DD846                             # SLdrActor.inc isSolid (same box/model ids)
 
 
 def euler(deg):
@@ -168,19 +176,31 @@ def dcln_tris(d):
 
 
 def platforms(ents, layer_on, get):
-    """(triangles, flags, names) of the PLATs that may stand in the area, as CScriptPlatform collides:
-    its DCLN under the object's rotation and position, else the collision box (unrotated), else the
-    scaled model's bounds under the rotation. A PLAT counts when its layer is on by default and it
-    starts active or something sends it ACTV, wherever it starts (motion is not followed); one that
-    a DEAD removes (DECR, DCTV) is an obstacle for the hand rules and does not count."""
+    """[(triangles, flags, names)] of the PLATs and solid ACTRs that stand in the area as it starts,
+    then once its switches are thrown, as CScriptPlatform and CScriptActor collide: the DCLN under
+    the object's rotation and position, else the collision box (a PLAT's unrotated, an ACTR's scaled
+    and its bounds under the rotation), else the scaled model's bounds under the rotation. An object
+    counts when its layer is on by default: later if it starts active or is sent ACTV and is never
+    sent DCTV (a raised drawbridge, a statue before it falls, a blocker during a crate drop are
+    not); at the start if it starts active or counts later (what an entry relay brings, such as the
+    landed ship; both positions of a moved statue may count, an optimistic union). Motion is not
+    followed. One that a DEAD removes (DECR, DCTV) is an obstacle for the hand rules and counts in
+    neither state. A later state equal to the start is left out."""
     import rando_world as rw
     sent = {(m, t) for *_x, conns, _p in ents for _s, m, t in conns}
     killed = {t for *_x, conns, _p in ents for s, m, t in conns if s == "DEAD" and m in rw.KILL_MSGS}
-    tris, flags, names = [], [], []
+    shapes, start, later = {}, set(), set()
     for layer, t4, eid, _conns, props in ents:
-        if t4 != "PLAT" or not layer_on >> layer & 1 or eid in killed:
+        if t4 not in ("PLAT", "ACTR") or not layer_on >> layer & 1:
             continue
-        if rw.editor(props, EDITOR_ACTIVE)[-1:] == b"\0" and ("ACTV", eid) not in sent:
+        if t4 == "ACTR" and props.get(ACTR_SOLID, b"\0")[-1:] == b"\0":
+            continue
+        active = rw.editor(props, EDITOR_ACTIVE)[-1:] != b"\0"
+        if (active or ("ACTV", eid) in sent) and ("DCTV", eid) not in sent and eid not in killed:
+            later.add(eid)
+        if active or eid in later:
+            start.add(eid)
+        if eid not in start and eid not in later:
             continue
         x = struct.unpack(">9f", rw.editor(props, rw.XFRM)[:36])
         pos, rot, scale = np.array(x[:3]), euler(x[3:6]), np.array(x[6:])
@@ -191,20 +211,28 @@ def platforms(ents, layer_on, get):
             t = t @ rot.T + pos
         elif box.any():
             off = np.array(struct.unpack(">3f", props[PLAT_OFFSET])) if PLAT_OFFSET in props else 0
-            t, f = box_tris(pos + off - box / 2, pos + off + box / 2), None
+            lo, hi = off - box / 2, off + box / 2
+            if t4 == "ACTR":
+                corners = box_tris(lo * scale, hi * scale).reshape(-1, 3) @ rot.T
+                lo, hi = corners.min(0), corners.max(0)
+            t, f = box_tris(pos + lo, pos + hi), None
         else:
             cmdl = get(struct.unpack(">I", props[PLAT_MODEL][-4:])[0]) if PLAT_MODEL in props else None
             if cmdl is None:
+                start.discard(eid)
+                later.discard(eid)
                 continue
             b = np.array(struct.unpack_from(">6f", cmdl, 12)).reshape(2, 3) * scale
             corners = box_tris(b[0], b[1]).reshape(-1, 3) @ rot.T
             t, f = box_tris(pos + corners.min(0), pos + corners.max(0)), None
-        tris.append(t)
-        flags.append(np.zeros(len(t), np.uint64) if f is None else f)
-        names.append(rw.editor(props, rw.INAM).rstrip(b"\0").decode("latin1"))
-    if not tris:
-        return None
-    return np.concatenate(tris), np.concatenate(flags), names
+        shapes[eid] = (t, np.zeros(len(t), np.uint64) if f is None else f,
+                       rw.editor(props, rw.INAM).rstrip(b"\0").decode("latin1"))
+    out = []
+    for ids in [start] + ([later] if later != start else []):
+        if ids:
+            got = [shapes[e] for e in sorted(ids)]
+            out.append((np.concatenate([g[0] for g in got]), np.concatenate([g[1] for g in got]), [g[2] for g in got]))
+    return out
 
 
 # ---- geometry ------------------------------------------------------------------------------------
@@ -608,7 +636,7 @@ def check_area(job):
     name, mrea, edges, plats = job
     tris, flags = area_mesh(mrea)
     T = Terrain(tris, flags)
-    P = Terrain(np.concatenate([tris, plats[0]]), np.concatenate([flags, plats[1]])) if plats else None
+    Ps = [Terrain(np.concatenate([tris, p[0]]), np.concatenate([flags, p[1]])) for p in plats]
     out = []
     for line, a, c, apos, cpos, terms in edges:
         r, miss, helped = {s: False for s in SETS}, None, False
@@ -618,7 +646,7 @@ def check_area(job):
         if apos[0] == "virtual" or cpos[0] == "virtual":
             out.append((line, a, c, "virtual", terms, None, False))
             continue
-        for t in (T, P) if P else (T,):
+        for t in [T] + Ps:
             src, dst = node_points(t, apos, True), node_points(t, cpos, False)
             n_src, n_dst = len(src[MORPH | SJ]), len(dst[MORPH | SJ])
             if not n_src or not n_dst:
@@ -626,7 +654,7 @@ def check_area(job):
                 continue
             for s in SETS:
                 if not r[s] and t.reachable(src[s], dst[s], s):
-                    r[s], helped = True, helped or t is P
+                    r[s], helped = True, helped or t is not T
         if not any(r.values()) and miss:
             out.append((line, a, c, None, terms, miss, False))
             continue
@@ -639,14 +667,20 @@ def node_text(n):
     return f"@{val}" if kind == "@" else f"{kind}{val}" if kind == "dock" else f"{kind}0x{val:08X}"
 
 
-def main():
+def check(rules_dir=None, only=None, cached=True):
+    """Verdicts of every rule edge: ([(rules file, area, line, edge text, kind, detail, helped)], skipped).
+    kind is ok, refuted, nopath, unanchored or virtual; a never edge is ok. With cached, an area
+    whose mesh, platforms, edges and this file are unchanged reuses its last verdicts (CACHE)."""
+    import hashlib
     import multiprocessing
+    import pickle
     import rando_rules as rr
     import rando_world as rw
-    args = sys.argv[1:]
+    rules_dir = rules_dir or rr.RULES_DIR
     items = rr.item_table()
-    items = {**items, **rr.scan_events(rr.RULES_DIR, items)}
-    morph, sj = items["MorphBall"], items["SpaceJumpBoots"]
+    items = {**items, **rr.scan_events(rules_dir, items)}
+    sj = items["SpaceJumpBoots"]
+    unmodelled = {items[n] for n in UNMODELLED}
     worlds, areas, _d, _t, _l, _dl, _o, dock_pos, loc_pos, _r = rw.collect()
     by_world = {name: i for i, (_m, name) in enumerate(worlds)}
     iso = ed.Iso(ed.find_iso())
@@ -663,8 +697,7 @@ def main():
                 if m in mrea_pak}
     jobs, skipped = [], 0
     dock_number, dock_virtual = rw.sldr_prop("Dock", "dockNumber"), rw.sldr_prop("Dock", "isVirtual")
-    only = args[args.index("--area") + 1] if "--area" in args else None
-    for path in sorted(rr.RULES_DIR.glob("*.rules")):
+    for path in sorted(rules_dir.glob("*.rules")):
         wi = by_world[path.stem]
         for b in rr.parse_file(path, items):
             if only and b.name != only:
@@ -693,7 +726,10 @@ def main():
                 return None
             edges = []
             for line, a, c, dnf, both in b.edges:
-                terms = [(t, (MORPH if dict(t).get(morph) else 0) | (SJ if dict(t).get(sj) else 0)) for t in dnf]
+                # MorphBall is in the start inventory (port_rando_logic StartInventory) and never placed;
+                # a term with an item the mesh cannot model gets no bits and is never refuted
+                terms = [(t, None if any(i in unmodelled for i, _n in t) else MORPH | (SJ if dict(t).get(sj) else 0))
+                         for t in dnf]
                 for x, y in [(a, c), (c, a)] if both else [(a, c)]:
                     px, py = pos(x), pos(y)
                     if px is None or py is None:
@@ -701,51 +737,67 @@ def main():
                         continue
                     edges.append((line, x, y, px, py, terms))
             plats = platforms(ents, layer_on[wi][gi - first[wi]], lambda r: pk.get(r) if r in pk.res else None)
-            jobs.append((f"{path.name}:{b.line} {b.name}", mrea, edges, plats))
-    with multiprocessing.Pool() as pool:
-        results = pool.map(check_area, jobs, chunksize=1)
+            key = hashlib.sha1(pathlib.Path(__file__).read_bytes() + mrea + pickle.dumps(
+                ([(e[0], e[1], e[2], e[3][0], e[3][1].tolist(), e[3][2].tolist(), e[4][0], e[4][1].tolist(),
+                   e[4][2].tolist(), e[5]) for e in edges], [(p[0].tobytes(), p[1].tobytes()) for p in plats]))).hexdigest()
+            jobs.append((path.name, b.name, key, (b.name, mrea, edges, plats)))
+    hit = {}
+    if cached:
+        for _f, _a, key, _j in jobs:
+            if (CACHE / key).exists():
+                hit[key] = pickle.loads((CACHE / key).read_bytes())
+    todo = [j for j in jobs if j[2] not in hit]
+    if todo:
+        with multiprocessing.Pool() as pool:
+            for (_f, _a, key, _j), (_n, _t, out) in zip(todo, pool.map(check_area, [j[3] for j in todo], chunksize=1)):
+                hit[key] = out
+                if cached:
+                    CACHE.mkdir(parents=True, exist_ok=True)
+                    (CACHE / key).write_bytes(pickle.dumps(out))
     names = {v: k for k, v in items.items()}
 
     def term_text(t):
         return " & ".join(names[i] + (f">={n}" if n > 1 else "") for i, n in t) or "any"
-    counts = {"ok": 0, "refuted": 0, "nopath": 0, "unanchored": 0, "virtual": 0}
-    for area, _n, out in results:
-        lines = []
-        for line, a, c, r, terms, miss, helped in out:
-            head = f"  line {line}: {node_text(a)} > {node_text(c)}" + (" (with platforms)" if helped else "")
+    rows = []
+    for fname, area, key, _j in jobs:
+        for line, a, c, r, terms, miss, helped in hit[key]:
+            edge = f"{node_text(a)} > {node_text(c)}"
             if r == "never":
-                counts["ok"] += 1
-                if "--all" in args:
-                    lines.append(f"{head}: never, not checked")
-                continue
-            if r == "virtual":
-                counts["virtual"] += 1
-                if "--all" in args:
-                    lines.append(f"{head}: virtual dock, not checked")
-                continue
-            if r is None:
-                counts["unanchored"] += 1
-                lines.append(f"{head}: no floor at {'source' if not miss[0] else 'target'}"
-                             f" ({SHAPES[miss[2] if not miss[0] else miss[3]]})")
-                continue
-            if not r[MORPH | SJ]:
-                counts["nopath"] += 1
-                lines.append(f"{head}: no path in the static mesh; terms " +
-                             " | ".join(f"({term_text(t)})" for t, _b in terms))
-                continue
-            need = [LEVELS[s] for s in SETS if r[s] and not any(r[x] for x in SETS if x != s and x & s == x)]
-            bad = [t for t, bits in terms if not r[bits]]
-            if bad:
-                counts["refuted"] += 1
-                lines.append(f"{head}: needs {' or '.join(need)}; refuted terms " +
-                             " | ".join(f"({term_text(t)})" for t in bad))
+                rows.append((fname, area, line, edge, "ok", "never, not checked", False))
+            elif r == "virtual":
+                rows.append((fname, area, line, edge, "virtual", "virtual dock, not checked", False))
+            elif r is None:
+                rows.append((fname, area, line, edge, "unanchored", f"no floor at {'source' if not miss[0] else 'target'}"
+                             f" ({SHAPES[miss[2] if not miss[0] else miss[3]]})", False))
+            elif not r[MORPH | SJ]:
+                rows.append((fname, area, line, edge, "nopath", "no path in the static mesh; terms " +
+                             " | ".join(f"({term_text(t)})" for t, _b in terms), helped))
             else:
-                counts["ok"] += 1
-                if "--all" in args:
-                    lines.append(f"{head}: ok, needs {' or '.join(need)}")
-        if lines:
-            print(area)
-            print("\n".join(lines))
+                need = " or ".join(LEVELS[s] for s in SETS
+                                   if r[s] and not any(r[x] for x in SETS if x != s and x & s == x))
+                bad = [t for t, bits in terms if bits is not None and not r[bits]]
+                if bad:
+                    rows.append((fname, area, line, edge, "refuted", f"needs {need}; refuted terms " +
+                                 " | ".join(f"({term_text(t)})" for t in bad), helped))
+                else:
+                    rows.append((fname, area, line, edge, "ok", f"ok, needs {need}", helped))
+    return rows, skipped
+
+
+def main():
+    args = sys.argv[1:]
+    rows, skipped = check(only=args[args.index("--area") + 1] if "--area" in args else None,
+                          cached="--no-cache" not in args)
+    counts = {"ok": 0, "refuted": 0, "nopath": 0, "unanchored": 0, "virtual": 0}
+    last = None
+    for fname, area, line, edge, kind, detail, helped in rows:
+        counts[kind] += 1
+        if kind in ("ok", "virtual") and "--all" not in args:
+            continue
+        if (fname, area) != last:
+            print(f"{fname} {area}")
+            last = fname, area
+        print(f"  line {line}: {edge}" + (" (with platforms)" if helped else "") + f": {detail}")
     print(f"edges checked: {sum(counts.values())} ({skipped} skipped: teleporter or named node); " +
           ", ".join(f"{k} {v}" for k, v in counts.items()))
 
