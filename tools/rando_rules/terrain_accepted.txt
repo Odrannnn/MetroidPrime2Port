@@ -3,20 +3,11 @@
 # line nothing refutes any more. "unverified": accepted as the 2026-11-03 baseline, not yet triaged.
 
 # 01_Temple_Hub_20041018.rules
-0t_temple_hall dock0 > dock3: unverified (baseline 2026-11-03)  # line 49: needs SpaceJumpBoots; refuted terms (any)
-12_temple_finalgate dock1 > dock0: unverified (baseline 2026-11-03)  # line 78: needs MorphBall & SpaceJumpBoots; refuted terms (MorphBall)
-0n_temple_hall dock1 > dock2: unverified (baseline 2026-11-03)  # line 86: needs SpaceJumpBoots; refuted terms (any)
-04_temple_unknownenemies dock1 > loc0x00270139: unverified (baseline 2026-11-03)  # line 210: needs SpaceJumpBoots; refuted terms (MorphBall & Powerbomb)
-04_temple_unknownenemies dock2 > loc0x00270139: unverified (baseline 2026-11-03)  # line 211: needs SpaceJumpBoots; refuted terms (MorphBall & Powerbomb)
 05_temple_federationsite dock0 > dock2: the climb is the Kinetic Orb Cannon (layer Load After Movie; story layers and cannons are not modelled)  # line 216: needs SpaceJumpBoots; refuted terms (any)
 05_temple_federationsite dock0 > dock3: the climb is the Kinetic Orb Cannon (layer Load After Movie; story layers and cannons are not modelled)  # line 217: needs SpaceJumpBoots; refuted terms (any)
 05_temple_federationsite dock1 > dock2: the climb is the Kinetic Orb Cannon (layer Load After Movie; story layers and cannons are not modelled)  # line 218: needs SpaceJumpBoots; refuted terms (any)
 05_temple_federationsite dock1 > dock3: the climb is the Kinetic Orb Cannon (layer Load After Movie; story layers and cannons are not modelled)  # line 219: needs SpaceJumpBoots; refuted terms (any)
-06_temple_sacredpath dock1 > dock0: unverified (baseline 2026-11-03)  # line 245: needs SpaceJumpBoots; refuted terms (MorphBall & Missile)
-0n_temple_hall_dark dock1 > dock2: unverified (baseline 2026-11-03)  # line 259: needs SpaceJumpBoots; refuted terms (any)
-0t_temple_hall_dark dock0 > dock3: unverified (baseline 2026-11-03)  # line 304: needs SpaceJumpBoots; refuted terms (any)
-06_temple_sacredpath_dark dock0 > loc0x003700CB: unverified (baseline 2026-11-03)  # line 358: needs SpaceJumpBoots; refuted terms (AnnihilatorBeam) | (MorphBall & Powerbomb)
-05_temple_federationsite_dark dock0 > dock2: unverified (baseline 2026-11-03)  # line 370: needs SpaceJumpBoots; refuted terms (any)
+06_temple_sacredpath dock1 > dock0: the pit's Morph Ball cannon (PLAT 0x00340038) fires the ball up to the catcher (BALT 0x00340071) on the ledge the twisty tunnel leaves from; cannons are not modelled  # line 245: needs SpaceJumpBoots; refuted terms (MorphBall & Missile)
 
 # 02_Temple_Int_20041018.rules
 0h_temple_hall dock1 > dock0: rides the Elevator platform (PLAT 0x00040077) down the shaft; platform motion is not modelled

@@ -46,7 +46,8 @@ area 0a_temple_hall
     dock2 > dock1: never  # unsure: dock2 is a drop hole 16 units below the hall; assumed not climbable
 
 area 0t_temple_hall
-    dock0 - dock3: any
+    dock3 > dock0: any
+    dock0 > dock3: SpaceJumpBoots  # terrain: the trench from dock0 (floor -40.7) meets the dock3 floor at a sheer 5.0 step across the corridor
     dock1 - dock2: MorphBall
     dock1 > dock0: MorphBall
     dock0 > dock1: MorphBall & SpaceJumpBoots  # unsure: morph tunnel 12.5 units above the floor
@@ -75,7 +76,8 @@ area 01_temple_hive01
     # dock0 is a hole in the ceiling (z -59.7, floor ~-104): no way back up.
 
 area 12_temple_finalgate
-    dock0 - dock1: MorphBall  # unsure: dock0 is a morph tunnel 10 units above dock1
+    dock0 > dock1: MorphBall  # dock0 is a morph tunnel 10 units above dock1
+    dock1 > dock0: MorphBall & SpaceJumpBoots  # terrain: the tunnel mouth (-25.4) overhangs the stair foot (-35.3); the nearest stair floor is 7.3 below it
     dock0 > loc0x00070057: MorphBall & BoostBall
     dock1 > loc0x00070057: MorphBall & BoostBall
     # The four Boost spinners count into "Puzzle Complete", whose cinematic
@@ -83,8 +85,9 @@ area 12_temple_finalgate
     covers 0x0007009B 0x000700A3 0x000700A9 0x000700B4 0x000700B8 0x000700BC 0x000700CF 0x000700D5
 
 area 0n_temple_hall
-    dock1 - dock2: any
-    dock1 > dock0: DarkBeam
+    dock2 > dock1: any
+    dock1 > dock2: SpaceJumpBoots  # terrain: dock1's floor is a pit (-45.6) walled 6.0 to 8.5 below the upper floor holding dock2 and the portal
+    dock1 > dock0: DarkBeam & SpaceJumpBoots  # terrain: as dock1 > dock2
     dock0 > dock1: any
     dock0 > dock2: any
     covers 0x00080050
@@ -207,8 +210,9 @@ area 04_temple_unknownenemies
     dock0 > dock2: any
     dock1 > dock0: SpaceJumpBoots  # unsure: dock0 is 17 units above the floor
     dock2 > dock0: SpaceJumpBoots  # unsure: as above
-    dock1 > loc0x00270139: MorphBall & (MorphBallBombs | Powerbomb)
-    dock2 > loc0x00270139: MorphBall & (MorphBallBombs | Powerbomb)
+    dock0 > loc0x00270139: MorphBall & (MorphBallBombs | Powerbomb)  # terrain: dock0's ledge (-23) drops onto the chamber's shelf
+    dock1 > loc0x00270139: MorphBall & (MorphBallBombs | Powerbomb) & SpaceJumpBoots  # terrain: the Stasis Chamber stands on a shelf ring (-33.4) 5.2 above the pit floor (-38.6) dock1 and dock2 open onto
+    dock2 > loc0x00270139: MorphBall & (MorphBallBombs | Powerbomb) & SpaceJumpBoots  # terrain: as dock1
     covers 0x00270125
 
 area 05_temple_federationsite
@@ -256,8 +260,9 @@ area 0f_temple_hall
 area 0n_temple_hall_dark
     dock0 > dock1: any
     dock0 > dock2: any
-    dock1 - dock2: any
-    dock1 > dock0: LightBeam
+    dock2 > dock1: any
+    dock1 > dock2: SpaceJumpBoots  # terrain: dock1's floor is a pit (-45.6) walled 6.0 to 8.5 below the upper floor holding dock2 and the portal
+    dock1 > dock0: LightBeam & SpaceJumpBoots  # terrain: as dock1 > dock2
     dock2 > dock0: LightBeam
     covers 0x000D002F
     ignore 0x000D005E: safe zone crystal, not a barrier
@@ -301,7 +306,8 @@ area 01_temple_landingsite_dark
     ignore 0x0023000A: safe zone crystal, not a barrier
 
 area 0t_temple_hall_dark
-    dock0 - dock3: any
+    dock3 > dock0: any
+    dock0 > dock3: SpaceJumpBoots  # terrain: the trench from dock0 (floor -40.7) meets the dock3 floor at a sheer 5.0 step across the corridor
     ignore 0x00240033: safe zone crystal, not a barrier
 
 area 11_temple_grandpuzzle_dark
@@ -354,8 +360,8 @@ area 02_temple_exploration_dark
 
 area 06_temple_sacredpath_dark
     dock1 > dock0: any
-    dock0 > dock1: LightBeam
-    dock0 > loc0x003700CB: (MorphBall & (MorphBallBombs | Powerbomb | BoostBall) | ScrewAttack | AnnihilatorBeam)
+    dock0 > dock1: LightBeam & SpaceJumpBoots  # terrain: the north door's ramp ends in a pit (-46) 8 to 10 below every ledge; the light world's ball cannon is missing here, and the portal sits on the west ledge (-28.5)
+    dock0 > loc0x003700CB: SpaceJumpBoots & (MorphBall & (MorphBallBombs | Powerbomb | BoostBall) | ScrewAttack | AnnihilatorBeam)  # terrain: as dock0 > dock1
     dock1 > loc0x003700CB: (MorphBall & (MorphBallBombs | Powerbomb | BoostBall) | ScrewAttack | AnnihilatorBeam)
     covers 0x00370194 0x00370076
     ignore 0x00370162: safe zone crystal, not a barrier
@@ -367,7 +373,8 @@ area 0e_temple_hall_dark
     covers 0x0039000C
 
 area 05_temple_federationsite_dark
-    dock0 - dock2: any
+    dock2 > dock0: any
+    dock0 > dock2: SpaceJumpBoots  # terrain: dock0's pit floor (-46) is 4.8 under the ramp up to dock2; the light room's Kinetic Orb Cannon has no dark counterpart
     dock0 > loc0x003B00D6: any  # unsure: missile placement not verified
     dock2 > loc0x003B00D6: any  # unsure: as above
 

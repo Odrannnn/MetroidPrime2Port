@@ -4,6 +4,16 @@ The Status section of AGENTS.md links here: this is the per-session detail, rewr
 appended, dated as in the heading there.
 
 
+## 2026-11-03: terrain triage, Temple Grounds done
+
+- Rule fixes (all Space Jump ledges, measured on the mesh): 0t_temple_hall (+dark) dock0 > dock3,
+  0n_temple_hall (+dark) dock1 > dock2/dock0, 12_temple_finalgate dock1 > dock0, 06_temple_sacredpath_dark
+  dock0 > dock1 and its pickup, 05_temple_federationsite_dark dock0 > dock2, Hive Chamber A
+  (04_temple_unknownenemies) dock1/dock2 > the stasis-chamber pickup (new: dock0 drops onto its shelf).
+  Accepted: Sacred Path dock1 > dock0 (Morph Ball cannon PLAT 0x00340038).
+- Full run: ok 514, refuted 40, nopath 237, unanchored 28, virtual 138; 33 still "unverified" (Sand 16,
+  Swamp 13, Cliff 4; next 02_sand_sandfalls). Vanilla 114/114 in 9 spheres, gen 200/200 (avg 9.37).
+
 ## 2026-11-03: terrain triage, first pass
 
 - Model: floors are signed (a ceiling's top was a floor: 11 refutations cleared, several passes became honest

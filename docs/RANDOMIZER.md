@@ -134,14 +134,17 @@ is no longer the only source of locations. Plan, each step checkable on its own:
      air drift during a long fall (Sanctum Access).
      Verdicts are cached per area in `~/.cache/mp2-rando-terrain/` (key: the tool's bytes, mesh,
      edges, platforms): a cold run takes ~17 min, a warm one seconds; the key holds rule line
-     numbers, so a rule edit rechecks every area below it in that file. Full run: 956 edge
-     directions, ok 504, refuted 49, nopath 237, unanchored 28, virtual 138.
+     numbers, so a rule edit rechecks every area below it in that file. Full run: 957 edge
+     directions, ok 514, refuted 40, nopath 237, unanchored 28, virtual 138.
      `tools/rando_rules.py` fails on a refuted edge unless `tools/rando_rules/terrain_accepted.txt`
      lists it (`area src > dst: reason`), and on an accepted line nothing refutes any more
      (`--no-terrain` skips; no disc skips too). The baseline accepted all 65 refutations of
-     2026-11-03 as "unverified"; 44 still are: triage each (a real gap of the rule, or a model gap
+     2026-11-03 as "unverified"; 33 still are (Sand, Swamp, Cliff): triage each (a real gap of the rule, or a model gap
      with its reason) before trusting it. Triaged so far: Service Access, Landing Site, Transport A
-     Access and Sanctum Access (the climb) were rule errors; signed floors cleared 11 more. Early
+     Access and Sanctum Access (the climb) were rule errors; signed floors cleared 11 more. All of
+     Temple Grounds is triaged: the rest were Space Jump ledges the rules missed (0t/0n temple
+     halls, the dark GFMC Compound and Sacred Path pits, 12_temple_finalgate's tunnel mouth, Hive
+     Chamber A's stasis-chamber shelf, which dock0 drops onto); Sacred Path's ball cannon is accepted. Early
      vanilla areas crossed before Space Jump are model gaps, not rule errors (`TestVanillaSpheres`
      guards that).
    - State (2026-10-27): all five worlds have rules (284 areas). With every item, all 114
