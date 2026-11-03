@@ -217,7 +217,8 @@ Controls > Options:
   by default, recentres the pointer under pointer aim, else levels the view); env
   `MP2_RESET_AIM_BOTH`.
 - `pointer_menus`, `map_swap_fingers`: Options > Menus > Point and click menus (mouse and touch in
-  the pause screens and the map; default on; env `MP2_POINTER_MENUS`), Swap map finger gestures
+  the pause screens and the map, where a click on a room selects it; default on; env
+  `MP2_POINTER_MENUS`), Swap map finger gestures
   (touch: one finger pans the map, two rotate; env `MP2_MAP_SWAP_FINGERS`).
 - `prompt_glyphs`: Options > On-screen prompts > Button glyphs (Auto follows the last-used device;
   Xbox, PlayStation, Switch, GameCube or Keyboard forces the set in the F1 UI and the game's

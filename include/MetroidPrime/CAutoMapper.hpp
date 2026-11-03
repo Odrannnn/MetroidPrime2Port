@@ -18,6 +18,10 @@
 #include "rstl/single_ptr.hpp"
 #include "rstl/vector.hpp"
 
+#ifdef TARGET_PC
+#include <string>
+#endif
+
 class CFinalInput;
 class CGuiFrame;
 class CGuiTextPane;
@@ -133,6 +137,8 @@ public:
   void PortPointerInput(CFinalInput& input, const CStateManager& mgr);
   // How much wider than authored the map screen's window is drawn (its frame's spread panel).
   float PortMapScreenWindowWiden() const;
+  // Console `maprooms`: the last map screen draw's selected room and its rooms' GUI centres.
+  static void PortDescribeMapRooms(std::string& out);
 #endif
   void Update(float dt, CStateManager& mgr);
   void Draw(const CStateManager& mgr, const CTransform4f& xf, float alpha) const;

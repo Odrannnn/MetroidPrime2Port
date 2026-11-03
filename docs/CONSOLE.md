@@ -89,6 +89,7 @@ hp, hp_max, visor, beam, freecam) for scripts.
 - `sticky <0|1>` — sticky charge: a long A hold keeps charging after the release
 - `pointeraim [on|off|<x> <y>] pointer aim (the F1 row), or place its pointer (-1..1)`
 - `minimap` prints the HUD minimap tap rect (GUI pixels) and whether tap-to-open is on; `maptap` opens the map screen as a tap on the minimap does
+- `maprooms` prints the map screen's selected room and each clickable room's centre in GUI pixels, as the last map draw projected them (a `pointer <x> <y> click` there selects the room); `maprooms reveal` marks the current world's map station used, so its rooms show
 - `save [info] [<file>]` — the card's save slots, or one .gci on disk: world, items, time
 - `cardbackup <0|1>` — back the card up before each write (the F1 Saves row)
 - `settings [<key> <value>|self-test]` — settings.cfg's entries; set one (and save), or check every key round-trips

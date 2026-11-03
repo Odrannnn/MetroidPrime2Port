@@ -26,6 +26,10 @@ public:
     void PostConstruct(const void* buf);
     CVector3f GetNormal() const { return mNormal; }
     CVector3f GetCenterPosition() const { return mCentroid; }
+#ifdef TARGET_PC
+    // The surface's primitive list (count, then type, vertex count and 8-bit vertex indices each).
+    const int* PortGetSurfaceList() const { return mSurfOffset; }
+#endif
 
   private:
     CVector3f mNormal;
@@ -48,6 +52,7 @@ public:
 #ifdef TARGET_PC
   static void BuildHostSurface(CMapAreaSurface& surf, const uchar* rec, uchar* buf);
   bool PortIsNeverMapped() const { return mVisibilityMode == kVM_Never; }
+  int PortGetNumVertices() const { return mVertexCount; }
 #endif
   bool GetIsVisibleToAutoMapper(bool worldVis, bool areaVis) const;
   bool IsInDarkWorld() const; // Guessed name

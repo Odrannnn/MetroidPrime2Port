@@ -7,7 +7,9 @@
 // (PortWarp, PortOverlay) plus the world/player state a state manager gives for free. Adding one is a
 // row in `kCommands`.
 
+#include "MetroidPrime/CAutoMapper.hpp"
 #include "MetroidPrime/CMain.hpp"
+#include "MetroidPrime/CMapWorldInfo.hpp"
 #include <SDL3/SDL.h>
 #include <dolphin/pad.h>
 #include "port_harness.h"
@@ -2037,6 +2039,24 @@ void CmdMinimap(CStateManager&, const Args&, std::string& out) {
     std::snprintf(line, sizeof(line), "minimap none enabled=%d\n", PortMinimap::Enabled() ? 1 : 0);
   }
   out += line;
+}
+
+// maprooms [reveal]: the map screen's selected room and each clickable room's centre in GUI
+// pixels, as the last map draw projected them (none off the map screen). reveal marks this world's
+// map station used, which shows its rooms on the map, so a test has rooms to click.
+void CmdMapRooms(CStateManager& mgr, const Args& args, std::string& out) {
+  if (args.size() > 1 && args[1] == "reveal") {
+    if (gpGameState == nullptr || mgr.GetWorld() == nullptr) {
+      out += "maprooms: no world\n";
+      return;
+    }
+    gpGameState->StateForWorld(mgr.GetWorld()->IGetWorldAssetId())
+        .GetMapWorldInfo()
+        ->SetMapStationUsed(true);
+    out += "map station used\n";
+    return;
+  }
+  CAutoMapper::PortDescribeMapRooms(out);
 }
 
 void CmdMapTap(CStateManager&, const Args&, std::string& out) {
@@ -5429,6 +5449,9 @@ const CommandSpec kCommands[] = {
     {"pointer", CmdPointer,
       "pointer <x> <y> move|click|dclick|tap|dtap|down|up|drag <x1> <y1>|wheel <n>|pinch <r> | back | where | hits\n"
       "                            scripted mouse/touch input for the pointer menus (GUI pixels)\n"},
+    {"maprooms", CmdMapRooms,
+      "maprooms [reveal]           the map screen's rooms and their centres (GUI pixels)\n"
+      "                            reveal: mark this world's map station used\n"},
     {"minimap", CmdMinimap, "minimap                     the HUD minimap's tap rect (GUI pixels)\n"},
     {"maptap", CmdMapTap, "maptap                      tap the minimap: opens the map screen\n"},
     {"hintshow", CmdHintShow,

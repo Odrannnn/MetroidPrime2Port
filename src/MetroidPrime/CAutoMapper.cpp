@@ -58,8 +58,11 @@
 #include "port_pointer.h"
 #include "port_pointer_menu.h"
 
+#include <algorithm>
+#include <cstdio>
 #include <math.h>
 #include <utility>
+#include <vector>
 
 // Half-width of the map screen's window, as a fraction of the frame's authored half-width.
 static const float kPortMapWindowHalf = 0.83f;
@@ -83,7 +86,144 @@ float sPortMapPinch = 1.f;
 const float kPortMapSwitchLog2 = 0.4f;
 float sPortMapSwitchAccum = 0.f;
 bool sPortMapSwitchLatched = false;
+
+// A click on the area map selects the room under it (#66). The input pass keeps the click here,
+// the next map draw tests it against the rooms' surfaces as drawn (PortRecordMapRooms) and leaves
+// the room it landed on (-1: none) for the next input pass, which pans the map there.
+bool sPortMapClickPending = false;
+float sPortMapClickX = 0.f;
+float sPortMapClickY = 0.f;
+int sPortMapClickRoom = -1;
+// The last map draw's selected room and the GUI point of each clickable room's centre (console
+// `maprooms`).
+struct SPortMapRoom {
+  int areaId;
+  float gx;
+  float gy;
+};
+std::vector< SPortMapRoom > sPortMapRooms;
+int sPortMapRoomsSelected = -1;
+
+bool PortPointInTriangle(float px, float py, const float* a, const float* b, const float* c) {
+  const float d0 = (b[0] - a[0]) * (py - a[1]) - (b[1] - a[1]) * (px - a[0]);
+  const float d1 = (c[0] - b[0]) * (py - b[1]) - (c[1] - b[1]) * (px - b[0]);
+  const float d2 = (a[0] - c[0]) * (py - c[1]) - (a[1] - c[1]) * (px - c[0]);
+  const bool neg = d0 < 0.f || d1 < 0.f || d2 < 0.f;
+  const bool pos = d0 > 0.f || d1 > 0.f || d2 > 0.f;
+  return !(neg && pos);
+}
+
+// The view depth (along camDir from focus) of the nearest surface triangle of area under the GUI
+// point (gx, gy) as the map draws it through modelXf * areaXf, or FLT_MAX when the point misses.
+float PortMapRoomHitDepth(const CMapArea& area, const CTransform4f& modelXf,
+                          const CTransform4f& areaXf, const CVector3f& focus,
+                          const CVector3f& camDir, float gx, float gy) {
+  const CTransform4f xf = modelXf * areaXf;
+  // The projected bounding box first: most rooms are nowhere near the click.
+  float x0 = FLT_MAX, y0 = FLT_MAX, x1 = -FLT_MAX, y1 = -FLT_MAX;
+  bool boxed = true;
+  for (int i = 0; boxed && i < 8; ++i) {
+    float px, py;
+    boxed = PortGuiHit::Project(xf, area.GetBoundingBox().GetPoint(i), px, py);
+    x0 = std::min(x0, px);
+    x1 = std::max(x1, px);
+    y0 = std::min(y0, py);
+    y1 = std::max(y1, py);
+  }
+  if (boxed && (gx < x0 || gx > x1 || gy < y0 || gy > y1)) {
+    return FLT_MAX;
+  }
+
+  // Indices are 8-bit, so an area has at most 256 addressable vertices.
+  const int numVerts = std::min(area.PortGetNumVertices(), 256);
+  const CVector3f* verts = area.GetVertices();
+  float projected[256][2];
+  bool onScreen[256];
+  for (int i = 0; i < numVerts; ++i) {
+    onScreen[i] = PortGuiHit::Project(xf, verts[i], projected[i][0], projected[i][1]);
+  }
+  float best = FLT_MAX;
+  for (int s = 0; s < area.GetNumSurfaces(); ++s) {
+    const int* list = area.GetSurface(s).PortGetSurfaceList();
+    const int numPrims = *list++;
+    for (int p = 0; p < numPrims; ++p) {
+      const int type = *list++;
+      const int count = *list++;
+      const uchar* idx = reinterpret_cast< const uchar* >(list);
+      list += ((count + 3) & ~3) / 4;
+      const int step = type == GX_TRIANGLES ? 3 : 1;
+      if (type != GX_TRIANGLES && type != GX_TRIANGLESTRIP && type != GX_TRIANGLEFAN) {
+        continue;
+      }
+      for (int t = 0; t + 2 < count; t += step) {
+        const int a = type == GX_TRIANGLEFAN ? idx[0] : idx[t];
+        const int b = idx[t + 1];
+        const int c = idx[t + 2];
+        if (a >= numVerts || b >= numVerts || c >= numVerts || !onScreen[a] || !onScreen[b] ||
+            !onScreen[c] ||
+            !PortPointInTriangle(gx, gy, projected[a], projected[b], projected[c])) {
+          continue;
+        }
+        const CVector3f mid = areaXf * ((verts[a] + verts[b] + verts[c]) * (1.f / 3.f));
+        best = std::min(best, CVector3f::Dot(mid - focus, camDir));
+      }
+    }
+  }
+  return best;
+}
+
+// From the map screen's draw, with the GUI camera current: record the clickable rooms (visible, of
+// the shown light or dark world) and test a pending click against them. Of the rooms under the
+// click the one nearest the viewer wins, as it is drawn on top.
+void PortRecordMapRooms(const IWorld& world, const CMapWorldInfo& info, const CTransform4f& modelXf,
+                        const CTransform4f& camXf, float darkWorldBlend, int selected) {
+  sPortMapRoomsSelected = selected;
+  const bool click = sPortMapClickPending;
+  sPortMapClickPending = false;
+  const CMapWorld* mapWorld = world.IGetMapWorld();
+  const rstl::vector< int > areas = mapWorld->GetVisibleAreas(world, info);
+  const bool inDarkWorld = darkWorldBlend >= 0.5f;
+  const CVector3f focus = camXf.GetTranslation();
+  const CVector3f camDir = camXf.GetColumn(kDY);
+  float bestDepth = FLT_MAX;
+  int bestArea = -1;
+  for (int i = 0; i < areas.size(); ++i) {
+    const int areaId = areas[i];
+    CMapArea* area = mapWorld->GetMapArea(areaId);
+    if (area == nullptr || area->IsInDarkWorld() != inDarkWorld) {
+      continue;
+    }
+    const CTransform4f areaXf = area->GetAreaPostTransform(world, areaId);
+    SPortMapRoom room = {areaId, 0.f, 0.f};
+    if (PortGuiHit::Project(modelXf, areaXf * area->GetAreaCenterPoint(), room.gx, room.gy)) {
+      sPortMapRooms.push_back(room);
+    }
+    if (click) {
+      const float depth = PortMapRoomHitDepth(*area, modelXf, areaXf, focus, camDir,
+                                              sPortMapClickX, sPortMapClickY);
+      if (depth < bestDepth) {
+        bestDepth = depth;
+        bestArea = areaId;
+      }
+    }
+  }
+  if (click) {
+    sPortMapClickRoom = bestArea;
+  }
+}
 } // namespace
+
+void CAutoMapper::PortDescribeMapRooms(std::string& out) {
+  char line[96];
+  std::snprintf(line, sizeof(line), "maprooms selected=%d rooms=%d\n", sPortMapRoomsSelected,
+                static_cast< int >(sPortMapRooms.size()));
+  out += line;
+  for (size_t i = 0; i < sPortMapRooms.size(); ++i) {
+    std::snprintf(line, sizeof(line), "  room %d %.1f %.1f\n", sPortMapRooms[i].areaId,
+                  sPortMapRooms[i].gx, sPortMapRooms[i].gy);
+    out += line;
+  }
+}
 #endif
 static const char* const skFRME_MapScreen = "FRME_MapScreen";
 static const char* const skFRME_MapScreenBackground = "FRME_MapScreenBackground";
@@ -729,6 +869,10 @@ void CAutoMapper::PortPointerInput(CFinalInput& input, const CStateManager& mgr)
   sPortMapPanX = sPortMapPanY = sPortMapRotX = sPortMapRotY = sPortMapTwist = 0.f;
   sPortMapPinch = 1.f;
   sPortMapPanHeld = false;
+  // The room the last map draw found under a click; a click no draw tested lapses.
+  const int clickedRoom = sPortMapClickRoom;
+  sPortMapClickRoom = -1;
+  sPortMapClickPending = false;
   const bool universe = mState == kAMS_MapScreenUniverse;
   if ((!universe && mState != kAMS_MapScreen) || !IsInPlayerControlState() ||
       IsRenderStateInterpolating() || !PortPointerMenu::Begin()) {
@@ -814,6 +958,23 @@ void CAutoMapper::PortPointerInput(CFinalInput& input, const CStateManager& mgr)
     if ((icon != nullptr && PortPointerMenu::TakeClickOn(icon)) ||
         (label != nullptr && PortPointerMenu::TakeClickOn(label))) {
       PortPointerMenu::PressX(input);
+    }
+  }
+  // A click on a room selects it (#66): the map pans to the room's centre as a hint's pan does,
+  // and the selection follows the view's centre (the update's FindClosestVisibleArea). The click
+  // is tested where the map is drawn, so its room arrives on the next pass.
+  if (!universe) {
+    if (clickedRoom >= 0) {
+      mRenderState2 = mRenderState0;
+      mRenderState1.mAreaPoint = GetAreaPointOfInterest(mgr, clickedRoom);
+      mRenderState1.ResetInterpolation();
+      mRenderState1.mPointEase = SAutoMapperRenderState::kE_Out;
+      ResetInterpolationTimer(0.3f);
+    } else {
+      int count = 0;
+      if (PortPointerMenu::TakeClickPoint(sPortMapClickX, sPortMapClickY, count)) {
+        sPortMapClickPending = true;
+      }
     }
   }
 }
@@ -1420,6 +1581,10 @@ void CAutoMapper::Draw(const CStateManager& mgr, const CTransform4f& xf, float a
                  : CTransform4f::Identity();
   const float objectScale = mRenderState0.mCamDist / gpTweakAutoMapper->GetMinCamDistance();
   const float mapAlpha = alphaInterp * (1.f - universeInterp);
+#ifdef TARGET_PC
+  sPortMapRooms.clear();
+  sPortMapRoomsSelected = -1;
+#endif
 
   if (IsFullyOutOfMiniMapState()) {
     if (universeInterp < 1.f && mWorld != nullptr) {
@@ -1459,6 +1624,12 @@ void CAutoMapper::Draw(const CStateManager& mgr, const CTransform4f& xf, float a
                                         true, mPlayerFlashPulse, hintFlash, objectScale),
           mCurAreaId.value, mCurAreaId.value, mRenderState0.mDrawDepth1, mRenderState0.mDrawDepth2,
           mDarkWorldBlend, true);
+#ifdef TARGET_PC
+      if (mState == kAMS_MapScreen && mNextState == kAMS_MapScreen) {
+        PortRecordMapRooms(*mWorld, info, planeXf * preXf, camXf, mDarkWorldBlend,
+                           mCurAreaId.value);
+      }
+#endif
     }
     if (mBasewidgetHintgroup != nullptr) {
       mBasewidgetHintgroup->SetColor(CColor::White().WithAlphaOf(1.f - universeInterp));
