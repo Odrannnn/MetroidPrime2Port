@@ -86,10 +86,12 @@ Game page:
   picking up an item keeps control (its "Disable Controls" hint is dropped), shows the message box's
   headline ("Missile Expansion acquired!") as a HUD memo instead of pausing, and skips the cinematic
   some items start (20 of the 124 item pickups) the way the skip button does, so the doors, platforms
-  and layers the scene changes still change. `CScriptPickup::Touch` walks the pickup's Arrived chain
+  and layers the scene changes still change. A map station's message box after its download shows
+  as a memo the same way (its cinematic and the map screen play as retail;
+  `PortPickupPresentation::IsMapStationMemo`). `CScriptPickup::Touch` walks the pickup's Arrived chain
   through relays, memory relays, timers and sequence timers and marks those three targets
   (`platform/port_pickup_presentation.cpp`); `tools/pickup_presentation.py` checks the rule against
-  every pickup on the disc.
+  every pickup and map station on the disc.
 - Boot logos and the world name card on load: no setting; they end on A or Start (shown as retail
   under Original experience). Env `MP2_BOOT_LOGOS`, `MP2_WORLD_NAME` (`show`, `skip`, `off`).
 - `walk_speed`: Enhancements > Pace > Walk speed (50 to 200 percent, default 100 = retail); env

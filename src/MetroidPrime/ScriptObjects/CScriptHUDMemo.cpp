@@ -9,6 +9,7 @@
 
 #include "Kyoto/Text/CStringTable.hpp"
 #ifdef TARGET_PC
+#include "port_overlay.h"
 #include "port_pickup_presentation.h"
 #include "port_randomizer.h"
 #endif
@@ -45,9 +46,11 @@ void CScriptHUDMemo::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) 
       break;
     }
     // Seamless pickups: the item's message box shows its headline (string 0, "X acquired!") as a
-    // HUD memo instead of pausing the game.
+    // HUD memo instead of pausing the game; so does a map station's after its download.
     if (GetActive() && m_dispType == kDT_MessageBox && m_stringTable &&
-        PortPickupPresentation::Take(PortPickupPresentation::kMemo, GetUniqueId().Value())) {
+        (PortPickupPresentation::Take(PortPickupPresentation::kMemo, GetUniqueId().Value()) ||
+         (PortOverlay::SeamlessPickups() && !mgr.IsMultiplayer() &&
+          PortPickupPresentation::IsMapStationMemo(mgr, msg)))) {
       CSamusHud::DisplayHudMemo((*m_stringTable)->GetString(0),
                                 CHUDMemoParms(5.f, true, false, false, 1, true));
       break;

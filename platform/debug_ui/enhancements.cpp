@@ -32,7 +32,7 @@ void DrawEnhancementsTab() {
   ImGui::SeparatorText("Pace");
   // The game reads this every frame in its cinematic flow state.
   Changed(ImGui::Checkbox("Skippable cutscenes", &sSkipCinematics));
-  // Read when a pickup is touched.
+  // Read when a pickup is touched and when a map station's message box comes up.
   Changed(ImGui::Checkbox("Seamless item pickups", &sSeamlessPickups));
   // Off walks at retail speed; a custom action bound to this switch makes the slider a sprint.
   Changed(ImGui::Checkbox("Custom walk speed", &sWalkSpeedEnabled));
