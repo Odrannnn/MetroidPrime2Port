@@ -814,6 +814,15 @@ void CElementGen::CreateNewParticles(int count) {
         mAdvValues.push_back_unsafe(CAdvancedValues());
       }
     }
+#ifdef TARGET_PC
+    // Sized to MAXP's first value, but MAXP is re-read every tick: a MAXP that grows later
+    // would index past it (MP1 565e5fa2c).
+    if (mOrientType == kMOT_One) {
+      while (mParentMatrices.size() < genCount + mParticles.size()) {
+        mParentMatrices.push_back(CMatrix3f::Identity());
+      }
+    }
+#endif
     CParticleGlobals::SetParticleAccessParameters(nullptr);
     const CVector3f scaledTranslation =
         (mGlobalScaleTransformInverse * mLocalScaleTransformInverse) * mTranslation;
