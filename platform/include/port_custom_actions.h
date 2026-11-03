@@ -78,7 +78,8 @@ std::string AutoName(const PortInput::CustomActionDef& def);
 // def.name when the player named it, else AutoName.
 std::string DisplayName(const PortInput::CustomActionDef& def);
 
-// Runs it now, on its binding's press. Returns the short note to show the player
+// Runs it now, on its binding's press (and a "hold" one again on the release, which
+// switches it back). Returns the short note to show the player
 // ("Invincibility on", "Saved to slot 3", "Cheats are off in the Original
 // experience"), or "" for none.
 std::string Run(const PortInput::CustomActionDef& def);

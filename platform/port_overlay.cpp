@@ -74,6 +74,7 @@ bool sMapInvertX = false;
 bool sMapInvertY = false;
 bool sBallCam = false;
 int sBallCamSpeed = PortOverlay::kBallCamSpeedDefault;
+bool sWalkSpeedEnabled = true;
 int sWalkSpeed = PortOverlay::kWalkSpeedDefault;
 int sScanSpeed = PortOverlay::kScanSpeedDefault;
 int sMusicBoost = PortOverlay::kVolumeBoostDefault;
@@ -1188,7 +1189,7 @@ int BallCamSpeed() {
 
 int WalkSpeed() {
   ReadEnv();
-  if (OriginalExperience()) {
+  if (OriginalExperience() || !WalkSpeedEnabled()) {
     return kWalkSpeedDefault;
   }
   return EnvIntIn("MP2_WALK_SPEED", sWalkSpeed, kWalkSpeedMin, kWalkSpeedMax);
@@ -1213,6 +1214,17 @@ bool ConsumeShowHintRequest() {
   const bool requested = sShowHintRequested;
   sShowHintRequested = false;
   return requested;
+}
+
+bool WalkSpeedEnabled() {
+  ReadEnv();
+  return EnvBool("MP2_WALK_SPEED_ENABLED", sWalkSpeedEnabled);
+}
+
+void SetWalkSpeedEnabled(bool enabled) {
+  ReadEnv();
+  sWalkSpeedEnabled = enabled;
+  Persist();
 }
 
 void SetWalkSpeed(int percent) {

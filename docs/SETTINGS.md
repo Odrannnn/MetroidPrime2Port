@@ -98,6 +98,10 @@ Game page:
   orbit strafe and approach speeds are all multiplied by it, so she reaches k times the retail speed
   in the same time and stops in the same time. Jump height, sideways dashes, turning, the grapple
   and the Morph Ball are unchanged; speed carries into a jump. At 100 movement is exactly retail.
+- `walk_speed_enabled`: Enhancements > Pace > Custom walk speed (default on); env
+  `MP2_WALK_SPEED_ENABLED`, console `walkspeed on|off`. Off moves at retail speed whatever the
+  slider says. For a sprint, set the speed and bind a custom action to this switch (Settings >
+  Custom walk speed, Toggle or While held) in Controls.
 - `scan_speed`: Enhancements > Pace > Scan speed (50 to 400 percent, default 100 = retail); env
   `MP2_SCAN_SPEED`, console `scanspeed`. Scales how fast a scan fills (CPlayer::UpdateScanningState);
   the visor, scan-point and hint text are unchanged.
@@ -329,7 +333,8 @@ Controls > Remap:
   a world starts; another world reloads it, a loaded room of this world is instant),
   Save states (save to or load from a given slot), Display (show a message on the HUD, text
   language) and Advanced (any debug console command line, `docs/CONSOLE.md`; it must be
-  given a name). The on/off ones take Toggle, Turn on or Turn off. Its name is made from
+  given a name). The on/off ones take Toggle, Turn on, Turn off or While held (switched the
+  other way while the binding is held and back on release, with no note). Its name is made from
   what it does ("God mode (on/off)", "Warp to Great Temple (Temple Grounds)") unless one is
   typed. A press shows what it did as a note at the top of the screen; Cheats, Travel and
   console commands refuse in the Original experience. Saved in `controls.toml` as

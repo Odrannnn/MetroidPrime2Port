@@ -24,6 +24,7 @@ extern bool sMapInvertX;
 extern bool sMapInvertY;
 extern bool sBallCam;
 extern int sBallCamSpeed;
+extern bool sWalkSpeedEnabled;
 extern int sWalkSpeed;
 extern int sScanSpeed;
 extern int sMusicBoost;

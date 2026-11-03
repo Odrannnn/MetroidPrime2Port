@@ -16,7 +16,7 @@
 //   renamed = true                   # the player set the name: keep it
 //   preset = "setting"               # what it does (a catalogue key)
 //   arg = "invert_y"                 # the preset's option
-//   mode = "toggle"                  # toggle, on, off, or "" for no mode
+//   mode = "toggle"                  # toggle, on, off, hold, or "" for no mode
 //   command = ""                     # "command" preset: the console line
 //
 //   [[profile]]
@@ -102,7 +102,7 @@ struct CustomActionDef {
   bool renamed = false;     // the player set the name; keep it when the options change
   std::string preset;       // catalogue key, e.g. "setting", "phazon_beam", "warp", "command"
   std::string arg;          // the preset's option (setting key, item, "MLVL:MREA", slot, ...)
-  std::string mode;         // "toggle", "on", "off" or "" (presets that have no mode)
+  std::string mode;         // "toggle", "on", "off", "hold" or "" (presets that have no mode)
   std::string command;      // "command" preset: the console line
   bool operator==(const CustomActionDef&) const = default;
 };

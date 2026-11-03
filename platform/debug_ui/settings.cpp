@@ -323,6 +323,7 @@ const SettingKey kSettingKeys[] = {
     BoolKey< &sBallCam >("ball_cam"),
     IntKey< &sBallCamSpeed, PortOverlay::kBallCamSpeedMin, PortOverlay::kBallCamSpeedMax >("ball_cam_speed", "50",
                                                                                           "200"),
+    BoolKey< &sWalkSpeedEnabled >("walk_speed_enabled"),
     IntKey< &sWalkSpeed, PortOverlay::kWalkSpeedMin, PortOverlay::kWalkSpeedMax >("walk_speed", "50",
                                                                                   "200"),
     IntKey< &sScanSpeed, PortOverlay::kScanSpeedMin, PortOverlay::kScanSpeedMax >("scan_speed", "50",

@@ -1618,17 +1618,23 @@ void CmdMemo(CStateManager& mgr, const Args& args, std::string& out) {
   out += hint ? "hint memo shown\n" : "memo shown\n";
 }
 
-// walkspeed [50..200]: on-foot movement speed in percent (walk_speed); no argument prints it.
+// walkspeed [50..200|on|off]: on-foot movement speed in percent (walk_speed), or the
+// Custom walk speed switch (walk_speed_enabled; off is retail); no argument prints it.
 void CmdWalkSpeed(CStateManager&, const Args& args, std::string& out) {
   if (args.size() > 1) {
-    const int value = ArgToInt(args[1], -1);
-    if (value < PortOverlay::kWalkSpeedMin || value > PortOverlay::kWalkSpeedMax) {
-      Fail("usage: walkspeed [50..200]");
-      return;
+    if (args[1] == "on" || args[1] == "off") {
+      PortOverlay::SetWalkSpeedEnabled(args[1] == "on");
+    } else {
+      const int value = ArgToInt(args[1], -1);
+      if (value < PortOverlay::kWalkSpeedMin || value > PortOverlay::kWalkSpeedMax) {
+        Fail("usage: walkspeed [50..200|on|off]");
+        return;
+      }
+      PortOverlay::SetWalkSpeed(value);
     }
-    PortOverlay::SetWalkSpeed(value);
   }
-  out += "walkspeed " + std::to_string(PortOverlay::WalkSpeed()) + "\n";
+  out += "walkspeed " + std::to_string(PortOverlay::WalkSpeed()) +
+         (PortOverlay::WalkSpeedEnabled() ? "" : " (custom walk speed off)") + "\n";
 }
 
 // scanspeed [50..400]: scan speed in percent (scan_speed); no argument prints it.
@@ -5459,7 +5465,7 @@ const CommandSpec kCommands[] = {
     {"memo", CmdMemo, "memo <0|1> <text...>        show a HUD memo; 1 = hint memo (framed, button ring)\n"
       "memo pause <strg>           show a string table as the boxed memo a paused HUDMemo opens\n"},
     {"walkspeed", CmdWalkSpeed,
-      "walkspeed [50..200]         on-foot movement speed in percent (walk_speed); no argument prints it\n"},
+      "walkspeed [50..200|on|off]  on-foot movement speed in percent (walk_speed), or switch it on/off; no argument prints it\n"},
     {"scanspeed", CmdScanSpeed,
       "scanspeed [50..400]         scan speed in percent (scan_speed); no argument prints it\n"},
     {"language", CmdLanguage,

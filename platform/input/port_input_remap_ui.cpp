@@ -1070,7 +1070,7 @@ void DrawPresetOptions(const PortCustomActions::Preset& preset) {
   }
 
   if (preset.hasMode) {
-    int mode = sCustom.mode == "on" ? 1 : sCustom.mode == "off" ? 2 : 0;
+    int mode = sCustom.mode == "on" ? 1 : sCustom.mode == "off" ? 2 : sCustom.mode == "hold" ? 3 : 0;
     ImGui::AlignTextToFramePadding();
     ImGui::TextUnformatted("When pressed:");
     ImGui::SameLine();
@@ -1079,7 +1079,10 @@ void DrawPresetOptions(const PortCustomActions::Preset& preset) {
     ImGui::RadioButton("Turn on", &mode, 1);
     ImGui::SameLine();
     ImGui::RadioButton("Turn off", &mode, 2);
-    sCustom.mode = mode == 1 ? "on" : mode == 2 ? "off" : "toggle";
+    ImGui::SameLine();
+    ImGui::RadioButton("While held", &mode, 3);
+    ImGui::SetItemTooltip("Switch it the other way while the binding is held, and back on release.");
+    sCustom.mode = mode == 1 ? "on" : mode == 2 ? "off" : mode == 3 ? "hold" : "toggle";
   }
 
   // The name follows the options until the player types one; clearing it goes

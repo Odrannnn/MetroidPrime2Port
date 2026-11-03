@@ -298,6 +298,14 @@ struct Output {
       }
     }
   }
+  // f(custom action) for each custom action released this poll.
+  template <typename F> void ForEachCustomReleased(F f) const {
+    for (size_t id = 0; id < customReleased.size(); ++id) {
+      if (customReleased[id] != 0) {
+        f(CustomAction(uint16_t(id)));
+      }
+    }
+  }
   // Positive minus negative half, -1..1.
   float Axis(Action neg, Action pos) const;
 };

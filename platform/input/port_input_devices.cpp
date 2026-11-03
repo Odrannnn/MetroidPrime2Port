@@ -1621,18 +1621,23 @@ void PollPortActions() {
     }
   }
   // The player's own actions (controls.toml [[custom_action]]): each one runs as
-  // its binding is pressed, and the note it returns is the toast.
-  out.ForEachCustomPressed([](Action action) {
+  // its binding is pressed, and the note it returns is the toast. A "hold" one (a
+  // sprint, say) runs again on the release to switch back, without toasts.
+  auto runCustom = [](Action action, bool released) {
     const std::shared_ptr<const PortInput::UserBindings> user = UserBindings();
     const uint16_t id = PortInput::CustomId(action);
     for (const PortInput::CustomActionDef& def : user->customActions) {
       if (def.id == id) {
+        const bool hold = def.mode == "hold";
+        if (released && !hold) return;
         const std::string note = PortCustomActions::Run(def);
-        if (!note.empty()) PortDebug::ShowNote(note);
+        if (!note.empty() && !hold) PortDebug::ShowNote(note);
         return;
       }
     }
-  });
+  };
+  out.ForEachCustomPressed([&](Action action) { runCustom(action, false); });
+  out.ForEachCustomReleased([&](Action action) { runCustom(action, true); });
   if (out.Pressed(Action::Screenshot)) aurora::request_screenshot();
   if (out.Pressed(Action::PhotoMode)) {
     PortPhoto::RequestToggle();

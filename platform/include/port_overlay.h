@@ -170,8 +170,12 @@ void SetComboMissileCost(int cost);
 // Dark/Light ammo a capacity pickup grants is multiplied by this / 50 (retail: 50).
 int BeamAmmoPerExpansion();
 void SetBeamAmmoPerExpansion(int ammo);
+// The walk speed in use: retail (100) while the Custom walk speed switch (`walk_speed_enabled`) is
+// off, so a custom action can flip between retail and the slider's speed as a sprint.
 int WalkSpeed();
 void SetWalkSpeed(int percent);
+bool WalkSpeedEnabled();
+void SetWalkSpeedEnabled(bool enabled);
 // Scan speed in percent (`MP2_SCAN_SPEED`, 100 = retail): ScanSpeed() scales the time a scan takes
 // (CPlayer::UpdateScanningState).
 const int kScanSpeedMin = 50;
