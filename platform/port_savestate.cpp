@@ -17,6 +17,7 @@
 #include <algorithm>
 
 #include "port_debug.h"
+#include "port_entry.h"
 #include "port_mods.h"
 #include "port_overlay.h"
 #include "port_resume_logic.h"
@@ -68,7 +69,11 @@ namespace {
 
 constexpr uint32_t kMagic = 0x5332504d; // "MP2S" read little-endian
 // 2: a room state section follows the blob. Version 1 states still load, without room state.
-constexpr uint32_t kVersion = 2;
+// 3: the disc's game code follows the room state. The CGameState stream sizes its hint and scan
+// lists from the disc's data, so another disc's state misreads (issue #68: its escape timer came
+// back running, which kills Samus); versions 1 and 2 carry no code and load as before.
+constexpr uint32_t kVersion = 3;
+constexpr uint32_t kVersionRoom = 2;
 constexpr uint32_t kVersionNoRoom = 1;
 // The card slot holds 0xa38 bytes of CGameState stream (SGameFileSlot::mSaveBuffer); the state
 // keeps more room than that so a port-only addition to the stream cannot be cut off silently.
@@ -100,6 +105,7 @@ struct State {
   std::string room;
   std::vector< uint8_t > blob;
   RoomState roomState; // empty for a version 1 state
+  std::string gameCode; // the disc that made it ("G2ME"), empty before version 3
   PortResume::Header resumeHeader; // a quick-resume file only (ReadSlot)
 };
 
@@ -262,6 +268,7 @@ std::string Encode(const State& s) {
   std::string room;
   EncodeRoomState(s.roomState, room);
   PutBytes(out, room.data(), room.size());
+  PutBytes(out, s.gameCode.data(), s.gameCode.size());
   return out;
 }
 
@@ -272,7 +279,7 @@ bool Decode(const std::string& in, State& s, std::string& error) {
     return false;
   }
   const uint32_t version = r.U32();
-  if (version != kVersion && version != kVersionNoRoom) {
+  if (version != kVersion && version != kVersionRoom && version != kVersionNoRoom) {
     error = "save state version " + std::to_string(version) + " is not supported";
     return false;
   }
@@ -303,17 +310,29 @@ bool Decode(const std::string& in, State& s, std::string& error) {
     }
   }
   s.blob.assign(blob.begin(), blob.end());
-  if (version >= kVersion) {
+  if (version >= kVersionRoom) {
     const std::string room = r.Bytes();
     if (!r.ok || !DecodeRoomState(room, s.roomState)) {
       error = "save state's room state is damaged";
       return false;
     }
   }
+  if (version >= kVersion) {
+    s.gameCode = r.Bytes();
+    if (!r.ok) {
+      error = "save state is truncated";
+      return false;
+    }
+  }
   return true;
 }
 
-bool ReadSlot(int slot, State& s, std::string& error) {
+// A state made with another disc (PAL, Trilogy, USA) cannot be read with this one's data.
+bool OtherDisc(const State& s) {
+  return !s.gameCode.empty() && s.gameCode != port::entry::CurrentGameCode();
+}
+
+bool ReadSlot(int slot, State& s, std::string& error, bool anyDisc = false) {
   const std::string path = SlotPath(slot);
   if (path.empty()) {
     error = "no user directory, so no save state folder";
@@ -335,6 +354,11 @@ bool ReadSlot(int slot, State& s, std::string& error) {
   }
   if (!Decode(bytes, s, error)) {
     error = path + ": " + error;
+    return false;
+  }
+  if (!anyDisc && OtherDisc(s)) {
+    error = SlotName(slot) + " was made with another disc (" + s.gameCode + "; this one is " +
+            port::entry::CurrentGameCode() + ")";
     return false;
   }
   return true;
@@ -439,6 +463,7 @@ bool Capture(CStateManager& mgr, State& s, std::string& error) {
   s.morphed = morph == CPlayer::kMS_Morphed || morph == CPlayer::kMS_Morphing;
   s.playTime = gpGameState->GetTotalPlayTime();
   s.savedAt = static_cast< int64_t >(std::time(nullptr));
+  s.gameCode = port::entry::CurrentGameCode();
 
   // A card save records the area it was made in; do the same for the stream, and leave the
   // desired area as it was (the load sets it from the header).
@@ -1065,13 +1090,13 @@ Info SlotInfo(int slot) {
   Info info;
   State s;
   std::string error;
-  if (!ReadSlot(slot, s, error)) {
+  if (!ReadSlot(slot, s, error, true)) {
     return info;
   }
   info.exists = true;
   info.worldId = s.worldId;
   info.areaIndex = s.areaIndex;
-  info.room = s.room;
+  info.room = OtherDisc(s) ? s.room + " (" + s.gameCode + " disc)" : s.room;
   info.playTime = s.playTime;
   info.savedAt = s.savedAt;
   info.morphed = s.morphed;
