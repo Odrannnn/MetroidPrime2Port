@@ -117,27 +117,33 @@ is no longer the only source of locations. Plan, each step checkable on its own:
      strict only shrinks the seed space; one that is too loose makes unbeatable seeds.
    - Terrain check (enforced, 2026-11-03): `tools/rando_terrain.py` reads each area's static
      collision (MREA CAreaOctTree), finds standable spots (`IsFloor`: Floor material or normal
-     z > 0.85), and links them by walking (step 1.0), falling, rolling and analytical jumps (apex
-     3.78, Space Jump 7.68), including a jump that morphs into a raised tunnel mouth. For each rule
+     z > 0.85, facing up: a ceiling's top is no floor), and links them by walking (step 1.0),
+     falling straight down, rolling and analytical jumps (apex 3.78, Space Jump 7.68), including a
+     jump that morphs into a raised tunnel mouth and a ball rolling off a tunnel lip. For each rule
      edge it reports what the mesh needs (nothing, MorphBall, SpaceJumpBoots, both, no path);
      MorphBall is in the start inventory, so only SpaceJumpBoots can refute. Script platforms and
      solid actors (PLAT, ACTR with isSolid) on default-on layers are added at their initial place
      (DCLN, else collision box, else model bounds) in two states: as the area starts (breakable
      crates included) and once switches are thrown (ACTV, never DCTV or destroyed); an edge that
-     passes only with them says "(with platforms)". Docks are anchored by shape (DOCK XFRM scale);
+     passes only with them says "(with platforms)". Docks are anchored by shape (DOCK XFRM scale;
+     a tall door's floor is searched deeper);
      virtual docks are skipped; a pickup is reached within jump touch range (6.2, 10.1 with Space
      Jump). Terms with grapple, Screw Attack, Gravity Boost, Boost Ball, bombs or Spider Ball are
      not refuted (UNMODELLED). Not modelled: moving platforms, story layer switches (GFMC
-     Compound's Kinetic Orb Cannon sits on "Load After Movie"), cannons, elevators.
+     Compound's Kinetic Orb Cannon sits on "Load After Movie"), cannons, elevators,
+     air drift during a long fall (Sanctum Access).
      Verdicts are cached per area in `~/.cache/mp2-rando-terrain/` (key: the tool's bytes, mesh,
-     edges, platforms): a cold run takes ~17 min, a warm one seconds. Full run: 956 edge
-     directions, ok 509, refuted 65, nopath 217, unanchored 27, virtual 138.
+     edges, platforms): a cold run takes ~17 min, a warm one seconds; the key holds rule line
+     numbers, so a rule edit rechecks every area below it in that file. Full run: 956 edge
+     directions, ok 504, refuted 49, nopath 237, unanchored 28, virtual 138.
      `tools/rando_rules.py` fails on a refuted edge unless `tools/rando_rules/terrain_accepted.txt`
      lists it (`area src > dst: reason`), and on an accepted line nothing refutes any more
-     (`--no-terrain` skips; no disc skips too). The baseline accepts all 65 current refutations;
-     most are marked "unverified": triage each (a real gap of the rule, or a model gap with its
-     reason) before trusting it. Early vanilla areas crossed before Space Jump are model gaps,
-     not rule errors (`TestVanillaSpheres` guards that).
+     (`--no-terrain` skips; no disc skips too). The baseline accepted all 65 refutations of
+     2026-11-03 as "unverified"; 44 still are: triage each (a real gap of the rule, or a model gap
+     with its reason) before trusting it. Triaged so far: Service Access, Landing Site, Transport A
+     Access and Sanctum Access (the climb) were rule errors; signed floors cleared 11 more. Early
+     vanilla areas crossed before Space Jump are model gaps, not rule errors (`TestVanillaSpheres`
+     guards that).
    - State (2026-10-27): all five worlds have rules (284 areas). With every item, all 114
      locations are reachable from the Landing Site. With the starting inventory and the vanilla
      placement all 114 open in 9 spheres (`TestVanillaSpheres` in `tests/port_rando_logic.cpp`,

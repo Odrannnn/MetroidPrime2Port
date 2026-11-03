@@ -18,7 +18,8 @@ area OF_Temple_hall_top
     dock0 - tel0x00000098: any
 
 area 0g_temple_hall
-    dock0 - dock1: any
+    dock0 > dock1: any
+    dock1 > dock0: SpaceJumpBoots  # terrain: a sheer 4.8-unit step spans the hall (y 64.5) below the dock0 side, above a standing jump
     # Missile alcove 15 units behind a barrier that needs a blast or a roll-through.
     dock0 > loc0x00010099: SuperMissile | MorphBallBombs | Powerbomb | BoostBall | ScrewAttack  # unsure: barrier is off the hall axis (x 24 vs 1.3); assumed to guard the alcove
     dock1 > loc0x00010099: SuperMissile | MorphBallBombs | Powerbomb | BoostBall | ScrewAttack  # unsure: same barrier
@@ -48,7 +49,7 @@ area om_temple_hall_top
     dock0 - tel0x0006002C: any
 
 area 0h_temple_hall
-    dock0 - dock1: any  # unsure: dock1 is 30 units above dock0; assumed a walkable ramp (it is the main path to the Sun Generator)
+    dock0 - dock1: any  # dock1 is 30 units above dock0; the Elevator platform (PLAT 0x00040077) lifts between them
 
 area 0i_temple_hall
     dock0 - dock1: any
@@ -80,7 +81,8 @@ area 08_temple_sungenerator_dark
 # ----------------------------------------------------------------- dark world
 
 area 0h_temple_hall_dark
-    dock0 - dock1: any  # unsure: dock0 is 30 units above dock1; assumed a walkable ramp like its light twin
+    dock0 > dock1: any  # the 30-unit fall down the shaft drifts under the lower room's ceiling onto its floor
+    dock1 > dock0: ScrewAttack & SpaceJumpBoots  # the shaft is 30 units high with no lift or ramp; the room's Screw Attack hints (POIN, CAMH, TRGR "Screw Attack") mark the climb
 
 area 07_temple_mothlordsanctuary_dark
     # Single dock (script-locked); nothing to cross.

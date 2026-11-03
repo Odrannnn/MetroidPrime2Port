@@ -26,12 +26,15 @@
 # ---------------------------------------------------------------- light world
 
 area 01_Temple_LandingSite
-    dock0 - dock1: any
+    dock0 > dock1: any
+    dock1 > dock0: SpaceJumpBoots  # terrain: the dock0 door ledge is 9.6 units above the ground and the only links to it start from points 14 units higher still
 
 area 0q_temple_hall
     dock0 - dock1: any
-    dock0 - dock2: any
-    dock1 - dock2: any
+    dock0 > dock2: MorphBall  # through the morph tunnel; its dock0-side mouth is 2.9 units up (jump and morph)
+    dock1 > dock2: MorphBall  # as above
+    dock2 > dock0: MorphBall & MorphBallBombs  # terrain: the tunnel mouth is 3.0 units above the dock2-side step under 5.1 units of headroom, so a standing jump hits the ceiling first; bomb jump in
+    dock2 > dock1: MorphBall & MorphBallBombs  # as above
     dock3 > dock0: MorphBall
     dock0 > dock3: MorphBall & SpaceJumpBoots  # unsure: morph tunnel 12.5 units above the floor; ledge reach not verified
     dock4 > dock0: MorphBall
@@ -276,8 +279,10 @@ area 10_temple_pathofeyes_dark
 
 area 0q_temple_hall_dark
     dock0 - dock1: any
-    dock0 - dock2: any
-    dock1 - dock2: any
+    dock0 > dock2: MorphBall  # through the morph tunnel; its dock0-side mouth is 2.9 units up (jump and morph)
+    dock1 > dock2: MorphBall  # as above
+    dock2 > dock0: MorphBall & MorphBallBombs  # terrain: the tunnel mouth is 3.0 units above the dock2-side step under 5.1 units of headroom, so a standing jump hits the ceiling first; bomb jump in
+    dock2 > dock1: MorphBall & MorphBallBombs  # as above
     ignore 0x001C008F: safe zone crystal, not a barrier
 
 area 03_temple_combattraining_dark

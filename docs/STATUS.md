@@ -4,6 +4,16 @@ The Status section of AGENTS.md links here: this is the per-session detail, rewr
 appended, dated as in the heading there.
 
 
+## 2026-11-03: terrain triage, first pass
+
+- Model: floors are signed (a ceiling's top was a floor: 11 refutations cleared, several passes became honest
+  nopath), a ball rolls off tunnel lips (DROP_REACH 1.5), tall doors anchor deeper. Box triangles wind outward.
+- Rule fixes: Service Access (Meeting Grounds side needs a bomb jump into the tunnel), Landing Site
+  dock1 > dock0 (SpaceJumpBoots), Transport A Access dock1 > dock0 (SpaceJumpBoots), Sanctum Access climb
+  (ScrewAttack & SpaceJumpBoots). Accepted with reasons: Controller Transport's elevator, Sanctum Access's fall.
+  Vanilla 114/114 in 9 spheres, gen 200/200. Refuted 49, 44 still "unverified" (next: 0t_temple_hall dock0 > dock3).
+- Randovania's logic text was read only as a private cross-check (not committed, not cited).
+
 ## 2026-11-03: randomizer terrain check enforced
 
 - Landing Site dock1 > dock0's earlier pass came only from intro-cinematic PLATs; platforms now count in two

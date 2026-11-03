@@ -18,7 +18,8 @@ The model, and its limits (docs/RANDOMIZER.md, "Terrain check"):
 - Physics from Standard.ntwk: gravity 35, jump force 50 for 0.25 s (apex 3.78), double jump impulse
   8 then force 60 for 0.1 s (apex 7.68), air speed 16.5, step up 1.0, height 2.7, radius 0.5, ball
   radius 0.7. Analytical, not measured in game; the margins below are deliberately wide.
-- Floors are what CGameCollision::IsFloor says: the Floor material, or normal z > 0.85; collision is two-sided, as the game's is.
+- Floors are what CGameCollision::IsFloor says: the Floor material, or normal z > 0.85, facing up (a
+  ceiling's top is no floor); collision blocks from both sides, as the game's does.
 - Water (no Gravity Boost), Screw Attack, bomb jumps, dash and slope jumps are not modelled: the
   result only ever needs more than the game does, never less.
 - Static mesh plus script platforms and solid actors (PLAT, ACTR with isSolid: DCLN, collision box
@@ -27,7 +28,8 @@ The model, and its limits (docs/RANDOMIZER.md, "Terrain check"):
   destroyed); an edge is also tried on the static mesh alone, so these only ever add paths. Moving
   platforms, story layer switches, cannons, doors, gates and elevators are not modelled.
 - A jump may end in a ball-only spot (a tunnel mouth above the floor): Samus rises standing, morphs
-  near the apex and crosses at ball height; both legs are checked against the mesh.
+  near the apex and crosses at ball height; both legs are checked against the mesh. A ball rolls
+  off a tunnel lip onto a lower floor up to DROP_REACH (1.5) ahead.
 - Terms with an UNMODELLED item (grapple, Screw Attack, bombs, ...) are not refuted.
 - Enforced by tools/rando_rules.py: a refuted edge fails unless tools/rando_rules/terrain_accepted.txt
   lists it as a gap of this model.
@@ -46,7 +48,7 @@ import savw_diff  # noqa: E402
 
 CACHE = pathlib.Path.home() / ".cache" / "mp2-rando-terrain"    # verdicts per area, keyed by inputs
 GRID = 0.5            # floor sample spacing
-FLOOR_NZ = 0.85       # |normal z| of a floor without the Floor material (CGameCollision::IsFloor)
+FLOOR_NZ = 0.85       # normal z of a floor without the Floor material (CGameCollision::IsFloor)
 FLOOR_FLAGGED_NZ = 0.3  # a Floor-material triangle steeper than this is a wall for standing
 HEIGHT = 2.7          # player height
 BALL = 1.4            # ball diameter
@@ -156,7 +158,7 @@ def euler(deg):
 def box_tris(lo, hi):
     c = np.array([[(lo, hi)[i >> k & 1][k] for k in range(3)] for i in range(8)], float)
     quads = [(0, 2, 6, 4), (1, 5, 7, 3), (0, 4, 5, 1), (2, 3, 7, 6), (0, 1, 3, 2), (4, 6, 7, 5)]
-    return np.array([c[[q[0], q[i], q[i + 1]]] for q in quads for i in (1, 2)])
+    return np.array([c[[q[0], q[i + 1], q[i]]] for q in quads for i in (1, 2)])   # wound outward
 
 
 def dcln_tris(d):
@@ -366,6 +368,7 @@ def reach(dz, level):
 BALL_STEP = 0.5
 JUMP_MAX = 10.0       # horizontal search radius for jumps
 JUMP_DROP = 12.0      # deepest jump down considered
+DROP_REACH = 1.5      # horizontal reach of a ball rolling off a ledge
 NEIGHBOURS = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
 SETS = [NONE, MORPH, SJ, MORPH | SJ]
 
@@ -392,7 +395,7 @@ def components(n, u, v):
 class Terrain:
     def __init__(self, tris, flags):
         nrm = np.cross(tris[:, 1] - tris[:, 0], tris[:, 2] - tris[:, 0])
-        nz = np.abs(nrm[:, 2]) / (np.linalg.norm(nrm, axis=1) + 1e-12)
+        nz = nrm[:, 2] / (np.linalg.norm(nrm, axis=1) + 1e-12)   # signed: a ceiling is no floor
         floor_tri = (nz > FLOOR_NZ) | (((flags & np.uint64(FLOOR)) != 0) & (nz >= FLOOR_FLAGGED_NZ))
         self.seg = Segments(tris)
         ix, iy, z, t = column_hits(tris)
@@ -428,7 +431,8 @@ class Terrain:
         bp, bq = self.links["ball"]
         bboth = np.isin(bp * self.n + bq, bq * self.n + bp)
         self.roll = components(self.n, bp[bboth], bq[bboth])
-        self.jumps = self._jumps(self.stand & (deg < 8), ~self.stand)
+        self.jumps = tuple(np.concatenate(x) for x in zip(self._jumps(self.stand & (deg < 8), ~self.stand),
+                                                           self._drops()))
 
     def _below(self, ixy, zmax):
         """Hit index of the highest hit at or below zmax in column ixy, or -1."""
@@ -524,6 +528,40 @@ class Terrain:
             return np.zeros(0, int), np.zeros(0, int), np.zeros(0, int)
         return tuple(np.concatenate(x) for x in zip(*out))
 
+    def _drops(self):
+        """(p, q, MORPH) rolls off a ledge from a ball-only spot (a raised tunnel mouth) to a lower
+        spot nearby, which the neighbour links miss when a steep lip lies between the two."""
+        b = np.nonzero(~self.stand)[0]
+        if not len(b):
+            return np.zeros(0, int), np.zeros(0, int), np.zeros(0, int)
+        o = np.lexsort((self.ixy[:, 1], self.ixy[:, 0]))
+        key = (self.ixy[o, 0] + (1 << 20)) * (1 << 21) + (self.ixy[o, 1] + (1 << 20))
+        r = int(np.ceil(DROP_REACH / GRID))
+        P, Q = [], []
+        for dx in range(-r, r + 1):
+            for dy in range(-r, r + 1):
+                if dx * dx + dy * dy > r * r:
+                    continue
+                k = (self.ixy[b, 0] + dx + (1 << 20)) * (1 << 21) + (self.ixy[b, 1] + dy + (1 << 20))
+                s, t = np.searchsorted(key, k, "left"), np.searchsorted(key, k, "right")
+                cnt = t - s
+                src = np.repeat(b, cnt)
+                dst = o[np.repeat(s, cnt) + np.arange(cnt.sum()) - np.repeat(np.cumsum(cnt) - cnt, cnt)]
+                dz = self.pos[dst, 2] - self.pos[src, 2]
+                ok = (dz < -BALL_STEP) & (dz >= -JUMP_DROP) & (self.roll[src] != self.roll[dst])
+                P.append(src[ok])
+                Q.append(dst[ok])
+        p, q = np.concatenate(P), np.concatenate(Q)
+        a, c = self.pos[p].copy(), self.pos[q].copy()
+        a[:, 2] += BALL / 2
+        c[:, 2] = a[:, 2]
+        blocked = self.seg.blocked(a, c)
+        a[:, :2] = c[:, :2]
+        c[:, 2] = self.pos[q, 2] + 0.3
+        blocked |= self.seg.blocked(a, c)
+        p, q = p[~blocked], q[~blocked]
+        return p, q, np.full(len(p), MORPH)
+
     def _jump_clear(self, p, q):
         a, b = self.pos[p], self.pos[q]
         top = np.maximum(a[:, 2], b[:, 2])
@@ -615,7 +653,7 @@ def node_points(T, node, source):
     if shape == "virtual":      # a boundary in open space shared with the next area, placed anywhere
         return None
     if shape == "wall":         # a door: Samus stands on the floor at its foot
-        pts = T.anchor(pos, 2.5, 4.0, 0.5)
+        pts = T.anchor(pos, 2.5, max(4.0, scale[2] / 2 + 1.0), 0.5)   # tall doors sit higher
         return {s: pts for s in SETS}
     if shape == "floor":        # a hole in a floor or ceiling: falls through it reach whatever is below
         r = max(scale[0], scale[1]) / 2
