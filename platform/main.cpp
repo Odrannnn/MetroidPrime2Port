@@ -1322,19 +1322,24 @@ int main(int argc, char** argv) {
     const char* x11 = std::getenv("DISPLAY");
     const auto present = [](const char* v) { return v != nullptr && v[0] != '\0'; };
     const bool unnamed = !present(requested);
-    const bool underSteam = present(std::getenv("SteamAppId")) || present(std::getenv("SteamGameId"));
-    const auto listsX11 = [](const char* list) {
+    // A headless run has no window for Steam Input to focus, so its "offscreen" is left alone.
+    const bool underSteam = !port::EnvFlag("MP2_HEADLESS") &&
+                            (present(std::getenv("SteamAppId")) || present(std::getenv("SteamGameId")));
+    // SDL matches driver names case-insensitively, so X11 counts too.
+    const auto isX11 = [](std::string_view name) {
+      return name.size() == 3 && SDL_strncasecmp(name.data(), "x11", 3) == 0;
+    };
+    const auto listsX11 = [&](const char* list) {
       std::string_view rest = list;
       while (!rest.empty()) {
         const size_t comma = rest.find(',');
-        if (rest.substr(0, comma) == "x11") return true;
+        if (isX11(rest.substr(0, comma))) return true;
         if (comma == std::string_view::npos) break;
         rest.remove_prefix(comma + 1);
       }
       return false;
     };
-    if (!unnamed && underSteam && present(x11) && std::string_view(requested) != "x11" &&
-        listsX11(requested)) {
+    if (!unnamed && underSteam && present(x11) && !isX11(requested) && listsX11(requested)) {
       // The environment variable outranks a normal-priority hint, hence OVERRIDE.
       SDL_SetHintWithPriority(SDL_HINT_VIDEO_DRIVER, "x11", SDL_HINT_OVERRIDE);
       std::fprintf(stderr,
