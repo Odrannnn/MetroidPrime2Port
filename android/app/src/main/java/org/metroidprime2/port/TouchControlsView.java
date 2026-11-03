@@ -639,6 +639,8 @@ final class TouchControlsView extends View {
     private static native String nativeTouchBallLabel(int control);
     // The actions an added button can take: key, label, key, label...
     private static native String[] nativeTouchButtonActions();
+    // Changes when that list may have.
+    private static native long nativeTouchButtonActionsVersion();
     // The twin layout's Beam button is held: the D-pad picks beams, not visors.
     private static native void nativeTouchBeamShift(boolean held);
     // The Turbo button is held: the game acts as if Fire were mashed.
@@ -3191,13 +3193,16 @@ final class TouchControlsView extends View {
         drawCenteredLabel(canvas, label, x, y, w > maxWidth ? size * maxWidth / w : size);
     }
 
-    // nativeTouchButtonActions(), read once.
+    // nativeTouchButtonActions(), read again when controls.toml (the player's own actions) changes.
     private static String[] buttonActions;
+    private static long buttonActionsVersion;
 
     private static String[] buttonActions() {
-        if (buttonActions == null) {
+        final long version = nativeTouchButtonActionsVersion();
+        if (buttonActions == null || version != buttonActionsVersion) {
             final String[] list = nativeTouchButtonActions();
             buttonActions = list != null ? list : new String[0];
+            buttonActionsVersion = version;
         }
         return buttonActions;
     }
