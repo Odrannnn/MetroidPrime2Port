@@ -3997,6 +3997,17 @@ bool TouchDown(SDL_FingerID id, float x, float y) {
   }
   // In a pointer menu every finger but one on the back or cog button is the game's.
   const bool menu = !overlayVisible && PortPointer::ScreenActive();
+  if (menu && sControlsOn && (sAutoHidden || sHidden)) {
+    // A touch brings the back and cog buttons back here too; it stays the game's (a map pan or
+    // room tap), except over where those buttons now show, where it is not also a press.
+    sAutoHidden = false;
+    PortTouch::TakePhysicalInput();
+    SetHidden(false);
+    SetTouchDevice(sTwin);
+    if (OnBackButton(x, y) || OnCogButton(x, y)) {
+      return true;
+    }
+  }
   const bool toGame =
       overlayVisible || (menu && !OnBackButton(x, y) && !OnCogButton(x, y));
   if (toGame) {
