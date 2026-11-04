@@ -95,6 +95,23 @@ static int soundBufferIndex;
 static short soundBuffer[2][320] ATTRIBUTE_ALIGN(32);
 static bool sAudioEnabled = true;
 static uchar sSfxVolume = 127;
+#ifdef TARGET_PC
+// Port: the movie's audio is read from the decoded frames' slots by the AI callback. Retail's AI
+// takes 5 ms at a time in real time, a frame or two behind the decoder (3 slots, 2 decoded ahead).
+// The port's AI pump (platform/ai_dma.cpp) keeps ~64 ms queued for the audio device, so the reader
+// runs about four frames ahead of the picture and kept reaching slots not decoded yet: it skipped
+// them and padded with silence, ~2 gaps a second (lastStandFlashback, the G.F.S. Tyr cutscene,
+// sounded staticky and warbled). More slots, decoded further ahead, give the reader decoded audio
+// to read (MixAudio paces it); they are host memory, not the game heap.
+static const int kPortMovieSlots = 8;
+static const int kPortMovieDecodeAhead = kPortMovieSlots - 1;
+#define MOVIE_DECODE_AHEAD kPortMovieDecodeAhead
+// The movie whose first frame is being held (Update) and for how many updates so far.
+static const CMoviePlayer* sPortHoldPlayer = nullptr;
+static int sPortHoldUpdates = 0;
+#else
+#define MOVIE_DECODE_AHEAD 2
+#endif
 
 struct CMoviePlayer::SIndexLoad {
   rstl::single_ptr< CDvdRequest > mHeaderRequest;
@@ -372,7 +389,11 @@ bool CMoviePlayer::ContinueLoading() {
   }
 
   mIndexLoad = nullptr;
+#ifdef TARGET_PC
+  mTextures.reserve(kPortMovieSlots);
+#else
   mTextures.reserve(3);
+#endif
   mNextReadOff = mHeader.mMovieDataOffsets;
   mNextReadSize = mHeader.mFirstFrameSize;
   mReadSizeWrapped = mHeader.mFirstFrameSize;
@@ -395,6 +416,11 @@ bool CMoviePlayer::ContinueLoading() {
 
 CMoviePlayer::~CMoviePlayer() {
   CancelReadRequests();
+#ifdef TARGET_PC
+  if (sPortHoldPlayer == this) {
+    sPortHoldPlayer = nullptr;
+  }
+#endif
 #ifdef TARGET_PC
   DropMovieReadOwner(this);
 #endif
@@ -422,10 +448,18 @@ void CMoviePlayer::InitializeTextures() {
 #endif
   const uint audioSize = mHeader.mAudioMaxSamples * 4;
   for (int i = 0; i < mTextures.capacity(); ++i) {
+#ifdef TARGET_PC
+    // Host memory (kPortMovieSlots): the auto_ptrs' delete routes it back by address.
+    void* y = ::operator new(ySize);
+    void* u = ::operator new(uvSize);
+    void* v = ::operator new(uvSize);
+    void* audio = ::operator new(audioSize);
+#else
     void* y = CMemory::Alloc(ySize, IAllocator::kHI_RoundUpLen);
     void* u = CMemory::Alloc(uvSize, IAllocator::kHI_RoundUpLen);
     void* v = CMemory::Alloc(uvSize, IAllocator::kHI_RoundUpLen);
     void* audio = CMemory::Alloc(audioSize, IAllocator::kHI_RoundUpLen);
+#endif
     DCFlushRangeNoSync(y, ySize);
     DCFlushRangeNoSync(u, uvSize);
     DCFlushRangeNoSync(v, uvSize);
@@ -592,9 +626,17 @@ void CMoviePlayer::Update(float dt) {
       }
     }
   } else if (!mRequest.null()) {
+#ifdef TARGET_PC
+    // Port: catch up on every read that has arrived, not one frame per update, so the decoder
+    // gets (and stays) MOVIE_DECODE_AHEAD frames ahead.
+    while (!mRequest.null() && mDecodedTexCount < MOVIE_DECODE_AHEAD &&
+           mRequestFrameWrapped >= mRequestQueue.size() && mCurLoadFrame >= mRequestQueue.size() &&
+           mRequest->IsComplete()) {
+#else
     const bool canDecode =
         mRequestFrameWrapped >= mRequestQueue.size() && mCurLoadFrame >= mRequestQueue.size();
     if (mDecodedTexCount < 2 && canDecode && mRequest->IsComplete()) {
+#endif
       ReadCompleted();
       rstl::auto_ptr< uchar > buffer;
       if (mCurLoadFrame < mHeader.mNumFrames) {
@@ -615,7 +657,8 @@ void CMoviePlayer::Update(float dt) {
   if (mRequest.null() && mPlayMode == kPM_Playing && mRequestQueue.size() < mHeader.mNumFrames) {
     PostDVDReadRequestIfNeeded();
   }
-  if (mDecodedTexCount < 2 && mPlayMode == kPM_Playing && mRequestFrameWrapped < mPreLoadFrames) {
+  if (mDecodedTexCount < MOVIE_DECODE_AHEAD && mPlayMode == kPM_Playing &&
+      mRequestFrameWrapped < mPreLoadFrames) {
     const int frame = rstl::min_val(mRequestFrameWrapped, mRequestQueue.size() - 1);
     if (frame == -1) {
       return;
@@ -627,6 +670,22 @@ void CMoviePlayer::Update(float dt) {
       mRequestFrameWrapped = 0;
     }
   }
+#ifdef TARGET_PC
+  // Port: start the picture (and with it the audio reader) only once the decoder is ahead, so the
+  // reader's ~64 ms lead is decoded from the first frame. A movie shorter than that, or reads that
+  // stall, start anyway after a few updates.
+  if (mDrawTexSlot == -1 && mPlayMode == kPM_Playing && mHasAudio) {
+    const bool moreToDecode = !mRequest.null() || mRequestFrameWrapped < mPreLoadFrames;
+    if (sPortHoldPlayer != this) {
+      sPortHoldPlayer = this;
+      sPortHoldUpdates = 0;
+    }
+    if (mDecodedTexCount < MOVIE_DECODE_AHEAD && moreToDecode && sPortHoldUpdates < 30) {
+      ++sPortHoldUpdates;
+      return;
+    }
+  }
+#endif
   if (mDecodedTexCount > 0 && mPlayMode == kPM_Playing) {
     mCurSeconds += dt;
     if (mLoop) {
@@ -735,6 +794,11 @@ void CMoviePlayer::Rewind() {
   mDecodedTexCount = 0;
   mFrameRem = 0.f;
   mCurSeconds = 0.f;
+#ifdef TARGET_PC
+  if (sPortHoldPlayer == this) {
+    sPortHoldPlayer = nullptr;
+  }
+#endif
   mTextures.clear();
 }
 
@@ -763,9 +827,35 @@ void CMoviePlayer::StaticMyAudioCallback() {
   }
 }
 
+#ifdef TARGET_PC
+namespace {
+// The port's movie audio reader (CMoviePlayer::MixAudio). Retail's AI plays a frame's samples on
+// the same hardware clock the movie's frames are timed by; on the port the frames advance with the
+// game's updates and the samples leave at the audio device's rate, and the two drift apart (~0.3%
+// measured), so a reader that takes exactly 160 samples per callback either catches up with the
+// decoder (a gap of silence, a click, a few a second) or falls behind it. It reads at a rate
+// nudged by up to 0.5% instead, keeping a steady amount of decoded audio ahead of it, with linear
+// interpolation between samples.
+struct SPortMovieMix {
+  const CMoviePlayer* mOwner = nullptr;
+  bool mRunning = false;
+  uint mFrac = 0;          // 16.16 position between mPrev and mCur
+  short mPrev[2] = {0, 0};
+  short mCur[2] = {0, 0};
+  float mAvailAvg = -1.f;  // smoothed decoded samples ahead of the reader
+};
+SPortMovieMix sPortMix;
+} // namespace
+#endif
+
 void CMoviePlayer::MixAudio(short* out, const short* in, unsigned long samples) {
   const short* input = in;
   if (mAudioSlot == -1) {
+#ifdef TARGET_PC
+    if (sPortMix.mOwner == this) {
+      sPortMix.mRunning = false;
+    }
+#endif
     if (in != nullptr) {
       memcpy(out, in, samples * 4);
     } else {
@@ -776,6 +866,86 @@ void CMoviePlayer::MixAudio(short* out, const short* in, unsigned long samples) 
   const uchar volume = rstl::min_val(127, mVolume * sSfxVolume * 100 >> 14);
   const ushort attenuation =
       sAudioEnabled ? static_cast< ushort >(CAudioSys::GetScaledVolume(volume)) : 0;
+#ifdef TARGET_PC
+  {
+    SPortMovieMix& mix = sPortMix;
+    const int slots = static_cast< int >(mTextures.size());
+    // Takes the next decoded stereo sample, moving on to the next slot once one is used up; a
+    // slot with nothing left is one the decoder has not reached yet, and the reader waits there.
+    struct Reader {
+      CMoviePlayer& player;
+      bool Pull(short* lr) {
+        CTHPTextureSet& texture = player.mTextures[player.mAudioSlot];
+        const uint consumed = texture.GetAudioSamplesConsumed();
+        const uint total = texture.GetAudioSamples();
+        if (consumed >= total) {
+          return false;
+        }
+        const short* audio = static_cast< const short* >(texture.Audio()) + consumed * 2;
+        lr[0] = audio[0];
+        lr[1] = audio[1];
+        texture.SetAudioSamplesConsumed(consumed + 1);
+        if (consumed + 1 == total && ++player.mAudioSlot == player.mTextures.size()) {
+          player.mAudioSlot = 0;
+        }
+        return true;
+      }
+    } reader = {*this};
+    if (mix.mOwner != this || !mix.mRunning) {
+      mix = SPortMovieMix();
+      mix.mOwner = this;
+      mix.mRunning = true;
+      reader.Pull(mix.mPrev);
+      mix.mCur[0] = mix.mPrev[0];
+      mix.mCur[1] = mix.mPrev[1];
+      reader.Pull(mix.mCur);
+    }
+
+    uint avail = 0;
+    for (int i = 0, slot = mAudioSlot; i < slots; ++i, slot = (slot + 1) % slots) {
+      const uint left = mTextures[slot].GetAudioSamples() - mTextures[slot].GetAudioSamplesConsumed();
+      if (left == 0) {
+        break;
+      }
+      avail += left;
+    }
+    // Aim for the decoded audio the reader would have ahead of it if both clocks agreed: what the
+    // decoder keeps ahead of the picture less the reader's own lead (the AI queue, ~64 ms, plus a
+    // device period), so the movie's sound stays in step with its picture.
+    const float rate = static_cast< float >(mAudioInfo.mSndFrequency != 0 ? mAudioInfo.mSndFrequency : 32000);
+    const float perFrame = rate / (mHeader.mFrameRate > 1.f ? mHeader.mFrameRate : 30.f);
+    const float target = rstl::max_val(perFrame, MOVIE_DECODE_AHEAD * perFrame - 0.084f * rate);
+    mix.mAvailAvg = mix.mAvailAvg < 0.f ? static_cast< float >(avail)
+                                        : mix.mAvailAvg + (static_cast< float >(avail) - mix.mAvailAvg) * 0.005f;
+    float adjust = (mix.mAvailAvg - target) / target * 0.02f;
+    adjust = adjust > 0.005f ? 0.005f : adjust < -0.005f ? -0.005f : adjust;
+    const uint step = static_cast< uint >(65536.f * (1.f + adjust));
+
+    for (unsigned long i = 0; i < samples; ++i) {
+      mix.mFrac += step;
+      while (mix.mFrac >= 0x10000) {
+        mix.mFrac -= 0x10000;
+        mix.mPrev[0] = mix.mCur[0];
+        mix.mPrev[1] = mix.mCur[1];
+        // Nothing decoded (a stall, or the movie's end): fade out rather than step to zero.
+        if (!reader.Pull(mix.mCur)) {
+          mix.mCur[0] = static_cast< short >(mix.mCur[0] * 7 / 8);
+          mix.mCur[1] = static_cast< short >(mix.mCur[1] * 7 / 8);
+        }
+      }
+      for (int ch = 0; ch < 2; ++ch) {
+        const int interp =
+            mix.mPrev[ch] + ((static_cast< int >(mix.mCur[ch]) - mix.mPrev[ch]) * static_cast< int >(mix.mFrac >> 1) >> 15);
+        int sample = (attenuation * interp) >> 15;
+        if (input != nullptr) {
+          sample += *input++;
+        }
+        *out++ = static_cast< short >(sample < -32768 ? -32768 : sample > 32767 ? 32767 : sample);
+      }
+    }
+    return;
+  }
+#endif
   for (int frame = 0; samples != 0 && frame < 3; ++frame) {
     CTHPTextureSet& texture = mTextures[mAudioSlot];
     uint count = texture.GetAudioSamples() - texture.GetAudioSamplesConsumed();
