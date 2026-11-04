@@ -99,6 +99,7 @@ std::atomic< int > sWheelState{0};
 // through these too ([0] is Player 1's, the overlay's).
 constexpr int kPlayers = 4;
 std::atomic< bool > sMorphed[kPlayers]{};
+std::atomic< bool > sOrbitLocked[kPlayers]{};
 std::atomic< bool > sScanTextUp{false};
 std::atomic<bool> sRadialTouchForeground{true};
 std::atomic< int > sPendingVisor[kPlayers]{-1, -1, -1, -1};
@@ -746,6 +747,12 @@ void SetMorphed(bool morphed, int player) {
   if (ValidPlayer(player)) sMorphed[player].store(morphed, std::memory_order_release);
 }
 bool Morphed(int player) { return ValidPlayer(player) && sMorphed[player].load(std::memory_order_acquire); }
+void SetOrbitLocked(bool locked, int player) {
+  if (ValidPlayer(player)) sOrbitLocked[player].store(locked, std::memory_order_release);
+}
+bool OrbitLocked(int player) {
+  return ValidPlayer(player) && sOrbitLocked[player].load(std::memory_order_acquire);
+}
 void SetScanTextUp(bool up) { sScanTextUp.store(up, std::memory_order_release); }
 bool ScanTextUp() { return sScanTextUp.load(std::memory_order_acquire); }
 

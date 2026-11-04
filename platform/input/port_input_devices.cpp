@@ -629,6 +629,22 @@ uint16_t GameContexts(int player) {
   return contexts;
 }
 
+// A Toggle-trigger L lets go when its lock ends, as Toggle Lock-On does: a killed
+// target leaves the player orbiting its carcass, a lost look angle a fixed point in
+// empty space (MP1 #243). A toggle that never locked stays on. `locked`: the
+// player's latch of whether this toggle has held a lock.
+static void ReleaseEndedToggleLock(PortInput::Runtime& runtime, bool& locked, int player) {
+  if (!runtime.Toggled(Action::PadL) && !runtime.Toggled(Action::LAnalog)) {
+    locked = false;
+  } else if (PlayerInPlay(player) != nullptr && PortTouch::OrbitLocked(player)) {
+    locked = true;
+  } else if (locked) {
+    runtime.Untoggle(Action::PadL);
+    runtime.Untoggle(Action::LAnalog);
+    locked = false;
+  }
+}
+
 // A next/previous pick the game hasn't taken yet, per player.
 using CyclePending = PortRadial::Retry;
 CyclePending sCyclePending[4][2]; // [player][0] visor, [player][1] beam
@@ -1491,6 +1507,8 @@ SPoll Poll(unsigned mouseHeld, bool focused) {
     sRuntime.SetProfile(&sProfile);
     sInit = true;
   }
+  static bool sToggleLocked = false;
+  ReleaseEndedToggleLock(sRuntime, sToggleLocked, 0);
 
   PortInput::RawState raw;
   FillRawState(raw, mouseHeld, focused);
@@ -1551,6 +1569,8 @@ bool PollPlayer(int port, PADStatus& status) {
     runtime.SetProfile(&profile);
     sInit[port] = true;
   }
+  static bool sToggleLocked[kUserFiles] = {};
+  ReleaseEndedToggleLock(runtime, sToggleLocked[port], port);
 
   PortInput::RawState raw;
   FillPadState(raw, static_cast<u32>(port));

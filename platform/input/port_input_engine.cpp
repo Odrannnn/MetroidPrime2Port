@@ -140,6 +140,23 @@ void Runtime::SetProfile(const Profile* profile) {
 
 void Runtime::Reset() { mResetPending = true; }
 
+bool Runtime::Toggled(Action a) const {
+  for (size_t i = 0; i < mBindings.size(); ++i) {
+    if (mProfile->bindings[i].action == a && mBindings[i].toggled) {
+      return true;
+    }
+  }
+  return false;
+}
+
+void Runtime::Untoggle(Action a) {
+  for (size_t i = 0; i < mBindings.size(); ++i) {
+    if (mProfile->bindings[i].action == a) {
+      mBindings[i].toggled = false;
+    }
+  }
+}
+
 void Runtime::Rebuild() {
   mInputs.clear();
   mBindings.clear();

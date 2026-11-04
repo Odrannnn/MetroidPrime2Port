@@ -139,6 +139,10 @@ bool TakeEditRequested();
 // their pads' Morph Ball rows.
 void SetMorphed(bool morphed, int player = 0);
 bool Morphed(int player = 0);
+// CPlayer::Update publishes whether each player is locked on to an object or grappling (orbiting a
+// carcass or a point is not a lock); a Toggle-trigger L binding lets go when that lock ends.
+void SetOrbitLocked(bool locked, int player = 0);
+bool OrbitLocked(int player = 0);
 // CStateManager::Update publishes whether the game is soft paused: the scan text is up (CPlayer's
 // scan freeze, its only soft pause).
 void SetScanTextUp(bool up);

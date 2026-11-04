@@ -206,6 +206,25 @@ int main() {
     REQUIRE(!r.Step().Held(Action::SpringBall));
   }
 
+  // Untoggle: a toggle turned off from outside reads as let go, and the next
+  // press turns it on again.
+  {
+    Rig r;
+    r.profile.bindings = {Bind(Action::PadL, {Btn(kA)}, Trigger::Toggle)};
+    r.Start();
+    r.Set(kA, true);
+    REQUIRE(r.Step().Pressed(Action::PadL));
+    r.Set(kA, false);
+    REQUIRE(r.Step().Held(Action::PadL) && r.runtime.Toggled(Action::PadL));
+    REQUIRE(!r.runtime.Toggled(Action::PadR));
+    r.runtime.Untoggle(Action::PadL);
+    REQUIRE(!r.runtime.Toggled(Action::PadL));
+    REQUIRE(r.Step().Released(Action::PadL));
+    REQUIRE(!r.Step().Held(Action::PadL));
+    r.Set(kA, true);
+    REQUIRE(r.Step().Pressed(Action::PadL));
+  }
+
   // A chord taking a toggle's press undoes the flip.
   {
     Rig r;

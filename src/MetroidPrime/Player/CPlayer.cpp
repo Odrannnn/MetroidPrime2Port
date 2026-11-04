@@ -1152,6 +1152,9 @@ void CPlayer::Update(float dt, CStateManager& mgr) {
         mSpawnedMorphBallState == kMS_Morphed || mMorphBall->InScrewAttackMode();
     PortTouch::SetMorphed(GetMorphballTransitionState() != kMS_Unmorphed && !screwAttack,
                           GetPlayerIndex());
+    PortTouch::SetOrbitLocked(mOrbitState == kOS_OrbitObject || mOrbitState == kOS_ForcedOrbitObject ||
+                                  mOrbitState == kOS_Grapple,
+                              GetPlayerIndex());
   }
 #endif
   if (!mBeamParticleDescriptionsInitialized && NWeaponTypes::are_tokens_ready(mBeamEffectTokens)) {

@@ -316,6 +316,11 @@ public:
   void SetProfile(const Profile* profile);
   // Drops every latch and timer; inputs held now are consumed until released.
   void Reset();
+  // Whether a Toggle binding of `a` is on, and turning them all off: the next
+  // poll reads them as let go (a release edge if nothing else holds `a`), and
+  // the next press turns them on again.
+  bool Toggled(Action a) const;
+  void Untoggle(Action a);
   // One poll. contexts: the active context bits (layers are added from the
   // profile's Layer actions). nowMs: a monotonic clock. quiet: context bits whose
   // switching on or off leaves held inputs alone instead of consuming them.

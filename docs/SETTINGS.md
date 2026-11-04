@@ -187,7 +187,9 @@ Controls > Options:
 - Quick setup > Use twin-stick controller: one click turns on Twin Stick Aim (`twin_stick`) and
   applies the Remastered layout to all controllers (Remap > Presets...), replacing your own
   controller bindings; greyed out with a GameCube adapter.
-- `lockon_toggle`: Buttons > Toggle Lock-On; env `MP2_LOCK_ON_TOGGLE`.
+- `lockon_toggle`: Buttons > Toggle Lock-On; env `MP2_LOCK_ON_TOGGLE`. An L binding whose own
+  trigger is Toggle (F1 Remap) also lets go once a lock or grapple it held ends; one that never
+  locked stays on until pressed again.
 - `spider_toggle`: Buttons > Toggle Spider Ball (default off, off under Original Experience; env
   `MP2_SPIDER_TOGGLE`): an R press on a Spider Ball track clings until the next press; leaving the
   track (more than 0.15 s) or the morph ball ending lets go. Away from a track, R works as usual.
