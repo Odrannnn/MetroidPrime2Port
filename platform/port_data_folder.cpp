@@ -495,6 +495,37 @@ bool StorageAccess() {
   return sAccess;
 }
 
+// Copies the shader pipeline cache (app storage's cache folder, which does not move with the
+// data) into <data>/shader_cache/, where a file manager or adb can read it; the pipeline seed
+// (tools/pipeline_seed.py merge) takes it from there. The write-ahead log goes too: it holds the
+// rows added since the last checkpoint, and SQLite reads it along with the file.
+std::string ExportShaderCache(const std::string& dataFolder) {
+  const std::string app = AppFolder();
+  if (app.empty() || dataFolder.empty()) {
+    return "No app storage folder.";
+  }
+  const fs::path from = FromUtf8(app + "cache");
+  const fs::path to = FromUtf8(dataFolder + "shader_cache");
+  std::error_code ec;
+  if (!fs::exists(from / "pipeline_cache.db", ec)) {
+    return "There is no shader cache yet.";
+  }
+  fs::create_directories(to, ec);
+  uint64_t bytes = 0;
+  for (const char* name : {"pipeline_cache.db", "pipeline_cache.db-wal"}) {
+    fs::remove(to / name, ec);
+    if (!fs::exists(from / name, ec)) {
+      continue;
+    }
+    if (!fs::copy_file(from / name, to / name, fs::copy_options::overwrite_existing, ec)) {
+      return std::string("Could not copy ") + name + ": " + ec.message();
+    }
+    bytes += fs::file_size(to / name, ec);
+  }
+  PortLogFile::Write("data folder: shader cache copied to " + ToUtf8(to));
+  return "Copied the shader cache (" + Size(bytes) + ") to " + ToUtf8(to) + ".";
+}
+
 // A move to shared storage that waits for "All files access": the panel starts
 // it once the grant shows up, so coming back from the system settings is enough.
 bool sMoveAfterGrant = false;
@@ -580,6 +611,13 @@ void DrawPanel() {
     } else {
       if (ImGui::Button("Move back to app storage")) {
         RequestMove(priv, false);
+      }
+      ImGui::SameLine();
+      if (ImGui::Button("Copy the shader cache here")) {
+        const std::string result = ExportShaderCache(current);
+        lock.lock();
+        move.message = result;
+        lock.unlock();
       }
       // Measured once: walking a big mods folder every frame would stutter,
       // and nothing else writes to app storage while the data is elsewhere.
