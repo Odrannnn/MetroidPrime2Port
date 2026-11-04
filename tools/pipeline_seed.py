@@ -28,6 +28,7 @@ depth prepass, volumetric fog, distance-field fonts) are rejected by `check` and
 """
 
 import argparse
+import concurrent.futures
 import os
 import re
 import shutil
@@ -51,11 +52,46 @@ GX_VA_NULL = 0xFF
 # A first playthrough meets Temple Grounds, Agon, Torvus, Sanctuary, then the Great Temple.
 WORLDS = [("3bfa3eff", "Temple Grounds"), ("42b935e4", "Agon Wastes"), ("3dfd2249", "Torvus Bog"),
           ("1baa96c2", "Sanctuary Fortress"), ("863fcd72", "Great Temple")]
-# Spots the area sweep never reaches (it walks each area's spawn, not its water or corners): (name, console
-# script in tools/drivers, "<world>,<area>" direct boot, game updates, timeout s). When a player report
-# shows a pipeline miss ("pipeline cache: new pipeline" in the log) the seed lacks, add its repro here.
+# Spots the area sweep never reaches (it walks each area's spawn, not its water, corners or fights): (name,
+# console script or Python driver argv with {port} {frames} {out}, "<world>,<area>" direct boot, game
+# updates, timeout s[, extra env]). The fights matter
+# most: enemy, boss and effect pipelines land in the global context, which the sweep barely fills (players'
+# logs show their misses there, #44). When a report shows a miss ("pipeline cache: new pipeline" in the
+# log) the seed lacks, add its repro here.
+D, S = "tools/drivers/", "tools/cov/specs/"
 SPOTS = [
-    ("torvus_water", "pipeline_seed_torvus_water.con", "3dfd2249,01_swamp_entrance", "900", "200"),  # #44
+    ("torvus_water", D + "pipeline_seed_torvus_water.con", "3dfd2249,01_swamp_entrance", "900", "200"),  # #44
+    # Temple Grounds
+    ("tg_darktrooper", D + "darktrooper_unknown.con", "3bfa3eff,04_temple_unknownenemies", "6000", "900"),
+    ("tg_darkcommando", S + "darkcommando_fight.con", "3bfa3eff,06_temple_sacredpath_dark", "6000", "900"),
+    ("tg_wisptentacle", D + "wisptentacle_hall.con", "3bfa3eff,0t_temple_hall_dark", "6000", "900"),
+    ("tg_mediuming", S + "mediuming_play.con", "3bfa3eff,02_temple_exploration_dark", "6000", "900",
+     {"MP2_GODMODE": "1"}),
+    ("tg_riftportal", S + "riftportal.con", "3bfa3eff,12_temple_finalgate", "1600", "400"),
+    ("tg_bacteria", S + "bacteriaswarm_temple.con", "3bfa3eff,04_temple_unknownenemies_dark", "3200", "600"),
+    ("tg_landingsite", D + "spa_landingsite.con", "3bfa3eff,01_Temple_LandingSite", "2000", "400"),
+    # Agon Wastes
+    ("aw_jumpguardian", D + "ingspacejumpguardian_sandfalls.con", "42b935e4,02_sand_sandfalls_dark", "6000", "900"),
+    ("aw_metroids", S + "metroid_casualpirates.con", "42b935e4,08_sand_casualpirates", "6000", "900"),
+    ("aw_ingpuddle", S + "ingpuddle.con", "42b935e4,06_sand_alamofront_dark", "4000", "700"),
+    ("aw_flyingpirate", S + "flyingpirate_fp2.con", "42b935e4,02_sand_sandfalls", "4200", "700"),
+    ("aw_amorbis", [D + "sandboss_fight.py", "{port}", "{frames}", "{out}"], "42b935e4,7575048a", "9000", "1200"),
+    # Torvus Bog
+    ("tb_blogg", S + "blogg_shaft.con", "3dfd2249,07_swamp_shaft", "3000", "600"),
+    ("tb_grenchler", S + "grenchler_guardian.con", "3dfd2249,08_swamp_grappleguardian_dark", "3200", "600"),
+    ("tb_shrieker", D + "shrieker_greatbridge.con", "3dfd2249,02_swamp_greatbridge", "6000", "900"),
+    ("tb_puddlespore", S + "puddlespore.con", "3dfd2249,cbc72d79", "1900", "500"),
+    ("tb_stonetoad", S + "stonetoad.con", "3dfd2249,09_swamp_catacombs_dark", "1500", "500"),
+    # Sanctuary Fortress
+    ("sf_darksamus", S + "darksamus_fsm2.con", "1baa96c2,10_cliff_rooftop", "4000", "700",
+     {"MP2_INPUT": "LAYER2@400"}),  # #44's reporter
+    ("sf_spiderguardian", S + "isbg.con", "1baa96c2,06_cliff_spiderballguardian", "4000", "900"),
+    ("sf_splitter", S + "splitter_hive_temple.con", "1baa96c2,914f1381", "12000", "1500",
+     {"SPLITTER_FORCE": "6310"}),
+    ("sf_digitalguardian", S + "digitalguardian_fight.con", "1baa96c2,09_cliff_temple_dark", "6000", "900"),
+    ("sf_rezbit", D + "rezbit_create.con", "1baa96c2,02_cliff_reactorcore", "1200", "400"),
+    ("sf_elitepirate", S + "elitepirate_shouldfire.con", "1baa96c2,b666b655", "1600", "400"),
+    ("sf_commando", S + "commandopirate_wallhang.con", "1baa96c2,01_cliff_entrance", "6000", "900"),
 ]
 
 SCHEMA = """
@@ -280,28 +316,41 @@ def cmd_record(a):
     t0 = time.monotonic()
     # Scripted passes through the console driver: the front end (logo, menu, file select, intro), an
     # in-game pass (every beam x visor, charge, missile, morph ball, pause screens), then SPOTS.
-    for i, (name, con, world, frames, secs) in enumerate([("frontend", "pipeline_seed_frontend.con", None, "100000", "300"),
-                                                          ("actions", "pipeline_seed.con", None, "100000", "400")]
-                                                         + SPOTS):
-        if (a.world and not a.scripted) or (a.only and name not in a.only):
-            continue
+    def spot(i, name, driver, world, frames, secs, extra=None):
         cache = out / f"cache_{name}"
         shutil.rmtree(cache, ignore_errors=True)
         port = str(7790 + i)
         genv = dict(env, SKIP_FRONTEND="0" if name == "frontend" else "1", FRAMES=frames, SECS=secs,
                     DISPLAY_NUM=f":{150 + i}", CACHEDIR=str(cache), LOG=str(out / f"{name}.log"),
-                    MP2_CONSOLE=port, MP2_CONSOLE_WAIT="1")
+                    MP2_CONSOLE=port, MP2_CONSOLE_WAIT="1", **(extra or {}))
+        user = out / f"user_{name}"  # its own card: parallel passes would share the new game's saves
+        shutil.rmtree(user, ignore_errors=True)
+        user.mkdir()
+        genv["USERDIR"] = str(user)
+        if "MP2_INPUT" in genv:  # run_gameplay.sh takes the input script from INPUT_FILE
+            (out / f"{name}.input").write_text(genv.pop("MP2_INPUT"))
+            genv["INPUT_FILE"] = str(out / f"{name}.input")
         if world:
             genv["WORLD"] = world
         print(f"[record] {name} ...", flush=True)
         t1 = time.monotonic()
         game = subprocess.Popen(["bash", "tools/run_gameplay.sh"], env=genv)
         time.sleep(4)
-        subprocess.run([sys.executable, "tools/drivers/console.py", port, f"tools/drivers/{con}",
-                        str(out / f"{name}.con.out")], stdout=subprocess.DEVNULL)
+        drv_out = str(out / f"{name}.drv.out")
+        if isinstance(driver, list):
+            argv = [x.format(port=port, frames=frames, out=drv_out) for x in driver]
+        else:
+            argv = ["tools/drivers/console.py", port, driver, drv_out]
+        subprocess.run([sys.executable] + argv, cwd=ROOT, stdout=subprocess.DEVNULL)
         game.wait()
         print(f"[record] {name}: {time.monotonic() - t1:.0f} s", flush=True)
-        caches.append(cache / "pipeline_cache.db")
+        return cache / "pipeline_cache.db"
+
+    passes = [(i, *s) for i, s in enumerate([("frontend", D + "pipeline_seed_frontend.con", None, "100000", "300"),
+                                              ("actions", D + "pipeline_seed.con", None, "100000", "400")] + SPOTS)
+              if not ((a.world and not a.scripted) or (a.only and s[0] not in a.only))]
+    with concurrent.futures.ThreadPoolExecutor(max(1, a.jobs)) as pool:
+        caches += list(pool.map(lambda p: spot(*p), passes))
     wanted = a.world or ([] if a.only else [w for w, _ in WORLDS])
     for w, name in WORLDS:
         if w not in wanted:
@@ -335,6 +384,7 @@ def main():
                    "merge with --extra assets/initial_pipeline_cache.db to add it to the seed")
     r.add_argument("--fast", action="store_true", help="unpaced game (loses ~10%% of the rows)")
     r.add_argument("--present-every", type=int, default=6)
+    r.add_argument("--jobs", type=int, default=1, help="scripted passes and SPOTS run at once")
     r.add_argument("--extra", nargs="*", default=[], help="caches to put first in the merge line")
     m = sub.add_parser("merge", help="union caches into the seed, current retail rows only")
     m.add_argument("inputs", nargs="+")
