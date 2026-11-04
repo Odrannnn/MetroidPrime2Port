@@ -4,6 +4,19 @@ The Status section of AGENTS.md links here: this is the per-session detail, rewr
 appended, dated as in the heading there.
 
 
+## 2026-11-04: issue #74 (Command Chamber Dark Troopers after a state load)
+
+- 2c69718c0: patterned actors save their CMaterialList (kTagMaterial, set after the fields): a trooper
+  saved after Rise came back with Sleep's passthrough. PlayerInAreaRelay special functions save
+  mPlayerInArea (kTagInArea): 0013013a/0013013d re-sent Entered after the load and their Play of
+  0013011c/0013013c replaced the restarted battle music 0013013b. Checked with tools/statecheck.py
+  --area 19 (setups `fsm e00130013 Rise`, `send e0013008f Start`, `send e0013013d Activate` + `send
+  e0013013b Play`; MP2_DEBUG_AUDIO=1 shows the channel order): 0 strict diffs.
+- Not reproduced: the "one or two troopers idle" (the reporter couldn't either); the reporter's log shows
+  30 generated copies in the first capture after the load, gone by the next one.
+  No issue reply posted.
+
+
 ## 2026-11-03: rando terrain models Screw Attack
 
 - tools/rando_terrain.py: ScrewAttack is an ability bit (UNMODELLED is grapple only). Screw Attack starts out
