@@ -484,13 +484,19 @@ bool StorageAccess() {
   return sAccess;
 }
 
+// A move to shared storage that waits for "All files access": the panel starts
+// it once the grant shows up, so coming back from the system settings is enough.
+bool sMoveAfterGrant = false;
+
 void RequestMove(const std::string& target, bool needsAccess) {
   Move& move = State();
+  sMoveAfterGrant = false;
   if (needsAccess && !StorageAccess()) {
     CallActivity("requestStorageAccess", false);
+    sMoveAfterGrant = true;
     std::lock_guard lock(move.mutex);
     move.state = EState::Idle;
-    move.message = "Allow \"All files access\" for Metroid Prime 2, then come back and press the button again.";
+    move.message = "Allow \"All files access\" for Metroid Prime 2 and come back; the copy then starts by itself.";
     return;
   }
   if (HasData(target)) {
@@ -544,6 +550,9 @@ void DrawPanel() {
       ImGui::TextWrapped("%s", message.c_str());
     }
     if (inPrivate) {
+      if (sMoveAfterGrant && StorageAccess()) {
+        RequestMove(shared, true);
+      }
       const std::string label = "Move to " + shared;
       if (ImGui::Button(label.c_str())) {
         RequestMove(shared, true);
