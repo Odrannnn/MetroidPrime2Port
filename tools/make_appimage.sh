@@ -41,6 +41,8 @@ rm -rf "$APPDIR"
 mkdir -p "$APPDIR/usr/bin"
 
 install -m755 "$BIN" "$APPDIR/usr/bin/metroid_prime2_port"
+python3 "$ROOT/tools/write_recomplauncher.py" --platform linux --appimage-arch "$ARCH" \
+    "$APPDIR/recomplauncher.json"
 # A build with MP_EMBED_RESOURCES carries the textures inside the executable; otherwise the port
 # looks for them next to it. Tracked files only in a git checkout, so nothing dropped into textures/
 # locally (a dump, a pack made from game data) is handed out with the package.
@@ -95,5 +97,15 @@ if ! "$TOOL" --version >/dev/null 2>&1; then
     RUN=(--appimage-extract-and-run)
 fi
 
-ARCH=$ARCH "$TOOL" "${RUN[@]}" "$APPDIR" "$OUT/MetroidPrime2-$ARCH.AppImage"
+# Omit build-host xattrs so symlinks use the basic inode type launcher readers support.
+ARCH=$ARCH "$TOOL" "${RUN[@]}" --mksquashfs-opt=-no-xattrs "$APPDIR" "$OUT/MetroidPrime2-$ARCH.AppImage"
 echo "wrote $OUT/MetroidPrime2-$ARCH.AppImage"
+
+# Keep the manifest beside the AppImage for launchers without embedded profile support.
+PACKAGE="metroid-prime2-port-linux-$ARCH-appimage"
+mkdir -p "$OUT/$PACKAGE"
+install -m755 "$OUT/MetroidPrime2-$ARCH.AppImage" "$OUT/$PACKAGE/"
+install -m644 "$APPDIR/recomplauncher.json" "$OUT/$PACKAGE/recomplauncher.json"
+tar -C "$OUT" -czf "$OUT/$PACKAGE.tar.gz" \
+    "$PACKAGE/MetroidPrime2-$ARCH.AppImage" "$PACKAGE/recomplauncher.json"
+echo "wrote $OUT/$PACKAGE.tar.gz"
