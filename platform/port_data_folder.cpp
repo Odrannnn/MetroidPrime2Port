@@ -366,6 +366,17 @@ std::string CurrentUserFolder() {
   return backups.empty() ? std::string() : WithSeparator(ToUtf8(FromUtf8(backups).parent_path()));
 }
 
+// One folder spelled two ways compares unequal as text: Android's /data/user/0 and
+// /data/data (the activity's getFilesDir() and SDL's canonical path), a link, a
+// doubled separator. Folders that do not both exist are told apart by text alone.
+bool SameFolder(const std::string& a, const std::string& b) {
+  if (a == b) {
+    return true;
+  }
+  std::error_code ec;
+  return !a.empty() && !b.empty() && fs::equivalent(FromUtf8(a), FromUtf8(b), ec) && !ec;
+}
+
 Move& State() {
   static Move sMove;
   return sMove;
@@ -491,6 +502,12 @@ bool sMoveAfterGrant = false;
 void RequestMove(const std::string& target, bool needsAccess) {
   Move& move = State();
   sMoveAfterGrant = false;
+  if (SameFolder(target, CurrentUserFolder())) {
+    std::lock_guard lock(move.mutex);
+    move.state = EState::Idle;
+    move.message = "The data is already in " + target + ".";
+    return;
+  }
   if (needsAccess && !StorageAccess()) {
     CallActivity("requestStorageAccess", false);
     sMoveAfterGrant = true;
@@ -519,7 +536,7 @@ void DrawPanel() {
   const std::string current = CurrentUserFolder();
   const std::string priv = PrivateUserFolder();
   const std::string shared = SharedFolder();
-  const bool inPrivate = current == priv;
+  const bool inPrivate = SameFolder(current, priv);
   ImGui::TextWrapped("Settings, memory card, mods, save states and the texture pack are in %s%s.",
                      current.c_str(), inPrivate ? " (app storage, hidden from file managers)" : "");
   if (const char* env = std::getenv("MP2_USER_UNAVAILABLE"); env != nullptr && env[0] != 0) {
@@ -541,7 +558,7 @@ void DrawPanel() {
   const std::string target = move.target;
   const std::string message = move.message;
   lock.unlock();
-  const std::string targetName = target == priv ? "app storage" : target;
+  const std::string targetName = SameFolder(target, priv) ? "app storage" : target;
 
   switch (state) {
   case EState::Idle:
