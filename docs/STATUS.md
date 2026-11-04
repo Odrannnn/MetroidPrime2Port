@@ -4,6 +4,17 @@ The Status section of AGENTS.md links here: this is the per-session detail, rewr
 appended, dated as in the heading there.
 
 
+## 2026-11-04: issue #44 (Dark Samus flicker with per-pixel lighting)
+
+- Cause: with per_pixel_lighting=1 every lit ShaderConfig key has perPixelLight=1, but the embedded seed
+  and every cache row loaded at boot carried 0 (the setting was applied after aurora_initialize), so each
+  room's first lit draws compiled cold and were skipped. Fix: main.cpp sets it before aurora_initialize and
+  `queue_cached_row` recomputes perPixelLight for the running setting (off for actor decals; the
+  command_processor validity check matches). Forgotten Bridge walk, fresh cache, MP2_PER_PIXEL_LIGHTING=1:
+  36 new pipelines before, 0 after. Boot precompile takes about 2x longer with it on (bigger shaders).
+- Next: grow the seed with fight and boss SPOTS in every world (tools/pipeline_seed.py; candidates
+  come from the tools/cov/specs run lines). No issue reply posted.
+
 ## 2026-11-04: issue #74 (Command Chamber Dark Troopers after a state load)
 
 - 2c69718c0: patterned actors save their CMaterialList (kTagMaterial, set after the fields): a trooper

@@ -1371,6 +1371,10 @@ int main(int argc, char** argv) {
   // F1 > Video > Compatibility (PortVideo, f1b): OpenGL ES, the storage clamp, the low-power
   // adapter and the driver workarounds' Dawn toggles, all read when the GPU device is made.
   PortVideo::BeginGpuStart(config.userPath != nullptr ? config.userPath : "", config);
+  // Before the pipeline cache loads in aurora_initialize: its rows take the running per-pixel
+  // lighting key, so the seed's lit pipelines build at boot instead of on each room's first draw
+  // (issue #44). PortVideo::Frame keeps it in step afterwards.
+  aurora_set_per_pixel_lighting(PortOverlay::PerPixelLighting());
   aurora_initialize(argc, argv, &config);
   // The settings file, JSON and the logs read and write numbers in the "C" format. A toolkit loaded
   // with the window (a GTK decoration plugin, an input method) may call setlocale(LC_ALL, ""), and
