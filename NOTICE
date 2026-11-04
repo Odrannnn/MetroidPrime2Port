@@ -57,7 +57,7 @@ travels with any build that contains it.
 | GamepadMotionHelpers — gyro calibration | MIT, © Julian "Jibb" Smart | `extern/GamepadMotionHelpers/LICENSE` |
 | libadrenotools — loads custom Vulkan drivers on Android | BSD-2-Clause, © Billy Laws | `extern/adrenotools/LICENSE` |
 | liblinkernsbypass — used by libadrenotools | BSD-2-Clause, © Billy Laws | `extern/adrenotools/lib/linkernsbypass/LICENSE` |
-| Button prompt icons | Kenney CC0 | `tools/prompt_icons/README.md` |
+| Button prompt icons | Kenney CC0; Steam Deck set Xelu CC0 | `tools/prompt_icons/README.md` |
 
 FreeType and libpng are linked from the system on Linux and are not shipped
 there; the Android build fetches and links them (FreeType License or GPL-2.0,

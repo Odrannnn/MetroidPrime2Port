@@ -2359,8 +2359,9 @@ const char* PromptGlyphs() {
   if (OriginalExperience()) {
     return "gamecube";
   }
-  static constexpr const char* kNames[] = {nullptr, "xbox", "playstation", "switch", "gamecube", "keyboard"};
-  return kNames[EnvIntIn("MP2_PROMPT_GLYPHS", sPromptGlyphs, kPromptGlyphs_Auto, kPromptGlyphs_Keyboard)];
+  static constexpr const char* kNames[] = {nullptr, "xbox", "playstation", "switch", "gamecube", "keyboard",
+                                           "steamdeck"};
+  return kNames[EnvIntIn("MP2_PROMPT_GLYPHS", sPromptGlyphs, kPromptGlyphs_Auto, kPromptGlyphs_SteamDeck)];
 }
 
 int ElevatorRide() {

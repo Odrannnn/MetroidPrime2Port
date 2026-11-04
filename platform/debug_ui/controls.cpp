@@ -55,9 +55,9 @@ void DrawControlsOptions() {
   int glyphs = sPromptGlyphs;
   if (ImGui::Combo("Button glyphs", &glyphs,
                    "Follow the input in use\0" "Xbox\0" "PlayStation\0" "Nintendo Switch\0" "GameCube\0"
-                   "Keyboard & mouse\0")) {
+                   "Keyboard & mouse\0" "Steam Deck\0")) {
     sPromptGlyphs = std::clamp(glyphs, static_cast< int >(PortOverlay::kPromptGlyphs_Auto),
-                               static_cast< int >(PortOverlay::kPromptGlyphs_Keyboard));
+                               static_cast< int >(PortOverlay::kPromptGlyphs_SteamDeck));
     Changed(true);
   }
   ItemHelp("Which buttons the game's prompts and tutorials show. Follow: the keyboard, controller or "

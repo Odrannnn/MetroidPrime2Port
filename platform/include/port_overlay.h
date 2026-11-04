@@ -241,7 +241,7 @@ void SetMusicBoost(int percent);
 int SfxBoost();
 void SetSfxBoost(int percent);
 // Glyph set the on-screen prompts are forced to (`MP2_PROMPT_GLYPHS`: 0 follow the input in use,
-// 1 Xbox, 2 PlayStation, 3 Switch, 4 GameCube, 5 keyboard); PromptGlyphs() is the device name or
+// 1 Xbox, 2 PlayStation, 3 Switch, 4 GameCube, 5 keyboard, 6 Steam Deck); PromptGlyphs() is the device name or
 // nullptr to follow the input. Original experience shows the GameCube art.
 enum EPromptGlyphs {
   kPromptGlyphs_Auto,
@@ -249,7 +249,8 @@ enum EPromptGlyphs {
   kPromptGlyphs_PlayStation,
   kPromptGlyphs_Switch,
   kPromptGlyphs_GameCube,
-  kPromptGlyphs_Keyboard
+  kPromptGlyphs_Keyboard,
+  kPromptGlyphs_SteamDeck
 };
 const char* PromptGlyphs();
 // Tap or click on the HUD minimap opens the map screen (default on; MP2_MINIMAP_TAP).
