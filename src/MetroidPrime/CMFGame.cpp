@@ -83,6 +83,10 @@ double sPortSkipStart = 0.0;
 // the first-person view and HUD for a couple of frames. The skip ends once none has been current for
 // kPortSkipSettle; at max speed that is a few milliseconds of wall time, with nothing drawn.
 float sPortSkipNoCameraTime = 0.f;
+// The current skip is in that wait (kPortSkipSettle): it runs at normal speed behind black, not at
+// max speed, because a sequence's cosmetic connections do not fire at max speed
+// (CScriptSequenceTimer::ApplyTime) and retail, which ends the skip there, plays them normally.
+bool sPortSkipSettling = false;
 const float kPortSkipSettle = 0.5f;
 } // namespace
 #endif
@@ -146,6 +150,7 @@ void CMFGame::PortMarkGameEnded() {
   // to end the skip: drop max speed here, and the draw case below keeps it off.
   sPortGameEnded = true;
   sPortSkipGapHold = false;
+  sPortSkipSettling = false;
   gpMain->SetMaxSpeed(false);
 }
 #endif
@@ -162,6 +167,7 @@ void CMFGame::SetFlowState(EFlowState state) {
                  PortHarness::Seconds() - sPortSkipStart);
     sPortUserCinematicSkip = false;
     sPortSkipGapHold = false;
+    sPortSkipSettling = false;
     sPortLoadCinematicSkip = false;
     sPortCinematicTime = 0.f;
     PortOverlay::SkipConfirmDisarm();
@@ -183,6 +189,7 @@ void CMFGame::SetFlowState(EFlowState state) {
 #ifdef TARGET_PC
     sPortSkipStart = PortHarness::Seconds();
     sPortSkipNoCameraTime = 0.f;
+    sPortSkipSettling = false;
 #endif
     break;
   case kFS_PortalTransition:
@@ -499,8 +506,11 @@ CIOWin::EMessageReturn CMFGame::OnMessage(const CArchitectureMessage& message,
         // Port: see kPortSkipSettle. A camera that comes back (the next shot, or the one a skip left
         // current) restarts the wait, and is skipped the same way.
         sPortSkipNoCameraTime = cineCam ? 0.f : sPortSkipNoCameraTime + dt;
+        sPortSkipSettling = false;
         if (finished && sPortSkipNoCameraTime < kPortSkipSettle && mFlowTime < 600.f) {
           finished = false;
+          sPortSkipSettling = true;
+          gpMain->SetMaxSpeed(false); // see sPortSkipSettling; the draw case keeps it off
         }
       }
       sPortSkipGapHold =
@@ -993,7 +1003,7 @@ void CMFGame::Draw() const {
                                     CColor(0.f, 0.f, 0.f, 1.f), nullptr, 1.f);
       return;
     }
-    if (sPortSkipGapHold) {
+    if (sPortSkipGapHold || sPortSkipSettling) {
       // The sequence plays on at normal speed behind a black screen (see the update case).
       gpMain->SetMaxSpeed(false);
       DrawWorld(singleViewport);
