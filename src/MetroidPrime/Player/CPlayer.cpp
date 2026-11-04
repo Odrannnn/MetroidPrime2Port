@@ -3014,7 +3014,13 @@ void CPlayer::UpdateMouseAim(CStateManager& mgr, float dt) {
   const bool allowed = MouseAimAllowed(mgr);
   // The radial menu's capture is checked inside, so flick stick sees it end.
   if (PortMouse::StickEnabled(mPlayerIndex)) {
-    PortMouse::AddStickAim(mPortLookX, mPortLookY, dt, mPlayerIndex);
+    // Twin-stick replaces free look (ComputeFreeLook zeroes it), so it honours the game's
+    // Reverse Y Axis as free look does (issue #72). Flick stick reads the raw stick, so this
+    // only flips the stick's pitch.
+    CGameOptions& options = gpGameState->GameOptions();
+    const bool invertY = mgr.IsMultiplayer() ? options.PlayerOptions(mPlayerIndex).GetInvertYAxis()
+                                             : options.GetInvertYAxis();
+    PortMouse::AddStickAim(mPortLookX, invertY ? -mPortLookY : mPortLookY, dt, mPlayerIndex);
   }
   // While something else owns the view - a lock-on, the morph ball, a cinematic - track the
   // camera direction instead, so engaging the mouse again does not snap the aim.
