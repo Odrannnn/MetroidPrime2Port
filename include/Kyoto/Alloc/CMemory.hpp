@@ -25,6 +25,20 @@ public:
   static void OffsetFakeStatics(int);
 };
 
+#ifdef TARGET_PC
+// Port: the game heap's lock. On the console CMemory guarded the allocator by disabling
+// interrupts, the only other context that allocated; the port's OSDisableInterrupts does nothing,
+// and those contexts are threads (a DVD completion on Aurora's worker allocates a streamed-music
+// buffer), so two threads could be in the allocator at once. The out-of-memory callback runs with
+// the lock released (CGameAllocator::Alloc): it frees game objects, which can take MusyX's lock,
+// and a thread holding that lock may be waiting here.
+struct CPortHeapUnlocked {
+  CPortHeapUnlocked();
+  ~CPortHeapUnlocked();
+  int mDepth;
+};
+#endif
+
 #if defined(__MWERKS__) || defined(CLANGD)
 void* operator new(size_t sz, const char*, const char*);
 void* operator new[](size_t sz, const char*, const char*);

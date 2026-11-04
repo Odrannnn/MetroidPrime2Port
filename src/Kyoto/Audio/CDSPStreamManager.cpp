@@ -219,6 +219,15 @@ int CDSPStreamManager::AllocateVoice(int volume, uchar pan, SND_ADPCMSTREAM_INFO
       it->mBuffer = rstl::auto_ptr< uchar >(
           static_cast< uchar* >(CMemory::Alloc(it->mBufferSize, IAllocator::kHI_RoundUpLen)));
     }
+#ifdef TARGET_PC
+    // Port: a game heap too full for the buffer (CMemory::Alloc logs it) gave MusyX a null stream
+    // buffer, and the first refill crashed in sndStreamARAMUpdate as a cinematic ended and its
+    // music started. The voice stays free and the caller drops the stream.
+    if (it->mBuffer.get() == nullptr) {
+      it->mFree = true;
+      return -1;
+    }
+#endif
     it->mStreamId = sndStreamAllocEx(0xFF, it->mBuffer.get(), it->mNumSamples, mHeader.mSampleRate,
                                      volume, it->mPan, 0, 0, 0, 0, 0x30001,
                                      primary ? UpdateStream : UpdateSecondaryStream,
@@ -322,6 +331,34 @@ void CDSPStreamManager::ReadCompleted(s32 result, DVDFileInfo* fileInfo) {
         stream.Deallocate();
         return;
       }
+#ifdef TARGET_PC
+      {
+        // Port: a voice that could not be had (none free, or no buffer: AllocateVoice) drops the
+        // stream, as a bad header does, rather than playing from sVoices[-1] or a null buffer.
+        const int channels = stream.mHeader.mNumChannels;
+        if (channels != 1 && channels != 2) {
+          stream.Deallocate();
+          return;
+        }
+        const int first = stream.AllocateVoice(stream.mVolume, channels == 1 ? 0x40 : 0,
+                                               &stream.mHeader.mAdpcmInfo[0], true);
+        if (first >= 0) {
+          stream.mVoices.push_back(first);
+        }
+        const int second = channels == 2 && first >= 0
+                               ? stream.AllocateVoice(stream.mVolume, 0x7F,
+                                                      &stream.mHeader.mAdpcmInfo[1], false)
+                               : 0;
+        if (channels == 2 && second >= 0) {
+          stream.mVoices.push_back(second);
+        }
+        if (first < 0 || second < 0) {
+          std::fprintf(stderr, "[audio] dsp stream=%d dropped: no voice or buffer for it\n", i);
+          stream.Deallocate();
+          return;
+        }
+      }
+#else
       if (stream.mHeader.mNumChannels == 1) {
         stream.mVoices.push_back(
             stream.AllocateVoice(stream.mVolume, 0x40, &stream.mHeader.mAdpcmInfo[0], true));
@@ -334,6 +371,7 @@ void CDSPStreamManager::ReadCompleted(s32 result, DVDFileInfo* fileInfo) {
         stream.Deallocate();
         return;
       }
+#endif
       stream.mState = kSS_Priming;
       stream.BufferStream();
       break;

@@ -2,6 +2,10 @@
 #include "dolphin/types.h"
 #include "stddef.h"
 #include <Kyoto/Alloc/CGameAllocator.hpp>
+#include <Kyoto/Alloc/CMemory.hpp>
+
+#include <cstdint>
+#include <cstdio>
 
 #include <Kyoto/Alloc/CCallStack.hpp>
 #include <Kyoto/Alloc/CMediumAllocPool.hpp>
@@ -257,7 +261,14 @@ void* CGameAllocator::Alloc(size_t size, const EHint hint, const EScope scope, c
   if (info == nullptr) {
     void* mediumBuf = nullptr;
     if (mOomCallback) {
+#ifdef TARGET_PC
+      {
+        CPortHeapUnlocked unlocked; // CMemory.hpp: the callback frees objects, which take other locks
+        mOomCallback(mOomTarget, size);
+      }
+#else
       mOomCallback(mOomTarget, size);
+#endif
 
       static bool bTriedCallback = false;
       if (!bTriedCallback) {
@@ -642,6 +653,64 @@ void CGameAllocator::RemoveFreeEntryFromFreeList(SGameMemInfo* memInfo) {
 static inline bool DoWait(int v) { return (v % 4) == 0; }
 
 void CGameAllocator::DumpAllocations() const {
+#ifdef TARGET_PC
+  // Port: called when an allocation fails (Alloc). Retail walked the blocks and printed nothing
+  // here; the port logs what the heap holds, so an out-of-memory says whether it is full, broken
+  // into pieces, or leaking one thing: the free total and largest free block, then the allocated
+  // bytes grouped by block size, largest first (most game allocations carry no file or type, so
+  // a leak shows as many blocks of one size).
+  {
+    uint freeTotal = 0, freeLargest = 0, freeBlocks = 0, usedTotal = 0, usedBlocks = 0;
+    struct SizeGroup {
+      uint size;
+      uint count;
+    };
+    static SizeGroup sGroups[512];
+    uint groups = 0;
+    for (const SGameMemInfo* it = mFirst; it != nullptr; it = it->GetNext()) {
+      const uint len = it->GetLength();
+      if (!it->IsAllocated()) {
+        freeTotal += len;
+        freeLargest = len > freeLargest ? len : freeLargest;
+        ++freeBlocks;
+        continue;
+      }
+      usedTotal += len;
+      ++usedBlocks;
+      uint g = 0;
+      while (g < groups && sGroups[g].size != len) {
+        ++g;
+      }
+      if (g == groups && groups < 512) {
+        sGroups[groups++] = SizeGroup{len, 0};
+      }
+      if (g < groups) {
+        ++sGroups[g].count;
+      }
+    }
+    std::fprintf(stderr,
+                 "[heap] out of memory: %u bytes used in %u blocks; %u free in %u blocks, the "
+                 "largest %u\n",
+                 usedTotal, usedBlocks, freeTotal, freeBlocks, freeLargest);
+    for (int top = 0; top < 15 && groups > 0; ++top) {
+      uint best = 0;
+      for (uint g = 1; g < groups; ++g) {
+        if (uint64_t(sGroups[g].size) * sGroups[g].count >
+            uint64_t(sGroups[best].size) * sGroups[best].count) {
+          best = g;
+        }
+      }
+      if (sGroups[best].count == 0) {
+        break;
+      }
+      std::fprintf(stderr, "[heap]   %5u x %8u bytes = %9llu\n", sGroups[best].count,
+                   sGroups[best].size,
+                   static_cast< unsigned long long >(uint64_t(sGroups[best].size) * sGroups[best].count));
+      sGroups[best].count = 0;
+    }
+    return; // retail's walk only paced itself with waits
+  }
+#endif
   uint i = 0;
   SGameMemInfo* iter = mFirst;
 
