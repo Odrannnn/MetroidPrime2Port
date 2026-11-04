@@ -101,6 +101,7 @@
 #include <string.h>
 
 #ifdef TARGET_PC
+#include "MetroidPrime/CMFGame.hpp"
 #include "port_entry.h"
 #include "port_mouse.h"
 #include "MetroidPrime/PortScanTarget.hpp"
@@ -3015,7 +3016,15 @@ void CPlayer::UpdateMouseAim(CStateManager& mgr, float dt) {
   if (!direct || PortPhoto::Active()) {
     return;
   }
-  const bool allowed = MouseAimAllowed(mgr);
+  // A cinematic skip holds the aim off until it hands back control, its settle included: the
+  // skip's fast-forward runs at max speed, where the first-person camera does not update
+  // (CFirstPersonCamera::UpdateTransform), and the scene's last placement of Samus lands in a
+  // few rushed ticks. An aim that took the view back the moment the cinematic camera stopped
+  // kept a direction from before that placement and turned the body back to it (an odd heading,
+  // once straight up). Held, it tracks the body below, and in the settle's normal-speed frames
+  // the camera's own direction (CFirstPersonCamera), which is where control picks up from.
+  const bool skipHolds = CMFGame::PortCinematicSkipActive();
+  const bool allowed = MouseAimAllowed(mgr) && !skipHolds;
   // The radial menu's capture is checked inside, so flick stick sees it end.
   if (PortMouse::StickEnabled(mPlayerIndex)) {
     // Twin-stick replaces free look (ComputeFreeLook zeroes it), so it honours the game's
@@ -3030,7 +3039,8 @@ void CPlayer::UpdateMouseAim(CStateManager& mgr, float dt) {
   // camera direction instead, so engaging the mouse again does not snap the aim.
   const CFirstPersonCamera* fpCamera =
       mCameraManager != nullptr ? mCameraManager->GetFirstPersonCamera() : nullptr;
-  const CVector3f forward = fpCamera != nullptr && mCameraManager->IsInFPCamera()
+  // (During a skip the body, not the camera: the camera may be frozen from before the skip.)
+  const CVector3f forward = fpCamera != nullptr && mCameraManager->IsInFPCamera() && !skipHolds
                                 ? fpCamera->GetTransform().GetForward()
                                 : GetTransform().GetForward();
   // An analog L's travel starts a point orbit a tick or more before its click locks on

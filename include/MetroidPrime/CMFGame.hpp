@@ -16,6 +16,9 @@ public:
   // Port: the credits / end-of-game results have started. Ends a running port skip and blocks new
   // ones until the game flow goes away, so those screens run at normal speed (CMFGame.cpp).
   static void PortMarkGameEnded();
+  // Port: a cinematic skip is running (kFS_CinematicSkip, its settle included). The mouse, gyro
+  // and twin-stick aim keep their hands off the view through it (CPlayer::UpdateMouseAim).
+  static bool PortCinematicSkipActive();
 #endif
 
   enum EFlowState {

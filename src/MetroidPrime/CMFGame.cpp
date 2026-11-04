@@ -87,6 +87,8 @@ float sPortSkipNoCameraTime = 0.f;
 // max speed, because a sequence's cosmetic connections do not fire at max speed
 // (CScriptSequenceTimer::ApplyTime) and retail, which ends the skip there, plays them normally.
 bool sPortSkipSettling = false;
+// A kFS_CinematicSkip is in progress, settle included (CMFGame::PortCinematicSkipActive).
+bool sPortSkipFlow = false;
 const float kPortSkipSettle = 0.5f;
 } // namespace
 #endif
@@ -121,6 +123,7 @@ CMFGame::~CMFGame() {
   gpMain->SetMaxSpeed(false);
 #ifdef TARGET_PC
   sPortGameEnded = false;
+  sPortSkipFlow = false;
 #endif
   CSfxManager::SetMuted(false);
   CDecalManager::Reinitialize();
@@ -145,6 +148,8 @@ CMFGame::~CMFGame() {
 }
 
 #ifdef TARGET_PC
+bool CMFGame::PortCinematicSkipActive() { return sPortSkipFlow; }
+
 void CMFGame::PortMarkGameEnded() {
   // The credits' window takes the updates, so kFS_CinematicSkip's update case may never run again
   // to end the skip: drop max speed here, and the draw case below keeps it off.
@@ -170,6 +175,7 @@ void CMFGame::SetFlowState(EFlowState state) {
     sPortSkipSettling = false;
     sPortLoadCinematicSkip = false;
     sPortCinematicTime = 0.f;
+    sPortSkipFlow = false;
     PortOverlay::SkipConfirmDisarm();
 #endif
     break;
@@ -190,6 +196,7 @@ void CMFGame::SetFlowState(EFlowState state) {
     sPortSkipStart = PortHarness::Seconds();
     sPortSkipNoCameraTime = 0.f;
     sPortSkipSettling = false;
+    sPortSkipFlow = true;
 #endif
     break;
   case kFS_PortalTransition:
