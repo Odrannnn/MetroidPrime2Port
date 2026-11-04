@@ -1,5 +1,6 @@
 # tools/pipeline_seed.py record: the in-game states a sweep never sets up (every beam and visor, charge,
-# missiles, the morph ball with bombs and boost, the pause menus). New game, Temple Grounds start.
+# missiles, the four charge combos, the morph ball with bombs, power bomb and boost, seekers, screw
+# attack, the pause menus). New game, Temple Grounds start.
 # The @f lines run at game updates; the @<secs> tail runs while the game is paused.
 @f300 god 1; give powerBeam 1; give darkBeam 1; give lightBeam 1; give annihilatorBeam 1; give chargeBeam 1; give superMissile 1; give darkburst 1; give sunburst 1; give sonicBoom 1; give combatVisor 1; give scanVisor 1; give darkVisor 1; give echoVisor 1
 @f302 give variaSuit 1; give darkSuit 1; give lightSuit 1; give morphBall 1; give boostBall 1; give spiderBall 1; give morphBallBombs 1; give grappleBeam 1; give spaceJumpBoots 1; give gravityBoost 1; give seekerLauncher 1; give screwAttack 1
@@ -51,7 +52,26 @@
 @f1362 press x 4
 @f1422 press l 30
 @f1462 press y 4
-@f1502 press start 4
+@f1502 beam power; press a 0
+@f1572 press a+y 6
+@f1610 beam dark
+@f1640 press a 0
+@f1710 press a+y 6
+@f1750 beam light
+@f1780 press a 0
+@f1850 press a+y 6
+@f1890 beam annihilator
+@f1920 press a 0
+@f1990 press a+y 6
+@f2030 beam power; refill; press x 4
+@f2070 press y 4
+@f2200 press a 4
+@f2260 press a 4
+@f2330 press x 4
+@f2370 press y 45
+@f2440 press b 4
+@f2456 press b 4
+@f2500 press start 4
 @150 screenshot
 @156 press r 6
 @157 stick 0 0

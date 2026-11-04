@@ -2,7 +2,7 @@
 # The ordinary fight of flyingpirate_sandfalls.con, plus HearPlayer asked while the player
 # walks, Taunt / Dodge / Lurk entered on u06de, and u06cf put next to the player to shoot.
 @f300 layer 8
-@f560 god 1; give missiles 50; give darkBeam 1; give lightBeam 1; give annihilatorBeam 1
+@f560 god 1; give missile 50; give darkBeam 1; give lightBeam 1; give annihilatorBeam 1
 @f600 tp -95 -100 -8
 @f610 face 180
 @f700 stick 0 127 60

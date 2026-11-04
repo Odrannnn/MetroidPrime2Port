@@ -59,6 +59,8 @@ WORLDS = [("3bfa3eff", "Temple Grounds"), ("42b935e4", "Agon Wastes"), ("3dfd224
 # logs show their misses there, #44). When a report shows a miss ("pipeline cache: new pipeline" in the
 # log) the seed lacks, add its repro here.
 D, S = "tools/drivers/", "tools/cov/specs/"
+# pipeline_seed_boss.py + <layers> <objs filter>: layer, Activate, shots and stepped damage to the death.
+BOSS = [D + "pipeline_seed_boss.py", "{port}", "{frames}", "{out}"]
 SPOTS = [
     ("torvus_water", D + "pipeline_seed_torvus_water.con", "3dfd2249,01_swamp_entrance", "900", "200"),  # #44
     # Temple Grounds
@@ -82,6 +84,10 @@ SPOTS = [
     ("tb_shrieker", D + "shrieker_greatbridge.con", "3dfd2249,02_swamp_greatbridge", "6000", "900"),
     ("tb_puddlespore", S + "puddlespore.con", "3dfd2249,cbc72d79", "1900", "500"),
     ("tb_stonetoad", S + "stonetoad.con", "3dfd2249,09_swamp_catacombs_dark", "1500", "500"),
+    ("tb_chykkalarva", BOSS + ["3", "swampboss"], "3dfd2249,04_swamp_temple_dark", "6000", "900"),
+    ("tb_chykka", BOSS + ["6", "swampboss"], "3dfd2249,04_swamp_temple_dark", "8000", "1100"),
+    ("tb_boostguardian", BOSS + ["5", "boostballguardian"], "3dfd2249,06_swamp_boostballguardian_dark", "8000",
+     "1100"),
     # Sanctuary Fortress
     ("sf_darksamus", S + "darksamus_fsm2.con", "1baa96c2,10_cliff_rooftop", "4000", "700",
      {"MP2_INPUT": "LAYER2@400"}),  # #44's reporter
@@ -92,6 +98,10 @@ SPOTS = [
     ("sf_rezbit", D + "rezbit_create.con", "1baa96c2,02_cliff_reactorcore", "1200", "400"),
     ("sf_elitepirate", S + "elitepirate_shouldfire.con", "1baa96c2,b666b655", "1600", "400"),
     ("sf_commando", S + "commandopirate_wallhang.con", "1baa96c2,01_cliff_entrance", "6000", "900"),
+    # Great Temple: the three Emperor Ing stages, one layer each
+    ("gt_emperor1", BOSS + ["2", "emperoring"], "863fcd72,07_temple_mothlordsanctuary_dark", "8000", "1100"),
+    ("gt_emperor2", BOSS + ["3", "emperoring"], "863fcd72,07_temple_mothlordsanctuary_dark", "6000", "900"),
+    ("gt_emperor3", BOSS + ["4", "emperoring"], "863fcd72,07_temple_mothlordsanctuary_dark", "8000", "1100"),
 ]
 
 SCHEMA = """
