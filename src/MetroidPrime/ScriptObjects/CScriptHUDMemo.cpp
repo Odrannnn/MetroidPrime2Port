@@ -49,7 +49,8 @@ void CScriptHUDMemo::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg& msg) 
     // HUD memo instead of pausing the game; so does a map station's after its download.
     if (GetActive() && m_dispType == kDT_MessageBox && m_stringTable &&
         (PortPickupPresentation::Take(PortPickupPresentation::kMemo, GetUniqueId().Value()) ||
-         (PortOverlay::SeamlessPickups() && !mgr.IsMultiplayer() &&
+         (PortOverlay::SeamlessPickups() == PortOverlay::kSeamlessPickups_All &&
+          !mgr.IsMultiplayer() &&
           PortPickupPresentation::IsMapStationMemo(mgr, msg)))) {
       CSamusHud::DisplayHudMemo((*m_stringTable)->GetString(0),
                                 CHUDMemoParms(5.f, true, false, false, 1, true));

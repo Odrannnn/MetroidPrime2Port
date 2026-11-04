@@ -81,8 +81,12 @@ Game page:
   charge, auto-aim (on). Your saved values are kept and return when it is switched off. Mods, input,
   video and audio settings are not affected.
 - `skip_cinematics`: Enhancements > Pace > Skippable cutscenes.
-- `seamless_pickups`: Enhancements > Pace > Seamless item pickups (default off); env
-  `MP2_SEAMLESS_PICKUPS`, console `seamlesspickups`. Single player, as in the Prime 1 randomizer:
+- `seamless_pickups`: Enhancements > Pace > Seamless item pickups: 0 Off (default), 1 All,
+  2 Repeats only (a saved checkbox's 0/1 reads the same); env `MP2_SEAMLESS_PICKUPS` (a flag, or
+  `2`/`repeats`), console `seamlesspickups`. Repeats only applies it to a pickup whose item the
+  player already had (`CPlayerState::HasPowerUp` before the pickup: the second and later expansion,
+  tank or beam ammo pickup), so each kind's first message box still explains it; map stations keep
+  theirs. Single player, as in the Prime 1 randomizer:
   picking up an item keeps control (its "Disable Controls" hint is dropped), shows the message box's
   headline ("Missile Expansion acquired!") as a HUD memo instead of pausing, and skips the cinematic
   some items start (20 of the 124 item pickups) the way the skip button does, so the doors, platforms

@@ -1516,9 +1516,13 @@ void CmdSkipCine(CStateManager&, const Args& args, std::string& out) {
 
 void CmdSeamlessPickups(CStateManager&, const Args& args, std::string& out) {
   if (args.size() >= 2) {
-    PortOverlay::SetSeamlessPickups(ArgToInt(args[1], 1) != 0);
+    PortOverlay::SetSeamlessPickups(args[1] == "repeats" ? PortOverlay::kSeamlessPickups_Repeats
+                                                         : ArgToInt(args[1], 1));
   }
-  out += PortOverlay::SeamlessPickups() ? "seamless pickups on\n" : "seamless pickups off\n";
+  static const char* const kModes[] = {"off", "all", "repeats only"};
+  out += "seamless pickups ";
+  out += kModes[PortOverlay::SeamlessPickups()];
+  out += "\n";
 }
 
 // skipprompt: show the "Press [A] to skip" prompt as a first press in a cinematic would, for screenshots.
@@ -5403,7 +5407,7 @@ const CommandSpec kCommands[] = {
     {"skipcine", CmdSkipCine,
       "skipcine <0|1>              skip cutscenes the player has not seen (the F1 setting)\n"},
     {"seamlesspickups", CmdSeamlessPickups,
-      "seamlesspickups [0|1]       pickups without control lock, message box or cutscene (the F1 setting)\n"},
+      "seamlesspickups [0|1|2]     pickups without control lock, message box or cutscene: off, all, repeats only (F1)\n"},
     {"sfx", CmdSfx,
       "sfx                         CSfxManager channel, mMuted, live sounds per channel, MusyX voices\n"},
     {"skipprompt", CmdSkipPrompt,

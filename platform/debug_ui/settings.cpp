@@ -309,7 +309,18 @@ bool sGameOptionsRestored = false;
 const SettingKey kSettingKeys[] = {
     BoolKey< &sOriginalExperience >("original_experience"),
     BoolKey< &sSkipCinematics >("skip_cinematics"),
-    BoolKey< &sSeamlessPickups >("seamless_pickups"),
+    // 0/1 (or a flag, as the checkbox it was wrote) and 2 or `repeats` (PortOverlay::ESeamlessPickups).
+    {"seamless_pickups",
+     [](const std::string& value) {
+       int parsed = 0;
+       if (value == "repeats" ||
+           (ParseInt(value, parsed) && parsed == PortOverlay::kSeamlessPickups_Repeats))
+         sSeamlessPickups = PortOverlay::kSeamlessPickups_Repeats;
+       else
+         sSeamlessPickups = ParseBool(value) ? PortOverlay::kSeamlessPickups_All
+                                             : PortOverlay::kSeamlessPickups_Off;
+     },
+     [](std::ostream& out) { out << sSeamlessPickups; }, false, "1", "2"},
     BoolKey< &sUnlockHardMode >("unlock_hard_mode"),
     BoolKey< &sUnlockGalleries >("unlock_galleries"),
     BoolKey< &sUnlockBeamDoors >("unlock_beam_doors"),

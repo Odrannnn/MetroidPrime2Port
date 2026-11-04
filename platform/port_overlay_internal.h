@@ -15,7 +15,7 @@
 namespace PortOverlayState {
 
 extern bool sSkipCinematics;
-extern bool sSeamlessPickups;
+extern int sSeamlessPickups;
 extern bool sLogFile;
 extern bool sFastMorph;
 extern bool sPointerMenus;

@@ -33,7 +33,16 @@ void DrawEnhancementsTab() {
   // The game reads this every frame in its cinematic flow state.
   Changed(ImGui::Checkbox("Skippable cutscenes", &sSkipCinematics));
   // Read when a pickup is touched and when a map station's message box comes up.
-  Changed(ImGui::Checkbox("Seamless item pickups", &sSeamlessPickups));
+  int seamless = sSeamlessPickups;
+  if (ImGui::Combo("Seamless item pickups", &seamless, "Off\0" "All\0" "Repeats only\0")) {
+    sSeamlessPickups = std::clamp(seamless, static_cast< int >(PortOverlay::kSeamlessPickups_Off),
+                                  static_cast< int >(PortOverlay::kSeamlessPickups_Repeats));
+    Changed(true);
+  }
+  ItemHelp("No control lock, message box or item cutscene: the item's name shows as a HUD memo. "
+           "All: every pickup and map station. Repeats only: pickups of an item you already have, "
+           "such as a second Missile Expansion or Energy Tank, so each kind's first box still "
+           "shows.");
   // Off walks at retail speed; a custom action bound to this switch makes the slider a sprint.
   Changed(ImGui::Checkbox("Custom walk speed", &sWalkSpeedEnabled));
   ImGui::SetItemTooltip("Off: retail speed. Bind a custom action to this setting (Toggle or While\n"

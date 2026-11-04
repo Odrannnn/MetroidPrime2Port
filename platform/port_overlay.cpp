@@ -59,7 +59,7 @@ extern "C" void AIPortSetOutputGain(float gain);
 namespace PortOverlayState {
 
 bool sSkipCinematics = false;
-bool sSeamlessPickups = false;
+int sSeamlessPickups = PortOverlay::kSeamlessPickups_Off;
 // `MP2_LOG_FILE`: whether stdout and stderr also go to a file (F1 > Testing, console `logfile`).
 // PortLogFile::Start reads it before Aurora comes up, so the row only reports the state the next
 // launch will take.
@@ -728,17 +728,28 @@ void SetSkipCinematics(bool skip) {
   Persist();
 }
 
-bool SeamlessPickups() {
+int SeamlessPickups() {
   ReadEnv();
   if (OriginalExperience()) {
-    return false;
+    return kSeamlessPickups_Off;
   }
-  return EnvBool("MP2_SEAMLESS_PICKUPS", sSeamlessPickups);
+  // `repeats` or 2; anything else reads as a flag (1/on: all), as the setting was a checkbox.
+  const char* env = port::EnvString("MP2_SEAMLESS_PICKUPS");
+  if (env != nullptr && (std::strcmp(env, "repeats") == 0 || std::strcmp(env, "2") == 0)) {
+    return kSeamlessPickups_Repeats;
+  }
+  const int saved = std::clamp(sSeamlessPickups, static_cast< int >(kSeamlessPickups_Off),
+                               static_cast< int >(kSeamlessPickups_Repeats));
+  if (env == nullptr) {
+    return saved;
+  }
+  return EnvBool("MP2_SEAMLESS_PICKUPS", false) ? kSeamlessPickups_All : kSeamlessPickups_Off;
 }
 
-void SetSeamlessPickups(bool seamless) {
+void SetSeamlessPickups(int mode) {
   ReadEnv();
-  sSeamlessPickups = seamless;
+  sSeamlessPickups = std::clamp(mode, static_cast< int >(kSeamlessPickups_Off),
+                                static_cast< int >(kSeamlessPickups_Repeats));
   Persist();
 }
 

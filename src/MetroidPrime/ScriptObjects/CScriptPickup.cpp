@@ -374,6 +374,10 @@ void CScriptPickup::Touch(CActor& act, CStateManager& mgr) {
     }
 
     int previousAmount = playerState->GetItemAmount(itemType);
+#ifdef TARGET_PC
+    // Seamless pickups' Repeats mode: the player already had this item (a later expansion or tank).
+    const bool repeatPickup = playerState->HasPowerUp(itemType);
+#endif
     playerState->AddPowerUp(CPlayerState::kIT_ItemPercentage, mPercentageIncrease);
     playerState->IncrPickUp(CPlayerState::kIT_ItemPercentage, mPercentageIncrease);
     if (!mAbsoluteValue) {
@@ -413,7 +417,11 @@ void CScriptPickup::Touch(CActor& act, CStateManager& mgr) {
     // the message box it zeroes and the cinematic cameras it activates, which it reaches through
     // memory relays and sequence timers as well (the cinematic and its end relay; the per-target
     // rule and the disc check are in port_pickup_presentation.h).
-    const bool seamless = PortOverlay::SeamlessPickups() && !mgr.IsMultiplayer();
+    const int seamlessMode = PortOverlay::SeamlessPickups();
+    const bool seamless =
+        !mgr.IsMultiplayer() &&
+        (seamlessMode == PortOverlay::kSeamlessPickups_All ||
+         (seamlessMode == PortOverlay::kSeamlessPickups_Repeats && repeatPickup));
     if (randoMemo || seamless) {
       std::set< uint16_t > visited;
       std::vector< const CEntity* > pending;
