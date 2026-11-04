@@ -73,6 +73,13 @@ float sPortCinematicTime = 0.f;
 const float kPortSkipAGuard = 0.5f;
 // When the current skip started (PortHarness::Seconds), for the "[skip] done" line.
 double sPortSkipStart = 0.0;
+// How long the current port skip has gone without a cinematic camera, in game time. A sequence can
+// pass a frame or two between two of its shots with none current (007b, quick resume's arrival in
+// the Great Temple): ending the skip there handed back control and the next shot then played over
+// the first-person view and HUD for a couple of frames. The skip ends once none has been current for
+// kPortSkipSettle; at max speed that is a few milliseconds of wall time, with nothing drawn.
+float sPortSkipNoCameraTime = 0.f;
+const float kPortSkipSettle = 0.5f;
 } // namespace
 #endif
 
@@ -170,6 +177,7 @@ void CMFGame::SetFlowState(EFlowState state) {
     CSfxManager::SetMuted(true);
 #ifdef TARGET_PC
     sPortSkipStart = PortHarness::Seconds();
+    sPortSkipNoCameraTime = 0.f;
 #endif
     break;
   case kFS_PortalTransition:
@@ -481,6 +489,14 @@ CIOWin::EMessageReturn CMFGame::OnMessage(const CArchitectureMessage& message,
         }
       }
 #ifdef TARGET_PC
+      if (PortOverlay::SkipCinematics() || sHarnessCinematicSkip || sPortUserCinematicSkip) {
+        // Port: see kPortSkipSettle. A camera that comes back (the next shot, or the one a skip left
+        // current) restarts the wait, and is skipped the same way.
+        sPortSkipNoCameraTime = cineCam ? 0.f : sPortSkipNoCameraTime + dt;
+        if (finished && sPortSkipNoCameraTime < kPortSkipSettle && mFlowTime < 600.f) {
+          finished = false;
+        }
+      }
       sPortSkipGapHold =
           !cineCam &&
           (PortOverlay::SkipCinematics() || sHarnessCinematicSkip || sPortUserCinematicSkip) &&
