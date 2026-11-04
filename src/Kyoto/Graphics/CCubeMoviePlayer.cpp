@@ -109,6 +109,24 @@ static const int kPortMovieDecodeAhead = kPortMovieSlots - 1;
 // The movie whose first frame is being held (Update) and for how many updates so far.
 static const CMoviePlayer* sPortHoldPlayer = nullptr;
 static int sPortHoldUpdates = 0;
+namespace {
+// The port's movie audio reader (CMoviePlayer::MixAudio). Retail's AI plays a frame's samples on
+// the same hardware clock the movie's frames are timed by; on the port the frames advance with the
+// game's updates and the samples leave at the audio device's rate, and the two drift apart (~0.3%
+// measured), so a reader that takes exactly 160 samples per callback either catches up with the
+// decoder (a gap of silence, a click, a few a second) or falls behind it. It reads at a rate
+// nudged by up to 0.5% instead, keeping a steady amount of decoded audio ahead of it, with linear
+// interpolation between samples.
+struct SPortMovieMix {
+  const CMoviePlayer* mOwner = nullptr;
+  bool mRunning = false;
+  uint mFrac = 0;          // 16.16 position between mPrev and mCur
+  short mPrev[2] = {0, 0};
+  short mCur[2] = {0, 0};
+  float mAvailAvg = -1.f;  // smoothed decoded samples ahead of the reader
+};
+SPortMovieMix sPortMix;
+} // namespace
 #else
 #define MOVIE_DECODE_AHEAD 2
 #endif
@@ -419,6 +437,10 @@ CMoviePlayer::~CMoviePlayer() {
 #ifdef TARGET_PC
   if (sPortHoldPlayer == this) {
     sPortHoldPlayer = nullptr;
+  }
+  // A movie allocated at this address later must not take over this one's reader state.
+  if (sPortMix.mOwner == this) {
+    sPortMix = SPortMovieMix();
   }
 #endif
 #ifdef TARGET_PC
@@ -798,6 +820,10 @@ void CMoviePlayer::Rewind() {
   if (sPortHoldPlayer == this) {
     sPortHoldPlayer = nullptr;
   }
+  // A rewound movie starts its reader afresh.
+  if (sPortMix.mOwner == this) {
+    sPortMix = SPortMovieMix();
+  }
 #endif
   mTextures.clear();
 }
@@ -826,27 +852,6 @@ void CMoviePlayer::StaticMyAudioCallback() {
     OSRestoreInterrupts(interrupts);
   }
 }
-
-#ifdef TARGET_PC
-namespace {
-// The port's movie audio reader (CMoviePlayer::MixAudio). Retail's AI plays a frame's samples on
-// the same hardware clock the movie's frames are timed by; on the port the frames advance with the
-// game's updates and the samples leave at the audio device's rate, and the two drift apart (~0.3%
-// measured), so a reader that takes exactly 160 samples per callback either catches up with the
-// decoder (a gap of silence, a click, a few a second) or falls behind it. It reads at a rate
-// nudged by up to 0.5% instead, keeping a steady amount of decoded audio ahead of it, with linear
-// interpolation between samples.
-struct SPortMovieMix {
-  const CMoviePlayer* mOwner = nullptr;
-  bool mRunning = false;
-  uint mFrac = 0;          // 16.16 position between mPrev and mCur
-  short mPrev[2] = {0, 0};
-  short mCur[2] = {0, 0};
-  float mAvailAvg = -1.f;  // smoothed decoded samples ahead of the reader
-};
-SPortMovieMix sPortMix;
-} // namespace
-#endif
 
 void CMoviePlayer::MixAudio(short* out, const short* in, unsigned long samples) {
   const short* input = in;
