@@ -77,6 +77,10 @@ bool ModReloadActive();
 // state saved after skipping it in a fresh game) is skipped like START does, as the state was
 // captured with it over. Without it the placement waits on the cinematic until its timeout.
 bool LoadAwaitsCinematic();
+// The game's draw shows black instead of the room: a state load is putting Samus back, so the
+// rebuilt room's frames before then show it from the area's spawn, not the saved spot (and a quick
+// resume first boots the card's save there). A cinematic the load lands on is skipped unseen.
+bool HidesPicture(CStateManager& mgr);
 bool ReloadModsNow();
 // The pause menu's share: the pause screen holds the suit model, no room is running and Tick does not
 // run, so the request cannot take the world-restart route. Returns true once, on the frame it reopened
