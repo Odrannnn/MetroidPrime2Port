@@ -7,6 +7,44 @@
 
 #include "dolphin/os.h"
 
+#ifdef TARGET_PC
+#include <mutex>
+
+namespace {
+std::recursive_mutex sHeapMutex;
+thread_local int sHeapDepth = 0; // how many times this thread holds sHeapMutex
+
+// Held for one CMemory call; the CPortHeapUnlocked comment in CMemory.hpp says why.
+struct SHeapLock {
+  SHeapLock() {
+    sHeapMutex.lock();
+    ++sHeapDepth;
+  }
+  ~SHeapLock() {
+    --sHeapDepth;
+    sHeapMutex.unlock();
+  }
+};
+} // namespace
+
+CPortHeapUnlocked::CPortHeapUnlocked() : mDepth(sHeapDepth) {
+  for (int i = 0; i < mDepth; ++i) {
+    sHeapMutex.unlock();
+  }
+  sHeapDepth = 0;
+}
+
+CPortHeapUnlocked::~CPortHeapUnlocked() {
+  for (int i = 0; i < mDepth; ++i) {
+    sHeapMutex.lock();
+  }
+  sHeapDepth = mDepth;
+}
+#define PORT_HEAP_LOCK SHeapLock heapLock
+#else
+#define PORT_HEAP_LOCK
+#endif
+
 static CGameAllocator gGameAllocator;
 IAllocator* CMemory::mpAllocator = &gGameAllocator;
 bool CMemory::mInitialized;
@@ -56,6 +94,7 @@ void CMemory::Shutdown() {
 
 void* CMemory::Alloc(size_t len, IAllocator::EHint hint, IAllocator::EScope scope,
                      IAllocator::EType type, const CCallStack& callstack) {
+  PORT_HEAP_LOCK;
   volatile bool enabled = OSDisableInterrupts();
   void* ret = mpAllocator->Alloc(len, hint, scope, type, callstack);
   if (ret == nullptr) {
@@ -69,6 +108,7 @@ void* CMemory::Alloc(size_t len, IAllocator::EHint hint, IAllocator::EScope scop
 }
 
 void CMemory::Free(const void* ptr) {
+  PORT_HEAP_LOCK;
   volatile bool enabled = OSDisableInterrupts();
   if (ptr != nullptr) {
     mpAllocator->Free(ptr);
@@ -77,14 +117,19 @@ void CMemory::Free(const void* ptr) {
 }
 
 void CMemory::SetOutOfMemoryCallback(IAllocator::FOutOfMemoryCb cb, const void* context) {
+  PORT_HEAP_LOCK;
   mpAllocator->SetOutOfMemoryCallback(cb, context);
 }
 
 IAllocator::SMetrics CMemory::GetMetrics(bool unk1, bool unk2) {
+  PORT_HEAP_LOCK;
   return mpAllocator->GetMetrics(unk1, unk2);
 }
 
-void CMemory::OffsetFakeStatics(int offset) { mpAllocator->OffsetFakeStatics(offset); }
+void CMemory::OffsetFakeStatics(int offset) {
+  PORT_HEAP_LOCK;
+  mpAllocator->OffsetFakeStatics(offset);
+}
 
 void* operator new(size_t sz, const char* fileAndLine, const char* type) {
   return CMemory::Alloc(sz, IAllocator::kHI_None, IAllocator::kSC_Unk1, IAllocator::kTP_Heap,
