@@ -61,6 +61,14 @@ void DrawEnhancementsTab() {
     sScanSpeed = scanSpeed;
     Changed(true);
   }
+  int beamSwitchSpeed = sBeamSwitchSpeed;
+  if (ImGui::SliderInt("Beam switch speed", &beamSwitchSpeed, PortOverlay::kBeamSwitchSpeedMin,
+                       PortOverlay::kBeamSwitchSpeedMax, "%d%%", ImGuiSliderFlags_AlwaysClamp)) {
+    sBeamSwitchSpeed = beamSwitchSpeed;
+    Changed(true);
+  }
+  ItemHelp("How fast the cannon closes, morphs and opens on a beam change; 100% is retail. The "
+           "rest of the gun keeps its speed.");
   // Elevator and portal share a row: same choices, short labels.
   const float rideWidth = ImGui::GetFontSize() * 6.f;
   int elevatorRide = sElevatorRide;

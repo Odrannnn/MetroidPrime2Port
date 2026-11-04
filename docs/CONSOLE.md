@@ -77,6 +77,7 @@ hp, hp_max, visor, beam, freecam) for scripts.
 - `scanspeed [50..400]`, `elevator [original|fast|skip]`, `portal [original|fast|skip]`, `rooms [original|fast]`, `original [0|1]`, `igt [0|1]`, `language [0..6]` — the Game page's
   scan speed, elevator ride, Original experience and on-screen time (`scan_speed`, `elevator_ride`,
   `original_experience`, `igt_timer` in SETTINGS.md); no argument prints the value
+- `beamswitch [100..400]` — beam switch speed in percent (`beam_switch_speed`); no argument prints it
 - `walkspeed [50..200|on|off]` — walk speed in percent, or `on`/`off` for the Custom walk speed switch (off is retail speed; shows the speed in effect with no argument); `walk_speed` and `walk_speed_enabled` in SETTINGS.md
 - `pointer <x> <y> move|click|dclick|tap|dtap|down|up [l|r|touch]|drag <x1> <y1> [l|r|touch]|wheel <n>|pinch <ratio>`, `pointer back|where|hits` — scripted mouse/touch input for the pointer menus, in GUI (EFB) pixels as screenshots show them; `where` prints the position and the widget rects under it, `hits` lists the recorded rects
 - `hintshow` — show the hint the game would show next (F1 > Game > Show current hint)
@@ -84,6 +85,7 @@ hp, hp_max, visor, beam, freecam) for scripts.
 - `springball <0|1>` — spring ball: C-stick up in Morph Ball bomb-jumps (needs Bombs)
 - `lockon <0|1>` — toggle lock-on: an L press latches until the next press
 - `dodge` — a press of the Dodge action: the player takes it within 0.12 s if on the ground and strafing, so hold the strafe first (e.g. `press sx:127 0`, locked on `press l+sx:127 0`); locked on it dashes as a jump tap does, otherwise straight sideways; off under Original Experience
+- `target next|prev` — a press of Next/Previous target: while locked on, the lock moves to the next visible target right or left on screen, within 0.12 s; off under Original experience
 - `spidertoggle [0|1]` — an R press holds the spider ball on its track until the next (`spider_toggle`)
 - `aimlockon [0|1]` — lock-on picks the target nearest the crosshair (`aim_lock_on`)
 - `sticky <0|1>` — sticky charge: a long A hold keeps charging after the release

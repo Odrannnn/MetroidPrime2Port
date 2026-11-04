@@ -100,6 +100,7 @@ std::atomic< int > sWheelState{0};
 constexpr int kPlayers = 4;
 std::atomic< bool > sMorphed[kPlayers]{};
 std::atomic< bool > sOrbitLocked[kPlayers]{};
+std::atomic< bool > sLockedOnObject[kPlayers]{};
 std::atomic< bool > sScanTextUp{false};
 std::atomic<bool> sRadialTouchForeground{true};
 std::atomic< int > sPendingVisor[kPlayers]{-1, -1, -1, -1};
@@ -659,6 +660,22 @@ bool TakeDodgeRequest(int player) {
   return SDL_GetTicksNS() < until && !PortOverlay::OriginalExperience();
 }
 
+std::atomic< uint64_t > sTargetCycleUntilNs[kPlayers]{};
+std::atomic< int > sTargetCycleDir[kPlayers]{};
+
+void RequestTargetCycle(int dir, int player) {
+  if (!ValidPlayer(player)) return;
+  sTargetCycleDir[player].store(dir > 0 ? 1 : -1);
+  sTargetCycleUntilNs[player].store(SDL_GetTicksNS() + 120'000'000);
+}
+
+int TakeTargetCycle(int player) {
+  if (!ValidPlayer(player)) return 0;
+  const uint64_t until = sTargetCycleUntilNs[player].exchange(0);
+  if (SDL_GetTicksNS() >= until || PortOverlay::OriginalExperience()) return 0;
+  return sTargetCycleDir[player].load();
+}
+
 bool AimEnabled() { return Read(&Settings::aim); }
 
 float AimSpeed() { return Read(&Settings::aimSpeed); }
@@ -747,11 +764,16 @@ void SetMorphed(bool morphed, int player) {
   if (ValidPlayer(player)) sMorphed[player].store(morphed, std::memory_order_release);
 }
 bool Morphed(int player) { return ValidPlayer(player) && sMorphed[player].load(std::memory_order_acquire); }
-void SetOrbitLocked(bool locked, int player) {
-  if (ValidPlayer(player)) sOrbitLocked[player].store(locked, std::memory_order_release);
+void SetOrbitLocked(bool locked, bool onObject, int player) {
+  if (!ValidPlayer(player)) return;
+  sOrbitLocked[player].store(locked, std::memory_order_release);
+  sLockedOnObject[player].store(onObject, std::memory_order_release);
 }
 bool OrbitLocked(int player) {
   return ValidPlayer(player) && sOrbitLocked[player].load(std::memory_order_acquire);
+}
+bool LockedOnObject(int player) {
+  return ValidPlayer(player) && sLockedOnObject[player].load(std::memory_order_acquire);
 }
 void SetScanTextUp(bool up) { sScanTextUp.store(up, std::memory_order_release); }
 bool ScanTextUp() { return sScanTextUp.load(std::memory_order_acquire); }

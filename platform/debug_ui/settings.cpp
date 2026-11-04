@@ -339,6 +339,8 @@ const SettingKey kSettingKeys[] = {
                                                                                   "200"),
     IntKey< &sScanSpeed, PortOverlay::kScanSpeedMin, PortOverlay::kScanSpeedMax >("scan_speed", "50",
                                                                                   "400"),
+    IntKey< &sBeamSwitchSpeed, PortOverlay::kBeamSwitchSpeedMin, PortOverlay::kBeamSwitchSpeedMax >(
+        "beam_switch_speed", "100", "400"),
     // The F1 Game > Audio rows' part above 100 percent: the mixer reads a boost, so a loaded value
     // is handed to it here as well as by the rows (a plain IntKey could not).
     {"music_boost",

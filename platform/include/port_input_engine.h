@@ -96,6 +96,7 @@ enum Context : uint16_t {
   // The scan text (the scan freeze), on top of gameplay and scan. Port-internal: no remap
   // page lists it; with separate menu buttons only Menu A applies there (issue #11).
   kCtxScanText = 1 << 5,
+  kCtxLockOn = 1 << 6, // with gameplay, while locked on to an object
   kCtxLayer1 = 1 << 8,
   kCtxLayer2 = 1 << 9,
   kCtxLayer3 = 1 << 10,
@@ -195,7 +196,9 @@ enum class ActionKind : uint8_t {
   X(MapPanUp, HalfAxis, "map_pan_up", "Map pan up")                                                \
   X(MapPanDown, HalfAxis, "map_pan_down", "Map pan down")                                          \
   X(MapPanLeft, HalfAxis, "map_pan_left", "Map pan left")                                          \
-  X(MapPanRight, HalfAxis, "map_pan_right", "Map pan right")
+  X(MapPanRight, HalfAxis, "map_pan_right", "Map pan right")                                      \
+  X(TargetNext, Digital, "target_next", "Next target (locked on)") /* appended: IDs persist */     \
+  X(TargetPrev, Digital, "target_prev", "Previous target (locked on)")
 
 enum class Action : uint16_t {
 #define PORT_INPUT_ACTION_ENUM(id, kind, key, label) id,

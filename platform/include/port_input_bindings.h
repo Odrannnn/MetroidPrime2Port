@@ -249,6 +249,11 @@ const MapRow* FindMapRow(Action a);
 // Before a poll: scopes the map rows to the map (layers are dropped) and blocks the
 // map for the other bindings on their inputs.
 void ApplyMapRows(Profile& profile);
+// The target rows (Next/Previous target, MP1 issue #243): only while locked on, where their
+// inputs do nothing else (e.g. the wheel's beam cycling). Before a poll: scopes them to lock-on
+// (layers are dropped) and blocks lock-on for the other bindings on their inputs.
+bool IsTargetRow(Action a);
+void ApplyTargetRows(Profile& profile);
 
 // The touch overlay's stock buttons (TouchControlsView's C_* ids) and Turbo's
 // pulse (kTouchTurboCode): fixed GameCube actions in all three layouts (default,

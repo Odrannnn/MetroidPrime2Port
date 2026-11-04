@@ -77,6 +77,7 @@ int sBallCamSpeed = PortOverlay::kBallCamSpeedDefault;
 bool sWalkSpeedEnabled = true;
 int sWalkSpeed = PortOverlay::kWalkSpeedDefault;
 int sScanSpeed = PortOverlay::kScanSpeedDefault;
+int sBeamSwitchSpeed = PortOverlay::kBeamSwitchSpeedDefault;
 int sMusicBoost = PortOverlay::kVolumeBoostDefault;
 int sSfxBoost = PortOverlay::kVolumeBoostDefault;
 int sLanguage = 0;
@@ -2201,6 +2202,21 @@ int ScanSpeed() {
 void SetScanSpeed(int percent) {
   ReadEnv();
   sScanSpeed = std::clamp(percent, kScanSpeedMin, kScanSpeedMax);
+  Persist();
+}
+
+int BeamSwitchSpeed() {
+  ReadEnv();
+  if (OriginalExperience()) {
+    return kBeamSwitchSpeedDefault;
+  }
+  return EnvIntIn("MP2_BEAM_SWITCH_SPEED", sBeamSwitchSpeed, kBeamSwitchSpeedMin,
+                  kBeamSwitchSpeedMax);
+}
+
+void SetBeamSwitchSpeed(int percent) {
+  ReadEnv();
+  sBeamSwitchSpeed = std::clamp(percent, kBeamSwitchSpeedMin, kBeamSwitchSpeedMax);
   Persist();
 }
 

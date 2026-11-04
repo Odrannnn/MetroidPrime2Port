@@ -626,6 +626,7 @@ uint16_t GameContexts(int player) {
     if (player == 0 && PortTouch::ScanTextUp()) contexts |= PortInput::kCtxScanText;
   }
   if (PortTouch::Morphed(player)) contexts |= PortInput::kCtxMorphBall;
+  if (PortTouch::LockedOnObject(player) && !PortOverlay::OriginalExperience()) contexts |= PortInput::kCtxLockOn;
   return contexts;
 }
 
@@ -775,6 +776,8 @@ void RouteDirectActions(const PortInput::Output& out, double nowSec) {
   PushCyclePick(false, visorDir != 0 ? CycleTarget(false, visorDir) : -1);
   if (out.Pressed(Action::SpringBall)) PortTouch::RequestSpringBall();
   if (out.Pressed(Action::Dodge)) PortTouch::RequestDodge();
+  if (out.Pressed(Action::TargetNext)) PortTouch::RequestTargetCycle(1);
+  if (out.Pressed(Action::TargetPrev)) PortTouch::RequestTargetCycle(-1);
 }
 
 // RouteDirectActions for Players 2-4: their direct and next/previous beam and visor picks and
@@ -799,6 +802,8 @@ void RoutePlayerActions(const PortInput::Output& out, int player) {
   PushCyclePick(false, visorDir != 0 ? CycleTarget(false, visorDir, player) : -1, false, player);
   if (out.Pressed(Action::SpringBall)) PortTouch::RequestSpringBall(0.12f, player);
   if (out.Pressed(Action::Dodge)) PortTouch::RequestDodge(player);
+  if (out.Pressed(Action::TargetNext)) PortTouch::RequestTargetCycle(1, player);
+  if (out.Pressed(Action::TargetPrev)) PortTouch::RequestTargetCycle(-1, player);
 }
 
 // The port's own actions: polled every frame by PollPortActions, not with the game
@@ -1499,6 +1504,7 @@ SPoll Poll(unsigned mouseHeld, bool focused) {
   ApplyMenuButtons(next);
   PortInput::ApplyBallButtons(next);
   PortInput::ApplyMapRows(next);
+  PortInput::ApplyTargetRows(next);
   const uint16_t contexts = GameContexts();
   ApplyTwinStickFreeAim(next, contexts);
   if (!sInit || next != sProfile) {
@@ -1562,6 +1568,7 @@ bool PollPlayer(int port, PADStatus& status) {
   ApplyMenuButtons(next, port);
   PortInput::ApplyBallButtons(next);
   PortInput::ApplyMapRows(next);
+  PortInput::ApplyTargetRows(next);
   const uint16_t contexts = GameContexts(port);
   ApplyTwinStickFreeAim(next, contexts, port);
   if (!sInit[port] || next != profile) {

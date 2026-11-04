@@ -203,6 +203,7 @@
 {"Enhancements", "", "Pace", "Custom walk speed", "sprint run toggle hold movement speed retail"},
 {"Enhancements", "", "Pace", "Walk speed", "movement run fast slow strafe velocity samus"},
 {"Enhancements", "", "Pace", "Scan speed", "scanning visor faster slower scan time"},
+{"Enhancements", "", "Pace", "Beam switch speed", "beam change switch faster weapon swap"},
 {"Enhancements", "", "Pace", "Elevator ride cutscene", "world transition skip fast loading speed"},
 {"Enhancements", "", "Pace", "Portal transition", "light dark world portal ride skip fast speed"},
 {"Enhancements", "", "Pace", "Energy controller access cutscene", "rotating rooms energy controller bomb slot cutscene rotate turn fast speed"},

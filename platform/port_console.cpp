@@ -1654,6 +1654,19 @@ void CmdScanSpeed(CStateManager&, const Args& args, std::string& out) {
   out += "scanspeed " + std::to_string(PortOverlay::ScanSpeed()) + "\n";
 }
 
+// beamswitch [100..400]: beam switch speed in percent (beam_switch_speed); no argument prints it.
+void CmdBeamSwitch(CStateManager&, const Args& args, std::string& out) {
+  if (args.size() > 1) {
+    const int value = ArgToInt(args[1], -1);
+    if (value < PortOverlay::kBeamSwitchSpeedMin || value > PortOverlay::kBeamSwitchSpeedMax) {
+      Fail("usage: beamswitch [100..400]");
+      return;
+    }
+    PortOverlay::SetBeamSwitchSpeed(value);
+  }
+  out += "beamswitch " + std::to_string(PortOverlay::BeamSwitchSpeed()) + "\n";
+}
+
 // language [0..6]: the text language (language), applied while the game runs; no argument prints it.
 void CmdLanguage(CStateManager&, const Args& args, std::string& out) {
   if (args.size() > 1) {
@@ -2006,6 +2019,19 @@ void CmdDodge(CStateManager&, const Args&, std::string& out) {
   PortTouch::RequestDodge();
   out = PortOverlay::OriginalExperience() ? "dodge requested (off under original experience)"
                                           : "dodge requested";
+}
+
+// As a Next/Previous target press: while locked on, the lock moves to the next visible target
+// right or left on screen (taken within 120 ms).
+void CmdTarget(CStateManager&, const Args& args, std::string& out) {
+  const std::string_view dir = args.size() < 2 ? std::string_view() : args[1];
+  if (dir != "next" && dir != "prev") {
+    Fail("usage: target next|prev");
+    return;
+  }
+  PortTouch::RequestTargetCycle(dir == "next" ? 1 : -1);
+  out = PortOverlay::OriginalExperience() ? "target cycle requested (off under original experience)"
+                                          : "target cycle requested";
 }
 
 void CmdSpringBall(CStateManager&, const Args& args, std::string& out) {
@@ -5472,6 +5498,8 @@ const CommandSpec kCommands[] = {
       "walkspeed [50..200|on|off]  on-foot movement speed in percent (walk_speed), or switch it on/off; no argument prints it\n"},
     {"scanspeed", CmdScanSpeed,
       "scanspeed [50..400]         scan speed in percent (scan_speed); no argument prints it\n"},
+    {"beamswitch", CmdBeamSwitch,
+      "beamswitch [100..400]       beam switch speed in percent (beam_switch_speed); no argument prints it\n"},
     {"language", CmdLanguage,
       "language [0..6]             text language, applied live (language); no argument prints it\n"},
     {"combocost", CmdComboCost,
@@ -5496,6 +5524,8 @@ const CommandSpec kCommands[] = {
       "lockon <0|1>                toggle lock-on: an L press latches until the next press\n"},
     {"dodge", CmdDodge,
       "dodge                      a Dodge press (sideways dash, locked on or not; needs a strafe held)\n"},
+    {"target", CmdTarget,
+      "target next|prev           a Next/Previous target press (moves the lock while locked on)\n"},
     {"spidertoggle", CmdSpiderToggle,
       "spidertoggle [0|1]         an R press holds the spider ball on its track until the next (spider_toggle)\n"},
     {"aimlockon", CmdAimLockOn,

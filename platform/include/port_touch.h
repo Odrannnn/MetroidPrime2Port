@@ -75,6 +75,11 @@ void ClearSpringBallRequest(int player = 0);
 // Experience).
 void RequestDodge(int player = 0);
 bool TakeDodgeRequest(int player = 0);
+// Next/Previous target while locked on (MP1 issue #243): +1 right, -1 left on screen. The request
+// lasts 120 ms; that player's CPlayer::UpdateOrbitSelection takes it once (0 when none is pending
+// or under Original Experience).
+void RequestTargetCycle(int dir, int player = 0);
+int TakeTargetCycle(int player = 0);
 
 // Drag on the free screen to aim (MP1's `touch_aim`, on by default; `MP2_TOUCH_AIM`).
 bool AimEnabled();
@@ -141,8 +146,10 @@ void SetMorphed(bool morphed, int player = 0);
 bool Morphed(int player = 0);
 // CPlayer::Update publishes whether each player is locked on to an object or grappling (orbiting a
 // carcass or a point is not a lock); a Toggle-trigger L binding lets go when that lock ends.
-void SetOrbitLocked(bool locked, int player = 0);
+// LockedOnObject: only a plain object lock (kOS_OrbitObject), where Next/Previous target applies.
+void SetOrbitLocked(bool locked, bool onObject, int player = 0);
 bool OrbitLocked(int player = 0);
+bool LockedOnObject(int player = 0);
 // CStateManager::Update publishes whether the game is soft paused: the scan text is up (CPlayer's
 // scan freeze, its only soft pause).
 void SetScanTextUp(bool up);

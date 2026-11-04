@@ -187,6 +187,13 @@ const int kScanSpeedMax = 400;
 const int kScanSpeedDefault = 100;
 int ScanSpeed();
 void SetScanSpeed(int percent);
+// Beam switch speed in percent (`MP2_BEAM_SWITCH_SPEED`, 100 = retail): scales a beam change's
+// close, wipe and open animations (CPlayerGun::PortBeamSwitchScale); retail under Original experience.
+const int kBeamSwitchSpeedMin = 100;
+const int kBeamSwitchSpeedMax = 400;
+const int kBeamSwitchSpeedDefault = 100;
+int BeamSwitchSpeed();
+void SetBeamSwitchSpeed(int percent);
 // Music and sound-effects boost in percent (`MP2_MUSIC_BOOST`, `MP2_SFX_BOOST`, 100 = no boost):
 // the port's mixer scales the music path (the streamed voices) or every other voice, so 150 plays
 // that path louder than the game's own volume maximum alone. The F1 Game > Audio sliders use it

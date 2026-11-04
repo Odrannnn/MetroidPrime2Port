@@ -111,6 +111,10 @@ Game page:
 - `scan_speed`: Enhancements > Pace > Scan speed (50 to 400 percent, default 100 = retail); env
   `MP2_SCAN_SPEED`, console `scanspeed`. Scales how fast a scan fills (CPlayer::UpdateScanningState);
   the visor, scan-point and hint text are unchanged.
+- `beam_switch_speed`: Enhancements > Pace > Beam switch speed (100 to 400 percent, default 100 =
+  retail); env `MP2_BEAM_SWITCH_SPEED`, console `beamswitch`. Scales a beam change's close, wipe
+  and open animations while one runs; the rest of the gun keeps its speed. Retail under Original
+  experience.
 - `elevator_ride`: Enhancements > Pace > Elevator ride cutscene (0 original, 1 fast, 2 skip); env `MP2_ELEVATOR_RIDE`
   (`original|fast|skip`). Fast runs the world-transition ride at double speed; Skip ends it as soon as
   the next world has loaded (the load itself still takes its time). Text transitions are unchanged.
@@ -207,6 +211,12 @@ Controls > Options:
   press, with mouse/stick look free during it. A press is kept for 0.12 s, so pressing just before
   the strafe works. Like any digital action it can be a touch button in the layout editor. Off under
   Original Experience; the jump-tap dash is unchanged.
+- Next/Previous target (Controls > Remap > Move and aim, bindings `target_next` and `target_prev`,
+  unbound by default; MP1 8c7d45fab): while locked on, a press moves the lock to the visible target
+  nearest to the right (Next) or left (Previous) of the current one, wrapping to the far side; grapple
+  points are skipped. The actions work only while locked on (input context `lockon`), where their
+  inputs do nothing else, so e.g. the mouse wheel can move the lock while locked on and still cycle
+  beams otherwise. Console `target next|prev`. Off under Original Experience.
 - `sticky_charge`, `rapid_charge`: Buttons > Sticky Charge, Remastered charge (rapid fire).
 - `auto_aim`: Aiming > Auto-aim.
 - `pointer_aim`, `pointer_aim_box`, `pointer_aim_turn`: Aiming > Pointer aim (Trilogy style),

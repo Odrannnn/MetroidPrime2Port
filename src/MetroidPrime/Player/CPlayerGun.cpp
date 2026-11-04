@@ -1615,10 +1615,19 @@ void CPlayerGun::Update(float dt, CStateManager& mgr) {
   mFrozen = isUnmorphed ? player->GetFrozenState() : false;
   mFiring = false;
   const float advDt = mFrozen ? 0.f : dt;
+#ifdef TARGET_PC
+  // beam_switch_speed: a beam change's close/open animations and wipe run faster (the rest of
+  // the gun keeps advDt).
+  const float switchDt = advDt * PortBeamSwitchScale();
+#endif
   if (mCurrentBeam->IsSpecialAnimationPlaying() && !mCurrentBeam->GetSpeedUpAnimation()) {
     mCurrentBeam->SetSpeedUpAnimation(mInputFlags != 0);
   }
+#ifdef TARGET_PC
+  mCurrentBeam->Update(switchDt, mgr);
+#else
   mCurrentBeam->Update(advDt, mgr);
+#endif
   mGunMotion->Update(advDt, mgr);
   mGrappleArm->Update(advDt, mgr);
   if (!mAuxWeapon->IsLoaded()) {
@@ -1685,7 +1694,11 @@ void CPlayerGun::Update(float dt, CStateManager& mgr) {
     mCurrentBeam->EnableFrozenEffect(kFFT_Thawed);
   }
   if (mBeamChangeState != kBCS_Idle) {
+#ifdef TARGET_PC
+    UpdateBeamChange(switchDt, mgr);
+#else
     UpdateBeamChange(advDt, mgr);
+#endif
   }
   UpdateFreeLook(advDt, mgr);
   if (mGrappleArm->GetStateFlags() != 0 && !mGrappleArm->IsGrappling()) {
@@ -2754,6 +2767,12 @@ void CPlayerGun::ChangeWeapon(CStateManager& mgr) {
   PlayBeamFireSfx(mgr, *GetPlayerFromAll(mgr), true);
   mGunMorph.StartWipe(CGunMorph::kMD_In);
 }
+
+#ifdef TARGET_PC
+float CPlayerGun::PortBeamSwitchScale() const {
+  return mBeamChangeState != kBCS_Idle ? float(PortOverlay::BeamSwitchSpeed()) / 100.f : 1.f;
+}
+#endif
 
 bool CPlayerGun::ProcessGunMorph(float dt, CStateManager& mgr) {
   static const ushort beamSounds[2][4] = {
