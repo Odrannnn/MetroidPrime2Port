@@ -37,6 +37,8 @@ struct CPortHeapUnlocked {
   ~CPortHeapUnlocked();
   int mDepth;
 };
+// Whether this is the thread that set the out-of-memory callback (CMemory::SetOutOfMemoryCallback).
+bool PortHeapOnOomCallbackThread();
 #endif
 
 #if defined(__MWERKS__) || defined(CLANGD)

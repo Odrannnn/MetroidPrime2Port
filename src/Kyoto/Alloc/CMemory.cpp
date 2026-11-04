@@ -9,10 +9,12 @@
 
 #ifdef TARGET_PC
 #include <mutex>
+#include <thread>
 
 namespace {
 std::recursive_mutex sHeapMutex;
 thread_local int sHeapDepth = 0; // how many times this thread holds sHeapMutex
+std::thread::id sOomCallbackThread; // set with the callback, under sHeapMutex
 
 // Held for one CMemory call; the CPortHeapUnlocked comment in CMemory.hpp says why.
 struct SHeapLock {
@@ -40,6 +42,8 @@ CPortHeapUnlocked::~CPortHeapUnlocked() {
   }
   sHeapDepth = mDepth;
 }
+
+bool PortHeapOnOomCallbackThread() { return std::this_thread::get_id() == sOomCallbackThread; }
 #define PORT_HEAP_LOCK SHeapLock heapLock
 #else
 #define PORT_HEAP_LOCK
@@ -118,6 +122,9 @@ void CMemory::Free(const void* ptr) {
 
 void CMemory::SetOutOfMemoryCallback(IAllocator::FOutOfMemoryCb cb, const void* context) {
   PORT_HEAP_LOCK;
+#ifdef TARGET_PC
+  sOomCallbackThread = std::this_thread::get_id();
+#endif
   mpAllocator->SetOutOfMemoryCallback(cb, context);
 }
 

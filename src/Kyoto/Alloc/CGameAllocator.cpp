@@ -2,10 +2,12 @@
 #include "dolphin/types.h"
 #include "stddef.h"
 #include <Kyoto/Alloc/CGameAllocator.hpp>
+#ifdef TARGET_PC
 #include <Kyoto/Alloc/CMemory.hpp>
 
 #include <cstdint>
 #include <cstdio>
+#endif
 
 #include <Kyoto/Alloc/CCallStack.hpp>
 #include <Kyoto/Alloc/CMediumAllocPool.hpp>
@@ -260,7 +262,13 @@ void* CGameAllocator::Alloc(size_t size, const EHint hint, const EScope scope, c
 
   if (info == nullptr) {
     void* mediumBuf = nullptr;
+#ifdef TARGET_PC
+    // Port: the callback frees game objects, so only the thread that set it (the game thread)
+    // runs it; another thread's allocation (a DVD completion's music buffer) just fails.
+    if (mOomCallback && PortHeapOnOomCallbackThread()) {
+#else
     if (mOomCallback) {
+#endif
 #ifdef TARGET_PC
       {
         CPortHeapUnlocked unlocked; // CMemory.hpp: the callback frees objects, which take other locks
