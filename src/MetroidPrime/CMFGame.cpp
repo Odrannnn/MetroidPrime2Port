@@ -441,19 +441,27 @@ CIOWin::EMessageReturn CMFGame::OnMessage(const CArchitectureMessage& message,
           }
           const int portResult = mStateManager->SpecialSkipCinematic();
           ++sSkipAttempts;
-          if (portResult == 1 || portResult == 2) {
-            // The scene skipped itself. Result 1 stopped the camera too; result 2 is a skip function
-            // of another type (kSF_CinematicSkipSignal), which only sends the scene's skip messages,
-            // and retail's canSkip branch only counts result 1 as done, so the port stops the camera.
-            if (portResult != 1) {
-              mStateManager->CameraManager(0)->StopCinematics(*mStateManager);
+          if (portResult == 2) {
+            // A skip function of another type (kSF_CinematicSkipSignal): it only sends the scene's
+            // skip messages, and retail's canSkip branch does not count it as done either. The
+            // camera keeps running here, fast-forwarded like a scene with no skip function (the
+            // signal cleared the skip function, so the asks from now on take that branch below),
+            // because its time is the scene's timeline: CCinematicCamera::Think drives the scene's
+            // CScriptTimeKeyframe, and through it the sequence timers that fire the scene's events.
+            // Stopping the camera here froze that timeline before its end, so the end's events
+            // never fired: the spawn point that moves Samus to the scene's stand-in did not, and
+            // she was left where the scene began, the posed stand-in still in the Dark World
+            // bubble (Temple Grounds' 01_temple_hive03_dark, cinematic 016f).
+            if (!sSkipReported) {
+              std::fprintf(stderr,
+                           "[skip] cinematic %04x: the scene's skip signal; fast-forwarding the rest\n",
+                           portCamId & 0xffffu);
+              sSkipReported = true;
             }
+          } else if (portResult == 1) {
+            // The scene skipped itself, and SpecialSkipCinematic stopped the camera.
             if (!sSkipAnswered) {
-              if (portResult == 2) {
-                std::fprintf(stderr,
-                             "[skip] cinematic %04x: the scene's skip signal, camera stopped\n",
-                             portCamId & 0xffffu);
-              } else if (sSkipAttempts > 1) {
+              if (sSkipAttempts > 1) {
                 std::fprintf(stderr, "[skip] cinematic %04x: the scene's own skip (attempt %u)\n",
                              portCamId & 0xffffu, sSkipAttempts);
               } else {
