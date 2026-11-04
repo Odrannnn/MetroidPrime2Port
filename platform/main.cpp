@@ -810,6 +810,26 @@ std::string EnsureDiscImage(const std::string& resolved, const std::string& defa
   }
 }
 
+// Android's DesktopDiscFallback: MP2_DISC, else the image F1 > System > Disc image > Replace
+// remembered (its copy in the user folder, settings.cfg `disc_path`) while it is still usable,
+// else the resolved `<files>/disc.iso`. A `disc=` in port_paths.txt is a debugging push and keeps
+// winning. Without this the replaced image was copied and remembered but never booted (#76).
+std::string AndroidDiscFallback(const PortPaths& paths) {
+  if (const char* env = std::getenv("MP2_DISC"); env != nullptr && env[0] != '\0') {
+    return env;
+  }
+  const std::string saved = PortOverlaySettings::DiscPath();
+  if (!saved.empty() && paths.disc == paths.base + "disc.iso") {
+    if (DiscImageIsUsable(saved)) {
+      std::fprintf(stderr, "metroid_prime2_port: using the remembered disc image: %s\n", saved.c_str());
+      return saved;
+    }
+    std::fprintf(stderr, "metroid_prime2_port: the remembered disc image is gone or unusable: %s\n",
+                 saved.c_str());
+  }
+  return paths.disc;
+}
+
 #else
 
 // The desktop keeps its console and its environment: fd 1 and fd 2 already arrive where the
@@ -1123,24 +1143,6 @@ int main(int argc, char** argv) {
   }
 #endif
 
-  // The disc, resolved and - if the image is missing or is not this game - picked from the
-  // user's storage, all before Aurora comes up: `EnsureDiscImage` says why the trigger is the
-  // image not being usable rather than the disc check after the renderer starts. The desktop
-  // keeps the resolution it always had, below.
-#if defined(__ANDROID__)
-  const std::string androidDiscImage =
-      EnsureDiscImage(port::entry::ResolveDiscPath(argc, argv, EnvOrFallback("MP2_DISC", appPaths.disc),
-                                                   ExecutableDir(argc > 0 ? argv[0] : nullptr)),
-                      appPaths.disc);
-  if (androidDiscImage.empty()) {
-    // Nothing was picked, so there is nothing to boot: exiting here, before Aurora is up,
-    // rather than at the disc check below, which would bring the renderer up only to close it.
-    std::fprintf(stderr, "metroid_prime2_port: no disc image to boot\n");
-    PortLogDrain();
-    return 1;
-  }
-#endif
-
   // The touch overlay's own settings live in the user directory, next to the memory card:
   // the layout the player moved, and which of the two layouts is active. On the desktop this
   // is MP2_USER_PATH or nothing at all - there is no overlay there, and an empty directory
@@ -1160,6 +1162,25 @@ int main(int argc, char** argv) {
   PortSettings::Initialize(touchUser != nullptr ? touchUser : std::string());
   // Read now: an earlier request (the Android view's, on its own thread) found no path and left it.
   PortOverlaySettings::LoadSettings();
+
+  // The disc, resolved and - if the image is missing or is not this game - picked from the
+  // user's storage, all before Aurora comes up: `EnsureDiscImage` says why the trigger is the
+  // image not being usable rather than the disc check after the renderer starts. After the
+  // settings, for the image F1 > System > Disc image > Replace remembered (issue #76). The
+  // desktop keeps the resolution it always had, below.
+#if defined(__ANDROID__)
+  const std::string androidDiscImage =
+      EnsureDiscImage(port::entry::ResolveDiscPath(argc, argv, AndroidDiscFallback(appPaths).c_str(),
+                                                   ExecutableDir(argc > 0 ? argv[0] : nullptr)),
+                      appPaths.disc);
+  if (androidDiscImage.empty()) {
+    // Nothing was picked, so there is nothing to boot: exiting here, before Aurora is up,
+    // rather than at the disc check below, which would bring the renderer up only to close it.
+    std::fprintf(stderr, "metroid_prime2_port: no disc image to boot\n");
+    PortLogDrain();
+    return 1;
+  }
+#endif
 
   // The log file (platform/port_logfile.cpp) starts here, before aurora_initialize below, so
   // Aurora's own startup lines and anything that aborts during it land in the file too.
@@ -1371,10 +1392,6 @@ int main(int argc, char** argv) {
   // F1 > Video > Compatibility (PortVideo, f1b): OpenGL ES, the storage clamp, the low-power
   // adapter and the driver workarounds' Dawn toggles, all read when the GPU device is made.
   PortVideo::BeginGpuStart(config.userPath != nullptr ? config.userPath : "", config);
-  // Before the pipeline cache loads in aurora_initialize: its rows take the running per-pixel
-  // lighting key, so the seed's lit pipelines build at boot instead of on each room's first draw
-  // (issue #44). PortVideo::Frame keeps it in step afterwards.
-  aurora_set_per_pixel_lighting(PortOverlay::PerPixelLighting());
   aurora_initialize(argc, argv, &config);
   // The settings file, JSON and the logs read and write numbers in the "C" format. A toolkit loaded
   // with the window (a GTK decoration plugin, an input method) may call setlocale(LC_ALL, ""), and
@@ -1526,14 +1543,13 @@ int main(int argc, char** argv) {
 #else
     const bool kCanPick = !discFromArgs;
 #endif
-#if !defined(__ANDROID__)
     if (PortOverlaySettings::DiscPath() == discImage) {
-      // A refused remembered disc would be refused again on every launch (MP1's main.cpp:498).
+      // A refused remembered disc would be refused again on every launch (MP1's main.cpp:498);
+      // on Android the next start goes back to <files>/disc.iso.
       PortOverlaySettings::SetDiscPath({});
       PortOverlaySettings::SaveSettings();
       std::fprintf(stderr, "metroid_prime2_port: forgot the remembered disc image\n");
     }
-#endif
     if (!ShowDiscError(problem, discImage, kCanPick)) {
       aurora_shutdown();
       PortLogDrain();
