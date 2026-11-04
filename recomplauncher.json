@@ -1,0 +1,370 @@
+{
+  "$schema": "https://recomplauncher.com/schema/recomplauncher.json",
+  "format": 1,
+  "name": "Echoes Unbound",
+  "repo": "Odrannnn/MetroidPrime2Port",
+  "game": {
+    "kind": "iso",
+    "label": "Your Metroid Prime 2: Echoes GameCube disc (G2ME01 USA or G2MP01 PAL), or Metroid Prime Trilogy Wii disc (R3ME01 USA or R3MP01 PAL)."
+  },
+  "start": {
+    "program": [
+      "metroid_prime2_port.exe"
+    ],
+    "env": {
+      "MP2_DISC": "{game}"
+    }
+  },
+  "config": [
+    {
+      "id": "main",
+      "format": "ini",
+      "file": [
+        {
+          "path": "{install}/user/settings.cfg",
+          "if": "{install}/user/settings.cfg"
+        },
+        {
+          "path": "{config}/Metroid Prime 2 Echoes/settings.cfg",
+          "if": "{config}/Metroid Prime 2 Echoes/settings.cfg"
+        },
+        {
+          "path": "{install}/user/settings.cfg"
+        }
+      ],
+      "game_path": "disc_path"
+    }
+  ],
+  "settings": [
+    {
+      "id": "window",
+      "label": "Full screen",
+      "choices": [
+        {
+          "label": "Off",
+          "set": {
+            "fullscreen": "0"
+          }
+        },
+        {
+          "label": "On",
+          "set": {
+            "fullscreen": "1"
+          }
+        }
+      ],
+      "defaults": {
+        "fullscreen": "0"
+      }
+    },
+    {
+      "id": "original",
+      "label": "Original experience",
+      "help": "Restores retail gameplay behavior while preserving your saved tweaks.",
+      "choices": [
+        {
+          "label": "Off",
+          "set": {
+            "original_experience": "0"
+          }
+        },
+        {
+          "label": "On",
+          "set": {
+            "original_experience": "1"
+          }
+        }
+      ],
+      "defaults": {
+        "original_experience": "0"
+      }
+    },
+    {
+      "id": "resolution",
+      "label": "Render scale",
+      "help": "Automatic follows the window. Other saved scales show as Custom (in-game).",
+      "choices": [
+        {
+          "label": "Automatic",
+          "set": {
+            "render_scale": "0"
+          }
+        },
+        {
+          "label": "0.5×",
+          "set": {
+            "render_scale": "0.5"
+          }
+        },
+        {
+          "label": "0.75×",
+          "set": {
+            "render_scale": "0.75"
+          }
+        },
+        {
+          "label": "1×",
+          "set": {
+            "render_scale": "1"
+          }
+        },
+        {
+          "label": "1.25×",
+          "set": {
+            "render_scale": "1.25"
+          }
+        },
+        {
+          "label": "1.5×",
+          "set": {
+            "render_scale": "1.5"
+          }
+        },
+        {
+          "label": "2×",
+          "set": {
+            "render_scale": "2"
+          }
+        },
+        {
+          "label": "3×",
+          "set": {
+            "render_scale": "3"
+          }
+        },
+        {
+          "label": "4×",
+          "set": {
+            "render_scale": "4"
+          }
+        },
+        {
+          "label": "Custom (in-game)",
+          "set": {}
+        }
+      ],
+      "defaults": {
+        "render_scale": "0"
+      }
+    },
+    {
+      "id": "aspect",
+      "label": "Screen Shape",
+      "choices": [
+        {
+          "label": "Fit the Window",
+          "set": {
+            "aspect": "window"
+          }
+        },
+        {
+          "label": "4:3 (original)",
+          "set": {
+            "aspect": "4:3"
+          }
+        },
+        {
+          "label": "16:9",
+          "set": {
+            "aspect": "16:9"
+          }
+        }
+      ],
+      "defaults": {
+        "aspect": "window"
+      }
+    },
+    {
+      "id": "msaa",
+      "label": "Anti-aliasing",
+      "help": "Smooths polygon edges.",
+      "choices": [
+        {
+          "label": "Off",
+          "set": {
+            "msaa": "1"
+          }
+        },
+        {
+          "label": "4×",
+          "set": {
+            "msaa": "4"
+          }
+        }
+      ],
+      "defaults": {
+        "msaa": "1"
+      }
+    },
+    {
+      "id": "vsync",
+      "label": "V-Sync",
+      "help": "Synchronizes frames with the display to prevent tearing.",
+      "choices": [
+        {
+          "label": "Off",
+          "set": {
+            "vsync": "0"
+          }
+        },
+        {
+          "label": "On",
+          "set": {
+            "vsync": "1"
+          }
+        }
+      ],
+      "defaults": {
+        "vsync": "0"
+      }
+    },
+    {
+      "id": "fps",
+      "label": "Original 60 fps cap",
+      "help": "Turn off to use the custom frame cap below; the saved custom cap is preserved.",
+      "choices": [
+        {
+          "label": "Off",
+          "set": {
+            "frame_limit": "0"
+          }
+        },
+        {
+          "label": "On",
+          "set": {
+            "frame_limit": "1"
+          }
+        }
+      ],
+      "defaults": {
+        "frame_limit": "1"
+      }
+    },
+    {
+      "id": "fps_cap",
+      "label": "Custom frame cap",
+      "help": "Used with the original cap off. V-Sync can still limit frames; other saved values show as Custom (in-game).",
+      "when": {
+        "frame_limit": "0"
+      },
+      "choices": [
+        {
+          "label": "Unlimited",
+          "set": {
+            "fps_cap": "0"
+          }
+        },
+        {
+          "label": "30 fps",
+          "set": {
+            "fps_cap": "30"
+          }
+        },
+        {
+          "label": "60 fps",
+          "set": {
+            "fps_cap": "60"
+          }
+        },
+        {
+          "label": "90 fps",
+          "set": {
+            "fps_cap": "90"
+          }
+        },
+        {
+          "label": "120 fps",
+          "set": {
+            "fps_cap": "120"
+          }
+        },
+        {
+          "label": "144 fps",
+          "set": {
+            "fps_cap": "144"
+          }
+        },
+        {
+          "label": "165 fps",
+          "set": {
+            "fps_cap": "165"
+          }
+        },
+        {
+          "label": "180 fps",
+          "set": {
+            "fps_cap": "180"
+          }
+        },
+        {
+          "label": "240 fps",
+          "set": {
+            "fps_cap": "240"
+          }
+        },
+        {
+          "label": "360 fps",
+          "set": {
+            "fps_cap": "360"
+          }
+        },
+        {
+          "label": "500 fps",
+          "set": {
+            "fps_cap": "500"
+          }
+        },
+        {
+          "label": "Custom (in-game)",
+          "set": {}
+        }
+      ],
+      "defaults": {
+        "fps_cap": "0"
+      }
+    }
+  ],
+  "folders": {
+    "data": [
+      {
+        "path": "{install}/user",
+        "if": "{install}/user/settings.cfg"
+      },
+      {
+        "path": "{config}/Metroid Prime 2 Echoes",
+        "if": "{config}/Metroid Prime 2 Echoes/settings.cfg"
+      },
+      {
+        "path": "{install}/user"
+      }
+    ],
+    "logs": [
+      {
+        "path": "{install}/user",
+        "if": "{install}/user/settings.cfg"
+      },
+      {
+        "path": "{config}/Metroid Prime 2 Echoes",
+        "if": "{config}/Metroid Prime 2 Echoes/settings.cfg"
+      },
+      {
+        "path": "{install}/user"
+      }
+    ]
+  },
+  "actions": [
+    {
+      "id": "data",
+      "label": "Open data folder",
+      "open": "data"
+    }
+  ],
+  "saves": [
+    "{install}/user/USA",
+    "{install}/user/EUR",
+    "{install}/user/savestates",
+    "{config}/Metroid Prime 2 Echoes/USA",
+    "{config}/Metroid Prime 2 Echoes/EUR",
+    "{config}/Metroid Prime 2 Echoes/savestates"
+  ]
+}
