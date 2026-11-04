@@ -443,7 +443,12 @@ Video > Display:
   separate opacity. Console `hudopacity <echo|dark|scan> <visor|0..100>`. Original experience
   ignores them.
 - `fov`: HUD and view > Field of view (30..120; 0, the **Retail** button, keeps the game's own);
-  env `MP2_FOV`.
+  env `MP2_FOV`. Console `fov [30..120|retail]`.
+- `gun_fov`: HUD and view > Arm cannon FOV (45..120, default the retail 55; env `MP2_GUN_FOV`): the
+  FOV the arm cannon is drawn at whatever the view's, like a view-model FOV; higher draws it smaller
+  and further into the corner. `gun_follows_fov` (Arm cannon follows FOV, default off; env
+  `MP2_GUN_FOLLOWS_FOV`) draws it in the world's perspective instead. Console `fov cannon [45..120]`,
+  `fov gun [0|1]`. Original experience: retail 55, not following.
 - `gun_offset`: HUD and view > Arm cannon right/forward/up, written `right,forward,up`; env
   `MP2_GUN_OFFSET`.
 

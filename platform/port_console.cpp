@@ -1667,6 +1667,45 @@ void CmdBeamSwitch(CStateManager&, const Args& args, std::string& out) {
   out += "beamswitch " + std::to_string(PortOverlay::BeamSwitchSpeed()) + "\n";
 }
 
+// fov [30..120|retail] | gun [0|1] | cannon [45..120]: the first-person FOV (fov), whether the arm
+// cannon follows it (gun_follows_fov), the cannon's own FOV (gun_fov); no value prints it.
+void CmdFov(CStateManager&, const Args& args, std::string& out) {
+  char line[96];
+  if (args.size() > 1 && args[1] == "gun") {
+    if (args.size() > 2) {
+      PortOverlay::SetGunFollowsFov(args[2] != "0");
+    }
+    out += PortOverlay::GunFollowsFov() ? "gun follows fov\n" : "gun own fov\n";
+    return;
+  }
+  if (args.size() > 1 && args[1] == "cannon") {
+    if (args.size() > 2) {
+      float fov = 0.f;
+      if (!ParseFloat(args[2], fov) || !(fov >= PortOverlay::kGunFovMin && fov <= PortOverlay::kGunFovMax)) {
+        Fail("usage: fov cannon [45..120]");
+        return;
+      }
+      PortOverlay::SetGunFov(fov);
+    }
+    std::snprintf(line, sizeof(line), "cannon fov %.1f%s\n", PortOverlay::GunFov(),
+                  PortOverlay::GunFollowsFov() ? " (unused: gun follows fov)" : "");
+    out += line;
+    return;
+  }
+  if (args.size() > 1) {
+    float fov = 0.f;
+    if (args[1] != "retail" &&
+        (!ParseFloat(args[1], fov) || !(fov >= 30.f && fov <= 120.f))) {
+      Fail("usage: fov [30..120|retail] | fov gun [0|1] | fov cannon [45..120]");
+      return;
+    }
+    PortOverlay::SetFirstPersonFov(fov);
+  }
+  const float fov = PortOverlay::FirstPersonFov();
+  std::snprintf(line, sizeof(line), "fov %.1f%s\n", fov > 0.f ? fov : 55.f, fov > 0.f ? "" : " (retail)");
+  out += line;
+}
+
 // language [0..6]: the text language (language), applied while the game runs; no argument prints it.
 void CmdLanguage(CStateManager&, const Args& args, std::string& out) {
   if (args.size() > 1) {
@@ -5498,6 +5537,9 @@ const CommandSpec kCommands[] = {
       "walkspeed [50..200|on|off]  on-foot movement speed in percent (walk_speed), or switch it on/off; no argument prints it\n"},
     {"scanspeed", CmdScanSpeed,
       "scanspeed [50..400]         scan speed in percent (scan_speed); no argument prints it\n"},
+    {"fov", CmdFov,
+      "fov [30..120|retail]|gun [0|1]|cannon [45..120]  first-person FOV (fov); gun 1: the arm cannon\n"
+      "                            follows it (gun_follows_fov); cannon: its own FOV (gun_fov)\n"},
     {"beamswitch", CmdBeamSwitch,
       "beamswitch [100..400]       beam switch speed in percent (beam_switch_speed); no argument prints it\n"},
     {"language", CmdLanguage,

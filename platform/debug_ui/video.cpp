@@ -225,6 +225,28 @@ void DrawVideoDisplay() {
   }
   ImGui::EndDisabled();
   ImGui::SetItemTooltip("Back to the retail 55 deg.");
+  Changed(ImGui::Checkbox("Arm cannon follows FOV", &sGunFollowsFov));
+  ImGui::SetItemTooltip("Off: the arm cannon is drawn at its own FOV (below) whatever the field\n"
+                        "of view, so it keeps its size and place. On: it shares the world's\n"
+                        "perspective, so a wider FOV draws it smaller and further into the corner.\n"
+                        "Off under Original experience.");
+  ImGui::BeginDisabled(sGunFollowsFov);
+  float gunFov = sGunFov;
+  if (ImGui::SliderFloat("Arm cannon FOV", &gunFov, PortOverlay::kGunFovMin, PortOverlay::kGunFovMax,
+                         "%.0f deg")) {
+    sGunFov = std::isfinite(gunFov) ? std::round(gunFov) : PortOverlay::kGunFovRetail;
+    Changed(true);
+  }
+  ImGui::SetItemTooltip("The FOV the arm cannon is drawn at (retail 55), apart from the world's:\n"
+                        "higher draws it smaller and further into the corner. Retail under\n"
+                        "Original experience.");
+  ImGui::SameLine();
+  if (ImGui::Button("Retail##gunfov")) {
+    sGunFov = PortOverlay::kGunFovRetail;
+    Changed(true);
+  }
+  ImGui::SetItemTooltip("Back to the retail 55 deg.");
+  ImGui::EndDisabled();
   {
     float offset[3] = {sGunOffset[0], sGunOffset[1], sGunOffset[2]};
     bool changed = ImGui::SliderFloat("Arm cannon right", &offset[0], -PortOverlay::kGunOffsetMax,

@@ -1502,14 +1502,14 @@ void CStateManager::DrawWorld(const CInGameGuiManagerSet& gui) {
     CPortPipelineContextScope globalPipelines(AURORA_PIPELINE_CONTEXT_GLOBAL);
     // Port (MP1 5fb236a91): the arm cannon is drawn at retail's FOV whatever the FOV setting, like
     // a view-model FOV in other shooters; otherwise a wide view shrinks it and pushes it into the
-    // corner. Morph ball and scripted cameras keep their own FOVs.
+    // corner. Morph ball and scripted cameras keep their own FOVs. The cannon's FOV is a setting
+    // (MP1 ae213ea30, retail 55), and "Arm cannon follows FOV" keeps the world's projection.
     const CGameCamera& gunCam = *mCameraManager->GetCurrentCamera(*this, true);
-    const bool gunFov = mCameraManager->IsInFPCamera() &&
-                        gunCam.GetFov() != CCameraManager::sFirstPersonFOV;
+    const bool gunFov = mCameraManager->IsInFPCamera() && PortOverlay::GunOwnFov(gunCam.GetFov());
     const CGraphics::CProjectionState gunProj = CGraphics::GetProjectionState();
     if (gunFov) {
       const CViewport& gunViewport = CGraphics::GetViewport();
-      gpRender->SetPerspective(CCameraManager::sFirstPersonFOV,
+      gpRender->SetPerspective(PortOverlay::GunDrawFov(gunCam.GetFov()),
                                static_cast< float >(gunViewport.mWidth),
                                static_cast< float >(gunViewport.mHeight),
                                gunCam.GetNearClipDistance(), gunCam.GetFarClipDistance());

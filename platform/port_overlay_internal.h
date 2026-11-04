@@ -89,6 +89,8 @@ extern PlayerOverride sPlayerSettings[PortOverlay::kSettingPlayers][PortOverlay:
 extern bool sMenuStandardButtons;
 extern bool sCardBackup;
 extern float sFirstPersonFov;
+extern bool sGunFollowsFov;
+extern float sGunFov;
 extern bool sHideHelmet;
 extern bool sHideVisorEffects;
 extern bool sCinemaBars;

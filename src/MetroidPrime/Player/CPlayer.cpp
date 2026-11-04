@@ -986,9 +986,10 @@ CVector3f CPlayer::PortAnchorGunDown(const CVector3f& pos) const {
   if (gunViewport.mHeight <= 0) {
     return pos;
   }
+  // The FOV the gun is drawn at (CStateManager's RenderGun pass).
   const float drop = PortOverlay::VertPlusGunDrop(
-      CCameraManager::sFirstPersonFOV, static_cast< float >(gunViewport.mWidth) /
-                                           static_cast< float >(gunViewport.mHeight));
+      PortOverlay::GunDrawFov(mCameraManager->GetFirstPersonCamera()->GetFov()),
+      static_cast< float >(gunViewport.mWidth) / static_cast< float >(gunViewport.mHeight));
   if (drop <= 0.f) {
     return pos;
   }

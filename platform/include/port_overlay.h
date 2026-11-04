@@ -479,6 +479,22 @@ void SetLogFile(bool enabled);
 // Applied by CCameraManager::UpdateCameras, because the first-person camera takes its FOV when it is
 // built; CCameraManager::mFirstPersonFov is what a rebuilt one reads.
 float FirstPersonFov();
+// 30..120, or 0 for the game's own.
+void SetFirstPersonFov(float degrees);
+// The arm cannon is drawn at its own FOV (GunFov, `gun_fov`, `MP2_GUN_FOV`, retail 55) whatever the
+// view's, like a view-model FOV, unless GunFollowsFov (`gun_follows_fov`, `MP2_GUN_FOLLOWS_FOV`):
+// then it shares the world's projection. Both are retail's under Original experience.
+const float kGunFovRetail = 55.f;
+const float kGunFovMin = 45.f;
+const float kGunFovMax = 120.f;
+bool GunFollowsFov();
+void SetGunFollowsFov(bool enabled);
+float GunFov();
+void SetGunFov(float degrees);
+// The FOV the arm cannon is drawn at, for a first-person camera whose FOV is cameraFov.
+inline float GunDrawFov(float cameraFov) { return GunFollowsFov() ? cameraFov : GunFov(); }
+// Whether the arm cannon gets its own projection (at GunDrawFov) this frame.
+inline bool GunOwnFov(float cameraFov) { return GunDrawFov(cameraFov) != cameraFov; }
 // Arm cannon offset from its retail place, in metres along the camera's right, forward and up axes
 // (`MP2_GUN_OFFSET="<right>,<forward>,<up>"`, F1 > Render), each clamped to +-kGunOffsetMax. It moves
 // the real gun, so shots leave from the moved muzzle (CPlayer::UpdateArmAndGunTransforms).

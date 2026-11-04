@@ -566,6 +566,16 @@ const SettingKey kSettingKeys[] = {
        }
      },
      [](std::ostream& out) { out << sFirstPersonFov; }, false, "45", "72.5"},
+    BoolKey< &sGunFollowsFov >("gun_follows_fov"),
+    {"gun_fov",
+     [](const std::string& value) {
+       float parsed = 0.f;
+       if (ParseFloat(value, parsed) && parsed >= PortOverlay::kGunFovMin &&
+           parsed <= PortOverlay::kGunFovMax) {
+         sGunFov = parsed;
+       }
+     },
+     [](std::ostream& out) { out << sGunFov; }, false, "45", "72.5"},
     {"gun_offset",
      [](const std::string& value) {
        ParseFloat3(value, sGunOffset, -PortOverlay::kGunOffsetMax, PortOverlay::kGunOffsetMax);

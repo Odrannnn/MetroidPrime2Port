@@ -136,6 +136,9 @@ bool sRapidCharge = false;
 bool sCardBackup = false;
 // First-person field of view in degrees, or 0 for the game's own 55 (CCameraManager::sFirstPersonFOV).
 float sFirstPersonFov = 0.f;
+// The arm cannon is drawn at the world's FOV (gun_follows_fov), else at its own (gun_fov).
+bool sGunFollowsFov = false;
+float sGunFov = PortOverlay::kGunFovRetail;
 // Draw the world without the HUD's view overlays (`MP2_NO_HELMET`, `MP2_NO_VISOR_FX`): for
 // screenshots of an area, and for looking at what a visor effect covers.
 bool sHideHelmet = false;
@@ -950,6 +953,37 @@ float FirstPersonFov() {
   ReadEnv();
   const float env = port::EnvFloat("MP2_FOV", sFirstPersonFov);
   return env == 0.f || (env >= 30.f && env <= 120.f) ? env : sFirstPersonFov;
+}
+
+void SetFirstPersonFov(float degrees) {
+  ReadEnv();
+  sFirstPersonFov = degrees == 0.f || (degrees >= 30.f && degrees <= 120.f) ? degrees : 0.f;
+  Persist();
+}
+
+bool GunFollowsFov() {
+  ReadEnv();
+  return !OriginalExperience() && EnvBool("MP2_GUN_FOLLOWS_FOV", sGunFollowsFov);
+}
+
+void SetGunFollowsFov(bool enabled) {
+  ReadEnv();
+  sGunFollowsFov = enabled;
+  Persist();
+}
+
+float GunFov() {
+  ReadEnv();
+  if (OriginalExperience()) {
+    return kGunFovRetail;
+  }
+  return EnvFloatIn("MP2_GUN_FOV", sGunFov, kGunFovMin, kGunFovMax);
+}
+
+void SetGunFov(float degrees) {
+  ReadEnv();
+  sGunFov = std::isfinite(degrees) ? std::clamp(degrees, kGunFovMin, kGunFovMax) : kGunFovRetail;
+  Persist();
 }
 
 void GunOffset(float out[3]) {
