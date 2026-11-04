@@ -183,6 +183,13 @@ Each needs MP2 game-side hooks found fresh; a row with no possible MP2 backend i
     crosshair scales about its centre (MP1 issue 255; build only, not seen on screen). Not taken again:
     `4ab18ced5` (see 28). Skipped: remastered/roomfx/effects import (`7b191f9a7 366d01363`),
     `bc800213d` release.
+32. **Range `16eb691fe..ed1fb93c7`** (2026-11-04). Taken: `c90e5448a` a Toggle-trigger L lets go when
+    its lock ends (`c7faf8b38`); `8c7d45fab` + `6e43ee11f` beam switch speed and Next/Previous target,
+    unbound by default (`f7f6d9251`); `bb7321203` + `ae213ea30` arm cannon FOV and follows-FOV
+    (`38e2fded4`; MP2 has no muzzle/model-aim remap or hard-coded pause rows, so those parts don't
+    apply); `f3cfa6ff1` console `areas` prints the current area's transform (this commit; seen in a
+    run). All build only except `areas`. Skipped: `beam_switch_fire` (user), `a8e0b562f`, `ead1cb698`,
+    `72d530b0f`, remastered/decals.
 
 Skipped from this range: Phazon Beam cheat and stacked beam rate (MP1 items), mods page/import
 fixes (wait for package 8), decomp matches.
@@ -192,9 +199,9 @@ set differs; the approach can be reused), Archipelago, MP1 randomizer logic.
 
 ## Status
 
-Packages 1-31 are merged; the dated per-merge log moved verbatim to
+Packages 1-32 are merged; the dated per-merge log moved verbatim to
 `docs/history/MP1_SYNC-to-2026-10-29.md`. MP1 was last reviewed through `e3d8c8940`
-(2026-10-29), then through `5e1a88514` (2026-11-02, package 30), then through `16eb691fe` (2026-11-03, package 31); take later commits by `git -C ../MetroidPrimePort log --no-merges 16eb691fe..HEAD`.
+(2026-10-29), then through `5e1a88514` (2026-11-02, package 30), then through `16eb691fe` (2026-11-03, package 31), then through `ed1fb93c7` (2026-11-04, package 32); take later commits by `git -C ../MetroidPrimePort log --no-merges ed1fb93c7..HEAD`.
 
 Still unrun/unverified per that log (no device or hardware available then):
 

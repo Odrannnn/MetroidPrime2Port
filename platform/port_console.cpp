@@ -815,6 +815,19 @@ void CmdAreas(CStateManager& mgr, const Args&, std::string& out) {
     }
     out += '\n';
   }
+  // MP1 f3cfa6ff1: the current area's transform, which maps area-local positions to the world's.
+  const TAreaId current = world->GetCurrentAreaId();
+  const IGameArea* currentArea =
+      current.Value() >= 0 && current.Value() < count ? world->IGetAreaAlways(current) : nullptr;
+  if (currentArea != nullptr) {
+    const CTransform4f& m = currentArea->IGetTM();
+    std::snprintf(line, sizeof(line),
+                  "current %d transform rows (%.4f %.4f %.4f %.3f) (%.4f %.4f %.4f %.3f) "
+                  "(%.4f %.4f %.4f %.3f)\n",
+                  current.Value(), m.Get00(), m.Get01(), m.Get02(), m.Get03(), m.Get10(), m.Get11(),
+                  m.Get12(), m.Get13(), m.Get20(), m.Get21(), m.Get22(), m.Get23());
+    out += line;
+  }
 }
 
 void CmdWarp(CStateManager&, const Args& args, std::string& out) {
@@ -5387,7 +5400,7 @@ const CommandSpec kCommands[] = {
     {"status", CmdStatus,
       "status [--json]            world, area, player position, health, visor, beam, morph state; --json: one line for scripts\n"},
     {"areas", CmdAreas,
-      "areas                       the current world's area slots (index, MREA id, name if loaded)\n"},
+      "areas                       the current world's area slots (index, MREA id, name if loaded), current area transform\n"},
     {"warp", CmdWarp,
       "warp <slot|id|name>         load an area of the current world (what MP2_TELEPORT takes)\n"},
     {"nextarea", CmdNextArea,
