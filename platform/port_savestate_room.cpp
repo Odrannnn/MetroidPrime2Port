@@ -38,6 +38,7 @@
 #include "MetroidPrime/ScriptObjects/CScriptPickup.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptActor.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptPlatform.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptSpecialFunction.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptStreamedMusic.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptSwitch.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptTimer.hpp"
@@ -140,6 +141,8 @@ enum : uint32_t {
   kTagPlayer = 17,    // 4 x f32 dark-air clocks of the player (CPlayer::PortGetDarkAir): room-wide, first object
   kTagDrop = 18,      // u8 live, then the drop's kTagFields bytes: the pickup a debris' Activate dropped
   kTagSwitch = 19,    // u32 opened: a CScriptSwitch
+  kTagMaterial = 20,  // u32 lo, u32 hi of an enemy's CMaterialList (solid, shootable, targetable)
+  kTagInArea = 21,    // u32 player in area: a PlayerInAreaRelay CScriptSpecialFunction
 };
 
 // Per-object lines a restore logs, at most; the summary line always follows.
@@ -323,6 +326,16 @@ void CaptureObject(CStateManager& mgr, CEntity& ent, RoomObject& obj) {
       w.F32(health->GetKnockBackResistance());
       obj.blocks.push_back({kTagHealth, w.bytes});
     }
+    // The machine restore jumps straight to the saved state, so the states before it never
+    // set up their materials: a sleeper Dark Trooper kept the passthrough of its sleep, which
+    // Rise lifts, and beams and Samus went through it (issue #74).
+    if (TCastToPtr< CPatterned >(&ent) != nullptr) {
+      const uint64_t m = actor->GetMaterialList().GetValue();
+      BlockWriter w;
+      w.U32(static_cast< uint32_t >(m));
+      w.U32(static_cast< uint32_t >(m >> 32));
+      obj.blocks.push_back({kTagMaterial, w.bytes});
+    }
   }
   CPhysicsActor* physics = TCastToPtr< CPhysicsActor >(&ent);
   if (physics != nullptr && TCastToPtr< CScriptDoor >(&ent) == nullptr) {
@@ -395,6 +408,13 @@ void CaptureObject(CStateManager& mgr, CEntity& ent, RoomObject& obj) {
     BlockWriter w;
     w.U32(sw->IsOpened() ? 1 : 0);
     obj.blocks.push_back({kTagSwitch, w.bytes});
+  }
+  if (const CScriptSpecialFunction* sf = TCastToConstPtr< CScriptSpecialFunction >(&ent)) {
+    if (sf->GetFunction() == CScriptSpecialFunction::kSF_PlayerInAreaRelay) {
+      BlockWriter w;
+      w.U32(sf->PortPlayerInArea() ? 1 : 0);
+      obj.blocks.push_back({kTagInArea, w.bytes});
+    }
   }
   if (CScriptDoor* door = TCastToPtr< CScriptDoor >(&ent)) {
     // Open, then the lock (MP1's door block carries open plus close flags; Echoes' doors have a
@@ -675,6 +695,18 @@ bool ApplyObject(CStateManager& mgr, CEntity& ent, const RoomObject& obj, Change
       if (r.ok && opened != sw->IsOpened()) {
         sw->PortSetOpened(opened);
         log.Note(obj.editorId, "switch restored");
+      }
+    }
+  }
+  if (CScriptSpecialFunction* sf = TCastToPtr< CScriptSpecialFunction >(&ent)) {
+    // A relay that saw the player arrive must not send Entered again: Command Chamber's plays the
+    // area's ambient music, which replaced the restarted Dark Trooper battle music (issue #74).
+    if (const RoomBlock* b = FindBlock(obj, kTagInArea)) {
+      BlockReader r(b->data);
+      const bool in = r.U32() != 0;
+      if (r.ok && in != sf->PortPlayerInArea()) {
+        sf->PortSetPlayerInArea(in);
+        log.Note(obj.editorId, "player-in-area restored");
       }
     }
   }
@@ -1146,6 +1178,19 @@ int ApplyRoomState(CStateManager& mgr, const RoomState& room, RoomApplyProgress&
         stats.fields += set;
         log.Note(d.obj->editorId, "fields restored");
         ++stats.changed;
+      }
+    }
+    // After the fields: entering the saved states changed the materials too.
+    if (const RoomBlock* b = FindBlock(*d.obj, kTagMaterial)) {
+      CActor* actor = TCastToPtr< CActor >(ent);
+      BlockReader r(b->data);
+      const uint64_t lo = r.U32();
+      const uint64_t m = lo | (static_cast< uint64_t >(r.U32()) << 32);
+      if (r.ok && actor != nullptr && mgr.ObjectById(d.uid) == ent &&
+          actor->GetMaterialList().GetValue() != m) {
+        actor->MaterialList() = CMaterialList(m);
+        mgr.UpdateObjectInLists(*actor);
+        log.Note(d.obj->editorId, "materials restored");
       }
     }
     if (debris != nullptr && FindBlock(*d.obj, kTagDrop) != nullptr) {

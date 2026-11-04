@@ -98,6 +98,8 @@ public:
   ESpecialFunction GetFunction() const { return mFunction; }
 #ifdef TARGET_PC
   const CDamageInfo& GetDamageInfo() const { return mDamageInfo; }
+  bool PortPlayerInArea() const { return mPlayerInArea; }
+  void PortSetPlayerInArea(bool in) { mPlayerInArea = in; }
 #endif
 
   CScriptSpecialFunction(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,

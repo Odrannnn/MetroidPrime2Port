@@ -161,6 +161,8 @@ std::string ObjectLine(CStateManager& mgr, CEntity& ent, int copy) {
     const char* name = machine.HasState() ? machine.GetName() : nullptr;
     line += Fmt(",\"ai\":\"%s\",\"ai_time\":%.4f,\"alive\":%d", Esc(name).c_str(), machine.GetTime(),
                 patterned->GetAlive() ? 1 : 0);
+    line += Fmt(",\"mat\":\"%016llX\"",
+                static_cast< unsigned long long >(patterned->GetMaterialList().GetValue()));
     if (const CBodyController* body = patterned->GetBodyController()) {
       line += Fmt(",\"body\":%d,\"loco\":%d,\"anim\":%d", static_cast< int >(body->GetCurrentStateId()),
                   static_cast< int >(body->GetLocomotionType()), body->GetCurrentAnimId());
