@@ -814,19 +814,38 @@ std::string EnsureDiscImage(const std::string& resolved, const std::string& defa
 // remembered (its copy in the user folder, settings.cfg `disc_path`) while it is still usable,
 // else the resolved `<files>/disc.iso`. A `disc=` in port_paths.txt is a debugging push and keeps
 // winning. Without this the replaced image was copied and remembered but never booted (#76).
+// The activity always writes `disc=` with getFilesDir()'s /data/user/0/... spelling while SDL's
+// pref path (paths.base) is the canonical /data/data/..., so the default is told by its folder's
+// identity, not its text; the folder exists even before a first disc.iso does.
+bool IsDefaultAndroidDisc(const PortPaths& paths) {
+  if (paths.disc == paths.base + "disc.iso") {
+    return true;
+  }
+  const std::filesystem::path disc = PortUtf8::FromUtf8(paths.disc);
+  std::error_code ec;
+  return !paths.base.empty() && disc.filename() == "disc.iso" &&
+         std::filesystem::equivalent(disc.parent_path(), PortUtf8::FromUtf8(paths.base), ec) && !ec;
+}
+
 std::string AndroidDiscFallback(const PortPaths& paths) {
   if (const char* env = std::getenv("MP2_DISC"); env != nullptr && env[0] != '\0') {
     return env;
   }
   const std::string saved = PortOverlaySettings::DiscPath();
-  if (!saved.empty() && paths.disc == paths.base + "disc.iso") {
-    if (DiscImageIsUsable(saved)) {
-      std::fprintf(stderr, "metroid_prime2_port: using the remembered disc image: %s\n", saved.c_str());
-      return saved;
-    }
-    std::fprintf(stderr, "metroid_prime2_port: the remembered disc image is gone or unusable: %s\n",
-                 saved.c_str());
+  if (saved.empty()) {
+    return paths.disc;
   }
+  if (!IsDefaultAndroidDisc(paths)) {
+    std::fprintf(stderr, "metroid_prime2_port: port_paths.txt disc=%s wins over the remembered disc image %s\n",
+                 paths.disc.c_str(), saved.c_str());
+    return paths.disc;
+  }
+  if (DiscImageIsUsable(saved)) {
+    std::fprintf(stderr, "metroid_prime2_port: using the remembered disc image: %s\n", saved.c_str());
+    return saved;
+  }
+  std::fprintf(stderr, "metroid_prime2_port: the remembered disc image is gone or unusable: %s\n",
+               saved.c_str());
   return paths.disc;
 }
 
