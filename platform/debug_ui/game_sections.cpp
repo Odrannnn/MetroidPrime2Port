@@ -425,12 +425,9 @@ void DrawOverlaySection() {
     sUiTheme = theme;
     Changed(true);
   }
-  ItemHelp("The overlay's look. Auto is the Echoes style; Plain is stock Dear "
-           "ImGui.");
   // Multiplies the display's own scale (UpdateUiScale); the product is clamped to 1..4, so on a
   // desktop at scale 1 only values above 100% make the window larger.
   Changed(ImGui::SliderInt("UI scale", &sUiScale, PortOverlay::kUiScaleMin, PortOverlay::kUiScaleMax, "%d%%"));
-  ItemHelp("The size of this window's text and controls.");
 }
 
 void DrawSettingsSection() {
@@ -553,9 +550,6 @@ void DrawDiscImageSection() {
     PortDiscReplace::PickAsync();
   }
   ImGui::EndDisabled();
-  ItemHelp("Picks another disc image (Echoes USA 1.00, PAL, or Metroid Prime Trilogy), checks it, and "
-           "remembers it for the next start. The game keeps running from the disc it started with. A "
-           "file or MP2_DISC given on the command line still wins.");
   if (replace.state == PortDiscReplace::State::Running) {
     ImGui::SameLine();
     if (ImGui::Button("Cancel##replace")) {
@@ -581,9 +575,6 @@ void DrawDiscImageSection() {
   }
   switch (r.state) {
   case State::Idle:
-    ImGui::TextWrapped("Compares the whole disc image with the known dump of this release to find "
-                       "damage. Runs in the background and takes a minute or two; the result goes "
-                       "to the log.");
     break;
   case State::Running:
     ImGui::TextWrapped("Checking the disc image (%.0f%%)...", r.Progress() * 100.0);
@@ -679,8 +670,6 @@ void DrawUpdateSection() {
     PortUpdateCheck::CheckNow(); // switched on: check now, not next launch
     Changed(true);
   }
-  ItemHelp("Asks GitHub (api.github.com) once at launch whether a newer release is out. Nothing "
-           "else is sent, and nothing is installed: the release page opens in your browser.");
   const PortUpdateCheck::EStatus status = PortUpdateCheck::Status();
   switch (status) {
   case PortUpdateCheck::kStatus_Off:
