@@ -602,7 +602,6 @@ void populate_pipeline_config(PipelineConfig& config, GXPrimitive primitive, GXV
       };
     }
   }
-  config.shaderConfig.perPixelLight = wants_per_pixel_light(config.shaderConfig);
   for (u8 i = 0; i < g_gxState.numTexGens; ++i) {
     config.shaderConfig.tcgs[i] = g_gxState.tcgs[i];
   }
@@ -654,6 +653,10 @@ void populate_pipeline_config(PipelineConfig& config, GXPrimitive primitive, GXV
   } else if (g_gxState.actorDecal) {
     config.shaderConfig.shadow = false;
   }
+  // After the channels are pruned: a lit channel no stage reads asks for no per-pixel lighting.
+  pipeline_unused_inputs(config.shaderConfig);
+  config.shaderConfig.perPixelLight =
+      config.shaderConfig.actorDecal == 0 && wants_per_pixel_light(config.shaderConfig) ? 1 : 0;
   // Field by field: an aggregate assignment would copy the 2.7 KB shader config twice more on
   // every pipeline switch. Every field outside shaderConfig is written here.
   config.version = GXPipelineConfigVersion;

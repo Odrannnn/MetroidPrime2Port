@@ -1461,6 +1461,8 @@ static void queue_cached_row(ShaderType type, uint32_t configVersion, CreateFn&&
     config.dstAlpha = gx::pipeline_dst_alpha(config.dstAlpha);
     config.shaderConfig.alphaCompare = gx::pipeline_alpha_compare(config.shaderConfig.alphaCompare);
     gx::pipeline_tev_konst(config.shaderConfig);
+    // A row recorded before unused channels, texgens and stage channels were reset (as the draw now is).
+    gx::pipeline_unused_inputs(config.shaderConfig);
     // A row recorded at the other aurora_set_per_pixel_lighting setting (the embedded seed is
     // recorded with it off) misses every lit draw, and each room's first visit drops them while
     // they build (issue #44). It is set before the cache loads, so the row takes the running one.

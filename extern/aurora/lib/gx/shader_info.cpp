@@ -361,6 +361,38 @@ ShaderInfo build_shader_info(const ShaderConfig& config) noexcept {
   return info;
 }
 
+// The pipeline cache keys the whole config, so state the shader never reads split it: of 1741 seed
+// rows, 81 built a pipeline another row already had (tools/pipeline_key_audit.cpp). The game leaves
+// lighting set on a channel no stage reads, a texgen no stage samples, and a stage's channel when it
+// reads no rasterized colour. Those reset here. Not channel 1 of a PBR draw, nor stage 0's channel:
+// pbr_func tells its projected-shadow stage by them whatever the stage reads.
+void pipeline_unused_inputs(ShaderConfig& config) noexcept {
+  const auto info = build_shader_info(config);
+  for (int i = 0; i < info.sampledColorChannels.size(); ++i) {
+    if (info.sampledColorChannels.test(i) || (i == 1 && config.pbr != 0)) {
+      continue;
+    }
+    config.colorChannels[i] = {};
+    config.colorChannels[i + GX_ALPHA0] = {};
+  }
+  for (int i = 0; i < info.sampledTexCoords.size(); ++i) {
+    if (!info.sampledTexCoords.test(i)) {
+      config.tcgs[i] = {};
+    }
+  }
+  const auto rasC = [](GXTevColorArg arg) { return arg == GX_CC_RASC || arg == GX_CC_RASA; };
+  for (int i = 1; i < config.tevStageCount; ++i) {
+    auto& stage = config.tevStages[i];
+    const auto& c = stage.colorPass;
+    const auto& a = stage.alphaPass;
+    if (is_alpha_bump_channel(stage.channelId) || rasC(c.a) || rasC(c.b) || rasC(c.c) || rasC(c.d) ||
+        a.a == GX_CA_RASA || a.b == GX_CA_RASA || a.c == GX_CA_RASA || a.d == GX_CA_RASA) {
+      continue;
+    }
+    stage.channelId = GX_COLOR_NULL;
+  }
+}
+
 // A stage's konst input: rgb as its kcSel, alpha as its kaSel (a fraction, or a K register or one of
 // its components).
 static Vec4<float> tev_konst(const TevStage& stage) noexcept {

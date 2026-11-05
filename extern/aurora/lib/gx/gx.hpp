@@ -693,6 +693,8 @@ constexpr void pipeline_tev_konst(ShaderConfig& config) noexcept {
 constexpr u32 pipeline_dst_alpha(u32 dstAlpha) noexcept {
   return dstAlpha == UINT32_MAX || dstAlpha == 0 ? dstAlpha : 0xFF;
 }
+// Resets what the shader never reads (shader_info.cpp), so draws differing only there share a pipeline.
+void pipeline_unused_inputs(ShaderConfig& config) noexcept;
 // Whether a draw samples the sun's shadow map: a lit PBR surface drawn in colour without per-pixel fog.
 inline bool shadow_receives(const ShaderConfig& sc) noexcept {
   return sc.shadow && (sc.pbr != 0 || sc.actorDecal != 0) && sc.volFog == VolFogNone && sc.depthOnly == 0 && sc.lineMode == 0 && !sc.drawId;

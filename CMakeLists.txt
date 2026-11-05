@@ -735,6 +735,17 @@ foreach(t ${MP_MODULE_OBJECT_TARGETS})
         aurora::mtx aurora::os aurora::dvd aurora::thp aurora::card musyx)
 endforeach()
 
+# Which GX pipeline-cache key fields never change the pipeline (tools/pipeline_key_audit.cpp).
+# Desktop only, not built by default: ninja -C build-port-link pipeline_key_audit.
+if(NOT ANDROID AND NOT IOS)
+    add_executable(pipeline_key_audit EXCLUDE_FROM_ALL tools/pipeline_key_audit.cpp)
+    target_include_directories(pipeline_key_audit PRIVATE extern/aurora/lib)
+    target_compile_definitions(pipeline_key_audit PRIVATE WEBGPU_DAWN)
+    target_link_libraries(pipeline_key_audit PRIVATE aurora::core aurora::gx aurora::gd aurora::si aurora::vi
+        aurora::pad aurora::mtx aurora::os aurora::dvd aurora::card absl::btree absl::flat_hash_map sqlite3
+        Tracy::TracyClient PNG::PNG)
+endif()
+
 # The touch overlay's virtual gamepad, on the host. `platform/touch_pad.cpp` is platform
 # independent by construction (that is the whole point of the file), so its axis conversion
 # and button mapping can be checked without a phone - and a wrong mapping is otherwise only

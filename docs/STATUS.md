@@ -3,6 +3,19 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-11-05: pipeline key audit (follow-up to #78)
+
+- `tools/pipeline_key_audit.cpp` perturbs each seed row's PipelineConfig fields one at a time and
+  compares the generated shader source + pipeline descriptor: of 1741 GX rows, 1660 distinct
+  pipelines; the 81 duplicates differed only in colorChannels[0] lighting/matSrc on an unsampled
+  channel, unsampled tcgs (src/mtx/type) or a stage's channelId with no RASC/RASA input.
+- Aurora `gx::pipeline_unused_inputs` resets those in populate_pipeline_config and queue_cached_row
+  (perPixelLight recomputed after). `--check-unused`: 0 pipelines changed at either per-pixel setting.
+- Seed rewritten (`--rewrite`, then `pipeline_seed.py merge`): 1744 -> 1667 rows, 9088 -> 8939 uses,
+  `check` OK. Lagoon spot on Xvfb from an empty cache: seed loads 1667 rows, 0 pipelines outside it.
+  Not run on Windows or the Poco. Not covered: attribute-format fields, texCoordId/texMapId, depthFunc with compare off
+  (all dead in some rows, none split a pipeline in the seed).
+
 ## 2026-11-05: issue #78 (Torvus Lagoon water flickers, D3D12)
 
 - Cause: CFluidPlaneCPU::RenderSetup sets only the last TEV stage's alpha (K0.a); the earlier stages
