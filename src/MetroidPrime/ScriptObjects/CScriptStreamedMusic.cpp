@@ -14,6 +14,7 @@
 #include <string.h>
 
 #ifdef TARGET_PC
+#include "MetroidPrime/ScriptObjects/CScriptStreamedMovie.hpp"
 #include "port_overlay.h"
 #endif
 
@@ -226,6 +227,12 @@ void CScriptStreamedMusic::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg&
   CEntity::AcceptScriptMsg(mgr, msg);
   switch (message) {
   case kSM_Play:
+#ifdef TARGET_PC
+    // Trilogy's menu music waits for the GameCube title screen the port puts back.
+    if (GetActive() && CScriptStreamedMovie::PortTitleHoldsMusic(mgr, GetUniqueId())) {
+      break;
+    }
+#endif
     if (GetActive()) {
       Play(mgr);
     }

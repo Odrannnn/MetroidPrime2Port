@@ -57,6 +57,22 @@ byte-identical (strip-diff clean). Result: health warning -> main menu (Single P
 file select -> new game -> opening cinematic -> first room, no `MP2_SKIP_FRONTEND`
 (`MP2_INPUT=A@1300+3,A@2900+3,A@3400+3,A@3900+3,START@4300+3,...`, ~30 updates/s). Multiplayer and used slots: see "Multiplayer and used save slot" below.
 Screenshots from the run: `/tmp/opencode/trilogy/shots/`. GC USA still reaches title and gameplay.
+Since 2026-11-05 the title screen below comes first, so that input timeline needs a START once the logo loops.
+
+## GameCube title screen on Trilogy (2026-11-05)
+
+Trilogy's FrontEnd script (MREA 7d89f98e) opens straight on MOVI 0x1d2 `Video/Outro_to_Background.thp` and
+the menu music (STAU 0x456); GC's (cee3af0d) first plays `Intro_to_Logo.thp` (MOVI 0x11c, A/Start skips via
+GWIG 0x123), loops `Logo_Loop.thp` (0x11e) until A/Start (GWIG 0x42), then the outro, with the title music
+SOND 0xf6/0xf7 (sfx 0x2687 pan 126 / 0x2787 pan 0, volume 105, looped) stopped by SQTR 0x23e ~2.75 s
+after the press, when the STAU starts. Both THPs are on the Trilogy disc under `MP2/Video`, and the front end's
+audio group (`audio_groups_front_end_DGRP`) is identical on both discs, so the title sfx exist too.
+TARGET_PC in `CScriptStreamedMovie.cpp`: on a Trilogy disc the movie whose file is the outro plays the
+title music from creation, turns its first Play into intro -> logo loop (A/Start on any pad), then plays
+itself as the script asked; `CScriptStreamedMusic` holds a Play while `PortTitleHoldsMusic` says so and
+gets it 2.75 s into the outro. Not ported: GC's attract movies (not on the Trilogy disc) and its
+menu-idle return to the title (TIMR 0x40 absent). Verified on Xvfb (USA Trilogy): intro, logo, START at
+update 2400 -> main menu; gdb dprintfs show the two sfx at preload, the STAU held, then played after the outro.
 
 ## Disc picker (Android)
 
