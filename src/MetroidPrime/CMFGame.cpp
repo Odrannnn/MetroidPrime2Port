@@ -39,13 +39,13 @@
 #include "MetroidPrime/CWorld.hpp"
 #include "MetroidPrime/Cameras/CCameraFilterPass.hpp"
 #include "MetroidPrime/Cameras/CCinematicCamera.hpp"
-#include "MetroidPrime/ScriptObjects/CScriptControllerAction.hpp"
 #include "MetroidPrime/Decode.hpp"
 #include "MetroidPrime/Player/CGameMode.hpp"
 #include "MetroidPrime/Player/CGameState.hpp"
 #include "MetroidPrime/Player/CPlayerState.hpp"
 #include "MetroidPrime/Player/CWorldTransManager.hpp"
 #ifdef TARGET_PC
+#include "MetroidPrime/ScriptObjects/CScriptControllerAction.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptStreamedMovie.hpp"
 #endif
 #include "MetroidPrime/TCastTo.hpp"
