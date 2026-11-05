@@ -3,6 +3,22 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-11-05: save states keep every script object's fields (why cutscene bugs kept coming)
+
+- Cause: the room save's `kTagFields` was an allowlist (CPatterned + generated pickups/debris), so
+  cutscene objects (keyframes, ColorModulate, SoundModifier, sound volumes, actor anims, platforms)
+  came back fresh, and `statecheck` compared only saved fields, so nothing showed it. Mid-cutscene in
+  Aerie: 718 differing unsaved fields before.
+- Now every scripted object (valid editor id) except doors/docks (own blocks) gets the block.
+  Denied (`SavedField`): CScriptTimer (kTagTimer + holdTimers own it), trigger/special-function
+  inside/damage flags, sound per-frame flags, any `*ThisFrame*`, and whole classes RoomAcoustics,
+  PlayerActor's own fields, StreamedMusic, RsfAudio, Midi, LayerController, WorldTeleporter.
+- ApplyEntityFields/GetField/GetAnim count only writes that changed a value, in all passes.
+  `statecheck --gaps` lists unsaved fields that differ; `--cinematics` lets cutscenes run.
+- Verified on Xvfb: mid-cutscene Aerie round trip 0 strict (gaps only clock/token/bounds noise);
+  calm rooms (sand 06/0b, swamp 07 with Puffer) 0 strict; #84 repro unchanged. Save grows ~12 KB ->
+  ~114 KB per slot in Aerie. build-port-link OK, no upstream files touched.
+
 ## 2026-11-05: issue #84 (save during Dark Samus 2's death cutscene, load leaves her idle)
 
 - Two causes, Aerie (1baa96c2 area 65): the room state had no CScriptSequenceTimer state, so after a

@@ -204,8 +204,10 @@ MLVL names (`--world 42b935e4 --area 06_sand_alamofront --area 0b_sand_hall`), n
 The player is held safe by default: every room runs `god 1` and `nodarkair 1` before its `--setup`
 commands (then `--wait` unheld ticks to let the room settle), so an enemy hit or a dark-aether drain
 is not a strict player hp diff; `--unsafe-player` leaves the player as the room found it.
-What a save keeps of each enemy (the `kTagFields` block) is in `docs/SAVESTATE_SCHEMA.md`;
-`MP_SAVESTATE_FIELDS=0` turns that block off, to tell its diffs from the rest.
+What a save keeps of each script object (the `kTagFields` block) is in `docs/SAVESTATE_SCHEMA.md`;
+`MP_SAVESTATE_FIELDS=0` turns that block off, to tell its diffs from the rest. `--gaps` also lists
+the schema fields the save does not keep that changed; `--cinematics` plays cutscenes, for a save
+taken mid-cutscene.
 
 ## Driving pads 1-3 (multiplayer)
 

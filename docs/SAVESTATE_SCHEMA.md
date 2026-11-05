@@ -25,8 +25,16 @@ Written by `tools/gen_entity_schema.py`; do not edit. The table itself is
 
 ## What a save keeps (`kTagFields`)
 
-An enemy gets one `kTagFields` block in the room record, and so do the pickups and debris a
-generator made: `platform/port_savestate_fields.cpp` writes it for the objects
+Every script object (valid editor id) gets one `kTagFields` block in the room record, and so do
+the pickups and debris a generator made; doors and docks keep only their own blocks. Since
+2026-11-05 this is no longer just enemies: a mid-cutscene save came back with its keyframes, fades,
+sound modifiers and actor animations fresh, and each per-class block fixed only the one a bug
+report found. `SavedField` denies what follows the engine or this run rather than the room
+(timers are `kTagTimer`'s, trigger/area-damage player state, sound attachments, reverb slots,
+music, layer controllers, world teleporters, player actors' own fields, `*ThisFrame`).
+`tools/statecheck.py --gaps` lists the schema fields a round trip changed that the save does not
+keep (`--cinematics` lets a cutscene run); what is left there is render caches, tokens and clocks.
+`platform/port_savestate_fields.cpp` writes the block for the objects
 `EntityFieldsSaved` names, and applies it in passes - the plain fields, the AI and body
 codecs, the animation, the path search, then the plain fields again over what entering the
 saved states changed. A class whose fingerprint changed since the save is skipped, not

@@ -164,6 +164,8 @@ class Game:
             env["HEADLESS"] = "1"
         if a.build:
             env["BUILD"] = a.build
+        if a.cinematics:
+            env["SKIP_CINEMATICS"] = "0"
         self.proc = subprocess.Popen(["bash", str(HERE / "run_gameplay.sh")], env=env,
                                      start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
@@ -363,6 +365,7 @@ class Report:
         self.total = 0
         self.per_class_total = collections.Counter()
         self.fields = []  # saved schema fields that differ: (class, field, label, text); informational
+        self.gaps = []  # unsaved schema fields (`fields_other`) that differ, with --gaps; informational
 
     def add(self, sev, cls, label, kind, text):
         self.rows.append((sev, cls, label, kind, text))
@@ -407,13 +410,16 @@ def compare(da, da1, db, a, with_drift=True):
                         rep.drift[(cls, f)] += 1  # B equals A1: the field just moved a tick
                         continue
                     rep.add("STRICT" if strict else "WARN", cls, label, f, f"{show(vx)} -> {show(vy)} ({d})")
-            fx, fy, fz = x.get("fields") or {}, y.get("fields") or {}, (z or {}).get("fields") or {}
-            for name in sorted(set(fx) | set(fy)):
-                if schema_differ(fx.get(name), fy.get(name), a) is None:
+            for key_, out in (("fields", rep.fields), ("fields_other", rep.gaps if a.gaps else None)):
+                if out is None:
                     continue
-                if with_drift and z is not None and name in fz and schema_differ(fz[name], fy.get(name), a) is None:
-                    continue  # B equals A1: the field just moved a tick
-                rep.fields.append((cls, name, label, f"{show(fx.get(name))} -> {show(fy.get(name))}"))
+                fx, fy, fz = x.get(key_) or {}, y.get(key_) or {}, (z or {}).get(key_) or {}
+                for name in sorted(set(fx) | set(fy)):
+                    if schema_differ(fx.get(name), fy.get(name), a) is None:
+                        continue
+                    if with_drift and z is not None and name in fz and schema_differ(fz[name], fy.get(name), a) is None:
+                        continue  # B equals A1: the field just moved a tick
+                    out.append((cls, name, label, f"{show(fx.get(name))} -> {show(fy.get(name))}"))
     pa, pb, p1 = da["player"], db["player"], da1["player"]
     for strict, fields in ((True, PLAYER_STRICT), (False, PLAYER_LOOSE)):
         for f in fields:
@@ -440,10 +446,13 @@ def print_report(title, rep, a):
         print("tick drift (B equals the dump one tick after the save; ignored): " +
               ", ".join(f"{c}.{f} x{n}" for (c, f), n in sorted(rep.drift.items())))
     classes = sorted({r[1] for r in rep.rows})
-    if rep.fields:
-        print(f"\nschema fields (saved by kTagFields; informational, not in the exit code): {len(rep.fields)} differ")
+    for rows, what in ((rep.fields, "schema fields (saved by kTagFields"),
+                       (rep.gaps, "unsaved schema fields (fields_other: gaps in the save")):
+        if not rows:
+            continue
+        print(f"\n{what}; informational, not in the exit code): {len(rows)} differ")
         groups = collections.defaultdict(list)
-        for cls, name, label, text in rep.fields:
+        for cls, name, label, text in rows:
             groups[(cls, name)].append((label, text))
         for (cls, name), items in sorted(groups.items()):
             print(f"  {cls}.{name} x{len(items)}: {items[0][0]} {items[0][1]}")
@@ -491,6 +500,10 @@ def main():
     ap.add_argument("--max-steps", type=int, default=600, help="ticks to wait for the restore (default 600)")
     ap.add_argument("--post-wait", type=int, default=0, metavar="N",
                     help="also dump C N ticks after B and report C against A (informational, not in the exit code)")
+    ap.add_argument("--gaps", action="store_true",
+                    help="also report schema fields nothing saves (statedump `fields_other`) that differ after the round trip")
+    ap.add_argument("--cinematics", action="store_true",
+                    help="started run plays cutscenes (SKIP_CINEMATICS=0), for round trips taken mid-cutscene")
     ap.add_argument("--timeout", type=float, default=120.0, help="seconds per console command")
     ap.add_argument("--tol-pos", type=float, default=0.5)
     ap.add_argument("--tol-vel", type=float, default=0.5)

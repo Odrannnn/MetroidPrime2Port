@@ -150,7 +150,7 @@ enum : uint32_t {
   kTagDock = 12,     // u8 reference count, u8 refs, refs x u8 load-other: a CScriptDock's Dock
   kTagGenerated = 13, // empty: a script generator's copy of a template, made again on load
   kTagMessages = 14,  // u8 n, n x (u32 message, u32 sender editor id): what woke a scripted enemy
-  kTagFields = 15,    // the schema fields of an enemy, pickup or debris (port_savestate_fields.cpp)
+  kTagFields = 15,    // the schema fields of a script object or generated pickup/debris (port_savestate_fields.cpp)
   kTagRng = 16,       // u32 seed of the state manager's CRandom16: room-wide, on the first object
   kTagPlayer = 17,    // 4 x f32 dark-air clocks of the player (CPlayer::PortGetDarkAir): room-wide, first object
   kTagDrop = 18,      // u8 live, then the drop's kTagFields bytes: the pickup a debris' Activate dropped
@@ -1246,8 +1246,11 @@ int ApplyRoomState(CStateManager& mgr, const RoomState& room, RoomApplyProgress&
       CScriptPickup* drop = DebrisDrop(mgr, *debris);
       if (drop != nullptr) {
         if (!dropBlock->data.empty() && dropBlock->data[0] != 0) {
-          const int set = ApplyEntityFields(mgr, *drop, dropBlock->data.substr(1));
-          if (set) {
+          // ApplyEntityFields counts only the values it changed; a drop that already held them
+          // all still takes the debris' place.
+          const std::string dropFields = dropBlock->data.substr(1);
+          const int set = ApplyEntityFields(mgr, *drop, dropFields);
+          if (set || EntityFieldsCover(*drop, dropFields)) {
             stats.fields += set;
             log.Note(d.obj->editorId, "dropped pickup fields restored");
             drop->SetTranslation(debris->GetTranslation());
