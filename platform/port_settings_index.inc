@@ -38,6 +38,7 @@
 {"Controls", "Options", "Menus", "Tap minimap for map", "minimap tap click touch map screen hud"},
 {"Controls", "Options", "Menus", "Point and click menus", "mouse touch pointer click pause map menu"},
 {"Controls", "Options", "Menus", "Swap map finger gestures", "touch map pan rotate two finger twist"},
+{"Controls", "Options", "Menus", "Exit Game on the main menu", "quit close leave title front end legend hold z touch"},
 {"Controls", "Options", "Rumble", "Rumble", "vibration controller force feedback haptic"},
 {"Controls", "Options", "Map", "Invert map rotate X", "map rotate turn invert flip reverse horizontal"},
 {"Controls", "Options", "Map", "Invert map rotate Y", "map rotate turn invert flip reverse vertical"},
