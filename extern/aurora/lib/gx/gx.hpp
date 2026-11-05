@@ -78,6 +78,8 @@ constexpr u32 MaxIndStages = GX_MAX_INDTEXSTAGE;
 constexpr u32 MaxIndTexMtxs = 3;
 constexpr u32 MaxVtxFmt = GX_MAX_VTXFMT;
 constexpr u32 MaxPnMtx = (GX_PNMTX9 / 3) + 1;
+// A texgen's GX_IDENTITY as its postex_mtx index in the uniform (past the last matrix).
+constexpr u32 TexMtxIdentity = MaxPnMtx + MaxTexMtx;
 constexpr u32 MaxIndexAttr = 12; // VA_POS -> VA_TEX7
 constexpr u32 MaxUniformSize = 8192; // WebGPU guarantees maxUniformBufferBindingSize >= 16384
 constexpr u32 XfRegCount = 0x58; // 0x1000-0x1057
@@ -700,10 +702,11 @@ constexpr void pipeline_tev_konst(ShaderConfig& config) noexcept {
   }
 }
 // GXSetDstAlpha's constant is the draw's blend constant (DrawData::dstAlpha); the pipeline only
-// tells off (UINT32_MAX), zero (dst_alpha_mode None) and any other value (issue #78: CCubeRenderer
-// writes each area's PVS alpha there, and every value keyed its own pipeline).
+// tells off (UINT32_MAX) from on (issue #78: CCubeRenderer writes each area's PVS alpha there, and
+// every value keyed its own pipeline). Zero keys as on too: Replace or DualSource still writes the
+// zero constant, and without dual source the draw falls back to None as before.
 constexpr u32 pipeline_dst_alpha(u32 dstAlpha) noexcept {
-  return dstAlpha == UINT32_MAX || dstAlpha == 0 ? dstAlpha : 0xFF;
+  return dstAlpha == UINT32_MAX ? dstAlpha : 0xFF;
 }
 // Resets what the shader never reads (shader_info.cpp), so draws differing only there share a pipeline.
 void pipeline_unused_inputs(ShaderConfig& config) noexcept;

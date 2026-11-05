@@ -3484,11 +3484,14 @@ std::string build_shader_source(const ShaderConfig& config) noexcept {
     if (tcg.type == GX_TG_MTX2x4 || tcg.type == GX_TG_MTX3x4) {
       if (info.indexAttr.test(GX_VA_TEX0MTXIDX + i)) {
         vtxXfrAttrs += fmt::format("\n    var tc{0}_tmp = tc{0} * ubuf.postex_mtx[in_texmtxidx{0} / 3u];", i);
-      } else if (tcg.mtx == GX_IDENTITY) {
-        vtxXfrAttrs += fmt::format("\n    var tc{0}_tmp = tc{0}.xyz;", i);
       } else {
-        u32 texMtxIdx = (tcg.mtx) / 3;
-        vtxXfrAttrs += fmt::format("\n    var tc{0}_tmp = tc{0} * ubuf.postex_mtx[{1}];", i, texMtxIdx);
+        // The matrix from the uniform (texcoord_scale[i].z, TexMtxIdentity for GX_IDENTITY), so the
+        // pipeline does not key it (pipeline_unused_inputs).
+        vtxXfrAttrs += fmt::format(
+            "\n    var tc{0}_tmp = tc{0}.xyz;"
+            "\n    let tc{0}_mtx = u32(ubuf.texcoord_scale[{0}].z);"
+            "\n    if (tc{0}_mtx < {1}u) {{ tc{0}_tmp = tc{0} * ubuf.postex_mtx[tc{0}_mtx]; }}",
+            i, TexMtxIdentity);
       }
       if (tcg.type == GX_TG_MTX2x4) {
         vtxXfrAttrs += fmt::format("\n    tc{0}_tmp.z = 1.0f;", i);

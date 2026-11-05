@@ -364,7 +364,8 @@ ShaderInfo build_shader_info(const ShaderConfig& config) noexcept {
 // The pipeline cache keys the whole config, so state the shader never reads split it: of 1741 seed
 // rows, 81 built a pipeline another row already had (tools/pipeline_key_audit.cpp). The game leaves
 // lighting set on a channel no stage reads, a texgen no stage samples, and a stage's channel when it
-// reads no rasterized colour. Those reset here. Not channel 1 of a PBR draw, nor stage 0's channel:
+// reads no rasterized colour. Those reset here, as does a texgen's matrix (the shader reads it from
+// texcoord_scale[i].z). Not channel 1 of a PBR draw, nor stage 0's channel:
 // pbr_func tells its projected-shadow stage by them whatever the stage reads.
 void pipeline_unused_inputs(ShaderConfig& config) noexcept {
   const auto info = build_shader_info(config);
@@ -379,6 +380,8 @@ void pipeline_unused_inputs(ShaderConfig& config) noexcept {
     if (!info.sampledTexCoords.test(i)) {
       config.tcgs[i] = {};
     }
+    // The texgen matrix comes from the uniform (texcoord_scale[i].z).
+    config.tcgs[i].mtx = GX_IDENTITY;
   }
   const auto rasC = [](GXTevColorArg arg) { return arg == GX_CC_RASC || arg == GX_CC_RASA; };
   for (int i = 1; i < config.tevStageCount; ++i) {
@@ -598,8 +601,14 @@ static void fill_uniform(ByteBuffer& buf, const ShaderInfo& info) noexcept {
       buf.append(v);
     }
   }
-  for (const auto& scale : g_gxState.texCoordScales) {
-    buf.append(Vec4{static_cast<f32>(scale.scaleS) + 1.0f, static_cast<f32>(scale.scaleT) + 1.0f, 0.0f, 0.0f});
+  static_assert(std::tuple_size_v<decltype(g_gxState.texCoordScales)> == MaxTexCoord);
+  for (u32 i = 0; i < MaxTexCoord; ++i) {
+    const auto& scale = g_gxState.texCoordScales[i];
+    // z: the texgen's matrix as a float index into postex_mtx (the shader reads it, the key does not).
+    const u32 mtx = g_gxState.tcgs[i].mtx;
+    const u32 mtxIdx = mtx == GX_IDENTITY ? TexMtxIdentity : mtx / 3;
+    buf.append(Vec4{static_cast<f32>(scale.scaleS) + 1.0f, static_cast<f32>(scale.scaleT) + 1.0f,
+                    static_cast<f32>(mtxIdx), 0.0f});
   }
   if (info.usedIndTexMtxs.any()) {
     for (u32 i = 0; i < MaxIndTexMtxs; ++i) {

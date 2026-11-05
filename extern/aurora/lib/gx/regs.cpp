@@ -776,7 +776,7 @@ void xf_mtx_index_a(u8, u32 value) noexcept {
     assert(texMtx >= 0 && texMtx <= GXTexMtx::GX_IDENTITY);
     if (g_gxState.tcgs[i].mtx != texMtx) {
       g_gxState.tcgs[i].mtx = texMtx;
-      g_gxState.dirty |= DirtyPipeline;
+      g_gxState.dirty |= DirtyUniform; // the matrix is texcoord_scale[i].z, not in the pipeline key
     }
   }
 }
@@ -859,7 +859,7 @@ constexpr auto kXfRegs = [] {
     regs[r] = {xf_chan_ctrl, DirtyPipeline | DirtyUniform};
   }
   regs[0x18] = {xf_mtx_index_a, DirtyImmediates};
-  regs[0x19] = {xf_mtx_index_b, DirtyPipeline};
+  regs[0x19] = {xf_mtx_index_b, DirtyUniform}; // texcoord_scale[i].z
   // 0x1A-0x1F (viewport) and 0x20-0x26 (projection) decode as blocks in handle_xf
   for (u8 r = 0x1A; r <= 0x26; ++r) {
     regs[r] = {};
