@@ -524,14 +524,25 @@ void DrawDiscImageSection() {
   ImGui::SeparatorText("Disc image");
   const PortDiscVerify::Result r = PortDiscVerify::Snapshot();
   const bool running = r.state == State::Running;
-  if (const std::string image = PortDiscVerify::ImagePath(); !image.empty()) {
+  const std::string image = PortDiscVerify::ImagePath();
+  if (!image.empty()) {
+    const port::entry::DiscVersion version = port::entry::CurrentDiscVersion();
     ImGui::TextWrapped("Disc image: %s", image.c_str());
+    ImGui::TextWrapped("Version: Metroid Prime 2: Echoes %s (%s01)", port::entry::DiscVersionName(version),
+                       port::entry::DiscGameCode(version));
   }
   if (PortDiscReplace::Poll()) {
     // Remembered; the status below says to restart.
   }
+  // Only when the next start changes disc: the remembered image is usually the one running.
   if (const std::string next = PortOverlaySettings::DiscPath(); !next.empty()) {
-    ImGui::TextWrapped("Disc image for the next start: %s", next.c_str());
+    std::error_code ec;
+    const bool same = next == image || (!image.empty() && std::filesystem::equivalent(PortUtf8::FromUtf8(next),
+                                                                                      PortUtf8::FromUtf8(image), ec) &&
+                                        !ec);
+    if (!same) {
+      ImGui::TextWrapped("Disc image for the next start: %s", next.c_str());
+    }
   }
   ImGui::BeginDisabled(running);
   if (ImGui::Button("Check disc image")) {
