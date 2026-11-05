@@ -8,6 +8,7 @@
 class CScriptSequenceTimer : public CEntity {
 #ifdef TARGET_PC
   friend struct PortEntitySchema; // save-state field schema (platform/include/port_entity_schema.h)
+  friend struct PortRoomState;    // save states' room state (platform/port_savestate_room.cpp)
 #endif
 public:
   CScriptSequenceTimer(TUniqueId uid, const rstl::string& name, const CEntityInfo& info,

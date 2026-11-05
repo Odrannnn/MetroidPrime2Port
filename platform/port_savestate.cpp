@@ -40,6 +40,7 @@
 #include "MetroidPrime/CCameraManager.hpp"
 #include "MetroidPrime/CGameArea.hpp"
 #include "MetroidPrime/CGameGlobalObjects.hpp"
+#include "MetroidPrime/CMFGame.hpp"
 #include "MetroidPrime/CMain.hpp"
 #include "MetroidPrime/CStateManager.hpp"
 #include "MetroidPrime/CWorld.hpp"
@@ -926,8 +927,10 @@ void TickPlacement(CStateManager& mgr) {
     SetMessage("load landed in another world; Samus stays at its spawn");
     return;
   }
+  // The load's own fast-forward (its settle included) ends first: the restore resumes a saved
+  // shot, which a skip still running would fast-forward too.
   if (CCameraManager* cameras = mgr.CameraManager(0);
-      cameras != nullptr && cameras->IsInCinematicCamera()) {
+      (cameras != nullptr && cameras->IsInCinematicCamera()) || CMFGame::PortCinematicSkipActive()) {
     sPlace.settled = 0;
     return;
   }

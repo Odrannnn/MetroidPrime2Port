@@ -3,6 +3,19 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-11-05: issue #84 (save during Dark Samus 2's death cutscene, load leaves her idle)
+
+- Two causes, Aerie (1baa96c2 area 65): the room state had no CScriptSequenceTimer state, so after a
+  load the shot chain (cameras 004103b2 on) never fired again and the stand-ins (idle Dark Samus
+  004102c3, Samus player actors 004103bd/004103e1) stayed in gameplay; and the load's own cinematic
+  fast-forward (its 0.5 s settle) was still running when TickPlacement let the restore resume the
+  saved shot, so that shot was skipped too.
+- Room block `kTagSequence` = 22 (time, running, start originator as editor id), applied with the
+  deferred blocks after the dispatch (a camera's Activate can Start the timer); TickPlacement also
+  waits for `CMFGame::PortCinematicSkipActive()`. Not saved: CScriptActorKeyframe state, actor anims.
+- Verified on Xvfb (console `state save` at f900 mid-cutscene, load at f1500): the cutscene plays on
+  to its end and gameplay has the same objects as a run without the load. build-port-link OK, upstream 87 files OK.
+
 ## 2026-11-05: pipeline key audit (follow-up to #78)
 
 - `tools/pipeline_key_audit.cpp` perturbs each seed row's PipelineConfig fields one at a time and

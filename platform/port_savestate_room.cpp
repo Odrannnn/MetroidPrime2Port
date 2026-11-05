@@ -38,6 +38,7 @@
 #include "MetroidPrime/ScriptObjects/CScriptPickup.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptActor.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptPlatform.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptSequenceTimer.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptSpecialFunction.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptStreamedMusic.hpp"
 #include "MetroidPrime/ScriptObjects/CScriptSwitch.hpp"
@@ -50,8 +51,8 @@
 #include <map>
 #include <set>
 
-// Friend of CScriptTimer, CScriptCounter and CScriptDoor (their TARGET_PC blocks): their state is
-// private.
+// Friend of CScriptTimer, CScriptCounter, CScriptDoor, CScriptSequenceTimer and others (their
+// TARGET_PC blocks): their state is private.
 struct PortRoomState {
   // A flotsam Dark Trooper is a corpse by design (AreaLoaded clears mAlive, HP -1): the reload
   // rebuilds it, so it is not a kill the state should remember.
@@ -117,6 +118,19 @@ struct PortRoomState {
       r.mActors.push_back(rstl::pair< TUniqueId, CTransform4f >(a.first, a.second));
     }
   }
+
+  // Sequence timer: its clock, the run flag and who started it (the originator its activations
+  // send with). Set without firing: what fired before the save already ran.
+  static float SeqTime(const CScriptSequenceTimer& t) { return t.mCurrentTime; }
+  static bool SeqRunning(const CScriptSequenceTimer& t) { return t.mRunning; }
+  static TUniqueId SeqOriginator(const CScriptSequenceTimer& t) {
+    return t.mStartMessage.GetOriginator();
+  }
+  static void SetSequence(CScriptSequenceTimer& t, float time, bool running, TUniqueId originator) {
+    t.mCurrentTime = time;
+    t.mRunning = running;
+    t.mStartMessage.m_originator = originator;
+  }
 };
 
 namespace PortSaveState {
@@ -143,6 +157,7 @@ enum : uint32_t {
   kTagSwitch = 19,    // u32 opened: a CScriptSwitch
   kTagMaterial = 20,  // u32 lo, u32 hi of an enemy's CMaterialList (solid, shootable, targetable)
   kTagInArea = 21,    // u32 player in area: a PlayerInAreaRelay CScriptSpecialFunction
+  kTagSequence = 22,  // f32 time, u32 running, u32 originator editor id: a CScriptSequenceTimer
 };
 
 // Per-object lines a restore logs, at most; the summary line always follows.
@@ -398,6 +413,15 @@ void CaptureObject(CStateManager& mgr, CEntity& ent, RoomObject& obj) {
     w.F32(PortRoomState::TimerTime(*timer));
     w.U32(timer->IsTiming() ? 1 : 0);
     obj.blocks.push_back({kTagTimer, w.bytes});
+  }
+  if (CScriptSequenceTimer* seq = TCastToPtr< CScriptSequenceTimer >(&ent)) {
+    BlockWriter w;
+    w.F32(PortRoomState::SeqTime(*seq));
+    w.U32(PortRoomState::SeqRunning(*seq) ? 1 : 0);
+    const TUniqueId origin = PortRoomState::SeqOriginator(*seq);
+    const CEntity* o = origin != kInvalidUniqueId ? mgr.GetObjectById(origin) : nullptr;
+    w.U32(o != nullptr ? o->GetEditorId().value : 0xffffffffu);
+    obj.blocks.push_back({kTagSequence, w.bytes});
   }
   if (CScriptCounter* counter = TCastToPtr< CScriptCounter >(&ent)) {
     BlockWriter w;
@@ -808,7 +832,10 @@ bool ApplyObject(CStateManager& mgr, CEntity& ent, const RoomObject& obj, Change
       }
     }
   }
-  if (fieldsBlock != nullptr || FindBlock(obj, kTagDrop) != nullptr) {
+  // A sequence timer goes in with the deferred blocks too: a camera's Activate above can Start it
+  // (back to 0), and that message runs only at the dispatch before them.
+  if (fieldsBlock != nullptr || FindBlock(obj, kTagDrop) != nullptr ||
+      FindBlock(obj, kTagSequence) != nullptr) {
     later.push_back({ent.GetUniqueId(), &obj});
   }
   // Velocity and momentum go in last, after every block above: a class's own block can stop the
@@ -1191,6 +1218,22 @@ int ApplyRoomState(CStateManager& mgr, const RoomState& room, RoomApplyProgress&
         actor->MaterialList() = CMaterialList(m);
         mgr.UpdateObjectInLists(*actor);
         log.Note(d.obj->editorId, "materials restored");
+      }
+    }
+    if (const RoomBlock* b = FindBlock(*d.obj, kTagSequence)) {
+      CScriptSequenceTimer* seq = TCastToPtr< CScriptSequenceTimer >(ent);
+      BlockReader r(b->data);
+      const float time = r.F32();
+      const bool running = r.U32() != 0;
+      const uint32_t origin = r.U32();
+      const TUniqueId originator =
+          origin != 0xffffffffu ? mgr.GetIdForScript(TEditorId(origin)) : kInvalidUniqueId;
+      if (seq != nullptr && r.ok && time == time && time >= 0.f &&
+          (PortRoomState::SeqTime(*seq) != time || PortRoomState::SeqRunning(*seq) != running ||
+           PortRoomState::SeqOriginator(*seq) != originator)) {
+        PortRoomState::SetSequence(*seq, time, running, originator);
+        log.Note(d.obj->editorId, "sequence restored");
+        ++stats.changed;
       }
     }
     if (debris != nullptr && FindBlock(*d.obj, kTagDrop) != nullptr) {
