@@ -687,6 +687,12 @@ constexpr void pipeline_tev_konst(ShaderConfig& config) noexcept {
     stage.kaSel = GX_TEV_KASEL_1;
   }
 }
+// GXSetDstAlpha's constant is the draw's blend constant (DrawData::dstAlpha); the pipeline only
+// tells off (UINT32_MAX), zero (dst_alpha_mode None) and any other value (issue #78: CCubeRenderer
+// writes each area's PVS alpha there, and every value keyed its own pipeline).
+constexpr u32 pipeline_dst_alpha(u32 dstAlpha) noexcept {
+  return dstAlpha == UINT32_MAX || dstAlpha == 0 ? dstAlpha : 0xFF;
+}
 // Whether a draw samples the sun's shadow map: a lit PBR surface drawn in colour without per-pixel fog.
 inline bool shadow_receives(const ShaderConfig& sc) noexcept {
   return sc.shadow && (sc.pbr != 0 || sc.actorDecal != 0) && sc.volFog == VolFogNone && sc.depthOnly == 0 && sc.lineMode == 0 && !sc.drawId;

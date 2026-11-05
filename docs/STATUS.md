@@ -15,10 +15,20 @@ appended, dated as in the heading there.
 - Lagoon repro (Xvfb, empty cache + seed): GC 9 misses -> 0, Trilogy 10 misses/13 skipped draws -> 1/3
   (ab1fe2747a9851b9, then added to the seed; not re-run). Not run on Windows/D3D12. upstream build untouched (TARGET_PC only).
 - Poco's cache (pulled read-only from /storage/emulated/0/MetroidPrime2/shader_cache, normalized
-  like Aurora's queue_cached_row): 447 retail v15 configs not in the seed, 1 fluid; mostly global
-  (419 uses) and front end (292), then areas. Per-field diffs are scattered (shader flags, channel
-  ctrl, tex-gen, alpha compare, blend), i.e. coverage gaps, not one variant class. Some may be from
-  older builds. Not merged.
+  like Aurora's queue_cached_row): 447 retail v15 configs not in the seed. Not leftovers: since
+  config v15 (0ccaa2c17) only the #44 changes (normalized on load), 8864b3060 outReg (2 rows) and
+  b0dea75e8 (removes pipelines) touched the key. One more dead-key class: `PipelineConfig::dstAlpha`
+  held GXSetDstAlpha's value (CCubeRenderer's per-area PVS alpha, CPauseScreen layer masks,
+  CMorphBallShadow `id*4`), which only reaches the blend constant; the pipeline tells off/0/other.
+  Aurora now keys it as UINT32_MAX/0/0xFF (`gx::pipeline_dst_alpha`, gx.cpp and queue_cached_row);
+  the seed's 52 such rows were rewritten (1446 -> 1417 rows).
+- With that, 327 phone configs remain missing; none are produced by the `frontend`/`actions` passes
+  (re-recorded). They sit in areas/phases the spots don't reach: Great Temple 07_mothlordsanctuary_dark
+  (50), Torvus 04_swamp_temple light (45), TG 12_temple_finalgate_dark (36), Agon 06_alamofront_dark
+  (34), Agon halls, plus fog on/off and dstAlpha 0/non-0 variants of seeded rows (real variants).
+  Merged as-is (msaa bytes kept, rest normalized, rehashed, uses remapped): seed 1744 rows / 9088
+  uses, `check` OK, hashes OK; lagoon repro on Xvfb with it: 0 misses, seed loads 1744 rows. A
+  re-record drops these rows unless spots for those areas are added (`merge` the old seed in instead).
 
 ## 2026-11-05: issue #80 (Exit Game on the main menu)
 

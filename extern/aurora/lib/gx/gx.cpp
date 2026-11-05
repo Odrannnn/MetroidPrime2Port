@@ -675,7 +675,7 @@ void populate_pipeline_config(PipelineConfig& config, GXPrimitive primitive, GXV
   config.blendFacSrc = blendFactor(g_gxState.blendFacSrc);
   config.blendFacDst = blendFactor(g_gxState.blendFacDst);
   config.blendOp = g_gxState.blendOp;
-  config.dstAlpha = hasAlpha && g_gxState.alphaUpdate ? g_gxState.dstAlpha : UINT32_MAX;
+  config.dstAlpha = hasAlpha && g_gxState.alphaUpdate ? pipeline_dst_alpha(g_gxState.dstAlpha) : UINT32_MAX;
   config.polygonOffsetBits = std::bit_cast<uint32_t>(polygonOffset);
   config.polygonOffsetScaleBits = std::bit_cast<uint32_t>(polygonOffsetScale);
   config.polygonOffsetClampBits = std::bit_cast<uint32_t>(g_gxState.clamp);

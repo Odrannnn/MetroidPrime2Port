@@ -1455,9 +1455,10 @@ static void queue_cached_row(ShaderType type, uint32_t configVersion, CreateFn&&
       ++stats.incompatible;
       return;
     }
-    // A row recorded before the fog curve, the alpha compare references and the konst selections
-    // moved to uniforms names them.
+    // A row recorded before the fog curve, the alpha compare references, the konst selections and
+    // the dst alpha constant moved to uniforms (or the blend constant) names them.
     config.shaderConfig.fogType = gx::pipeline_fog_type(config.shaderConfig.fogType);
+    config.dstAlpha = gx::pipeline_dst_alpha(config.dstAlpha);
     config.shaderConfig.alphaCompare = gx::pipeline_alpha_compare(config.shaderConfig.alphaCompare);
     gx::pipeline_tev_konst(config.shaderConfig);
     // A row recorded at the other aurora_set_per_pixel_lighting setting (the embedded seed is
