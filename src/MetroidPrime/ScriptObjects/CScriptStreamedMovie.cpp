@@ -68,6 +68,7 @@ CScriptStreamedMovie::CScriptStreamedMovie(TUniqueId uid, const rstl::string& na
 , mPortTitleIntro(nullptr)
 , mPortTitleLoop(nullptr)
 , mPortHeldMusic(kInvalidUniqueId)
+, mPortTitleArrived(false)
 #endif
 {
   if (!CDvdFile::FileExists(mMovieFile.c_str())) {
@@ -138,19 +139,20 @@ static bool PortTitleAdvance(CMoviePlayer& player, float dt) {
 // Port: Echoes' GameCube title screen on the Trilogy disc, rebuilt from FrontEnd04's script
 // (MOVI 0x11c/0x11e, GWIG 0x123/0x42, SOND 0xf6/0xf7, SQTR 0x23e): the intro movie (A or Start
 // skips it) into the looping logo until A or Start, then this movie and the menu as before. The
-// title music plays from the start and stops 2.75 s after the press, when the menu music starts.
+// title music plays from the intro on and stops 2.75 s after the press, when the menu music starts.
 // True while a title movie owns the screen.
 bool CScriptStreamedMovie::PortTitleThink(float dt, CStateManager& mgr) {
   switch (mPortTitlePhase) {
   case kPTP_Waiting:
-    if (!mPortTitleMusic[0] && !mPortTitleMusic[1]) {
-      // SOND 0xf6/0xf7: looped, volume 105 by the music volume, panned hard right and left.
-      const short volume =
-          static_cast< short >(105 * int(gpGameState->GameOptions().GetMusicVolume()) / 127);
-      mPortTitleMusic[0] = CSfxManager::SfxStart(0x2687, volume, 126, CSfxManager::kAllAreas,
-                                                 false, true, 127);
-      mPortTitleMusic[1] =
-          CSfxManager::SfxStart(0x2787, volume, 0, CSfxManager::kAllAreas, false, true, 127);
+    // This movie's Arrived picks the title (SWTC 0x6 closed: SRLY 0x137 plays it, all within one
+    // message dispatch) or the multiplayer game-type screen (open: never played). Still waiting
+    // a Think later means the latter: no title, and the menu music it held starts.
+    if (mPortTitleArrived) {
+      mPortTitlePhase = kPTP_Done;
+      if (mPortHeldMusic != kInvalidUniqueId) {
+        mgr.SendScriptMsg(mPortHeldMusic, GetUniqueId(), kSM_Play);
+        mPortHeldMusic = kInvalidUniqueId;
+      }
     }
     return false;
   case kPTP_Intro: {
@@ -202,6 +204,13 @@ void CScriptStreamedMovie::PortTitleStart(CStateManager& mgr) {
   mPortTitleIntro->SetPlayMode(CMoviePlayer::kPM_Stopped);
   mPortTitleLoop->SetPlayMode(CMoviePlayer::kPM_Stopped);
   mPortTitlePhase = kPTP_Intro;
+  // SOND 0xf6/0xf7: looped, volume 105 by the music volume, panned hard right and left.
+  const short volume =
+      static_cast< short >(105 * int(gpGameState->GameOptions().GetMusicVolume()) / 127);
+  mPortTitleMusic[0] =
+      CSfxManager::SfxStart(0x2687, volume, 126, CSfxManager::kAllAreas, false, true, 127);
+  mPortTitleMusic[1] =
+      CSfxManager::SfxStart(0x2787, volume, 0, CSfxManager::kAllAreas, false, true, 127);
 }
 
 // Leaves the title screen: this movie plays as the script asked, the menu music follows.
@@ -230,7 +239,9 @@ void CScriptStreamedMovie::PortTitleStopMusic() {
 void CScriptStreamedMovie::Think(float dt, CStateManager& mgr) {
   CActor::Think(dt, mgr);
 #ifdef TARGET_PC
-  if (mPortTitlePhase != kPTP_None && GetActive() && PortTitleThink(dt, mgr)) {
+  // The outro's countdown runs while inactive too, so the held menu music always starts.
+  if (mPortTitlePhase != kPTP_None && (GetActive() || mPortTitlePhase == kPTP_Outro) &&
+      PortTitleThink(dt, mgr)) {
     return;
   }
 #endif
@@ -241,6 +252,9 @@ void CScriptStreamedMovie::Think(float dt, CStateManager& mgr) {
   if (!mMoviePlayer->CanDrawVideo()) {
     if (!mMoviePlayer->ContinueLoading()) {
       SendScriptMsgs(kSS_Arrived, mgr, kInvalidUniqueId, kSM_None);
+#ifdef TARGET_PC
+      mPortTitleArrived = true;
+#endif
     }
   }
 
@@ -292,6 +306,9 @@ void CScriptStreamedMovie::AcceptScriptMsg(CStateManager& mgr, const CScriptMsg&
   case kSM_Alert:
     if (mMoviePlayer.get() != nullptr && mMoviePlayer->CanDrawVideo()) {
       SendScriptMsgs(kSS_Arrived, mgr, kInvalidUniqueId, kSM_None);
+#ifdef TARGET_PC
+      mPortTitleArrived = true;
+#endif
     }
     break;
   case kSM_Play:

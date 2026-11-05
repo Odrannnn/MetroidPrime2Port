@@ -67,12 +67,17 @@ GWIG 0x123), loops `Logo_Loop.thp` (0x11e) until A/Start (GWIG 0x42), then the o
 SOND 0xf6/0xf7 (sfx 0x2687 pan 126 / 0x2787 pan 0, volume 105, looped) stopped by SQTR 0x23e ~2.75 s
 after the press, when the STAU starts. Both THPs are on the Trilogy disc under `MP2/Video`, and the front end's
 audio group (`audio_groups_front_end_DGRP`) is identical on both discs, so the title sfx exist too.
-TARGET_PC in `CScriptStreamedMovie.cpp`: on a Trilogy disc the movie whose file is the outro plays the
-title music from creation, turns its first Play into intro -> logo loop (A/Start on any pad), then plays
-itself as the script asked; `CScriptStreamedMusic` holds a Play while `PortTitleHoldsMusic` says so and
-gets it 2.75 s into the outro. Not ported: GC's attract movies (not on the Trilogy disc) and its
-menu-idle return to the title (TIMR 0x40 absent). Verified on Xvfb (USA Trilogy): intro, logo, START at
-update 2400 -> main menu; gdb dprintfs show the two sfx at preload, the STAU held, then played after the outro.
+TARGET_PC in `CScriptStreamedMovie.cpp`: on a Trilogy disc the movie whose file is the outro turns its
+first Play into intro -> logo loop (A/Start on any pad) with the title music, then plays itself as the
+script asked; `CScriptStreamedMusic` holds a Play while `PortTitleHoldsMusic` says so and gets it 2.75 s
+into the outro (the countdown runs while the movie is inactive too). The movie's Arrived goes to SWTC 0x6
+(both discs): closed, SRLY 0x137 plays it within the same message dispatch; open (back from the
+multiplayer game-type screen) it is never played, so a movie still waiting a Think after its Arrived
+drops the title and releases the held STAU. Like GC, every front-end entry through the closed switch
+shows the title. Not ported: GC's attract movies (not on the Trilogy disc) and its menu-idle return to
+the title (TIMR 0x40 absent). Verified on Xvfb (USA Trilogy): intro, logo, START at update 2400 -> main
+menu, gdb dprintfs show the two sfx at the intro, the STAU held, then played after the outro; with
+`PortTitleStart` skipped in gdb (the open path) the STAU plays at once and no title sfx start.
 
 ## Disc picker (Android)
 

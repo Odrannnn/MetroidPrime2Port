@@ -46,7 +46,7 @@ private:
 #ifdef TARGET_PC
   enum EPortTitlePhase {
     kPTP_None,    // not the Trilogy front end's first movie
-    kPTP_Waiting, // title music on, waiting for the script to play this movie
+    kPTP_Waiting, // waiting for the script to play this movie
     kPTP_Intro,
     kPTP_Loop,
     kPTP_Outro, // this movie plays; the title music stops after the GameCube's delay
@@ -84,6 +84,7 @@ private:
   rstl::single_ptr< CMoviePlayer > mPortTitleLoop;
   CSfxHandle mPortTitleMusic[2];
   TUniqueId mPortHeldMusic;
+  bool mPortTitleArrived; // Arrived sent while waiting: the script's reply is in
 #endif
 };
 CHECK_SIZEOF(CScriptStreamedMovie, 0x188)
