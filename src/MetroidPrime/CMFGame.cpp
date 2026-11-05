@@ -125,6 +125,8 @@ CMFGame::~CMFGame() {
 #ifdef TARGET_PC
   sPortGameEnded = false;
   sPortSkipFlow = false;
+  sPortSkipSettling = false;
+  sPortLoadCinematicSkip = false;
 #endif
   CSfxManager::SetMuted(false);
   CDecalManager::Reinitialize();

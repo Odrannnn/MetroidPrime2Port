@@ -1164,6 +1164,8 @@ std::atomic< bool > sResumeAccepted{false};
 // A quick resume booted the card's save into the resume room (ResumeBootArea) and its load has not
 // started yet (ResumeCheck): the picture is held black meanwhile (HidesPicture).
 bool sResumeBoot = false;
+// HidesPicture's frames held for the current resume boot (reset in ResumeBootArea).
+int sResumeBootHeld = 0;
 std::atomic< bool > sResumeLoadRequest{false};
 std::atomic< bool > sResumeSnapshotRequest{false};
 
@@ -1253,6 +1255,7 @@ bool ResumeBootArea(uint32_t& world, uint32_t& area) {
   world = static_cast< uint32_t >(s.worldId);
   area = static_cast< uint32_t >(s.areaAssetId);
   sResumeBoot = true;
+  sResumeBootHeld = 0;
   return true;
 }
 
@@ -1365,10 +1368,9 @@ bool LoadAwaitsCinematic() { return sPlace.active; }
 
 bool HidesPicture(CStateManager&) {
   // A boot whose resume never gets to load (a world that never settles) shows again after this.
-  static int sBootHeld = 0;
   constexpr int kBootHoldCapFrames = 600;
   if (sResumeBoot) {
-    if (++sBootHeld <= kBootHoldCapFrames) {
+    if (++sResumeBootHeld <= kBootHoldCapFrames) {
       return true;
     }
     sResumeBoot = false;
