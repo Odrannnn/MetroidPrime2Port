@@ -40,6 +40,8 @@ public:
   TUniqueId PortAddDetailsPane(CStateManager& mgr, float lineOffset, float scale) const;
   // Moves this details pane with `title` (same lineOffset as PortAddDetailsPane).
   void PortFollow(const CScriptTextPane& title, float lineOffset);
+  // Whether the pane shows its string table's string `name` (any language), as placed.
+  bool PortShowsString(const char* name) const;
 #endif
 
 private:

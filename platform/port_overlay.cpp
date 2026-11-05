@@ -68,6 +68,11 @@ bool sLogFile = true;
 // `MP2_STICKY_CHARGE`), saved in settings.cfg.
 bool sFastMorph = false;
 bool sPointerMenus = true;
+#ifdef __ANDROID__
+bool sMenuExit = false; // Android apps are left with the system's Home and Back
+#else
+bool sMenuExit = true;
+#endif
 bool sMapSwapFingers = false;
 // Controls > Options > Map: flip either map rotate axis, as Prime 1's #225.
 bool sMapInvertX = false;
@@ -1185,6 +1190,24 @@ void SetPointerMenus(bool enabled) {
   ReadEnv();
   sPointerMenus = enabled;
   Persist();
+}
+
+bool MenuExit() {
+  ReadEnv();
+  return EnvBool("MP2_MENU_EXIT", sMenuExit);
+}
+
+void SetMenuExit(bool enabled) {
+  ReadEnv();
+  sMenuExit = enabled;
+  Persist();
+}
+
+void RequestQuit() {
+  PortOverlaySettings::SaveSettings();
+  SDL_Event quit{};
+  quit.type = SDL_EVENT_QUIT;
+  SDL_PushEvent(&quit);
 }
 
 bool MapSwapFingers() {

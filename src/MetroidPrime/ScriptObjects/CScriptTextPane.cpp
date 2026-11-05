@@ -222,6 +222,28 @@ void CScriptTextPane::PortFollow(const CScriptTextPane& title, float lineOffset)
   SetTransform(title.GetTransform() *
                CTransform4f::Translate(0.f, 0.f, -lineOffset * title.mHeight * title.mRenderScale));
 }
+
+bool CScriptTextPane::PortShowsString(const char* name) const {
+  if (!mDefaultString) {
+    return false;
+  }
+  const CStringTable* table = *const_cast< TLockedToken< CStringTable >& >(*mDefaultString);
+  const int index = table->GetStringIndex(name);
+  if (index == -1 || mStringIndex != index) {
+    return false;
+  }
+  // Panes placed without a name keep string 0, and scripts may retext a pane: compare the text.
+  const wchar_t* want = table->GetString(index);
+  const rstl::wstring& text = mTextSupport.GetText();
+  const wchar_t* have = text.data();
+  int i = 0;
+  for (; i < text.size(); ++i) {
+    if (want[i] != have[i]) {
+      return false;
+    }
+  }
+  return want[i] == L'\0';
+}
 #endif
 
 CEntity* LoadTextPane(CStateManager& mgr, CInputStream& input, CEntityInfo& info) {

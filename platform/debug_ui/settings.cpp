@@ -328,6 +328,7 @@ const SettingKey kSettingKeys[] = {
     BoolKey< &sStackBeamsSkipDark >("stack_beams_skip_dark"),
     BoolKey< &sFastMorph >("fast_morph"),
     BoolKey< &sPointerMenus >("pointer_menus"),
+    BoolKey< &sMenuExit >("menu_exit"),
     BoolKey< &sMapSwapFingers >("map_swap_fingers"),
     BoolKey< &sMapInvertX >("map_invert_x"),
     BoolKey< &sMapInvertY >("map_invert_y"),

@@ -36,6 +36,8 @@
 
 #ifdef TARGET_PC
 #include "port_overlay.h"
+
+static void PortResetExitLegend();
 #endif
 
 #include <math.h>
@@ -108,6 +110,9 @@ CScriptGuiFrontEndScreen::CScriptGuiFrontEndScreen(TUniqueId uid, const rstl::st
 , mOptionsDirty(false)
 , mMultipleControllers(false) {
   CGameOptions::SetFrontEndActive(true);
+#ifdef TARGET_PC
+  PortResetExitLegend();
+#endif
 }
 
 // @ fn_60_6060
@@ -422,13 +427,133 @@ TUniqueId sPortDetails[3] = {kInvalidUniqueId, kInvalidUniqueId, kInvalidUniqueI
 TUniqueId sPortDetailsOwner[3] = {kInvalidUniqueId, kInvalidUniqueId, kInvalidUniqueId};
 const float kPortDetailsOffset = 2.f;
 const float kPortDetailsScale = 0.5f;
+
+// Port: Exit Game on the main menu (issue #80, PortOverlay::MenuExit). The legend copies the file
+// screen's Copy File legend, which sits in the same corner but is inactive on the main menu, and
+// a second copy beside it draws the Z prompt where the file screen has its X button model.
+// Holding Z fills the letters with the selection's orange, then quits.
+TUniqueId sPortExitLegend = kInvalidUniqueId;
+TUniqueId sPortExitGlyph = kInvalidUniqueId;
+float sPortExitHeld = 0.f;
+int sPortExitFilled = -1; // letters drawn filled; -1: text not set yet
+const wchar_t kPortExitText[] = L"Exit\nGame";
+const float kPortExitGlyphX = 3.4f;
+const float kPortExitGlyphZ = 1.1f;
+const float kPortExitGlyphScale = 2.f; // the prompt art is small beside the button models
+
+// The Z prompts PortPrompts redraws as the binding; the first the disc has is used.
+const CAssetId kPortExitGlyphIds[] = {0xBFE00316, 0x10799395, 0xBC322C63, 0xC14A95C6};
+
+// `filled` letters in the orange, the rest in the pane's own colour (CTextExecuteBuffer's pop
+// state would serve, but upstream's AddPopState crashes).
+void PortSetExitText(CScriptTextPane& legend, int filled) {
+  const CColor& own = legend.TextSupport().PortFontColor();
+  char rest[32];
+  sprintf(rest, "&main-color=#%02X%02X%02X;", own.GetRedu8(), own.GetGreenu8(), own.GetBlueu8());
+  rstl::wstring text = rstl::wstring_l(L"&line-spacing=75;&main-color=#E8701A;");
+  int letters = 0;
+  bool orange = true;
+  for (const wchar_t* c = kPortExitText; *c != L'\0'; ++c) {
+    if (orange && *c != L'\n' && letters++ == filled) {
+      text.append(CStringExtras::ConvertToUNICODE(rstl::string_l(rest)));
+      orange = false;
+    }
+    text.append(c, 1);
+  }
+  legend.TextSupport().SetText(text);
+}
+
+void PortUpdateExitLegend(float dt, CStateManager& mgr) {
+  CScriptTextPane* legend = TCastToPtr< CScriptTextPane >(mgr.ObjectById(sPortExitLegend));
+  CScriptTextPane* glyph = TCastToPtr< CScriptTextPane >(mgr.ObjectById(sPortExitGlyph));
+  bool mainMenu = false;
+  bool fileScreen = false;
+  const CScriptTextPane* copyLegend = nullptr;
+  const CObjectList& list = mgr.GetObjectListById(kOL_All);
+  for (int i = list.GetFirstObjectIndex(); i != -1; i = list.GetNextObjectIndex(i)) {
+    const CScriptTextPane* pane = TCastToConstPtr< CScriptTextPane >(list[i]);
+    if (pane == nullptr || pane == legend || pane == glyph) {
+      continue;
+    }
+    // The title pane stays up on the file screen, whose Copy/Erase legends tell it apart (Z erases there).
+    const bool fileLegend =
+        pane->PortShowsString("CopyFileLegend") || pane->PortShowsString("EraseFileLegend");
+    if (pane->GetActive() && pane->PortShowsString("MainMenu")) {
+      mainMenu = true;
+    } else if (pane->GetActive() && fileLegend) {
+      fileScreen = true;
+    }
+    if (legend == nullptr && pane->PortShowsString("CopyFileLegend")) {
+      copyLegend = pane;
+    }
+  }
+
+  if (legend == nullptr && copyLegend != nullptr) {
+    sPortExitLegend = copyLegend->PortAddDetailsPane(mgr, 0.f, 1.f);
+    legend = TCastToPtr< CScriptTextPane >(mgr.ObjectById(sPortExitLegend));
+    sPortExitFilled = -1;
+    sPortExitGlyph = kInvalidUniqueId;
+    for (int i = 0; i < ARRAY_SIZE(kPortExitGlyphIds); ++i) {
+      if (gpResourceFactory->CanBuild(SObjectTag('TXTR', kPortExitGlyphIds[i]))) {
+        sPortExitGlyph = copyLegend->PortAddDetailsPane(mgr, 0.f, kPortExitGlyphScale);
+        glyph = TCastToPtr< CScriptTextPane >(mgr.ObjectById(sPortExitGlyph));
+        if (glyph != nullptr) {
+          glyph->SetTranslation(copyLegend->GetTranslation() +
+                                CVector3f(kPortExitGlyphX, 0.f, kPortExitGlyphZ));
+          char text[24];
+          sprintf(text, "&image=%08X;", static_cast< uint >(kPortExitGlyphIds[i]));
+          glyph->TextSupport().SetText(rstl::string_l(text));
+        }
+        break;
+      }
+    }
+  }
+  if (legend == nullptr) {
+    return;
+  }
+
+  const bool show = mainMenu && !fileScreen && PortOverlay::MenuExit();
+  if (legend->GetActive() != show) {
+    legend->SetActive(show);
+  }
+  if (glyph != nullptr && glyph->GetActive() != show) {
+    glyph->SetActive(show);
+  }
+  // Start with Z is the F1 overlay's Back+Start chord.
+  const CFinalInput& input = mgr.mFinalInputs[0];
+  if (show && input.DZ() && !input.DStart()) {
+    sPortExitHeld += dt;
+  } else {
+    sPortExitHeld = 0.f;
+  }
+  const int letters = 8; // in kPortExitText
+  int filled = static_cast< int >(sPortExitHeld / PortOverlay::kMenuExitHoldSeconds * letters);
+  filled = filled < letters ? filled : letters;
+  if (filled != sPortExitFilled) {
+    sPortExitFilled = filled;
+    PortSetExitText(*legend, filled);
+  }
+  if (sPortExitHeld >= PortOverlay::kMenuExitHoldSeconds) {
+    sPortExitHeld = -1e9f; // once; the quit takes a frame or two to arrive
+    PortOverlay::RequestQuit();
+  }
+}
 } // namespace
+
+// A new front end has a new object list, where the old ids may name other panes.
+static void PortResetExitLegend() {
+  sPortExitLegend = kInvalidUniqueId;
+  sPortExitGlyph = kInvalidUniqueId;
+  sPortExitHeld = 0.f;
+  sPortExitFilled = -1;
+}
 #endif
 
 // @ fn_60_4544
 void CScriptGuiFrontEndScreen::Think(float dt, CStateManager& mgr) {
   CActor::Think(dt, mgr);
 #ifdef TARGET_PC
+  PortUpdateExitLegend(dt, mgr);
   for (int i = 0; i < 3; ++i) {
     CScriptTextPane* title = mSaveSlots[i].mTitle;
     CScriptTextPane* details = nullptr;

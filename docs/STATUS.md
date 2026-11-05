@@ -3,6 +3,19 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-11-05: issue #80 (Exit Game on the main menu)
+
+- CScriptGuiScreen.cpp `PortUpdateExitLegend`: two clones of the file screen's Copy File legend (game
+  font) draw "Exit Game" and the Z prompt (`&image=` of the first Z glyph TXTR the disc has; PortPrompts
+  redraws it as the binding). Shown while an active pane still shows the STRG's "MainMenu" text and no
+  Copy/Erase File legend is active (`CScriptTextPane::PortShowsString` compares the text: the title pane
+  keeps index 0 on other screens). Holding Z (not with Start) 1.5 s fills the letters orange, then
+  `PortOverlay::RequestQuit` (F1 > Game > Exit's path). Setting `menu_exit`, env `MP2_MENU_EXIT`.
+- Checked on Xvfb: main menu shows it, the Single Player and Options screens don't, the hold quits
+  (clean exit). Not checked: keyboard glyph, Multiplayer screen, Android. `&pop;` crashes upstream's
+  CTextExecuteBuffer::AddPopState, so the fill re-sets the pane colour instead. Text is English only.
+  No issue reply posted.
+
 
 ## 2026-11-04: issue #44 (Dark Samus flicker with per-pixel lighting)
 

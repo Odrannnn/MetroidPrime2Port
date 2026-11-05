@@ -91,10 +91,7 @@ void DrawGameSection() {
     ImGui::TextUnformatted("Progress since the last save station is lost.");
     if (ImGui::Button("Exit")) {
       // The same path as closing the window: the main loop sees the quit and shuts down cleanly.
-      PortOverlaySettings::SaveSettings();
-      SDL_Event quit{};
-      quit.type = SDL_EVENT_QUIT;
-      SDL_PushEvent(&quit);
+      PortOverlay::RequestQuit();
       ImGui::CloseCurrentPopup();
     }
     ImGui::SameLine();

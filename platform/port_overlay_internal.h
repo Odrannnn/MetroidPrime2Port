@@ -19,6 +19,7 @@ extern int sSeamlessPickups;
 extern bool sLogFile;
 extern bool sFastMorph;
 extern bool sPointerMenus;
+extern bool sMenuExit;
 extern bool sMapSwapFingers;
 extern bool sMapInvertX;
 extern bool sMapInvertY;

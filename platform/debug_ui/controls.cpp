@@ -142,6 +142,9 @@ void DrawControlsOptions() {
   ItemHelp("Touch only: one finger pans the map and two rotate it, instead of two panning and "
            "one rotating.");
   ImGui::EndDisabled();
+  Changed(ImGui::Checkbox("Exit Game on the main menu", &sMenuExit));
+  ItemHelp("The main menu shows Exit Game in its bottom-left corner: hold the button shown "
+           "beside it (the game's Z) to quit, for setups without a keyboard.");
 
   // The game's own option, so it is the same switch as the pause menu's and is
   // saved with the other game options.
