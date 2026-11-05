@@ -77,7 +77,8 @@ drops the title and releases the held STAU. Like GC, every front-end entry throu
 shows the title. Not ported: GC's attract movies (not on the Trilogy disc) and its menu-idle return to
 the title (TIMR 0x40 absent). Verified on Xvfb (USA Trilogy): intro, logo, START at update 2400 -> main
 menu, gdb dprintfs show the two sfx at the intro, the STAU held, then played after the outro; with
-`PortTitleStart` skipped in gdb (the open path) the STAU plays at once and no title sfx start.
+`PortTitleStart` skipped in gdb (the open path) the STAU plays at once and no title sfx start. Same
+on the PAL Trilogy rvz (R3MP01, both paths; its movies show the PAL "Dark Echoes" logo).
 
 ## Disc picker (Android)
 
