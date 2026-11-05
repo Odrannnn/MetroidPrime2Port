@@ -702,7 +702,7 @@ bool RemountIfChanged() {
 namespace {
 
 // The GameCube releases convert into each other (PortSave::Convert), and G2ME into the Trilogy's
-// USA disc and back (PortSave::Trilogy); G2MP reaches R3ME through G2ME.
+// discs and back (PortSave::Trilogy); G2MP reaches R3ME/R3MP through G2ME.
 bool CanConvertCard(const std::string& from, const std::string& to) {
   if (Convert::CanConvert(from, to) || Trilogy::CanConvertGci(from, to)) {
     return true;
@@ -776,7 +776,7 @@ bool Import(const std::string& source, std::string& message) {
     // layout: it is converted (docs/SAVE_RELEASES.md), or refused when no converter covers it.
     if (!CanConvertCard(info.game, GameCode())) {
       message = path + " is a " + info.game + " save; this card is " + GameCode() +
-                ", and it does not convert (G2ME, G2MP and R3ME do; R3MP does not)";
+                ", and it does not convert (G2ME, G2MP, R3ME and R3MP do)";
       return false;
     }
     if (!ConvertCard(bytes, info.game, GameCode(), converted, error)) {

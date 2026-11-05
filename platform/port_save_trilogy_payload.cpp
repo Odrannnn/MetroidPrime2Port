@@ -1,5 +1,5 @@
 // The stream converter behind the Trilogy save.bin (port_save_trilogy.h): a file's CGameState stream
-// in the GameCube framing (a G2ME or R3ME .gci slot) <-> the Wii's two halves of a save.bin slot.
+// in the GameCube framing (a G2ME, R3ME or R3MP .gci slot) <-> the Wii's two halves of a save.bin slot.
 //
 // Layouts measured on the real save.bins (docs/TRILOGY.md, docs/SAVE_RELEASES.md):
 //  * part B is the slot stream behind 20 zero bytes: GMST, the time, 2 flag bits (hard mode and the
@@ -864,20 +864,24 @@ bool GciFromPayload(const Payload& payload, std::vector<uint8_t>& gci, std::stri
 }
 
 // The save header's signature the port checks on each disc (docs/SAVE_RELEASES.md §3, console
-// order, the value the port writes, as port_save_convert.cpp does); R3MP's is not known, so it has
-// no card conversion.
+// order, the value the port writes, as port_save_convert.cpp does). The PAL Trilogy's (R3MP) SAVW,
+// MLVL and HINT data is the USA disc's (tools/trilogy_tables.py writes the same tables from either),
+// so both use one signature and one layout.
+static bool IsTrilogy(const std::string& code) { return code == "R3ME" || code == "R3MP"; }
+
 static uint32_t CardSignature(const std::string& code) {
   if (code == "G2ME") {
     return 0x44bfc715u;
   }
-  if (code == "R3ME") {
+  if (IsTrilogy(code)) {
     return 0xfe44ecfeu;
   }
   return 0;
 }
 
 bool CanConvertGci(const std::string& from, const std::string& to) {
-  return (from == "G2ME" && to == "R3ME") || (from == "R3ME" && to == "G2ME");
+  return (from == "G2ME" && IsTrilogy(to)) || (IsTrilogy(from) && to == "G2ME") ||
+         (IsTrilogy(from) && IsTrilogy(to) && from != to);
 }
 
 bool ConvertGci(const std::vector<uint8_t>& in, const std::string& to, std::vector<uint8_t>& out,
@@ -891,13 +895,16 @@ bool ConvertGci(const std::vector<uint8_t>& in, const std::string& to, std::vect
   if (!Locate(in, g, error)) {
     return false;
   }
-  const STriDirection& d = from == "G2ME" ? kMEtoR3 : kR3toME;
   ConvertReport local;
   ConvertReport& rep = report != nullptr ? *report : local;
   rep = ConvertReport();
 
   out = in;
   std::memcpy(out.data(), to.data(), 4);
+  if (IsTrilogy(from) && IsTrilogy(to)) {
+    return true; // same layout and signature: only the game code changes
+  }
+  const STriDirection& d = from == "G2ME" ? kMEtoR3 : kR3toME;
   const uint8_t* src = in.data() + CopyOffset(g, g.chosen);
   uint8_t* base = out.data() + CopyOffset(g, g.chosen);
   uint8_t* user = base + kUserHeader;

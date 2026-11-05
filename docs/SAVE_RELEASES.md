@@ -13,7 +13,7 @@ Each claim carries one of two labels:
 | G2ME01 (USA GC) | USA GC ISO | Measured |
 | G2MP01 (PAL GC) | `G2MP01.iso` | Measured |
 | R3ME01 (Trilogy USA Wii) | Trilogy USA image, partition DATA, `MP2/` | Measured |
-| R3MP01 (Trilogy PAL) | — | **No disc available. Nothing in this document is measured for it.** `config/R3MP01/` holds symbols only. |
+| R3MP01 (Trilogy PAL) | — | Measured 2026-11-05: its Echoes SAVW lists (every world, scan union 817, system/game variables), HINT bytes and card signature (`fe44ecfe`) equal R3ME01's (`savw_diff.py`), and `trilogy_tables.py` writes byte-identical tables from it. |
 
 The paks and DOLs were extracted read-only, with `dolphin-tool extract`, to `/tmp/opencode/discs/<id>/`.
 
@@ -57,7 +57,7 @@ Every save-serialisation function has the same size in both, from `config/G2M?01
 
 `kPowerUpMax` (0x1B4) and `kShouldPersist` (0x6D, 59 persisted items) are byte-identical [M]. Measured by taking the sha1 of the rodata bytes at each DOL's symbol address.
 
-### Trilogy (R3ME01; R3MP01 unknown)
+### Trilogy (R3ME01; R3MP01 has the same save data)
 
 What is measured, from string and immediate scans of the DOLs [M]:
 
@@ -392,7 +392,7 @@ The per-player options and header fields map 1:1 in every pair [I]. The `PLST` f
 | G2MP → G2ME | **Remap by ID** (lossy) | The inverse of the above. Drop the PAL-only scans, relay and layer bit. |
 | G2ME → R3ME | **Done (2026-10-27), unverified in the Trilogy** | `port_save_trilogy.cpp` (container) and `port_save_trilogy_payload.cpp` (stream, remap by ID with the tables `tools/trilogy_tables.py` writes from both discs). Wii part B = 20 zero bytes, GMST stream with 2 flag bits (hard, dark; the GC's initPowerups bit is dropped and the card's kept), cinematics inline, 12 world records, no GMND; part A = signature, SYST + 29 system variables + SYND. The 2000-byte part B is 5 bytes short of the whole stream: the last world's (e3b0c703) record is cut off in every real save, and the importer reads it from zeros with its layers at the MLVL defaults. The flag meaning (hard, dark) is inferred from the fixtures, not proven. |
 | R3ME → G2ME | **Done, same caveats** | The inverse; a cinematic set on the card is kept (union). Lossy: scans/hints/relays/doors/layers/cinematics with no counterpart, counted in `ConvertReport`. |
-| any ↔ R3MP | **Blocked** | No disc, no data |
+| any ↔ R3MP | **Done (2026-11-05)** | R3MP's tables are R3ME's: G2ME ↔ R3MP is G2ME ↔ R3ME, R3ME ↔ R3MP only changes the game code. G2MP reaches it through G2ME. |
 
 G2ME → G2MP rewrites:
 
@@ -433,7 +433,7 @@ One save written by an older port build was decoded [M]: `~/.cache/mp2-orch/save
 
 1. ~~Trilogy `save.bin` framing~~ - resolved 2026-10-27 (§1).
 2. ~~Trilogy header and slot layout~~ - resolved; what is left is the payload stream (part A/B) conversion.
-3. **R3MP01.** There is no disc.
+3. ~~R3MP01~~ - resolved 2026-11-05: same save data as R3ME01 (§1).
 4. **Port versus console signature — measured and fixed.** Older port builds hashed host-LE words and wrote `37d0412e` on G2ME, so they would have refused a real console GCI (`44bfc715`). `CalculateHash` now swaps to big-endian words under `TARGET_PC`. The port writes the console value and accepts either (§2 Signature). The two logged values equal `savw_diff.py`'s predictions. Still unverified: a real console (Dolphin) save, which none is available to test.
 5. **HINT order.** The G2ME and G2MP lists have the same count but different bytes. Check the names before copying hint states 1:1.
 6. **Untested on real data.** No real save was round-tripped, so the bit layouts in §2 come from the decompiled source and are not checked against data.
@@ -465,7 +465,7 @@ How each piece maps onto Echoes [I unless marked]:
 
 The first slice was G2ME ↔ G2MP only (built; see the converter status below): both directions are a remap by ID (§4), and the offer, marker and backup flow carried over unchanged.
 
-Trilogy disc (2026-11-05, issue #76): `kReleases` also lists R3ME and R3MP, and a release is offered only when `CanConvertCard` covers it. `PortSave::Trilogy::ConvertGci` converts a whole card file G2ME ↔ R3ME (every slot and the system block through the same remap as the save.bin path, signature set to the target's §3 console value). G2MP reaches R3ME through G2ME. R3MP has no card conversion: its port signature is unknown. `Files()` lists only the mounted code's files, because G2ME and R3ME share `USA/Card A` and an import replaces `Files().front()`.
+Trilogy disc (2026-11-05, issue #76): `kReleases` also lists R3ME and R3MP, and a release is offered only when `CanConvertCard` covers it. `PortSave::Trilogy::ConvertGci` converts a whole card file G2ME ↔ R3ME (every slot and the system block through the same remap as the save.bin path, signature set to the target's §3 console value). G2MP reaches R3ME through G2ME. R3MP (2026-11-05, #76 follow-up: the reporter is on PAL) uses R3ME's tables and signature, measured equal on the PAL disc. `Files()` lists only the mounted code's files, because G2ME and R3ME share `USA/Card A` and an import replaces `Files().front()`.
 
 ## Converter status and test (2026-10-27)
 

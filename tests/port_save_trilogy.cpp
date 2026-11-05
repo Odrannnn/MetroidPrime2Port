@@ -123,6 +123,14 @@ void RoundTripPayloads(const std::vector<uint8_t>& bin, int f, const char* name)
     changed += me2[i] != me[i] && inCopy >= 4 && (inCopy < 8 || inCopy >= 12);
   }
   Check(me2.size() == me.size() && changed == 0, "G2ME -> R3ME -> G2ME changed the save", name);
+  // The PAL Trilogy (R3MP) has R3ME's tables and signature: G2ME -> R3MP is G2ME -> R3ME but for
+  // the game code, and R3ME <-> R3MP changes nothing else.
+  std::vector<uint8_t> mp, r3mp;
+  ConvertReport toMp, r3ToMp;
+  Check(ConvertGci(me, "R3MP", mp, error, &toMp) && toMp.Total() == 0, error.c_str(), name);
+  Check(mp.size() == r3.size() && !std::memcmp(mp.data(), "R3MP", 4) && !std::memcmp(mp.data() + 4, r3.data() + 4, mp.size() - 4),
+        "G2ME -> R3MP differs from G2ME -> R3ME beyond the game code", name);
+  Check(ConvertGci(r3, "R3MP", r3mp, error, &r3ToMp) && r3mp == mp && r3ToMp.Total() == 0, "R3ME -> R3MP changed the save", name);
 }
 
 } // namespace

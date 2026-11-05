@@ -15,7 +15,7 @@
 // file is used, and the slots: Echoes' three at 0x3660, 4000 bytes each, part A (the options, 2000)
 // then part B (the file's CGameState stream, 2000). A file is a Mii's, shared by all three games.
 //
-// The slot stream converter (the G2ME/R3ME .gci <-> those two parts) is port_save_trilogy_payload.cpp.
+// The slot stream converter (the G2ME/R3ME/R3MP .gci <-> those two parts) is port_save_trilogy_payload.cpp.
 namespace PortSave::Trilogy {
 
 constexpr size_t kSize = 0x1C000;
@@ -77,9 +77,10 @@ bool PayloadFromGci(const std::vector<uint8_t>& gci, int slot, uint8_t partA[kPa
 bool GciFromPayload(const Payload& payload, std::vector<uint8_t>& gci, std::string& error,
                     ConvertReport* report = nullptr);
 
-// A whole card file for the other disc: a G2ME .gci as the port writes it on the Trilogy's USA
-// disc (R3ME), or back. Every slot and the system block are remapped and the header's signature
-// set; the framing (banner, comment, copy size) is the source file's.
+// A whole card file for the other disc: a G2ME .gci as the port writes it on the Trilogy (R3ME or
+// R3MP, one layout), or back; every slot and the system block are remapped and the header's
+// signature set. Between R3ME and R3MP only the game code changes. The framing (banner, comment,
+// copy size) is the source file's.
 bool CanConvertGci(const std::string& from, const std::string& to);
 bool ConvertGci(const std::vector<uint8_t>& in, const std::string& to, std::vector<uint8_t>& out,
                 std::string& error, ConvertReport* report = nullptr);
