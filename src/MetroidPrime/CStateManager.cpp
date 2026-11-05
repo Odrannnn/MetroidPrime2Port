@@ -2496,6 +2496,9 @@ CStateManager::~CStateManager() {
     PortLiveSplit::GameSessionEnd(gpGameState->GetTotalPlayTime());
     PortOverlay::ClearGameTime();
   }
+  // The overlay's world readout tells it a world runs (F1's card import is locked in game); no
+  // update clears it once this manager is gone, until the front end's or the next game's publishes.
+  PortOverlay::SetGameState(0u, -1, nullptr);
   PortSaveState::Forget(this);
 #endif
   mTearingDown = true;
