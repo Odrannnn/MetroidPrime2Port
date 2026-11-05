@@ -616,15 +616,11 @@ std::vector<std::string> Files() {
       continue;
     }
     const std::string path = PortUtf8::ToUtf8(entry.path());
-    // The directory entry, not the file name: a card folder can hold other games' files too.
+    // The directory entry, not the file name: a card folder can hold other games' files too, and
+    // the region's other release (G2ME and R3ME share USA/Card A), which an import must not replace.
     std::ifstream in(PortUtf8::FromUtf8(path), std::ios::binary);
     char head[6];
-    if (!in.read(head, sizeof head)) {
-      continue;
-    }
-    const bool game = std::memcmp(head, "G2ME", 4) == 0 || std::memcmp(head, "G2MP", 4) == 0 ||
-                      std::memcmp(head, "R3ME", 4) == 0 || std::memcmp(head, "R3MP", 4) == 0;
-    if (game && head[4] == '0' && head[5] == '1') {
+    if (in.read(head, sizeof head) && Mirror::IsCardForRelease({head, sizeof head}, GameCode())) {
       out.push_back(path);
     }
   }
@@ -703,6 +699,49 @@ bool RemountIfChanged() {
   return true;
 }
 
+namespace {
+
+// The GameCube releases convert into each other (PortSave::Convert), and G2ME into the Trilogy's
+// USA disc and back (PortSave::Trilogy); G2MP reaches R3ME through G2ME.
+bool CanConvertCard(const std::string& from, const std::string& to) {
+  if (Convert::CanConvert(from, to) || Trilogy::CanConvertGci(from, to)) {
+    return true;
+  }
+  return (Convert::CanConvert(from, "G2ME") && Trilogy::CanConvertGci("G2ME", to)) ||
+         (Trilogy::CanConvertGci(from, "G2ME") && Convert::CanConvert("G2ME", to));
+}
+
+bool ConvertStep(std::vector<uint8_t>& bytes, const std::string& from, const std::string& to,
+                 std::string& summary, std::string& error) {
+  std::vector<uint8_t> out;
+  if (Convert::CanConvert(from, to)) {
+    Convert::Report report;
+    if (!Convert::Gci(bytes, to, out, report, error)) {
+      return false;
+    }
+    summary += (summary.empty() ? "" : "; ") + report.Summary();
+  } else {
+    Trilogy::ConvertReport report;
+    if (!Trilogy::ConvertGci(bytes, to, out, error, &report)) {
+      return false;
+    }
+    summary += (summary.empty() ? "" : "; ") + from + " to " + to + ", " +
+               std::to_string(report.Total()) + " flags with no counterpart dropped";
+  }
+  bytes.swap(out);
+  return true;
+}
+
+bool ConvertCard(std::vector<uint8_t>& bytes, const std::string& from, const std::string& to,
+                 std::string& summary, std::string& error) {
+  if (Convert::CanConvert(from, to) || Trilogy::CanConvertGci(from, to)) {
+    return ConvertStep(bytes, from, to, summary, error);
+  }
+  return ConvertStep(bytes, from, "G2ME", summary, error) && ConvertStep(bytes, "G2ME", to, summary, error);
+}
+
+} // namespace
+
 bool Import(const std::string& source, std::string& message) {
   std::string path = source;
   if (path == "latest") {
@@ -734,21 +773,17 @@ bool Import(const std::string& source, std::string& message) {
   std::string converted;
   if (info.game != GameCode()) {
     // The card is mounted for one game code (CARDInit's), and the save carries its release's SAVW
-    // layout. G2ME and G2MP are converted (PortSave::Convert, docs/SAVE_RELEASES.md); Trilogy's
-    // saves are a different format and stay refused.
-    if (!Convert::CanConvert(info.game, GameCode())) {
+    // layout: it is converted (docs/SAVE_RELEASES.md), or refused when no converter covers it.
+    if (!CanConvertCard(info.game, GameCode())) {
       message = path + " is a " + info.game + " save; this card is " + GameCode() +
-                ", and only G2ME and G2MP saves convert";
+                ", and it does not convert (G2ME, G2MP and R3ME do; R3MP does not)";
       return false;
     }
-    Convert::Report report;
-    std::vector<uint8_t> out;
-    if (!Convert::Gci(bytes, GameCode(), out, report, error)) {
+    if (!ConvertCard(bytes, info.game, GameCode(), converted, error)) {
       message = path + ": cannot convert " + info.game + " to " + GameCode() + ": " + error;
       return false;
     }
-    bytes.swap(out);
-    converted = " (converted: " + report.Summary() + ")";
+    converted = " (converted: " + converted + ")";
   }
 
   if (IsImage()) {
@@ -812,6 +847,8 @@ struct Release {
 constexpr Release kReleases[] = {
     {"G2ME", "Metroid Prime 2: Echoes (USA GameCube)", "USA"},
     {"G2MP", "Metroid Prime 2: Echoes (PAL GameCube)", "EUR"},
+    {"R3ME", "Metroid Prime Trilogy (USA)", "USA"},
+    {"R3MP", "Metroid Prime Trilogy (PAL)", "EUR"},
 };
 
 // The .gci files of `folder` whose directory entry is `code`, with their write times.
@@ -854,10 +891,12 @@ std::vector<OtherRelease> OtherReleaseSaves() {
   if (!folder.has_filename()) {
     folder = folder.parent_path(); // a trailing separator
   }
-  // <base>/<region>/Card A: the other region's card sits beside this one.
+  // <base>/<region>/Card A: the other region's card sits beside this one; the same region's other
+  // releases (G2ME and R3ME) share this folder.
   const std::filesystem::path base = folder.parent_path().parent_path();
   for (const Release& release : kReleases) {
-    if (std::strncmp(release.code, GameCode(), 4) == 0) {
+    // Only what this disc can take: a save offered and then refused helps nobody.
+    if (std::strncmp(release.code, GameCode(), 4) == 0 || !CanConvertCard(release.code, GameCode())) {
       continue;
     }
     const std::filesystem::path source = base / release.region / folder.filename();

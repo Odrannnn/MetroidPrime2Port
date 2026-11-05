@@ -465,6 +465,8 @@ How each piece maps onto Echoes [I unless marked]:
 
 The first slice was G2ME ↔ G2MP only (built; see the converter status below): both directions are a remap by ID (§4), and the offer, marker and backup flow carried over unchanged.
 
+Trilogy disc (2026-11-05, issue #76): `kReleases` also lists R3ME and R3MP, and a release is offered only when `CanConvertCard` covers it. `PortSave::Trilogy::ConvertGci` converts a whole card file G2ME ↔ R3ME (every slot and the system block through the same remap as the save.bin path, signature set to the target's §3 console value). G2MP reaches R3ME through G2ME. R3MP has no card conversion: its port signature is unknown. `Files()` lists only the mounted code's files, because G2ME and R3ME share `USA/Card A` and an import replaces `Files().front()`.
+
 ## Converter status and test (2026-10-27)
 
 `PortSave::Convert::Gci` converts a whole .gci; `Import()` calls it when the file's game code is the

@@ -65,7 +65,8 @@ struct File {
 bool ReadFile(const std::string& path, std::vector<uint8_t>& bytes, std::string& error);
 // Reads a .gci from disk. Never touches the card, so a backup can be checked while the game runs.
 bool Inspect(const std::string& path, File& out, std::string& error);
-// The card's own save files: every GCI in the folder whose directory entry is this game's.
+// The card's own save files: every GCI in the folder whose directory entry is the mounted disc's
+// game code (the region's other release sharing the folder is not listed).
 std::vector<std::string> Files();
 
 // What `save export` writes: the card's file, or every game file when `destination` is a directory.

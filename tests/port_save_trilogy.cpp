@@ -89,6 +89,40 @@ void RoundTripPayloads(const std::vector<uint8_t>& bin, int f, const char* name)
   std::memcpy(q.partA, a, kPartSize);
   std::memcpy(q.partB, b, kPartSize);
   Check(GciFromPayload(q, again, error) && again == gci, "importing the same payload twice differs", name);
+
+  // The card itself between the discs (ConvertGci). R3ME -> G2ME drops only the Trilogy's own
+  // relays, doors and scans (the tables match entries by ID, so no other bit moves): back on R3ME
+  // the file differs from the original in no more bits than were reported dropped, besides each
+  // copy's CRC and signature words.
+  std::vector<uint8_t> me, r3, me2;
+  ConvertReport toMe, toR3, toMe2;
+  Check(ConvertGci(gci, "G2ME", me, error, &toMe), error.c_str(), name);
+  Check(me.size() == gci.size() && !std::memcmp(me.data(), "G2ME", 4), "the G2ME card is not a G2ME file", name);
+  Check(ConvertGci(me, "R3ME", r3, error, &toR3), error.c_str(), name);
+  int bits = 0;
+  for (size_t i = 0; i < gci.size() && i < r3.size(); ++i) {
+    const size_t inCopy = i >= 0x2040 ? (i - 0x2040) % 0x2000 : 0x100;
+    if (inCopy >= 4 && (inCopy < 8 || inCopy >= 12)) {
+      bits += __builtin_popcount(unsigned(r3[i] ^ gci[i]));
+    }
+  }
+  // Both copies carry each dropped bit (one bit per relay, door or scan).
+  Check(r3.size() == gci.size() && bits <= 2 * toMe.Total(), "R3ME -> G2ME -> R3ME changed more than it dropped", name);
+  // G2ME -> R3ME, the way a GameCube player moves to the Trilogy disc, is exact: nothing dropped,
+  // the Trilogy card exports the same Wii payload the GameCube card does, and converting back gives
+  // the same file but for the CRC and signature words.
+  Check(toR3.Total() == 0, "G2ME -> R3ME drops entries", name);
+  uint8_t ma[kPartSize], mb[kPartSize], ra[kPartSize], rb[kPartSize];
+  Check(PayloadFromGci(me, 0, ma, mb, error) && PayloadFromGci(r3, 0, ra, rb, error) && !std::memcmp(ma, ra, kPartSize) &&
+            !std::memcmp(mb, rb, kPartSize),
+        "the G2ME and converted R3ME cards export different Wii payloads", name);
+  Check(ConvertGci(r3, "G2ME", me2, error, &toMe2) && toMe2.Total() == 0, "R3ME -> G2ME of a converted card drops entries", name);
+  size_t changed = 0;
+  for (size_t i = 0; i < me.size() && i < me2.size(); ++i) {
+    const size_t inCopy = i >= 0x2040 ? (i - 0x2040) % 0x2000 : 0x100;
+    changed += me2[i] != me[i] && inCopy >= 4 && (inCopy < 8 || inCopy >= 12);
+  }
+  Check(me2.size() == me.size() && changed == 0, "G2ME -> R3ME -> G2ME changed the save", name);
 }
 
 } // namespace

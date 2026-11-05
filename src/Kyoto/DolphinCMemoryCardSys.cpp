@@ -435,7 +435,7 @@ CMemoryCardSys::CMemoryCardSys() {
 }
 
 #ifdef TARGET_PC
-// Port: each release keeps its own saves, so after switching discs (USA to PAL) the card looks
+// Port: each release keeps its own saves, so after switching discs (USA to PAL, GameCube to Trilogy) the card looks
 // empty. Offer, once per card, to copy the newest other release's save over, converted. The
 // overlay's Memory card section (Restore from ...) and `gci restore` do the same later.
 static void OfferRestoreFromOtherRelease() {

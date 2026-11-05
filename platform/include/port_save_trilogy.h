@@ -77,4 +77,11 @@ bool PayloadFromGci(const std::vector<uint8_t>& gci, int slot, uint8_t partA[kPa
 bool GciFromPayload(const Payload& payload, std::vector<uint8_t>& gci, std::string& error,
                     ConvertReport* report = nullptr);
 
+// A whole card file for the other disc: a G2ME .gci as the port writes it on the Trilogy's USA
+// disc (R3ME), or back. Every slot and the system block are remapped and the header's signature
+// set; the framing (banner, comment, copy size) is the source file's.
+bool CanConvertGci(const std::string& from, const std::string& to);
+bool ConvertGci(const std::vector<uint8_t>& in, const std::string& to, std::vector<uint8_t>& out,
+                std::string& error, ConvertReport* report = nullptr);
+
 } // namespace PortSave::Trilogy
