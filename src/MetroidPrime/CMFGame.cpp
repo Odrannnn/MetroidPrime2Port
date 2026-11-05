@@ -39,6 +39,7 @@
 #include "MetroidPrime/CWorld.hpp"
 #include "MetroidPrime/Cameras/CCameraFilterPass.hpp"
 #include "MetroidPrime/Cameras/CCinematicCamera.hpp"
+#include "MetroidPrime/ScriptObjects/CScriptControllerAction.hpp"
 #include "MetroidPrime/Decode.hpp"
 #include "MetroidPrime/Player/CGameMode.hpp"
 #include "MetroidPrime/Player/CGameState.hpp"
@@ -692,10 +693,15 @@ CIOWin::EMessageReturn CMFGame::OnMessage(const CArchitectureMessage& message,
       // skip takes the robust path in kFS_CinematicSkip (sPortUserCinematicSkip).
       // The first press only arms the "Skip [A]" prompt; a second one while it shows skips
       // (PortOverlay::SkipConfirm*). The retail START path below follows the same rule.
+      // An A press the scene itself is waiting on (a dialog turning its page) is the scene's, so
+      // it does not arm the prompt; once START has armed it, A still confirms the skip.
       bool portSkipArmedNow = false;
+      const bool sceneTakesA = input.PA() && cineCam && !PortOverlay::SkipConfirmArmed() &&
+                               CScriptControllerAction::PortSceneWaitsOn(input, *mStateManager);
       if (PortOverlay::SkipCinematics() && !sPortGameEnded &&
           static_cast< int >(input.ControllerNumber()) == 0 && cineCam &&
-          (input.PStart() || (input.PA() && sPortCinematicTime >= kPortSkipAGuard)) &&
+          (input.PStart() ||
+           (input.PA() && sPortCinematicTime >= kPortSkipAGuard && !sceneTakesA)) &&
           !mStateManager->IsMultiplayer() &&
           gpGameState->GetGameMode().GetGameModeType() != 'FRND' &&
           !(portSkipArmedNow = !PortOverlay::SkipConfirmArmed())) {
