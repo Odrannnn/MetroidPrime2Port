@@ -14,6 +14,8 @@ namespace {
 struct SPortPaneRect {
   ushort id;
   float x0, y0, x1, y1;
+  bool hasInk;
+  float ix0, iy0, ix1, iy1; // the drawn glyphs, which justification can put outside the box
 };
 SPortPaneRect sPortPaneRects[64];
 int sPortPaneCount = 0;
@@ -32,6 +34,40 @@ bool PortTextPaneBounds(TUniqueId id, float& x0, float& y0, float& x1, float& y1
   }
   return false;
 }
+
+bool PortTextPaneInkBounds(TUniqueId id, float& x0, float& y0, float& x1, float& y1) {
+  for (int i = 0; i < sPortPaneCount; ++i) {
+    if (sPortPaneRects[i].id == id.value && sPortPaneRects[i].hasInk) {
+      x0 = sPortPaneRects[i].ix0;
+      y0 = sPortPaneRects[i].iy0;
+      x1 = sPortPaneRects[i].ix1;
+      y1 = sPortPaneRects[i].iy1;
+      return true;
+    }
+  }
+  return false;
+}
+
+namespace {
+// The GUI-space box around the text-space rect (x0, y0)-(x1, y1); text y runs down the pane's -Z.
+bool PortProjectTextRect(const CTransform4f& model, float x0, float y0, float x1, float y1,
+                         float& minX, float& minY, float& maxX, float& maxY) {
+  minX = minY = 1e30f;
+  maxX = maxY = -1e30f;
+  for (int c = 0; c < 4; ++c) {
+    const CVector3f p((c & 1) ? x1 : x0, 0.f, -((c & 2) ? y1 : y0));
+    float gx, gy;
+    if (!PortGuiHit::Project(CTransform4f::Identity() * model, p, gx, gy)) {
+      return false;
+    }
+    minX = gx < minX ? gx : minX;
+    maxX = gx > maxX ? gx : maxX;
+    minY = gy < minY ? gy : minY;
+    maxY = gy > maxY ? gy : maxY;
+  }
+  return true;
+}
+} // namespace
 #endif
 
 CScriptTextPane::CScriptTextPane(
@@ -163,28 +199,24 @@ void CScriptTextPane::Render(const CStateManager& mgr) const {
       sPortPaneFrame = frame;
       sPortPaneCount = 0;
     }
-    float minX = 1e30f, minY = 1e30f, maxX = -1e30f, maxY = -1e30f;
-    bool ok = true;
-    for (int c = 0; c < 4 && ok; ++c) {
-      const CVector3f p(static_cast< float >((c & 1) ? extentX : 0), 0.f,
-                        static_cast< float >((c & 2) ? -extentY : 0));
-      float gx, gy;
-      if (!PortGuiHit::Project(CTransform4f::Identity() * model, p, gx, gy)) {
-        ok = false;
-        break;
-      }
-      minX = gx < minX ? gx : minX;
-      maxX = gx > maxX ? gx : maxX;
-      minY = gy < minY ? gy : minY;
-      maxY = gy > maxY ? gy : maxY;
-    }
-    if (ok && sPortPaneCount < 64) {
+    float minX, minY, maxX, maxY;
+    if (sPortPaneCount < 64 && PortProjectTextRect(model, 0.f, 0.f, static_cast< float >(extentX),
+                                                   static_cast< float >(extentY), minX, minY,
+                                                   maxX, maxY)) {
       SPortPaneRect& r = sPortPaneRects[sPortPaneCount++];
       r.id = GetUniqueId().value;
       r.x0 = minX;
       r.y0 = minY;
       r.x1 = maxX;
       r.y1 = maxY;
+      const rstl::pair< CVector2i, CVector2i >& ink =
+          const_cast< CGuiTextSupport& >(mTextSupport).GetBounds();
+      r.hasInk = ink.first.GetX() <= ink.second.GetX() && ink.first.GetY() <= ink.second.GetY() &&
+                 PortProjectTextRect(model, static_cast< float >(ink.first.GetX()),
+                                     static_cast< float >(ink.first.GetY()),
+                                     static_cast< float >(ink.second.GetX()),
+                                     static_cast< float >(ink.second.GetY()), r.ix0, r.iy0,
+                                     r.ix1, r.iy1);
     }
   }
 #endif

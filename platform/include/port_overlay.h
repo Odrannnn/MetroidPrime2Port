@@ -137,10 +137,10 @@ bool PointerMenus();
 void SetPointerMenus(bool enabled);
 bool MapSwapFingers();
 void SetMapSwapFingers(bool swap);
-// Exit Game on the main menu (`MP2_MENU_EXIT`, issue #80; default on, off on Android): the main
-// menu shows an "Exit Game" legend in its bottom-left corner with the Z button's prompt (its
-// binding: RB by default, View on the Remastered preset), and holding Z there for
-// kMenuExitHoldSeconds quits as F1 > Game > Exit game does.
+// Exit Game on the main menu (`MP2_MENU_EXIT`, issue #80; default on): the main menu shows an
+// "Exit Game" legend in its bottom-left corner with the Z button's prompt (its binding: RB by
+// default, View on the Remastered preset), and holding Z there, or a finger or mouse button on the
+// legend, for kMenuExitHoldSeconds quits as F1 > Game > Exit game does.
 const float kMenuExitHoldSeconds = 1.5f;
 bool MenuExit();
 void SetMenuExit(bool enabled);

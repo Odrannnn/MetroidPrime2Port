@@ -242,10 +242,11 @@ Controls > Options:
   the pause screens and the map, where a click on a room selects it; default on; env
   `MP2_POINTER_MENUS`), Swap map finger gestures
   (touch: one finger pans the map, two rotate; env `MP2_MAP_SWAP_FINGERS`).
-- `menu_exit`: Options > Menus > Exit Game on the main menu (issue #80; default on, off on
-  Android): the main menu shows "Exit Game" in its bottom-left corner with the Z button's prompt
+- `menu_exit`: Options > Menus > Exit Game on the main menu (issue #80; default on): the main
+  menu shows "Exit Game" in its bottom-left corner with the Z button's prompt
   (RB by default, View on the Remastered preset); holding it 1.5 s fills the letters orange and
-  quits as F1 > Game > Exit does. Env `MP2_MENU_EXIT`.
+  quits as F1 > Game > Exit does. A finger or mouse button held on the legend does the same
+  (the touch overlay has no Z on pointer-menu screens). Env `MP2_MENU_EXIT`.
 - `prompt_glyphs`: Options > On-screen prompts > Button glyphs (Auto follows the last-used device;
   Xbox, PlayStation, Switch, GameCube or Keyboard forces the set in the F1 UI and the game's
   prompts; env `MP2_PROMPT_GLYPHS` 0-5, and `MP2_TEXTURE_DEVICE` still wins).

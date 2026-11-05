@@ -36,6 +36,7 @@
 
 #ifdef TARGET_PC
 #include "port_overlay.h"
+#include "port_pointer.h"
 
 static void PortResetExitLegend();
 #endif
@@ -438,8 +439,8 @@ float sPortExitHeld = 0.f;
 int sPortExitFilled = -1; // letters drawn filled; -1: text not set yet
 const wchar_t kPortExitText[] = L"Exit\nGame";
 const float kPortExitGlyphX = 3.4f;
-const float kPortExitGlyphZ = 1.1f;
-const float kPortExitGlyphScale = 2.f; // the prompt art is small beside the button models
+const float kPortExitGlyphZ = 0.8f;
+const float kPortExitGlyphScale = 1.7f; // as tall as the Confirm/Back legends' A and B
 
 // The Z prompts PortPrompts redraws as the binding; the first the disc has is used.
 const CAssetId kPortExitGlyphIds[] = {0xBFE00316, 0x10799395, 0xBC322C63, 0xC14A95C6};
@@ -461,6 +462,28 @@ void PortSetExitText(CScriptTextPane& legend, int filled) {
     text.append(c, 1);
   }
   legend.TextSupport().SetText(text);
+}
+
+// Within a few pixels of what pane id drew, for a fingertip.
+bool PortPaneContains(TUniqueId id, float gx, float gy) {
+  const float pad = 4.f;
+  float x0, y0, x1, y1;
+  return PortTextPaneInkBounds(id, x0, y0, x1, y1) && gx >= x0 - pad && gx <= x1 + pad &&
+         gy >= y0 - pad && gy <= y1 + pad;
+}
+
+// A finger or mouse button held on the legend or its prompt, where it went down: the touch overlay
+// has no Z on the pointer menus, which the front end is. Sliding off lets go.
+bool PortPointerHoldsExit() {
+  const PortPointer::Recognizer& gestures = PortPointer::Gestures();
+  float px, py, gx, gy;
+  if (!PortPointer::Enabled() || !gestures.Pressed() || gestures.FingerCount() > 1 ||
+      !PortPointer::WindowToGui(gestures.PressX(), gestures.PressY(), px, py) ||
+      !PortPointer::Position(gx, gy)) {
+    return false;
+  }
+  return (PortPaneContains(sPortExitLegend, px, py) || PortPaneContains(sPortExitGlyph, px, py)) &&
+         (PortPaneContains(sPortExitLegend, gx, gy) || PortPaneContains(sPortExitGlyph, gx, gy));
 }
 
 void PortUpdateExitLegend(float dt, CStateManager& mgr) {
@@ -521,7 +544,7 @@ void PortUpdateExitLegend(float dt, CStateManager& mgr) {
   }
   // Start with Z is the F1 overlay's Back+Start chord.
   const CFinalInput& input = mgr.mFinalInputs[0];
-  if (show && input.DZ() && !input.DStart()) {
+  if (show && ((input.DZ() && !input.DStart()) || PortPointerHoldsExit())) {
     sPortExitHeld += dt;
   } else {
     sPortExitHeld = 0.f;

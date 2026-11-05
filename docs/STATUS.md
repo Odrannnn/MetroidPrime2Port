@@ -15,6 +15,13 @@ appended, dated as in the heading there.
   (clean exit). Not checked: keyboard glyph, Multiplayer screen, Android. `&pop;` crashes upstream's
   CTextExecuteBuffer::AddPopState, so the fill re-sets the pane colour instead. Text is English only.
   No issue reply posted.
+- Follow-up: default on everywhere (Android too). The touch overlay shows only Back and the cog on
+  pointer-menu screens (the whole front end), so a finger or mouse button held on the legend or its
+  prompt also counts (`PortPointerHoldsExit`; sliding off lets go). Pane hit rects cover the layout box,
+  which this clone's text lies mostly outside of, so `PortTextPaneInkBounds` adds the drawn glyphs' rect.
+  Prompt scale 1.7 (as tall as Confirm/Back's A and B). Console `pointer` takes GUI pixels: 448 high,
+  796 wide at 16:9 (screenshot pixels x 0.622). Checked on Xvfb: touch hold fills and quits, a mouse
+  press slid off doesn't.
 
 
 ## 2026-11-04: issue #44 (Dark Samus flicker with per-pixel lighting)
