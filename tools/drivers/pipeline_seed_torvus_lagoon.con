@@ -1,0 +1,30 @@
+# tools/pipeline_seed.py record: Torvus Lagoon above the water in the rain (#78; the area sweep's spawn
+# view misses the lagoon's surface and rain). Direct boot into 01_swamp_entrance; look round from the
+# spawn, then from above the lagoon.
+@f300 god 1
+@f320 aim 0 -5
+@f350 aim 30 -15
+@f380 aim 60 -25
+@f410 aim 90 -5
+@f440 aim 120 -15
+@f470 aim 150 -25
+@f500 aim 180 -5
+@f530 aim 210 -15
+@f560 aim 240 -25
+@f590 aim 270 -5
+@f620 aim 300 -15
+@f650 aim 330 -25
+@f680 tp 162.7 -78.4 48
+@f700 aim 0 -20
+@f730 aim 30 -20
+@f760 aim 60 -20
+@f790 aim 90 -20
+@f820 aim 120 -20
+@f850 aim 150 -20
+@f880 aim 180 -20
+@f910 aim 210 -20
+@f940 aim 240 -20
+@f970 aim 270 -20
+@f1000 aim 300 -20
+@f1030 aim 330 -20
+@f1060 status

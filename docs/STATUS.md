@@ -3,6 +3,23 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-11-05: issue #78 (Torvus Lagoon water flickers, D3D12)
+
+- Cause: CFluidPlaneCPU::RenderSetup sets only the last TEV stage's alpha (K0.a); the earlier stages
+  keep whatever alpha the previous draw left, which is dead but part of the pipeline key, so each
+  leftover combination was a new pipeline and a miss (draw skipped while it compiles; ~500 ms on D3D12).
+  The #44 seed covered some combinations only. TARGET_PC now zeroes those stages' alpha (ZERO inputs,
+  ADD, clamp), so one fluid setup is one pipeline; the seed's fluid rows were rewritten to that form.
+- Seed: new spot `torvus_lagoon` (tools/drivers/pipeline_seed_torvus_lagoon.con: spawn + lagoon
+  aim sweeps) and the Trilogy-only row ab1fe2747a9851b9; 1446 rows, `check` OK.
+- Lagoon repro (Xvfb, empty cache + seed): GC 9 misses -> 0, Trilogy 10 misses/13 skipped draws -> 1/3
+  (ab1fe2747a9851b9, then added to the seed; not re-run). Not run on Windows/D3D12. upstream build untouched (TARGET_PC only).
+- Poco's cache (pulled read-only from /storage/emulated/0/MetroidPrime2/shader_cache, normalized
+  like Aurora's queue_cached_row): 447 retail v15 configs not in the seed, 1 fluid; mostly global
+  (419 uses) and front end (292), then areas. Per-field diffs are scattered (shader flags, channel
+  ctrl, tex-gen, alpha compare, blend), i.e. coverage gaps, not one variant class. Some may be from
+  older builds. Not merged.
+
 ## 2026-11-05: issue #80 (Exit Game on the main menu)
 
 - CScriptGuiScreen.cpp `PortUpdateExitLegend`: two clones of the file screen's Copy File legend (game

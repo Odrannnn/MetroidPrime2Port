@@ -63,6 +63,7 @@ D, S = "tools/drivers/", "tools/cov/specs/"
 BOSS = [D + "pipeline_seed_boss.py", "{port}", "{frames}", "{out}"]
 SPOTS = [
     ("torvus_water", D + "pipeline_seed_torvus_water.con", "3dfd2249,01_swamp_entrance", "900", "200"),  # #44
+    ("torvus_lagoon", D + "pipeline_seed_torvus_lagoon.con", "3dfd2249,01_swamp_entrance", "1100", "250"),  # #78
     # Temple Grounds
     ("tg_darktrooper", D + "darktrooper_unknown.con", "3bfa3eff,04_temple_unknownenemies", "6000", "900"),
     ("tg_darkcommando", S + "darkcommando_fight.con", "3bfa3eff,06_temple_sacredpath_dark", "6000", "900"),
