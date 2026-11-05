@@ -11,6 +11,8 @@
 //   pipeline_key_audit <cache.db> [--rows N] [--detail field]
 //   pipeline_key_audit <cache.db> --check-unused     pipeline_unused_inputs keeps every row's pipeline
 //   pipeline_key_audit <cache.db> --rewrite <db>     rekey <db>'s rows as the cache load does (the seed)
+//   pipeline_key_audit <cache.db> --nearest <db>     the fields that set cache.db's rows <db> lacks
+//                                                    apart from <db>'s closest row (both rekeyed)
 //
 // Built from build-port-link: ninja -C build-port-link pipeline_key_audit. gx.cpp is compiled into
 // this file for its descriptor helpers (anonymous namespace), so libaurora_gx's copy isn't linked.
@@ -201,7 +203,7 @@ bool rewrite_unused(const char* path) {
       ++staleKeys;
     }
     auto& sc = config.shaderConfig;
-    sc.fogType = pipeline_fog_type(sc.fogType);
+    pipeline_fog(sc);
     config.dstAlpha = pipeline_dst_alpha(config.dstAlpha);
     sc.alphaCompare = pipeline_alpha_compare(sc.alphaCompare);
     pipeline_tev_konst(sc);
@@ -265,6 +267,30 @@ bool rewrite_unused(const char* path) {
   return ok;
 }
 
+// A cache's GX rows of the current config version, in key order.
+std::vector<std::vector<u8>> read_rows(const char* path, size_t maxRows) {
+  std::vector<std::vector<u8>> rows;
+  sqlite3* db = nullptr;
+  if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READONLY, nullptr) != SQLITE_OK) {
+    std::fprintf(stderr, "cannot open %s\n", path);
+    std::exit(1);
+  }
+  sqlite3_stmt* stmt = nullptr;
+  sqlite3_prepare_v2(db, "SELECT hash, config FROM pipeline_cache WHERE type = 1 AND config_version = ?1 ORDER BY hash", -1,
+                     &stmt, nullptr);
+  sqlite3_bind_int(stmt, 1, GXPipelineConfigVersion);
+  while (sqlite3_step(stmt) == SQLITE_ROW && rows.size() < maxRows) {
+    if (sqlite3_column_bytes(stmt, 1) != sizeof(PipelineConfig)) {
+      continue;
+    }
+    const auto* p = static_cast<const u8*>(sqlite3_column_blob(stmt, 1));
+    rows.emplace_back(p, p + sizeof(PipelineConfig));
+  }
+  sqlite3_finalize(stmt);
+  sqlite3_close(db);
+  return rows;
+}
+
 // Result codes a row's child writes per field.
 // DeadSet: dead, and the row's value isn't a value-initialised config's (a field populate_pipeline_config
 // set that only splits keys, not one it left at its default).
@@ -273,13 +299,14 @@ enum : u8 { NoAlt = 0, Dead = 1, Live = 2, Mixed = 3, Crash = 4, DeadSet = 5 };
 
 int main(int argc, char** argv) {
   if (argc < 2) {
-    std::fprintf(stderr, "usage: %s <cache.db> [--rows N] [--detail field] [--no-dual-source] [--check-unused] [--rewrite db]\n", argv[0]);
+    std::fprintf(stderr, "usage: %s <cache.db> [--rows N] [--detail field] [--no-dual-source] [--check-unused] [--rewrite db] [--nearest db]\n", argv[0]);
     return 2;
   }
   size_t maxRows = SIZE_MAX;
   std::string detail;
   bool checkUnused = false;
   std::string rewrite;
+  std::string nearest;
   aurora::webgpu::g_dualSourceBlendingSupported = true;
   aurora::webgpu::g_hasCoreFeatures = true;
   for (int i = 2; i < argc; ++i) {
@@ -294,28 +321,12 @@ int main(int argc, char** argv) {
       checkUnused = true;
     } else if (a == "--rewrite" && i + 1 < argc) {
       rewrite = argv[++i];
+    } else if (a == "--nearest" && i + 1 < argc) {
+      nearest = argv[++i];
     }
   }
 
-  sqlite3* db = nullptr;
-  if (sqlite3_open_v2(argv[1], &db, SQLITE_OPEN_READONLY, nullptr) != SQLITE_OK) {
-    std::fprintf(stderr, "cannot open %s\n", argv[1]);
-    return 1;
-  }
-  sqlite3_stmt* stmt = nullptr;
-  sqlite3_prepare_v2(db, "SELECT hash, config FROM pipeline_cache WHERE type = 1 AND config_version = ?1 ORDER BY hash", -1,
-                     &stmt, nullptr);
-  sqlite3_bind_int(stmt, 1, GXPipelineConfigVersion);
-  std::vector<std::vector<u8>> rows;
-  while (sqlite3_step(stmt) == SQLITE_ROW && rows.size() < maxRows) {
-    if (sqlite3_column_bytes(stmt, 1) != sizeof(PipelineConfig)) {
-      continue;
-    }
-    const auto* p = static_cast<const u8*>(sqlite3_column_blob(stmt, 1));
-    rows.emplace_back(p, p + sizeof(PipelineConfig));
-  }
-  sqlite3_finalize(stmt);
-  sqlite3_close(db);
+  const auto rows = read_rows(argv[1], maxRows);
   std::printf("%zu GX rows (version %u), dual source %d\n", rows.size(), GXPipelineConfigVersion,
               aurora::webgpu::g_dualSourceBlendingSupported);
 
@@ -353,6 +364,61 @@ int main(int argc, char** argv) {
   }
 
   const auto fields = make_fields();
+  if (!nearest.empty()) {
+    // Each row the other cache lacks, against that cache's closest row (fewest fields differ): what
+    // sets the missing pipelines apart, so the seed's recorder knows which state it never reaches.
+    const auto ref = read_rows(nearest.c_str(), SIZE_MAX);
+    std::set<u64> refKeys;
+    for (const auto& row : ref) {
+      refKeys.insert(aurora::xxh3_hash(*reinterpret_cast<const PipelineConfig*>(row.data()), 1));
+    }
+    std::map<std::string, u32> byFields;
+    u32 missing = 0;
+    for (const auto& row : rows) {
+      if (refKeys.contains(aurora::xxh3_hash(*reinterpret_cast<const PipelineConfig*>(row.data()), 1))) {
+        continue;
+      }
+      ++missing;
+      size_t best = SIZE_MAX;
+      std::string bestNames;
+      for (const auto& other : ref) {
+        size_t n = 0;
+        std::string names;
+        for (const auto& f : fields) {
+          // The cache load queues each row at the running MSAA too.
+          if (f.name == "msaaSamples") {
+            continue;
+          }
+          const auto mine = field_value(row.data(), f);
+          const auto theirs = field_value(other.data(), f);
+          if (mine != theirs) {
+            if (++n > best) {
+              break;
+            }
+            names += (names.empty() ? "" : " ") + f.name;
+            if (f.size == 1) {
+              names += fmt::format(" {}>{}", theirs[0], mine[0]);
+            }
+          }
+        }
+        if (n < best) {
+          best = n;
+          bestNames = std::move(names);
+        }
+      }
+      ++byFields[best > 6 ? fmt::format("({} fields)", best) : bestNames];
+    }
+    std::vector<std::pair<u32, std::string>> sorted;
+    for (const auto& [names, n] : byFields) {
+      sorted.emplace_back(n, names);
+    }
+    std::sort(sorted.rbegin(), sorted.rend());
+    std::printf("nearest: %u rows not in %s\n", missing, nearest.c_str());
+    for (const auto& [n, names] : sorted) {
+      std::printf("%5u  %s\n", n, names.c_str());
+    }
+    return 0;
+  }
   // The values each field takes across the rows, its perturbations.
   std::vector<std::set<std::vector<u8>>> values(fields.size());
   for (const auto& row : rows) {

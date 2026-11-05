@@ -604,8 +604,8 @@ enum : u8 {
   VolFogPremultiplied = 4, // ONE, INVSRCALPHA, per vertex: colour T + in-scatter alpha
 };
 struct ShaderConfig {
-  // GX_FOG_NONE or, for every other type, GX_FOG_PERSP_LIN (pipeline_fog_type): the curve is the Fog
-  // uniform's, so a fog change (entering water) needs no new pipeline.
+  // GX_FOG_PERSP_LIN, or GX_FOG_NONE for a draw that never fogs (pipeline_fog): the curve, and
+  // whether there is fog at all, is the Fog uniform's, so a fog change needs no new pipeline.
   u8 fogType = GX_FOG_NONE;
   u8 vtxStride = 0;
   u8 lineMode : 2 = 0; // 1 = GX_LINES, 2 = GX_LINESTRIP, 3 = GX_POINTS
@@ -652,8 +652,20 @@ struct ShaderConfig {
   bool operator==(const ShaderConfig& rhs) const { return memcmp(this, &rhs, sizeof(*this)) == 0; }
 };
 static_assert(std::has_unique_object_representations_v<ShaderConfig>);
-constexpr u8 pipeline_fog_type(u32 fogType) noexcept {
-  return fogType == GX_FOG_NONE ? GX_FOG_NONE : GX_FOG_PERSP_LIN;
+// The fog as the pipeline sees it: GX_FOG_NONE only for the drawid view and the actor decal, which
+// never fog; every other draw takes the fogged pipeline and the Fog uniform's kind (0 = none)
+// turns it off, so a draw fogged in one room and not in another is one pipeline. The range
+// table only matters with fog on (a row recorded with fog none drops it).
+constexpr void pipeline_fog(ShaderConfig& config) noexcept {
+  if (config.drawId || config.actorDecal != 0) {
+    config.fogType = GX_FOG_NONE;
+    config.fogRangeEnabled = false;
+    return;
+  }
+  if (config.fogType == GX_FOG_NONE) {
+    config.fogRangeEnabled = false;
+  }
+  config.fogType = GX_FOG_PERSP_LIN;
 }
 // An alpha compare reference the shader reads from the alpha_ref uniform (ShaderInfo::usesAlphaRef).
 constexpr u32 AlphaRefUniform = 0x100;

@@ -4121,8 +4121,10 @@ fn vf_apply_hdr(c: vec4f, fog: vec4f, w: f32) -> vec4f {
     uniBufAttrs += "\n    fog: Fog,";
 
     const std::string_view fogDepth = UseReversedZ ? "(1.0 - in.pos.z)" : "in.pos.z";
-    // The GXFogType from the uniform: one pipeline for every fog type (ShaderConfig::fogType).
+    // The GXFogType from the uniform: one pipeline for every fog type, GX_FOG_NONE (0) included
+    // (pipeline_fog).
     fragmentFn += fmt::format(
+        "\n    if (ubuf.fog.kind != 0u) {{"
         "\n    var fogBase: f32;"
         "\n    if ((ubuf.fog.kind & 8u) != 0u) {{"
         "\n        fogBase = ubuf.fog.a * {0};"
@@ -4152,6 +4154,7 @@ fn vf_apply_hdr(c: vec4f, fog: vec4f, w: f32) -> vec4f {
     } else {
       fragmentFn += "\n    prev = vec4f(mix(prev.rgb, ubuf.fog.color.rgb, clamp(fogZ, 0.0, 1.0)), prev.a);";
     }
+    fragmentFn += "\n    }";
   }
   if (info.usesVolFog) {
     uniBufAttrs += "\n    volfog: vec4f,";
