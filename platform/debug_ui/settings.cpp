@@ -425,6 +425,7 @@ const SettingKey kSettingKeys[] = {
     BoolKey< &sQuickResume >("quick_resume"),
     BoolKey< &sLockOnToggle >("lockon_toggle"),
     BoolKey< &sAimLockOn >("aim_lock_on"),
+    BoolKey< &sScanShoot >("scan_shoot"),
     BoolKey< &sSpiderToggle >("spider_toggle"),
     BoolKey< &sStickyCharge >("sticky_charge"),
     BoolKey< &sRapidCharge >("rapid_charge"),

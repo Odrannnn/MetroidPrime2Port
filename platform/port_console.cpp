@@ -2159,6 +2159,12 @@ void CmdAimLockOn(CStateManager&, const Args& args, std::string& out) {
   out += enabled ? "aim lock-on on\n" : "aim lock-on off\n";
 }
 
+void CmdScanShoot(CStateManager&, const Args& args, std::string& out) {
+  const bool enabled = args.size() < 2 ? !PortOverlay::ScanShoot() : ArgToInt(args[1], 1) != 0;
+  PortOverlay::SetScanShoot(enabled);
+  out += enabled ? "scan shoot on\n" : "scan shoot off\n";
+}
+
 void CmdSticky(CStateManager&, const Args& args, std::string& out) {
   const bool enabled = args.size() < 2 ? !PortOverlay::StickyCharge() : ArgToInt(args[1], 1) != 0;
   PortOverlay::SetStickyCharge(enabled);
@@ -5634,6 +5640,8 @@ const CommandSpec kCommands[] = {
       "spidertoggle [0|1]         an R press holds the spider ball on its track until the next (spider_toggle)\n"},
     {"aimlockon", CmdAimLockOn,
       "aimlockon [0|1]            lock-on picks the target nearest the crosshair (aim_lock_on)\n"},
+    {"scanshoot", CmdScanShoot,
+      "scanshoot [0|1]            the arm cannon stays out and fires in the Scan Visor (scan_shoot)\n"},
     {"sticky", CmdSticky,
       "sticky <0|1>                sticky charge: a long A hold keeps charging after the release\n"},
     {"pointeraim", CmdPointerAim,

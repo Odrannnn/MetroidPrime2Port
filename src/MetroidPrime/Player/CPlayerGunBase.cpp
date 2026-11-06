@@ -17,6 +17,10 @@
 #include "MetroidPrime/Tweaks/CTweakPlayerControls.hpp"
 #include "MetroidPrime/Tweaks/CTweakPlayerGun.hpp"
 
+#ifdef TARGET_PC
+#include "port_overlay.h"
+#endif
+
 static uint ReleasedFlags(uint last, uint current);
 static uint PressedFlags(uint last, uint current);
 
@@ -256,12 +260,22 @@ void CPlayerGunBase::UpdateGunHolster(const CFinalInput& input, CStateManager& m
       }
     }
     CPlayerState* playerState = player->GetPlayerState();
+#ifdef TARGET_PC
+    const bool scanBlocks = !PortOverlay::ScanShoot() &&
+                            (playerState->GetCurrentVisor() == CPlayerState::kPV_Scan ||
+                             playerState->GetTransitioningVisor() == CPlayerState::kPV_Scan);
+    if (scanBlocks || player->GetMorphballTransitionState() != CPlayer::kMS_Unmorphed ||
+        mGunDrawBlockCount != 0) {
+      draw = false;
+    }
+#else
     if (playerState->GetCurrentVisor() == CPlayerState::kPV_Scan ||
         playerState->GetTransitioningVisor() == CPlayerState::kPV_Scan ||
         player->GetMorphballTransitionState() != CPlayer::kMS_Unmorphed ||
         mGunDrawBlockCount != 0) {
       draw = false;
     }
+#endif
     if (draw) {
       DrawGun(mgr);
     }

@@ -59,6 +59,7 @@ extern float sSpringFlickRate;
 extern bool sQuickResume;
 extern bool sLockOnToggle;
 extern bool sAimLockOn;
+extern bool sScanShoot;
 extern bool sSpiderToggle;
 extern bool sStickyCharge;
 extern bool sRapidCharge;

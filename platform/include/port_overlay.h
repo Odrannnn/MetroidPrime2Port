@@ -368,6 +368,9 @@ bool SpiderToggle();
 void SetSpiderToggle(bool enabled);
 bool AimLockOn();
 void SetAimLockOn(bool enabled);
+// The arm cannon stays out and fires in the Scan Visor (MP1 #243).
+bool ScanShoot();
+void SetScanShoot(bool enabled);
 bool StickyCharge();
 void SetStickyCharge(bool enabled);
 // Auto-aim (`MP2_AUTO_AIM=0` turns it off, default on): off, the arm cannon aims only at a

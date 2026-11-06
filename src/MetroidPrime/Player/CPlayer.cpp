@@ -1444,8 +1444,14 @@ void CPlayer::UpdateVisorState(const CFinalInput& input, float dt, CStateManager
     if (mPlayerState->GetItemAmount(CPlayerState::kIT_ScanVirus)) {
       selectedVisor = CPlayerState::kPV_Scan;
     } else {
+#ifdef TARGET_PC
+      // Shoot in Scan Visor: firing stays in the Scan Visor.
+      if (currentVisor == CPlayerState::kPV_Scan && !PortOverlay::ScanShoot() &&
+          (FireBeamPressed(input) ||
+#else
       if (currentVisor == CPlayerState::kPV_Scan &&
           (FireBeamPressed(input) ||
+#endif
            mControlMapper.GetPressInput(CControlMapper::kC_MissileOrPowerBomb, input)) &&
           playerState->HasPowerUp(CPlayerState::kIT_CombatVisor)) {
         playerState->StartTransitionToVisor(CPlayerState::kPV_Combat);
@@ -1498,7 +1504,11 @@ void CPlayer::UpdateVisorState(const CFinalInput& input, float dt, CStateManager
       const CPlayerState::EPlayerVisor visor =
           static_cast< CPlayerState::EPlayerVisor >(selectedVisor);
       playerState->StartTransitionToVisor(visor);
+#ifdef TARGET_PC
+      if (visor == CPlayerState::kPV_Scan && !PortOverlay::ScanShoot()) {
+#else
       if (visor == CPlayerState::kPV_Scan) {
+#endif
         mGun->HolsterGun(mgr);
       } else {
         mGun->DrawGun(mgr);
@@ -1808,7 +1818,12 @@ void CPlayer::UpdateCinematicState(CStateManager& mgr) {
         break;
       case kMS_Unmorphed:
         SetCameraState(kCS_FirstPerson, mgr);
+#ifdef TARGET_PC
+        if (mPlayerState->GetCurrentVisor() != CPlayerState::kPV_Scan ||
+            PortOverlay::ScanShoot()) {
+#else
         if (mPlayerState->GetCurrentVisor() != CPlayerState::kPV_Scan) {
+#endif
           ForceGunOrientation(GetTransform(), mgr);
           mGun->DrawGun(mgr);
         }
@@ -3590,7 +3605,12 @@ void CPlayer::RenderGun(const CStateManager& mgr, const CVector3f& position) con
     grappleArm->RenderGrappleBeam(mgr, position, true);
   }
 
+#ifdef TARGET_PC
+  bool isInScanVisor = mPlayerState->GetActiveVisor(mgr) == CPlayerState::kPV_Scan &&
+                       !PortOverlay::ScanShoot();
+#else
   bool isInScanVisor = mPlayerState->GetActiveVisor(mgr) == CPlayerState::kPV_Scan;
+#endif
   float visorTransitionFactor = mPlayerState->GetVisorTransitionFactor();
   bool scanComplete = isInScanVisor && visorTransitionFactor >= 1.f;
   if (scanComplete != true &&

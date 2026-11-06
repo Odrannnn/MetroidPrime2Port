@@ -209,6 +209,10 @@ Controls > Options:
   weighed by the aspect ratio) with line of sight still required. Retail prefers a target nearer the
   player by more than the orbit distance threshold even when it is off to the side. Grapple points
   and the scan visor keep retail's pick.
+- `scan_shoot`: Buttons > Shoot in Scan Visor (default off, off under Original Experience; env
+  `MP2_SCAN_SHOOT`): the arm cannon stays out in the Scan Visor and Fire, Missile and charge work
+  there; scanning stays on the Scan bind. Off, a fire or missile press switches to the Combat Visor
+  as in the original game.
 - Dodge (Controls > Remap > Move and aim, binding `dodge`, unbound by default): pressed on the
   ground while strafing (strafe at least as strong as forward/back), it dashes. Locked on, it does
   what a jump tapped while strafing does: retail's dash around the target. Not locked on, it does

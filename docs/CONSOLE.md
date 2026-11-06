@@ -89,6 +89,7 @@ hp, hp_max, visor, beam, freecam) for scripts.
 - `target next|prev` — a press of Next/Previous target: while locked on, the lock moves to the next visible target right or left on screen, within 0.12 s; off under Original experience
 - `spidertoggle [0|1]` — an R press holds the spider ball on its track until the next (`spider_toggle`)
 - `aimlockon [0|1]` — lock-on picks the target nearest the crosshair (`aim_lock_on`)
+- `scanshoot [0|1]` — the arm cannon stays out and fires in the Scan Visor (`scan_shoot`)
 - `sticky <0|1>` — sticky charge: a long A hold keeps charging after the release
 - `pointeraim [on|off|<x> <y>] pointer aim (the F1 row), or place its pointer (-1..1)`
 - `minimap` prints the HUD minimap tap rect (GUI pixels) and whether tap-to-open is on; `maptap` opens the map screen as a tap on the minimap does

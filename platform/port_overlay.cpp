@@ -109,6 +109,7 @@ float sSpringFlickRate = PortOverlay::kSpringFlickRateDefault;
 bool sQuickResume = true;
 bool sLockOnToggle = false;
 bool sAimLockOn = false;
+bool sScanShoot = false;
 bool sSpiderToggle = false;
 bool sStickyCharge = false;
 bool sAutoAim = true;
@@ -1393,6 +1394,20 @@ bool AimLockOn() {
 void SetAimLockOn(bool enabled) {
   ReadEnv();
   sAimLockOn = enabled;
+  Persist();
+}
+
+bool ScanShoot() {
+  ReadEnv();
+  if (OriginalExperience()) {
+    return false;
+  }
+  return EnvBool("MP2_SCAN_SHOOT", sScanShoot);
+}
+
+void SetScanShoot(bool enabled) {
+  ReadEnv();
+  sScanShoot = enabled;
   Persist();
 }
 

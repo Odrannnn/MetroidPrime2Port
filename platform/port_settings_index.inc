@@ -28,6 +28,7 @@
 {"Controls", "Options", "Buttons", "Toggle Lock-On", "lock on target latch hold l trigger"},
 {"Controls", "Options", "Buttons", "Toggle Spider Ball", "spider ball track cling latch hold r"},
 {"Controls", "Options", "Buttons", "Aim Lock-On", "lock on target nearest crosshair aim priority"},
+{"Controls", "Options", "Buttons", "Shoot in Scan Visor", "scan visor shoot fire cannon beam missile"},
 {"Controls", "Options", "Buttons", "Sticky Charge", "charge beam hold a"},
 {"Controls", "Options", "Buttons", "Remastered charge (rapid fire)", "rapid fire charge beam power"},
 {"Controls", "Options", "Aiming", "Native Trilogy radial selectors", "beam visor menu held wheel rs5"},

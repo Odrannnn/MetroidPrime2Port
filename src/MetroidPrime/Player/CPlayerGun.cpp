@@ -550,6 +550,14 @@ void CPlayerGun::Charging(CStateManager& mgr, int param, float dt) {
 bool CPlayerGun::ShouldHolster(CStateManager& mgr, const float& argument) {
   CPlayer* player = GetPlayer(mgr);
   const CPlayer::EPlayerMorphBallState state = player->GetMorphballTransitionState();
+#ifdef TARGET_PC
+  // Shoot in Scan Visor: the Scan Visor alone no longer holsters the cannon.
+  if (PortOverlay::ScanShoot()) {
+    return state == CPlayer::kMS_Morphing || state == CPlayer::kMS_Morphed ||
+           !player->GetPlayerState()->IsPlayerAlive() ||
+           player->GetCameraManager()->IsInCinematicCamera();
+  }
+#endif
   return player->GetPlayerState()->GetCurrentVisor() == CPlayerState::kPV_Scan ||
          state == CPlayer::kMS_Morphing || state == CPlayer::kMS_Morphed ||
          !player->GetPlayerState()->IsPlayerAlive() ||
@@ -675,6 +683,11 @@ bool CPlayerGun::GunLoaded(CStateManager& mgr, const float& argument) {
 }
 
 bool CPlayerGun::Scanning(CStateManager& mgr, const float& argument) {
+#ifdef TARGET_PC
+  if (PortOverlay::ScanShoot()) {
+    return false;
+  }
+#endif
   return GetPlayer(mgr)->GetPlayerState()->GetCurrentVisor() == CPlayerState::kPV_Scan;
 }
 
@@ -1428,9 +1441,15 @@ void CPlayerGun::TouchModel(const CStateManager& mgr) const {
 void CPlayerGun::PreRender(CStateManager& mgr, const CVector3f& cameraPosition) {
   const CPlayerState* state = mgr.GetPlayerState();
   const CPlayer* player = GetPlayer(mgr);
+#ifdef TARGET_PC
+  if (state->GetCurrentVisor() == CPlayerState::kPV_Scan && !PortOverlay::ScanShoot()) {
+    return;
+  }
+#else
   if (state->GetCurrentVisor() == CPlayerState::kPV_Scan) {
     return;
   }
+#endif
 
   const CPlayerState::EPlayerVisor visor = state->GetActiveVisor(mgr);
   if (mgr.IsMultiplayer() && mgr.GetNumPlayers() >= 3u) {
@@ -2072,7 +2091,12 @@ void CPlayerGun::TakeDamage(bool bigStrike, bool strikeGrapple, CStateManager& m
   }
 
   const bool struck = hasStrikeAngle || bigStrike;
+#ifdef TARGET_PC
+  if (struck && (player.GetPlayerState()->GetCurrentVisor() != CPlayerState::kPV_Scan ||
+                 PortOverlay::ScanShoot())) {
+#else
   if (struck && player.GetPlayerState()->GetCurrentVisor() != CPlayerState::kPV_Scan) {
+#endif
     mGunMotion->PlayPasAnim(SamusGun::kAS_Struck, mgr, angle, bigStrike);
     ResetCharge(mgr, false);
     ResetSeeker(mgr);
