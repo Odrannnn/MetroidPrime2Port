@@ -1019,6 +1019,15 @@ void initialize() noexcept {
 
 void shutdown() noexcept {
   // TODO we should probably store this all in g_state.gx instead
+  // Port: every GPU object kept here holds the device. One left set (the empty texture bind group
+  // was) keeps the device and the Vulkan instance alive until static destruction at exit, when
+  // vkDestroyInstance runs through layers already torn down (Steam's overlay layer: SIGSEGV on
+  // every quit launched from Steam).
+  g_emptyTextureBindGroup = {};
+  sEmptyTextureView = {};
+  sEmptyTexture = {};
+  sEmptySampler = {};
+  sPipelineLayout = {};
   sSamplerBindGroupLayout = {};
   sTextureBindGroupLayout = {};
   sShadowTextureBindGroupLayout = {};
