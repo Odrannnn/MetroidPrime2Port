@@ -179,7 +179,8 @@ Things that took real effort to find out. AGENTS.md keeps a one-line index; the 
   name and a muzzle transform off the base actor. The initializer is a separate asm file:
   `grep -n bss_X auto_fn_*_text.s` finds the function that fills it.
 - **Other vendored-Aurora additions** to keep on re-vendor: the partial `GXCopyTex` clear
-  (`recording.cpp`, from upstream aurora 9c0bf66f1e), the dstAlpha alpha-only pass
+  (`recording.cpp`, from upstream aurora 9c0bf66f1e), `gx::shutdown` freeing the empty texture bind group/texture/
+  sampler and `sPipelineLayout` (`gx.cpp`, PR #91: else the device outlives Steam's overlay layer and quit crashes), the dstAlpha alpha-only pass
   (`command_processor.cpp` `push_gx_draw`, `67f337a57`) and `AURORA_PRESENT_EVERY` (`aurora.cpp`
   end_frame), `PADIsDefaultMapping` (`pad.cpp`, MP1 e0808c4d5: saved pad presets reach controllers
   connected later) and the empty-string fallback when `SDL_GetPrefPath` returns null for `userPath`/
