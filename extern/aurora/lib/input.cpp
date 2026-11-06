@@ -297,6 +297,13 @@ void apply_port_preferences() noexcept {
 // holds player 1, a real pad connected later gets player 2, which a single-player game never reads.
 // Keep player 1 for a real pad when one is connected, and hand it back to the virtual pad when the
 // last real one leaves. An explicitly configured first port is left alone.
+// The Steam Deck's built-in controller (SDL reports it, 28de:1205, behind Steam's virtual pad too)
+// ranks with the virtual pads: a controller connected to a Deck takes player 1 from it, whatever
+// Steam's order, and the Deck gets it back when that controller leaves.
+bool is_fallback_controller(Uint32 instance, const GameController& controller) noexcept {
+  return SDL_IsJoystickVirtual(instance) || (controller.m_vid == 0x28de && controller.m_pid == 0x1205);
+}
+
 void prefer_real_controller_on_first_port() noexcept {
   ensure_port_preferences_loaded();
   if (g_portPreferences[0].state != PortPreferenceState::Unset) {
@@ -309,7 +316,7 @@ void prefer_real_controller_on_first_port() noexcept {
   for (auto& [instance, controller] : g_GameControllers) {
     if (SDL_GetGamepadPlayerIndex(controller.m_controller) == 0) {
       first = &controller;
-    } else if (!SDL_IsJoystickVirtual(instance)) {
+    } else if (!is_fallback_controller(instance, controller)) {
       real = real != nullptr ? real : &controller;
     } else {
       virt = virt != nullptr ? virt : &controller;
@@ -317,7 +324,7 @@ void prefer_real_controller_on_first_port() noexcept {
   }
 
   // A real pad on port 0 stays, and a virtual pad only takes port 0 when it is empty
-  const bool firstIsReal = first != nullptr && !SDL_IsJoystickVirtual(first->m_index);
+  const bool firstIsReal = first != nullptr && !is_fallback_controller(first->m_index, *first);
   GameController* wanted = real != nullptr ? real : virt;
   if (wanted == nullptr || firstIsReal || (first != nullptr && wanted == virt)) {
     return;

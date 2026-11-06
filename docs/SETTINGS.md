@@ -379,6 +379,11 @@ Controls > Touch & gyro (Gyro aim):
 
 - `gyro_aim`, `gyro_mode`: Mode (Off, or one of the four modes; Off clears `gyro_aim`).
 - `gyro_source`, `gyro_space`, `gyro_auto_calibrate`: Source, Space, Auto calibrate.
+- Player 1 on a Steam Deck: the Deck's built-in controller ranks below any other controller for
+  Player 1. A connected controller takes Player 1 from it whatever Steam's order, and the Deck
+  gets it back when that controller leaves. Choosing Player 1's controller on the Remap page saves
+  it (`user/controller_ports.dat`), and that choice overrides this; delete the file to go back to
+  the automatic choice.
 - `gyro_sensitivity`, `gyro_cursor_angle`, `gyro_cursor_camera`: Sensitivity, Pointer speed,
   Gyro also turns the camera.
 - `gyro_split`, `gyro_sensitivity_y`: Separate vertical speed, Vertical sensitivity (under
