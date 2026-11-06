@@ -86,8 +86,10 @@ public:
   void SelectAnimation(const CPASAnimParmData& parameters, CRandom16& random);
 #ifdef TARGET_PC
   // FindBestAnimation on the PAS database; in third person (single player's body running
-  // multiplayer's FSM) a lookup the character lacks, such as the jump arc, double jump flip, dash,
-  // grapple or knockback, falls back to the same ANCS's character 0 (CAnimData::PortBorrowAnimation).
+  // multiplayer's FSM) a lookup the character lacks, such as the jump arc, double jump flip, dash
+  // or grapple, falls back to the same ANCS's character 0 (CAnimData::PortBorrowAnimation)
+  // when that matches better: PAS weighs partial matches, so Samus_SinglePlayer answers the jump
+  // arc with its landing or a flip at weight 60.
   rstl::pair< float, int > PortFindBestAnimation(const CPASAnimParmData& parameters,
                                                  CRandom16& random);
 #endif

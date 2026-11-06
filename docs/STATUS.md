@@ -36,7 +36,19 @@ appended, dated as in the heading there.
   body's beam uses the multiplayer segment/swoosh generators, which only existed in multiplayer;
   `CGrappleArm` now always creates them on PC and starts that beam at the scaled `L_wrist` locator.
   Verified on Xvfb: side dash into/loop/exit, grapple fire/pull/swing with the beam from the hand.
-  Knockback is not checked in game (only `CPlayerKnockBackMgr` sends it; console `damage` doesn't).
+  Flinch/knockback never play in single player: `CKnockBackMgr::ValidateState` checks the player's
+  own PAS; Samus_SinglePlayer (character 3) has states 0 1 3 5 only (5 = hurled), the multiplayer
+  characters 0-2 have 0-11 (6 = flinch, 8 = knockback). So retail single player only hurls; left as
+  is (it would change gameplay).
+- Animation fixes after the user's report (stuck or missing animations): (1) PAS weighs partial
+  matches, so Samus_SinglePlayer answered the jump arc with its landing (13) or the 1.5 s flip (25)
+  at weight 60 and nothing was borrowed; `PortFindBestAnimation` now borrows unless its own match
+  is exact, and a partial own match yields only to an exact donor one (fast landing keeps 13).
+  (2) Single player disables locomotion's animation changes (`CPlayer` kSM_Create), so idle/walk
+  never switched; cleared every frame while third person is on, restored on swap back.
+  Verified on Xvfb with a `[body]`/`[pas]` trace (removed): idle 15 -> walk 21/11/run 18 -> idle,
+  jump 42 -> loop 14 -> land 13, running jump 44/45 -> land 13, double jump 43, side dash 46/47/48
+  -> locomotion both ways, grapple 43/44/swing 45 -> release -> fall -> land -> locomotion.
 
 ## 2026-11-05: save states keep every script object's fields (why cutscene bugs kept coming)
 

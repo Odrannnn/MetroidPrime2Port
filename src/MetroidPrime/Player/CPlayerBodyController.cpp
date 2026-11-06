@@ -239,20 +239,29 @@ void CPlayerBodyController::PortSetupMachine(CStateManager& mgr, const CStateMac
 rstl::pair< float, int > CPlayerBodyController::PortFindBestAnimation(
     const CPASAnimParmData& parameters, CRandom16& random) {
   const rstl::pair< float, int > best = GetPASDatabase().FindBestAnimation(parameters, random, -1);
-  if (best.first > FLT_EPSILON || !mPortThirdPersonFsmActive) {
+  if (best.first > 99.999f || !mPortThirdPersonFsmActive) {
     return best;
   }
   CAnimData* animData = GetPlayer().AnimationData();
   if (animData == nullptr || animData->GetCharacterIndex() == 0) {
     return best;
   }
-  const rstl::pair< float, int > borrowed = animData->PortBorrowAnimation(0, parameters, random);
+  // A partial match of our own (a landing played for the jump arc) only yields to an exact one, so a
+  // fast landing keeps its own landing over the donor's partly matching jump.
+  const float minWeight = best.first > FLT_EPSILON ? 99.999f : 0.f;
+  const rstl::pair< float, int > borrowed =
+      animData->PortBorrowAnimation(0, parameters, random, minWeight);
   return borrowed.second >= 0 ? borrowed : best;
 }
 
 void CPlayerBodyController::PortUpdateThirdPersonFsm(CStateManager& mgr) {
   // Multiplayer already runs PlayerAnimCtrl.
   const bool want = PortThirdPerson::Enabled() && !mgr.IsMultiplayer();
+  if (mPortThirdPersonFsmActive) {
+    // Single player disables locomotion's animation changes (CPlayer::AcceptScriptMsg, also after
+    // this swap), so the shown body would hold its idle or walk cycle until the next forced change.
+    mLocomotion.SetAnimationChangeDisabled(false);
+  }
   if (want == mPortThirdPersonFsmActive) {
     return;
   }
@@ -285,6 +294,9 @@ void CPlayerBodyController::PortUpdateThirdPersonFsm(CStateManager& mgr) {
   }
   PortSetupMachine(mgr, machine);
   mPortThirdPersonFsmActive = want;
+  if (!want) {
+    mLocomotion.SetAnimationChangeDisabled(true);  // single player's setting
+  }
 }
 #endif
 

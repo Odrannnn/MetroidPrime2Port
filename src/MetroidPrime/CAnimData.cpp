@@ -1431,7 +1431,7 @@ const CPoseAsTransforms_Linear& CAnimData::PortPresentedPose() const {
 }
 
 rstl::pair< float, int > CAnimData::PortBorrowAnimation(int character, const CPASAnimParmData& parms,
-                                                        CRandom16& random) {
+                                                        CRandom16& random, float minWeight) {
   const rstl::pair< float, int > none(0.f, -1);
   const CCharacterFactory& factory = **mCharFactory;
   if (character < 0 || character >= factory.GetCharacterCount()) {
@@ -1440,7 +1440,7 @@ rstl::pair< float, int > CAnimData::PortBorrowAnimation(int character, const CPA
   const CCECharacterInfo& donor = factory.GetCharInfo(character);
   const rstl::pair< float, int > best = donor.GetPASDatabase().FindBestAnimation(parms, random, -1);
   const rstl::vector< uint >& donorAnims = donor.GetAnimationIndexList();
-  if (best.first <= FLT_EPSILON || best.second < 0 ||
+  if (best.first <= minWeight || best.first <= FLT_EPSILON || best.second < 0 ||
       best.second >= static_cast< int >(donorAnims.size())) {
     return none;
   }
