@@ -84,6 +84,13 @@ public:
   void MultiplyPlaybackRate(float rate);
   void RequestAnimation(const CAnimPlaybackParms& parameters, bool looping, bool noTransition);
   void SelectAnimation(const CPASAnimParmData& parameters, CRandom16& random);
+#ifdef TARGET_PC
+  // FindBestAnimation on the PAS database; in third person (single player's body running
+  // multiplayer's FSM) a lookup the character lacks, such as the jump arc, double jump flip, dash,
+  // grapple or knockback, falls back to the same ANCS's character 0 (CAnimData::PortBorrowAnimation).
+  rstl::pair< float, int > PortFindBestAnimation(const CPASAnimParmData& parameters,
+                                                 CRandom16& random);
+#endif
   bool IsAnimationLooping() const;
 
   bool IsDeathReactionOver() const { return mDeathReactionOver; }

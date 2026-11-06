@@ -16,6 +16,7 @@
 
 #ifdef TARGET_PC
 #include "Kyoto/CResFactory.hpp"
+#include <float.h>
 #include "port_third_person.h"
 #endif
 
@@ -176,13 +177,21 @@ const CPASDatabase& CPlayerBodyController::GetPASDatabase() const {
 }
 
 void CPlayerBodyController::SelectAnimation(const CPASAnimParmData& parameters, CRandom16& random) {
+#ifdef TARGET_PC
+  const int animation = PortFindBestAnimation(parameters, random).second;
+#else
   const int animation = GetPASDatabase().FindBestAnimation(parameters, random, -1).second;
+#endif
   RequestAnimation(CAnimPlaybackParms(animation, -1, 1.f, true), false, false);
 }
 
 void CPlayerBodyController::SelectLoopingAnimation(const CPASAnimParmData& parameters,
                                                    CRandom16& random) {
+#ifdef TARGET_PC
+  const int animation = PortFindBestAnimation(parameters, random).second;
+#else
   const int animation = GetPASDatabase().FindBestAnimation(parameters, random, -1).second;
+#endif
   RequestAnimation(CAnimPlaybackParms(animation, -1, 1.f, true), true, false);
 }
 
@@ -225,6 +234,20 @@ void CPlayerBodyController::PortSetupMachine(CStateManager& mgr, const CStateMac
   mAdditiveState.SetStateFunctions(skStateFunctions, 26);
   mBodyState.SetState(mgr, *this, body);
   mAdditiveState.SetState(mgr, *this, additive);
+}
+
+rstl::pair< float, int > CPlayerBodyController::PortFindBestAnimation(
+    const CPASAnimParmData& parameters, CRandom16& random) {
+  const rstl::pair< float, int > best = GetPASDatabase().FindBestAnimation(parameters, random, -1);
+  if (best.first > FLT_EPSILON || !mPortThirdPersonFsmActive) {
+    return best;
+  }
+  CAnimData* animData = GetPlayer().AnimationData();
+  if (animData == nullptr || animData->GetCharacterIndex() == 0) {
+    return best;
+  }
+  const rstl::pair< float, int > borrowed = animData->PortBorrowAnimation(0, parameters, random);
+  return borrowed.second >= 0 ? borrowed : best;
 }
 
 void CPlayerBodyController::PortUpdateThirdPersonFsm(CStateManager& mgr) {

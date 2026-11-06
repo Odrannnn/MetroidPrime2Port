@@ -75,7 +75,11 @@ bool CPlayerBodyController::SGrappleState::TryPlayFiring(CStateManager& mgr,
                                CPASAnimParm::FromEnum(mAnimationVariant),
                                CPASAnimParm::FromEnum(kAP_Firing));
   const CPASDatabase& db = controller.GetPASDatabase();
+#ifdef TARGET_PC
+  const rstl::pair< float, int > best = controller.PortFindBestAnimation(parms, *mgr.Random());
+#else
   const rstl::pair< float, int > best = db.FindBestAnimation(parms, *mgr.Random(), -1);
+#endif
   if (best.first > FLT_EPSILON) {
     controller.RequestAnimation(CAnimPlaybackParms(best.second, -1, 1.f, true), true, false);
     mState = kS_Firing;
@@ -90,7 +94,11 @@ bool CPlayerBodyController::SGrappleState::TryPlayPull(CStateManager& mgr,
                                CPASAnimParm::FromEnum(mAnimationVariant),
                                CPASAnimParm::FromEnum(kAP_Pull));
   const CPASDatabase& db = controller.GetPASDatabase();
+#ifdef TARGET_PC
+  const rstl::pair< float, int > best = controller.PortFindBestAnimation(parms, *mgr.Random());
+#else
   const rstl::pair< float, int > best = db.FindBestAnimation(parms, *mgr.Random(), -1);
+#endif
   if (best.first > FLT_EPSILON) {
     controller.RequestAnimation(CAnimPlaybackParms(best.second, -1, 1.f, true), true, false);
     mState = kS_Pull;
@@ -105,7 +113,11 @@ void CPlayerBodyController::SGrappleState::PlaySwing(CStateManager& mgr,
                                CPASAnimParm::FromEnum(mAnimationVariant),
                                CPASAnimParm::FromEnum(kAP_Swinging));
   const CPASDatabase& db = controller.GetPASDatabase();
+#ifdef TARGET_PC
+  const rstl::pair< float, int > best = controller.PortFindBestAnimation(parms, *mgr.Random());
+#else
   const rstl::pair< float, int > best = db.FindBestAnimation(parms, *mgr.Random(), -1);
+#endif
   if (best.first > FLT_EPSILON) {
     controller.RequestAnimation(CAnimPlaybackParms(best.second, -1, 1.f, true), true, false);
     mState = kS_Swinging;

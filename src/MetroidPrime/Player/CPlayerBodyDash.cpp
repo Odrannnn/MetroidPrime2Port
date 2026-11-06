@@ -18,7 +18,11 @@ void CPlayerBodyController::SDashState::Start(CStateManager& mgr,
                                  CPASAnimParm::FromEnum(mAnimationVariant),
                                  CPASAnimParm::FromEnum(kAP_IntoDash));
     const CPASDatabase& db = controller.GetPASDatabase();
+#ifdef TARGET_PC
+    const rstl::pair< float, int > best = controller.PortFindBestAnimation(parms, *mgr.Random());
+#else
     const rstl::pair< float, int > best = db.FindBestAnimation(parms, *mgr.Random(), -1);
+#endif
     if (best.first > FLT_EPSILON) {
       controller.RequestAnimation(CAnimPlaybackParms(best.second, -1, 1.f, true), false, false);
       mState = kS_IntoDash;
@@ -73,7 +77,11 @@ void CPlayerBodyController::SDashState::PlayLoop(CStateManager& mgr,
                                CPASAnimParm::FromEnum(mAnimationVariant),
                                CPASAnimParm::FromEnum(kAP_Loop));
   const CPASDatabase& db = controller.GetPASDatabase();
+#ifdef TARGET_PC
+  const rstl::pair< float, int > best = controller.PortFindBestAnimation(parms, *mgr.Random());
+#else
   const rstl::pair< float, int > best = db.FindBestAnimation(parms, *mgr.Random(), -1);
+#endif
   if (best.first > FLT_EPSILON) {
     controller.RequestAnimation(CAnimPlaybackParms(best.second, -1, 1.f, true), true, false);
     mState = kS_Loop;
@@ -89,7 +97,11 @@ void CPlayerBodyController::SDashState::PlayExit(CStateManager& mgr,
                                CPASAnimParm::FromEnum(mAnimationVariant),
                                CPASAnimParm::FromEnum(kAP_Exit));
   const CPASDatabase& db = controller.GetPASDatabase();
+#ifdef TARGET_PC
+  const rstl::pair< float, int > best = controller.PortFindBestAnimation(parms, *mgr.Random());
+#else
   const rstl::pair< float, int > best = db.FindBestAnimation(parms, *mgr.Random(), -1);
+#endif
   if (best.first > FLT_EPSILON) {
     controller.RequestAnimation(CAnimPlaybackParms(best.second, -1, 1.f, true), false, false);
     mState = kS_Exit;

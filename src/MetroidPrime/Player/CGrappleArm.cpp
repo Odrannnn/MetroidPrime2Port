@@ -31,6 +31,7 @@
 #include "MetroidPrime/CActor.hpp"
 #include "MetroidPrime/Player/CPlayerGun.hpp"
 #include "port_overlay.h"
+#include "port_third_person.h"
 #endif
 
 #include <string.h>
@@ -90,8 +91,15 @@ CGrappleArm::CGrappleArm(const CVector3f& scale, TUniqueId playerId, bool multip
 , mMuzzleGenerator(rs_new CElementGen(mGrappleMuzzle))
 , mSwooshGenerator(rs_new CParticleSwoosh(mGrappleSwoosh, 0))
 , mRainSplashGenerator(rs_new CRainSplashGenerator(scale, 20, 2, 0.f, 0.125f))
+#ifdef TARGET_PC
+// Port: the third-person body's beam leaves its hand the way another player's does, so single
+// player also gets the multiplayer beam generators (third person can be turned on at any time).
+, mMultiplayerSegmentGenerator(rs_new CElementGen(mGrappleSegment))
+, mMultiplayerSwooshGenerator(rs_new CParticleSwoosh(mGrappleSwoosh, 0))
+#else
 , mMultiplayerSegmentGenerator(multiplayer ? rs_new CElementGen(mGrappleSegment) : nullptr)
 , mMultiplayerSwooshGenerator(multiplayer ? rs_new CParticleSwoosh(mGrappleSwoosh, 0) : nullptr)
+#endif
 , mBeamT(0.f)
 , mBeamDistance(0.f)
 , mAnglePhase(0.f)
@@ -114,18 +122,27 @@ CGrappleArm::CGrappleArm(const CVector3f& scale, TUniqueId playerId, bool multip
   mStateMachineToken.Lock();
   mMuzzleGenerator->SetParticleEmission(false);
   mSegmentGenerator->SetParticleEmission(false);
+#ifdef TARGET_PC
+  mMultiplayerSegmentGenerator->SetParticleEmission(false);
+#else
   if (multiplayer) {
     mMultiplayerSegmentGenerator->SetParticleEmission(false);
   }
+#endif
   int i = 0;
   CParticleSwoosh* swoosh = mSwooshGenerator.get();
   for (; i < swoosh->GetSwooshCount() - 1; ++i) {
     mSwooshGenerator->SetWarmUp();
     mSwooshGenerator->Update(0.0);
+#ifdef TARGET_PC
+    mMultiplayerSwooshGenerator->SetWarmUp();
+    mMultiplayerSwooshGenerator->Update(0.0);
+#else
     if (multiplayer) {
       mMultiplayerSwooshGenerator->SetWarmUp();
       mMultiplayerSwooshGenerator->Update(0.0);
     }
+#endif
   }
 
   BuildBeamDependencyList(multiplayer);
@@ -484,10 +501,24 @@ bool CGrappleArm::UpdateGrappleBeam(float dt, const CTransform4f& beamLocator, C
   if (mBeamActive) {
     mAnglePhase += player.GetTweakPlayer()->GetGrappleBeamAnglePhaseDelta();
     UpdateGrappleBeamFX(mgr, gunPos, beamPos, mTransform.GetRotation(), true);
+#ifdef TARGET_PC
+    if (mgr.IsMultiplayer() || PortThirdPerson::Active()) {
+#else
     if (mgr.IsMultiplayer()) {
+#endif
+#ifdef TARGET_PC
+      // Port: the body's model is scaled, so the hand is found as CPlayer::RenderGun draws the
+      // beam from it (scaled locator); multiplayer keeps the original lookup.
+      const CVector3f wristPos =
+          (player.GetTransform() *
+           (mgr.IsMultiplayer() ? player.GetLocatorTransform(rstl::string_l("L_wrist"))
+                                : player.GetScaledLocatorTransform(rstl::string_l("L_wrist"))))
+              .GetTranslation();
+#else
       const CVector3f wristPos =
           (player.GetTransform() * player.GetLocatorTransform(rstl::string_l("L_wrist")))
               .GetTranslation();
+#endif
       UpdateGrappleBeamFX(mgr, wristPos, beamPos, player.GetTransform().GetRotation(), false);
       mMultiplayerSegmentGenerator->Update(dt);
     }

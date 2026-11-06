@@ -1430,26 +1430,28 @@ const CPoseAsTransforms_Linear& CAnimData::PortPresentedPose() const {
   return blend;
 }
 
-int CAnimData::PortBorrowAnimation(int character, const CPASAnimParmData& parms, CRandom16& random) {
+rstl::pair< float, int > CAnimData::PortBorrowAnimation(int character, const CPASAnimParmData& parms,
+                                                        CRandom16& random) {
+  const rstl::pair< float, int > none(0.f, -1);
   const CCharacterFactory& factory = **mCharFactory;
   if (character < 0 || character >= factory.GetCharacterCount()) {
-    return -1;
+    return none;
   }
   const CCECharacterInfo& donor = factory.GetCharInfo(character);
   const rstl::pair< float, int > best = donor.GetPASDatabase().FindBestAnimation(parms, random, -1);
   const rstl::vector< uint >& donorAnims = donor.GetAnimationIndexList();
   if (best.first <= FLT_EPSILON || best.second < 0 ||
       best.second >= static_cast< int >(donorAnims.size())) {
-    return -1;
+    return none;
   }
   const uint animSetIndex = donorAnims[best.second];
   rstl::vector< uint >& anims = mCharInfo.PortAnimationIndexList();
   for (int i = 0; i < static_cast< int >(anims.size()); ++i) {
     if (anims[i] == animSetIndex) {
-      return i;
+      return rstl::pair< float, int >(best.first, i);
     }
   }
   anims.push_back(animSetIndex);
-  return static_cast< int >(anims.size()) - 1;
+  return rstl::pair< float, int >(best.first, static_cast< int >(anims.size()) - 1);
 }
 #endif

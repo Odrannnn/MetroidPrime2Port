@@ -30,6 +30,13 @@ appended, dated as in the heading there.
   character 0 (`CAnimData::PortBorrowAnimation` appends the anim-set index to the player's list;
   savestates skip an anim id past the list). Verified on Xvfb: jump arc, double-jump flip
   (upside-down mid-flip, limbs intact), FSM swaps back on `thirdperson off`.
+- Dash/grapple/knockback: every body-state lookup goes through
+  `CPlayerBodyController::PortFindBestAnimation` (borrows from character 0 when the PlayerAnimCtrl
+  FSM is active and character 3 has no match). Grappling in third person crashed (9038a8f6a): the
+  body's beam uses the multiplayer segment/swoosh generators, which only existed in multiplayer;
+  `CGrappleArm` now always creates them on PC and starts that beam at the scaled `L_wrist` locator.
+  Verified on Xvfb: side dash into/loop/exit, grapple fire/pull/swing with the beam from the hand.
+  Knockback is not checked in game (only `CPlayerKnockBackMgr` sends it; console `damage` doesn't).
 
 ## 2026-11-05: save states keep every script object's fields (why cutscene bugs kept coming)
 
