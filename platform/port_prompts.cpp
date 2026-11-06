@@ -936,6 +936,14 @@ const IconPixels* StablePixels(const IconSource* source) {
   if (both[0] == 0 || both[1] == 0 || bytes.size() - kHeader != size_t(both[0]) * both[1] * 4) {
     return nullptr;
   }
+  // The pixel format's bit count and R/G/B/A masks: only RGBA in byte order is uploaded raw. A
+  // user's BGRA or other DDS goes through the virtual path, whose DDS reader honours the masks.
+  uint32_t format[5] = {};
+  std::memcpy(format, bytes.data() + 88, sizeof(format));
+  if (format[0] != 32 || format[1] != 0x000000FF || format[2] != 0x0000FF00 || format[3] != 0x00FF0000 ||
+      format[4] != 0xFF000000) {
+    return nullptr;
+  }
   pixels.height = both[0];
   pixels.width = both[1];
   // The rows as the file stores them: Aurora's DDS reader uploads them unflipped too.

@@ -183,7 +183,8 @@ Things that took real effort to find out. AGENTS.md keeps a one-line index; the 
   sampler and `sPipelineLayout` (`gx.cpp`, PR #91: else the device outlives Steam's overlay layer and quit crashes), the dstAlpha alpha-only pass
   (`command_processor.cpp` `push_gx_draw`, `67f337a57`) and `AURORA_PRESENT_EVERY` (`aurora.cpp`
   end_frame), `PADIsDefaultMapping` (`pad.cpp`, MP1 e0808c4d5: saved pad presets reach controllers
-  connected later) and the empty-string fallback when `SDL_GetPrefPath` returns null for `userPath`/
+  connected later), `controller_mapping_path` (`pad.cpp`, PR #88: a `#`-name from Steam loads/saves the
+  newest `<name>_VVVV_PPPP.controller` for that VID/PID) and the empty-string fallback when `SDL_GetPrefPath` returns null for `userPath`/
   `cachePath` (`aurora.cpp` initialize). Windows: the user folder is `Metroid Prime 2 Echoes` (no `:`, which
   Windows rejects); with the old name Aurora's cachePath was null and the first run crashed in the
   Dawn cache's `fs_path_from_string` (win-startup-crash, CI 40572636384).
