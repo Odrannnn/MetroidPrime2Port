@@ -9,6 +9,7 @@
 #include "port_input_remap_ui.h"
 #include "port_freecam.h"
 #include "port_gyro_motion.h"
+#include "port_steam_triton.h"
 #include "port_harness.h"
 #include "port_input_map.h"
 #include "port_mouse.h"
@@ -39,6 +40,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstdio>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <memory>
@@ -509,6 +511,20 @@ void FillPadState(PortInput::RawState& raw, u32 port) {
   }
 }
 
+// Under Steam Input: the back buttons (SDL's paddles) of the physical controller behind Player 1's
+// virtual pad, which Aurora opens for its sensors and back buttons only; Steam's virtual pad has
+// none. With the Steam Input back buttons setting.
+uint32_t SteamPhysicalPaddles() {
+  if (!PortOverlay::SteamInputBackButtons()) return 0;
+  SDL_Gamepad* pad = PADGetSteamPhysicalGamepad(kPort);
+  if (pad == nullptr) return 0;
+  uint32_t bits = 0;
+  for (int b = SDL_GAMEPAD_BUTTON_RIGHT_PADDLE1; b <= SDL_GAMEPAD_BUTTON_LEFT_PADDLE2; ++b) {
+    if (SDL_GetGamepadButton(pad, static_cast<SDL_GamepadButton>(b))) bits |= 1u << b;
+  }
+  return bits;
+}
+
 void FillRawState(PortInput::RawState& raw, unsigned mouseHeld, bool focused) {
   int numKeys = 0;
   if (const bool* keys = SDL_GetKeyboardState(&numKeys)) {
@@ -517,6 +533,8 @@ void FillRawState(PortInput::RawState& raw, unsigned mouseHeld, bool focused) {
     }
   }
   FillPadState(raw, kPort);
+  // The back buttons of the controller behind Steam Input's virtual pad, which has none (Player 1).
+  raw.padButtons |= SteamPhysicalPaddles() | PortSteamTriton::Paddles();
 
   // Explicit console harness only. Real/default/custom bindings still arbitrate the raw pad.
   PortRadial::Point simulated;
@@ -1060,6 +1078,8 @@ void ReadRaw(PortInput::RawState& raw, int port) {
       raw.padAxes[a] = std::clamp(static_cast<float>(pad.axes[a]) / 32767.f, -1.f, 1.f);
     }
   }
+  // The back buttons of the controller behind Steam Input's virtual pad, which has none.
+  raw.padButtons |= SteamPhysicalPaddles() | PortSteamTriton::Paddles();
   raw.mouseButtons = (SDL_GetMouseState(nullptr, nullptr) & PortInputMap::kMouseButtonMask) << kMouseKeySlot;
   raw.touch = TouchBits(sTouchControls);
 }
@@ -1069,7 +1089,7 @@ std::vector<SPadInfo> ConnectedPads() {
   int count = 0;
   SDL_JoystickID* ids = SDL_GetGamepads(&count);
   for (int i = 0; ids != nullptr && i < count; ++i) {
-    if (SDL_IsJoystickVirtual(ids[i])) continue;
+    if (SDL_IsJoystickVirtual(ids[i]) || PADIsSteamPhysicalGamepad(ids[i])) continue;
     SPadInfo info;
     char buf[33] = {};
     SDL_GUIDToString(SDL_GetJoystickGUIDForID(ids[i]), buf, sizeof(buf));
@@ -1695,7 +1715,7 @@ struct GyroPort {
   const char* status = "off";
   bool calibrating = false;
   // The source the motion state belongs to: a pad's joystick instance id (never reused, unlike its
-  // pointer after a replug), or kPhoneSource; 0 for none.
+  // pointer after a replug), kPhoneSource or kSteamTritonSource; 0 for none.
   uint32_t motionSource = 0;
   bool hasAccel = false;
   uint64_t lastNs = 0;
@@ -1750,6 +1770,7 @@ constexpr double kManualCalibrationSeconds = 3.0;
 uint64_t sRecalibrateAtNs = 0;
 uint64_t sManualCalibrationEndNs = 0;
 constexpr uint32_t kPhoneSource = 0xFFFFFFFFu;
+constexpr uint32_t kSteamTritonSource = 0xFFFFFFFEu;
 SDL_Sensor* sPhoneGyro = nullptr;
 SDL_Sensor* sPhoneAccel = nullptr;
 // The phone sensors are searched again after a miss (a sensor can appear late), once a second.
@@ -1771,6 +1792,89 @@ int OrientationQuarters(SDL_DisplayOrientation orientation) {
 // Pitch (x, positive tilts the far edge up) and yaw (positive turns right) rates in rad/s from
 // the chosen source, after calibration and gyro space; false when there is none. dt is the time
 // since the last call.
+// Steam turns a controller's motion sensor off when its own layout uses no gyro (switching layouts
+// on a focus change can): the reports keep coming with the motion frozen while SDL still has the
+// sensors on, so its driver never asks again. A running sensor's readings always carry some noise,
+// so all six unchanged for 0.1 s is a frozen one: the sensors go off and on again (at most once a
+// second), which makes SDL's driver send the controller its IMU setting again (the Switch drivers'
+// SetSensorsEnabled do). Frozen readings are not used meanwhile. The Steam Controller and Deck,
+// read directly, have their own (port_steam_triton_hid.cpp WakeImu).
+struct SteamImuWatch {
+  float last[6] = {};
+  uint64_t changedNs = 0;
+  uint64_t wokeNs = 0;
+  uint64_t frozenNs = 0;
+  int wakes = 0;
+  bool frozen = false;
+};
+SteamImuWatch sSteamImu[kGyroPorts];
+
+double SecondsSinceStart(uint64_t ns) { return double(ns) * 1e-9; }
+
+bool SteamImuFrozen(int port, SDL_Gamepad* pad, const float gyro[3], const float accel[3], bool haveAccel) {
+  constexpr uint64_t kStaleNs = 100000000ull;
+  constexpr uint64_t kWakeEveryNs = 1000000000ull;
+  SteamImuWatch& w = sSteamImu[port];
+  const uint64_t now = SDL_GetTicksNS();
+  const float v[6] = {gyro[0], gyro[1], gyro[2], haveAccel ? accel[0] : 0.f, haveAccel ? accel[1] : 0.f,
+                      haveAccel ? accel[2] : 0.f};
+  if (w.changedNs == 0 || std::memcmp(v, w.last, sizeof(v)) != 0) {
+    std::memcpy(w.last, v, sizeof(v));
+    w.changedNs = now;
+    if (w.frozen) {
+      std::fprintf(stderr,
+                   "[gyro] t=%.1fs the motion sensor behind Steam Input is reporting again after %.2f s (%d wake%s)\n",
+                   SecondsSinceStart(now), double(now - w.frozenNs) * 1e-9, w.wakes, w.wakes == 1 ? "" : "s");
+      w.frozen = false;
+    }
+    return false;
+  }
+  if (now - w.changedNs < kStaleNs) {
+    return false;
+  }
+  if (!w.frozen) {
+    std::fprintf(stderr,
+                 "[gyro] t=%.1fs the motion sensor behind Steam Input stopped (Steam turned it off?); turning it "
+                 "back on (last gyro %+.2f %+.2f %+.2f rad/s)\n",
+                 SecondsSinceStart(now), v[0], v[1], v[2]);
+    w.frozen = true;
+    w.frozenNs = w.changedNs;
+    w.wakes = 0;
+  }
+  if (w.wokeNs == 0 || now - w.wokeNs >= kWakeEveryNs) {
+    w.wokeNs = now;
+    ++w.wakes;
+    SDL_SetGamepadSensorEnabled(pad, SDL_SENSOR_GYRO, false);
+    SDL_SetGamepadSensorEnabled(pad, SDL_SENSOR_ACCEL, false);
+    SDL_SetGamepadSensorEnabled(pad, SDL_SENSOR_GYRO, true);
+    SDL_SetGamepadSensorEnabled(pad, SDL_SENSOR_ACCEL, true);
+  }
+  return true;
+}
+
+// Player 1 behind Steam Input: logs when the physical controller behind its virtual pad comes or
+// goes (gyro and back buttons follow it), so a dropout shows in the log.
+void NoteSteamPhysical(int port, SDL_Gamepad* virtualPad, SDL_Gamepad* physical) {
+  static SDL_Gamepad* sLast[kGyroPorts] = {};
+  static bool sKnown[kGyroPorts] = {};
+  if (sKnown[port] && sLast[port] == physical) {
+    return;
+  }
+  const double t = SecondsSinceStart(SDL_GetTicksNS());
+  if (physical != nullptr) {
+    std::fprintf(stderr, "[gyro] t=%.1fs Player %d's Steam pad %04x:%04x reads the physical '%s' %04x:%04x\n", t,
+                 port + 1, SDL_GetGamepadVendor(virtualPad), SDL_GetGamepadProduct(virtualPad),
+                 SDL_GetGamepadName(physical) != nullptr ? SDL_GetGamepadName(physical) : "controller",
+                 SDL_GetGamepadVendor(physical), SDL_GetGamepadProduct(physical));
+  } else {
+    std::fprintf(stderr, "[gyro] t=%.1fs Player %d's Steam pad %04x:%04x has no physical controller behind it%s\n",
+                 t, port + 1, SDL_GetGamepadVendor(virtualPad), SDL_GetGamepadProduct(virtualPad),
+                 sKnown[port] ? " now" : "");
+  }
+  sLast[port] = physical;
+  sKnown[port] = true;
+}
+
 bool ReadGyroRates(int port, const GyroSettings& cfg, float& pitch, float& yaw, float dt) {
   GyroPort& st = sGyro[port];
   const int gyroSource = cfg.source;
@@ -1786,7 +1890,21 @@ bool ReadGyroRates(int port, const GyroSettings& cfg, float& pitch, float& yaw, 
   if (wantController) {
     // The player's pad: whichever controller Aurora has on this port, not the first one opened.
     const s32 padIndex = PADGetIndexForPort(static_cast<u32>(port));
-    if (SDL_Gamepad* pad = padIndex >= 0 ? PADGetSDLGamepadForIndex(static_cast<u32>(padIndex)) : nullptr) {
+    SDL_Gamepad* pad = padIndex >= 0 ? PADGetSDLGamepadForIndex(static_cast<u32>(padIndex)) : nullptr;
+    // Steam Input's virtual pad has no sensors: the physical controller behind it, which Aurora
+    // opens for its sensors only (a DualSense or a Switch controller), has them.
+    SDL_Gamepad* physical = pad != nullptr && !SDL_GamepadHasSensor(pad, SDL_SENSOR_GYRO)
+                                ? PADGetSteamPhysicalGamepad(static_cast<u32>(port))
+                                : nullptr;
+    // (Not for a Steam Controller or Deck: PortSteamTriton reads those and logs its own [steamctl].)
+    if (pad != nullptr && SDL_GetGamepadSteamHandle(pad) != 0 && SDL_GetGamepadVendor(pad) != 0x28de) {
+      NoteSteamPhysical(port, pad, physical);
+    }
+    const bool viaSteam = physical != nullptr;
+    if (viaSteam) {
+      pad = physical;
+    }
+    if (pad != nullptr) {
       if (SDL_GamepadHasSensor(pad, SDL_SENSOR_GYRO)) {
         // Asked per pad, so a reconnected or swapped pad gets its sensors on too.
         if (!SDL_GamepadSensorEnabled(pad, SDL_SENSOR_GYRO)) {
@@ -1794,16 +1912,28 @@ bool ReadGyroRates(int port, const GyroSettings& cfg, float& pitch, float& yaw, 
         }
         if (SDL_GetGamepadSensorData(pad, SDL_SENSOR_GYRO, gyro, 3)) {
           source = static_cast<uint32_t>(SDL_GetGamepadID(pad));
-          st.status = "controller";
+          st.status = viaSteam ? "controller (behind Steam Input)" : "controller";
           if (SDL_GamepadHasSensor(pad, SDL_SENSOR_ACCEL)) {
             if (!SDL_GamepadSensorEnabled(pad, SDL_SENSOR_ACCEL)) {
               SDL_SetGamepadSensorEnabled(pad, SDL_SENSOR_ACCEL, true);
             }
             haveAccel = SDL_GetGamepadSensorData(pad, SDL_SENSOR_ACCEL, accel, 3);
           }
+          if (viaSteam && SteamImuFrozen(port, pad, gyro, accel, haveAccel)) {
+            source = 0;
+            haveAccel = false;
+          }
         }
       }
     }
+  }
+
+  // A Steam Controller (2026) or Steam Deck behind Steam Input: read from its own reports
+  // (PortSteamTriton::Update opens it), not through SDL, whose drivers for them fight Steam.
+  if (source == 0 && wantController && port == 0 && PortSteamTriton::Motion(gyro, accel)) {
+    source = kSteamTritonSource;
+    haveAccel = true;
+    st.status = "controller (Steam Controller / Deck, read directly)";
   }
 
   if (source == 0 && wantPhone) {
@@ -1968,6 +2098,15 @@ void PollGyroPort(int port, uint64_t nowNs) {
   // Read before the button's check, as MP1 does, so calibration keeps learning while paused.
   if (!ReadGyroRates(port, cfg, pitch, yaw, dt)) {
     st.status = "no gyro found";
+    // A Steam Controller or Deck that is open but gives no motion says why.
+    if (port == 0 && (cfg.source == 0 || cfg.source == 1)) {
+      const PortSteamTriton::Stats sc = PortSteamTriton::GetStats();
+      if (sc.open && sc.notPlayerOne) {
+        st.status = "no gyro found (the Steam Controller / Deck is not Player 1's)";
+      } else if (sc.open && sc.imuOff) {
+        st.status = "Steam Controller / Deck motion sensor off (turning it on)";
+      }
+    }
     st.calibrating = false;
     return;
   }

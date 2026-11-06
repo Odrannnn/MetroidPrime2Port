@@ -119,6 +119,7 @@ int sPointerAimBox = PortOverlay::kPointerAimBoxDefault;
 int sPointerAimTurn = PortOverlay::kPointerAimTurnDefault;
 bool sGyroAim = false;
 int sGyroSource = PortOverlay::kGyroSourceDefault;
+bool sSteamInputBackButtons = true;
 int sGyroSpace = PortOverlay::kGyroSpaceDefault;
 int sGyroAutoCalibrate = PortOverlay::kGyroAutoCalibrateDefault;
 float sGyroSmoothing = 0.f;
@@ -1516,6 +1517,11 @@ void SetGyroAim(bool enabled) {
 int GyroSource() {
   ReadEnv();
   return EnvIntIn("MP2_GYRO_SOURCE", sGyroSource, 0, 2);
+}
+
+bool SteamInputBackButtons() {
+  ReadEnv();
+  return EnvBool("MP2_STEAM_INPUT_BACK_BUTTONS", sSteamInputBackButtons);
 }
 
 int GyroSpace() {

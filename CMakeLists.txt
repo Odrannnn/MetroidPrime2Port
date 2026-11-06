@@ -651,7 +651,7 @@ if(AURORA_SDL3_TARGET)
         platform/port_events.cpp platform/port_vpads.cpp platform/port_livesplit.cpp platform/port_harness.cpp platform/port_mouse.cpp
         platform/port_radial.cpp
         platform/port_warp.cpp platform/port_freecam.cpp platform/port_third_person.cpp platform/port_photo.cpp platform/port_console.cpp platform/port_overlay.cpp platform/port_map_pickups.cpp platform/port_disc_replace.cpp
-        platform/port_gyro_motion.cpp
+        platform/port_gyro_motion.cpp platform/port_steam_triton.cpp
         platform/port_dynamic_res.cpp platform/port_video.cpp platform/port_gpu_driver.cpp
         platform/port_data_folder.cpp
         platform/port_json.cpp platform/port_ws.cpp platform/port_update_check.cpp
@@ -663,7 +663,7 @@ if(AURORA_SDL3_TARGET)
         platform/debug_ui/window.cpp platform/debug_ui/touch_overlay.cpp
         platform/port_touch.cpp platform/port_touch_jni.cpp platform/touch_pad.cpp
         platform/input/port_input_remap_ui.cpp
-        platform/input/port_input_devices.cpp
+        platform/input/port_input_devices.cpp platform/input/port_steam_triton_hid.cpp
         platform/input/port_input_user_presets.cpp platform/input/port_input_user_presets_store.cpp
         platform/port_embedded.cpp platform/port_textures.cpp platform/port_zip.cpp platform/port_prompts.cpp
         platform/port_discord.cpp
@@ -971,6 +971,14 @@ if(AURORA_SDL3_TARGET)
     target_include_directories(port_gyro_motion_tests PRIVATE platform/include)
     add_test(NAME port_gyro_motion_tests COMMAND port_gyro_motion_tests)
     set_tests_properties(port_gyro_motion_tests PROPERTIES TIMEOUT 30 LABELS port)
+    # The Steam Controller (2026) and Steam Deck reports (platform/port_steam_triton.cpp): state
+    # reports captured from a controller, their axes and scaling, the back buttons and the IMU enable
+    # request.
+    add_executable(port_steam_triton_tests tests/port_steam_triton.cpp platform/port_steam_triton.cpp
+        platform/port_gyro_motion.cpp)
+    target_include_directories(port_steam_triton_tests PRIVATE platform/include)
+    add_test(NAME port_steam_triton_tests COMMAND port_steam_triton_tests)
+    set_tests_properties(port_steam_triton_tests PROPERTIES TIMEOUT 30 LABELS port)
     # The bindings parser/writer (platform/input/port_input_bindings.cpp): a controls file parses
     # into engine bindings and round-trips, with bad input rejected rather than half-applied.
     add_executable(port_input_bindings_tests tests/port_input_bindings.cpp
