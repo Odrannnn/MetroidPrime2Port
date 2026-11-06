@@ -3,38 +3,30 @@
 Written by `tools/gen_entity_schema.py`; do not edit. The table itself is
 `platform/generated/port_entity_schema.inc`, its types `platform/include/port_entity_schema.h`.
 
-243 classes (CEntity and every subclass a header defines), 6283 own fields; 4819 of them plain data (`statedump` writes those under `fields` when the object's `kTagFields` block saves them, else under `fields_other`).
+243 classes (CEntity and every subclass a header defines), 6290 own fields; 4823 of them plain data (`statedump` writes those under `fields` when the object's `kTagFields` block saves them, else under `fields_other`).
 
 | kind | fields |
 |---|---|
-| bool | 152 |
-| int | 1037 |
-| float | 1788 |
+| bool | 153 |
+| int | 1038 |
+| float | 1789 |
 | bitfield | 1001 |
 | math | 484 |
-| uid | 357 |
+| uid | 358 |
 | pod | 373 |
 | pointer | 61 |
-| smart_ptr | 399 |
+| smart_ptr | 401 |
 | container | 200 |
 | state_machine | 7 |
 | body_controller | 1 |
 | anim_data | 35 |
 | path_search | 26 |
-| other | 362 |
+| other | 363 |
 
 ## What a save keeps (`kTagFields`)
 
-Every script object (valid editor id) gets one `kTagFields` block in the room record, and so do
-the pickups and debris a generator made; doors and docks keep only their own blocks. Since
-2026-11-05 this is no longer just enemies: a mid-cutscene save came back with its keyframes, fades,
-sound modifiers and actor animations fresh, and each per-class block fixed only the one a bug
-report found. `SavedField` denies what follows the engine or this run rather than the room
-(timers are `kTagTimer`'s, trigger/area-damage player state, sound attachments, reverb slots,
-music, layer controllers, world teleporters, player actors' own fields, `*ThisFrame`).
-`tools/statecheck.py --gaps` lists the schema fields a round trip changed that the save does not
-keep (`--cinematics` lets a cutscene run); what is left there is render caches, tokens and clocks.
-`platform/port_savestate_fields.cpp` writes the block for the objects
+An enemy gets one `kTagFields` block in the room record, and so do the pickups and debris a
+generator made: `platform/port_savestate_fields.cpp` writes it for the objects
 `EntityFieldsSaved` names, and applies it in passes - the plain fields, the AI and body
 codecs, the animation, the path search, then the plain fields again over what entering the
 saved states changed. A class whose fingerprint changed since the save is skipped, not
@@ -85,7 +77,7 @@ get one: it names a runtime sound, so copying it restores nothing (`HANDLES` in
 - 9 `CRELFileToken`
 - 7 `CSurfaceAlignmentHelper`
 - 6 `CCollidableSphere`
-- 4 `CSfxHandle[2]`
+- 5 `CSfxHandle[2]`
 - 4 `CCameraShakerData`
 - 3 `CCameraColliderGroup`
 - 3 `CBurstFire`
@@ -193,7 +185,7 @@ the same way, in the command payload's own four bytes; older policies stay reada
 
 ## `smart_ptr` / `container` templates
 
-`rstl::single_ptr` 195, `rstl::optional_object` 136, `rstl::reserved_vector` 98, `rstl::vector` 84, `rstl::auto_ptr` 20, `TLockedToken` 20, `TToken` 12, `rstl::list` 8, `rstl::basic_string` 8, `TCachedToken` 6, `rstl::ncrc_ptr` 5, `CToken` 5, `rstl::pair` 2
+`rstl::single_ptr` 197, `rstl::optional_object` 136, `rstl::reserved_vector` 98, `rstl::vector` 84, `rstl::auto_ptr` 20, `TLockedToken` 20, `TToken` 12, `rstl::list` 8, `rstl::basic_string` 8, `TCachedToken` 6, `rstl::ncrc_ptr` 5, `CToken` 5, `rstl::pair` 2
 
 ## Not in the table
 

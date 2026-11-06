@@ -6486,8 +6486,15 @@ template <> const PortSchemaClass& PortEntitySchema::Describe< CScriptStreamedMo
       {"mSkipping", "bool", PortSchemaKind::bitfield, 1, kPortSchemaPrivate, 0, nullptr, PES_GETI(CScriptStreamedMovie, mSkipping), PES_SETI(CScriptStreamedMovie, mSkipping)},
       {"mSkipTime", "float", PortSchemaKind::float_, 0, kPortSchemaPrivate, sizeof(CScriptStreamedMovie::mSkipTime), PES_ADDR(CScriptStreamedMovie, mSkipTime), nullptr, nullptr},
       {"mMoviePlayer", "rstl::single_ptr<CMoviePlayer>", PortSchemaKind::smart_ptr, 0, kPortSchemaPrivate, sizeof(CScriptStreamedMovie::mMoviePlayer), PES_ADDR(CScriptStreamedMovie, mMoviePlayer), nullptr, nullptr},
+      {"mPortTitlePhase", "CScriptStreamedMovie::EPortTitlePhase", PortSchemaKind::int_, 0, kPortSchemaPrivate, sizeof(CScriptStreamedMovie::mPortTitlePhase), PES_ADDR(CScriptStreamedMovie, mPortTitlePhase), PES_GETI(CScriptStreamedMovie, mPortTitlePhase), PES_SETI(CScriptStreamedMovie, mPortTitlePhase)},
+      {"mPortTitleMusicDelay", "float", PortSchemaKind::float_, 0, kPortSchemaPrivate, sizeof(CScriptStreamedMovie::mPortTitleMusicDelay), PES_ADDR(CScriptStreamedMovie, mPortTitleMusicDelay), nullptr, nullptr},
+      {"mPortTitleIntro", "rstl::single_ptr<CMoviePlayer>", PortSchemaKind::smart_ptr, 0, kPortSchemaPrivate, sizeof(CScriptStreamedMovie::mPortTitleIntro), PES_ADDR(CScriptStreamedMovie, mPortTitleIntro), nullptr, nullptr},
+      {"mPortTitleLoop", "rstl::single_ptr<CMoviePlayer>", PortSchemaKind::smart_ptr, 0, kPortSchemaPrivate, sizeof(CScriptStreamedMovie::mPortTitleLoop), PES_ADDR(CScriptStreamedMovie, mPortTitleLoop), nullptr, nullptr},
+      {"mPortTitleMusic", "CSfxHandle[2]", PortSchemaKind::other, 0, kPortSchemaPrivate, sizeof(CScriptStreamedMovie::mPortTitleMusic), PES_ADDR(CScriptStreamedMovie, mPortTitleMusic), nullptr, nullptr},
+      {"mPortHeldMusic", "TUniqueId", PortSchemaKind::uid, 0, kPortSchemaPrivate, sizeof(CScriptStreamedMovie::mPortHeldMusic), PES_ADDR(CScriptStreamedMovie, mPortHeldMusic), nullptr, nullptr},
+      {"mPortTitleArrived", "bool", PortSchemaKind::bool_, 0, kPortSchemaPrivate, sizeof(CScriptStreamedMovie::mPortTitleArrived), PES_ADDR(CScriptStreamedMovie, mPortTitleArrived), PES_GETI(CScriptStreamedMovie, mPortTitleArrived), PES_SETI(CScriptStreamedMovie, mPortTitleArrived)},
   };
-  static const PortSchemaClass desc = {"CScriptStreamedMovie", "CActor", fields, 11, 0x2C9F25315A46C7AEull};
+  static const PortSchemaClass desc = {"CScriptStreamedMovie", "CActor", fields, 18, 0xA3D0B2DBDD390FAAull};
   return desc;
 }
 template <> const PortSchemaClass& PortEntitySchema::Describe< CScriptStreamedMusic >() {
@@ -8222,4 +8229,4 @@ const PortSchemaClass* const* PortEntitySchema::Classes(int& count) {
 }
 
 const int PortEntitySchema::kClassCount = 243;
-const int PortEntitySchema::kFieldCount = 6283;
+const int PortEntitySchema::kFieldCount = 6290;
