@@ -54,7 +54,8 @@ name, how many of the pack's textures the game has used so far (and how many fai
 R3M on Trilogy), the Use the texture pack switch (`texture_pack`), Reload texture pack and
 Import texture pack .zip... (desktop). Android: Choose texture pack folder... copies the pick to
 `<user>/user_textures.new`, which `PortTextures` swaps in (Remove texture pack deletes it). Console:
-`reloadmods`.
+`reloadmods`. `<user>/user_textures` is created at startup (MP1 sync 34), so there is a folder to drop a
+pack into; a low-memory sweep thins the pack's textures (docs/SETTINGS.md, Texture-pack memory).
 
 Reload is a savestate-style world restart: `PortSaveState::RequestModReload` writes the current state
 to the undo slot and loads it back; `CMainFlow` (`kCFS_Game`) calls `ReloadModsNow` after the old world

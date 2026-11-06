@@ -49,6 +49,16 @@ bool aurora_get_dawn_memory(AuroraDawnMemory* out);
 // Any thread: within a second, hand the GPU memory Dawn keeps for reuse back to the driver. The submit
 // thread also does it on its own once that memory grows by 64 MiB.
 void aurora_reduce_gpu_memory(void);
+// Windows: the adapter's local memory budget and this process's use of it (DXGI QueryVideoMemoryInfo;
+// on an integrated GPU, shared system memory). False elsewhere, or when DXGI can't say.
+bool aurora_get_gpu_memory_budget(uint64_t* budget, uint64_t* usage);
+// Any thread: the memory left before the system runs short (the smallest of free RAM, free commit
+// and the GPU budget, as the caller measured it), and the levels below which texture replacements
+// lighten their load. Under `moderateBytes` replacements idle for 10 s are freed and new loads stop
+// at 2048 px; under `severeBytes` all but the ones the last second drew are freed, new loads stop at
+// 1024 px and drawn ones above that reload smaller. The bytes replacements publish count against
+// `headroomBytes` until the next call. A level of 0 is off; both 0 (the default) turn this off.
+void aurora_set_memory_pressure(int64_t headroomBytes, int64_t moderateBytes, int64_t severeBytes);
 // Pipeline eviction (the pipeline cache keeps its rows, so an evicted pipeline rebuilds on its next draw).
 // Idle eviction: built pipelines no draw used for `idleFrames` frames are released; 0 turns it off.
 void aurora_set_pipeline_eviction(uint32_t idleFrames);

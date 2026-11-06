@@ -490,6 +490,12 @@ Video > Quality and Frame rate:
   frames) or `MP2_PIPELINE_TRIM_SEVERE_MIB` (default 512: those unused for 16 frames), at most
   every 30 s while it stays low. `MP2_PIPELINE_EVICT=<frames>` evicts pipelines unused for that
   many frames regardless of memory. Console `pipetrim [frames]` forces one eviction.
+- Texture-pack memory (env only, MP1 issue #266; `platform/port_memory_log.cpp`): each second the memory log
+  (Linux, Windows, Android) takes the smallest headroom of available memory, the commit limit (Windows) and
+  the GPU budget (Windows/DXGI) and hands it to Aurora. Under `MP2_TEXTURE_PRESSURE_MIB` (default 1024)
+  replacement textures unused for a while are dropped and reloads come back smaller; under `MP2_TEXTURE_PRESSURE_SEVERE_MIB` (default 512) more are dropped.
+  0 turns a level off. An Android low-memory warning does a severe sweep at once. The memory log line also
+  shows `commit` and `gpu` where known.
 - `dynamic_res`, `dynamic_res_target`, `dynamic_res_min`: Quality > Dynamic resolution (Off, Auto,
   User; the mode is `dynamic_res` with `render_scale`: Auto goes up to the window's own scale
   (`render_scale` 0), User up to the "Maximum resolution scale" set), Frame rate target (0 =

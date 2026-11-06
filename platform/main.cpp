@@ -1334,6 +1334,22 @@ int main(int argc, char** argv) {
                    trimMib, severeMib);
     }
   }
+  // Texture replacements (MP1 issue #266: an 8 GB PC with an HD pack ran out entering a room):
+  // under 1024 MiB of headroom (RAM, commit or the GPU budget, whichever is least) Aurora frees
+  // idle replacements and loads new ones smaller, under 512 MiB more of both. Overrides:
+  // MP2_TEXTURE_PRESSURE_MIB and MP2_TEXTURE_PRESSURE_SEVERE_MIB (0 turns a level off).
+  {
+    const int textureMib = port::EnvInt("MP2_TEXTURE_PRESSURE_MIB", 1024);
+    const int textureSevereMib = port::EnvInt("MP2_TEXTURE_PRESSURE_SEVERE_MIB", 512);
+    PortMemoryLog::SetTexturePressure(textureMib, textureSevereMib);
+    if (std::getenv("MP2_TEXTURE_PRESSURE_MIB") != nullptr ||
+        std::getenv("MP2_TEXTURE_PRESSURE_SEVERE_MIB") != nullptr) {
+      std::fprintf(stderr,
+                   "port: texture pressure under %d MiB headroom, severe under %d MiB "
+                   "(MP2_TEXTURE_PRESSURE_MIB/MP2_TEXTURE_PRESSURE_SEVERE_MIB)\n",
+                   textureMib, textureSevereMib);
+    }
+  }
   if (const char* env = std::getenv("MP2_PIPELINE_EVICT"); env != nullptr && env[0] != '\0') {
     config.pipelineEvictFrames = static_cast< uint32_t >(std::strtoul(env, nullptr, 10));
     std::fprintf(stderr, "port: pipeline eviction %u frames (MP2_PIPELINE_EVICT)\n",

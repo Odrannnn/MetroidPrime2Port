@@ -330,6 +330,11 @@ void Initialize(const char* root, const char* userRoot) {
   sUserOn = sUserEnabled.load(std::memory_order_acquire);
   DeleteStaleUserPacks();
   ApplyPendingUserPack();
+  // Made up front, like mods/, so the user has a folder to drop a pack into.
+  if (!sUser.root.empty()) {
+    std::error_code ec;
+    std::filesystem::create_directories(sUser.root, ec);
+  }
   Load(sBuiltIn, true);
   LoadUser(true);
   std::fprintf(stderr, "[textures] device '%s'; built-in set: %s; user pack: %s\n", sDevice.c_str(),

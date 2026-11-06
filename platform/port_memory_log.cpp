@@ -4,10 +4,23 @@
 
 #include <cstdio>
 
-#if defined(__linux__)
+#if defined(__linux__) || defined(_WIN32)
+#include <algorithm>
 #include <cstdlib>
 #include <cstring>
+#endif
+
+#if defined(__linux__)
 #include <unistd.h>
+#elif defined(_WIN32)
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN 1
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX 1
+#endif
+#include <windows.h>
+#include <psapi.h>
 #endif
 
 #if defined(__ANDROID__)
@@ -18,7 +31,7 @@
 #endif
 
 namespace PortMemoryLog {
-#if defined(__linux__)
+#if defined(__linux__) || defined(_WIN32)
 namespace {
 
 constexpr uint64_t kSampleNs = 1000000000ull;
@@ -26,6 +39,24 @@ constexpr uint64_t kPeriodNs = 30 * kSampleNs;
 constexpr int64_t kProcessJumpKb = 64 * 1024;
 constexpr int64_t kSystemJumpKb = 128 * 1024;
 
+struct ProcessMemory {
+  int64_t residentKb = -1;
+  int64_t commitKb = -1; // Windows: the private bytes this process charges against the commit limit
+};
+
+struct SystemMemory {
+  int64_t totalKb = -1;
+  int64_t availableKb = -1;
+  // Windows: the commit limit (RAM plus page file) and what is left of it. An allocation past it
+  // fails however much RAM is free, which is how an 8 GB PC with a small page file runs out.
+  int64_t commitLimitKb = -1;
+  int64_t commitAvailableKb = -1;
+  // Windows: the GPU's local memory budget and this process's use of it (shared RAM on an iGPU).
+  int64_t gpuBudgetKb = -1;
+  int64_t gpuUsageKb = -1;
+};
+
+#if defined(__linux__)
 // Resident size of this process, in KiB; -1 when /proc can't say.
 int64_t ProcessKb() {
   FILE* file = std::fopen("/proc/self/statm", "r");
@@ -39,10 +70,7 @@ int64_t ProcessKb() {
   return read == 2 ? resident * (sysconf(_SC_PAGESIZE) / 1024) : -1;
 }
 
-struct SystemMemory {
-  int64_t totalKb = -1;
-  int64_t availableKb = -1;
-};
+ProcessMemory ReadProcess() { return ProcessMemory{.residentKb = ProcessKb()}; }
 
 SystemMemory ReadSystem() {
   SystemMemory memory;
@@ -61,11 +89,66 @@ SystemMemory ReadSystem() {
   std::fclose(file);
   return memory;
 }
+#else
+ProcessMemory ReadProcess() {
+  ProcessMemory memory;
+  PROCESS_MEMORY_COUNTERS_EX counters{};
+  if (GetProcessMemoryInfo(GetCurrentProcess(), reinterpret_cast< PROCESS_MEMORY_COUNTERS* >(&counters),
+                           sizeof(counters))) {
+    memory.residentKb = static_cast< int64_t >(counters.WorkingSetSize / 1024);
+    memory.commitKb = static_cast< int64_t >(counters.PrivateUsage / 1024);
+  }
+  return memory;
+}
+
+int64_t ProcessKb() { return ReadProcess().residentKb; }
+
+SystemMemory ReadSystem() {
+  SystemMemory memory;
+  MEMORYSTATUSEX status{};
+  status.dwLength = sizeof(status);
+  if (GlobalMemoryStatusEx(&status)) {
+    memory.totalKb = static_cast< int64_t >(status.ullTotalPhys / 1024);
+    memory.availableKb = static_cast< int64_t >(status.ullAvailPhys / 1024);
+    memory.commitLimitKb = static_cast< int64_t >(status.ullTotalPageFile / 1024);
+    memory.commitAvailableKb = static_cast< int64_t >(status.ullAvailPageFile / 1024);
+  }
+  return memory;
+}
+#endif
+
+// The GPU budget needs the device, so the startup line goes without it.
+void ReadGpu(SystemMemory& memory) {
+  uint64_t budget = 0;
+  uint64_t usage = 0;
+  if (aurora_get_gpu_memory_budget(&budget, &usage)) {
+    memory.gpuBudgetKb = static_cast< int64_t >(budget / 1024);
+    memory.gpuUsageKb = static_cast< int64_t >(usage / 1024);
+  }
+}
+
+// What is left before something runs out: the least of free RAM, free commit and the GPU budget
+// (which can be overrun: DXGI then moves memory out, and an iGPU's comes out of RAM); -1 when
+// nothing could be read.
+int64_t HeadroomKb(const SystemMemory& memory) {
+  int64_t headroom = -1;
+  const auto consider = [&](int64_t kb) {
+    if (kb >= 0) {
+      headroom = headroom < 0 ? kb : std::min(headroom, kb);
+    }
+  };
+  consider(memory.availableKb);
+  consider(memory.commitAvailableKb);
+  if (memory.gpuBudgetKb >= 0 && memory.gpuUsageKb >= 0) {
+    consider(std::max< int64_t >(memory.gpuBudgetKb - memory.gpuUsageKb, 0));
+  }
+  return headroom;
+}
 
 long long Mib(int64_t kb) { return kb < 0 ? -1 : static_cast< long long >(kb / 1024); }
 
 // Pipeline retention under memory pressure (SetPipelinePressure). The check reuses Tick's
-// once-a-second /proc/meminfo sample, so it reads nothing of its own; a trim only raises Aurora's
+// once-a-second headroom sample, so it reads nothing of its own; a trim only raises Aurora's
 // request flag, and the eviction runs at the next frame start, as onTrimMemory's does.
 constexpr uint64_t kPressurePollNs = 5 * kSampleNs;
 // A level that holds trims again this often, so a moderate trim catches what went idle since.
@@ -74,6 +157,28 @@ constexpr uint32_t kModerateIdleFrames = 3600; // a minute at 60 fps: areas left
 constexpr uint32_t kSevereIdleFrames = 16;     // everything this frame and the last few don't draw
 int64_t sPressureModerateKb = 0;
 int64_t sPressureSevereKb = 0;
+
+// Texture replacements under memory pressure (SetTexturePressure): Aurora gets the headroom each
+// sample and frees idle replacements and loads smaller mips below these (MP1 issue #266).
+int64_t sTextureModerateKb = 0;
+int64_t sTextureSevereKb = 0;
+
+void CheckTexturePressure(int64_t headroomKb) {
+  static int sLastLevel = 0;
+  if ((sTextureModerateKb <= 0 && sTextureSevereKb <= 0) || headroomKb < 0) {
+    return;
+  }
+  aurora_set_memory_pressure(headroomKb * 1024, sTextureModerateKb * 1024, sTextureSevereKb * 1024);
+  const int level = sTextureSevereKb > 0 && headroomKb < sTextureSevereKb       ? 2
+                    : sTextureModerateKb > 0 && headroomKb < sTextureModerateKb ? 1
+                                                                                : 0;
+  if (level != sLastLevel) {
+    std::fprintf(stderr, "port: memory pressure: textures %s, %lld MiB headroom (moderate under %lld, severe under %lld)\n",
+                   level == 2 ? "severe" : level == 1 ? "moderate" : "off", Mib(headroomKb),
+                   Mib(sTextureModerateKb), Mib(sTextureSevereKb));
+    sLastLevel = level;
+  }
+}
 
 void CheckPipelinePressure(uint64_t nowNs, int64_t availableKb) {
   static uint64_t sLastPollNs = 0;
@@ -98,14 +203,14 @@ void CheckPipelinePressure(uint64_t nowNs, int64_t availableKb) {
   sLastTrimNs = nowNs;
   const uint32_t idle = level == 2 ? kSevereIdleFrames : kModerateIdleFrames;
   // Aurora's "pipeline cache: evicted N" line at the next frame start gives the count.
-  std::fprintf(stderr, "port: memory pressure: %s, system %lld MiB available (under %lld): trimming pipelines unused "
+  std::fprintf(stderr, "port: memory pressure: %s, %lld MiB headroom (under %lld): trimming pipelines unused "
                  "for %u frames\n",
                  level == 2 ? "severe" : "moderate", Mib(availableKb),
                  Mib(level == 2 ? sPressureSevereKb : sPressureModerateKb), idle);
   aurora_trim_pipelines(idle);
 }
 
-void WriteLine(int64_t processKb, const SystemMemory& system, bool textures) {
+void WriteLine(const ProcessMemory& process, const SystemMemory& system, bool textures) {
   char gpu[320] = "";
   if (textures) {
     AuroraTextureStats stats{};
@@ -123,8 +228,18 @@ void WriteLine(int64_t processKb, const SystemMemory& system, bool textures) {
                     static_cast< unsigned long long >(dawn.allocatorAllocated >> 20));
     }
   }
-  std::fprintf(stderr, "port: memory: process %lld MiB, system %lld of %lld MiB available%s\n", Mib(processKb),
-                 Mib(system.availableKb), Mib(system.totalKb), gpu);
+  char extra[160] = "";
+  int n = 0;
+  if (system.commitLimitKb >= 0) {
+    n = std::snprintf(extra, sizeof(extra), ", commit %lld of %lld MiB available (process %lld)",
+                      Mib(system.commitAvailableKb), Mib(system.commitLimitKb), Mib(process.commitKb));
+  }
+  if (system.gpuBudgetKb >= 0 && n >= 0 && static_cast< size_t >(n) < sizeof(extra)) {
+    std::snprintf(extra + n, sizeof(extra) - n, ", gpu %lld of %lld MiB budget used", Mib(system.gpuUsageKb),
+                  Mib(system.gpuBudgetKb));
+  }
+  std::fprintf(stderr, "port: memory: process %lld MiB, system %lld of %lld MiB available%s%s\n", Mib(process.residentKb),
+                 Mib(system.availableKb), Mib(system.totalKb), extra, gpu);
 }
 
 #if defined(__ANDROID__)
@@ -224,7 +339,7 @@ void LogStartup() {
 #if defined(__ANDROID__)
   LogPreviousExit();
 #endif
-  WriteLine(ProcessKb(), ReadSystem(), false);
+  WriteLine(ReadProcess(), ReadSystem(), false);
 }
 
 void Tick(uint64_t nowNs) {
@@ -236,19 +351,22 @@ void Tick(uint64_t nowNs) {
     return;
   }
   sLastSampleNs = nowNs;
-  const int64_t processKb = ProcessKb();
-  const SystemMemory system = ReadSystem();
-  CheckPipelinePressure(nowNs, system.availableKb);
+  const ProcessMemory process = ReadProcess();
+  SystemMemory system = ReadSystem();
+  ReadGpu(system);
+  const int64_t headroomKb = HeadroomKb(system);
+  CheckTexturePressure(headroomKb);
+  CheckPipelinePressure(nowNs, headroomKb);
   const bool due = sLastLineNs == 0 || nowNs - sLastLineNs >= kPeriodNs ||
-                   std::llabs(processKb - sLineProcessKb) >= kProcessJumpKb ||
+                   std::llabs(process.residentKb - sLineProcessKb) >= kProcessJumpKb ||
                    std::llabs(system.availableKb - sLineAvailableKb) >= kSystemJumpKb;
   if (!due) {
     return;
   }
   sLastLineNs = nowNs;
-  sLineProcessKb = processKb;
+  sLineProcessKb = process.residentKb;
   sLineAvailableKb = system.availableKb;
-  WriteLine(processKb, system, true);
+  WriteLine(process, system, true);
 }
 #else
 bool LowRamDevice(char* why, size_t whySize) {
@@ -262,9 +380,19 @@ void Tick(uint64_t) {}
 #endif
 
 void SetPipelinePressure(int64_t moderateMib, int64_t severeMib) {
-#if defined(__linux__)
+#if defined(__linux__) || defined(_WIN32)
   sPressureModerateKb = moderateMib > 0 ? moderateMib * 1024 : 0;
   sPressureSevereKb = severeMib > 0 ? severeMib * 1024 : 0;
+#else
+  (void)moderateMib;
+  (void)severeMib;
+#endif
+}
+
+void SetTexturePressure(int64_t moderateMib, int64_t severeMib) {
+#if defined(__linux__) || defined(_WIN32)
+  sTextureModerateKb = moderateMib > 0 ? moderateMib * 1024 : 0;
+  sTextureSevereKb = severeMib > 0 ? severeMib * 1024 : 0;
 #else
   (void)moderateMib;
   (void)severeMib;
@@ -299,6 +427,10 @@ extern "C" JNIEXPORT void JNICALL Java_org_metroidprime2_port_MetroidPrime2Activ
   if (level == -1 || level >= 10) {
     aurora_trim_pipelines(16);
     aurora_reduce_gpu_memory();
+    // No headroom until the next sample, a second away: one severe texture sweep.
+    if (PortMemoryLog::sTextureModerateKb > 0 || PortMemoryLog::sTextureSevereKb > 0) {
+      aurora_set_memory_pressure(0, PortMemoryLog::sTextureModerateKb * 1024, PortMemoryLog::sTextureSevereKb * 1024);
+    }
   }
 }
 #endif

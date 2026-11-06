@@ -11,6 +11,7 @@
 #include "png_io.hpp"
 #include "texture_convert.hpp"
 
+#include <aurora/gfx.h>
 #include <aurora/texture.hpp>
 #include <fmt/format.h>
 #include <tracy/Tracy.hpp>
@@ -21,6 +22,7 @@
 
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <charconv>
 #include <chrono>
 #include <condition_variable>
@@ -71,6 +73,43 @@ uint64_t replacement_cache_budget() noexcept {
     return std::max<uint64_t>(mb, 64) << 20;
   }();
   return value;
+}
+
+// Port: memory pressure (aurora_set_memory_pressure). The caller measures the headroom once a second; the
+// bytes published since count against it, so a room load's burst of full textures can't run past a level
+// before the next measurement sees it.
+std::atomic<int64_t> s_pressureHeadroom{INT64_MAX};
+std::atomic<int64_t> s_pressureModerate{0};
+std::atomic<int64_t> s_pressureSevere{0};
+std::atomic<int64_t> s_pressurePublished{0};
+constexpr uint32_t kModeratePressureMaxDim = 2048;
+constexpr uint32_t kSeverePressureMaxDim = 1024;
+
+int pressure_level() noexcept {
+  const int64_t headroom = s_pressureHeadroom.load(std::memory_order_relaxed);
+  const int64_t published = s_pressurePublished.load(std::memory_order_relaxed);
+  const int64_t left = headroom == INT64_MAX ? INT64_MAX : headroom - published;
+  const int64_t severe = s_pressureSevere.load(std::memory_order_relaxed);
+  const int64_t moderate = s_pressureModerate.load(std::memory_order_relaxed);
+  return severe > 0 && left < severe ? 2 : moderate > 0 && left < moderate ? 1 : 0;
+}
+
+uint32_t pressure_max_dim(int level) noexcept {
+  return level >= 2 ? kSeverePressureMaxDim : level == 1 ? kModeratePressureMaxDim : 0;
+}
+
+// replacement_max_dim(), lowered while memory runs short.
+uint32_t effective_max_dim() noexcept {
+  const uint32_t base = replacement_max_dim();
+  const uint32_t pressure = pressure_max_dim(pressure_level());
+  return base == 0 ? pressure : pressure == 0 ? base : std::min(base, pressure);
+}
+
+// Whether a texture of this size and mip count would load smaller under `maxDim`: a mip that fits exists.
+// A chain cut short loads whole whatever the limit, so reloading it would only load the same again.
+bool loads_smaller(uint32_t width, uint32_t height, uint32_t mips, uint32_t maxDim) noexcept {
+  const uint32_t largest = std::max(width, height);
+  return maxDim != 0 && largest > maxDim && mips > 1 && (largest >> (mips - 1)) <= maxDim;
 }
 constexpr uint64_t kReplacementWildcardTextureHash = kWildcardTextureHash;
 constexpr uint64_t kReplacementWildcardTlutHash = kWildcardTlutHash;
@@ -821,9 +860,9 @@ std::optional<gfx::dds::MipTail> load_thumbnail(const EntryLoadSnapshot& entry) 
   return gfx::dds::parse_dds_mip_tail({bytes.data(), bytes.size()}, gx::texture::ReplacementThumbnailDim);
 }
 
-// A full load, from the first mip that fits replacement_max_dim() when one is set.
+// A full load, from the first mip that fits effective_max_dim() when one is set.
 std::optional<gfx::ConvertedTexture> load_full_replacement(const EntryLoadSnapshot& entry) noexcept {
-  if (const uint32_t maxDim = replacement_max_dim(); maxDim != 0 && is_dds_entry(entry)) {
+  if (const uint32_t maxDim = effective_max_dim(); maxDim != 0 && is_dds_entry(entry)) {
     std::optional<gfx::dds::MipTail> tail;
     if (entry.kind == EntryKind::File) {
       tail = gfx::dds::load_dds_mip_tail(entry.path, maxDim);
@@ -954,9 +993,10 @@ void stop_worker_pool() {
   s_readyPublishes.clear();
 }
 
-void queue_full_load(const EntryLoadSnapshot& entry) {
+// False when the load was already queued (it moves to the front instead).
+bool queue_full_load(const EntryLoadSnapshot& entry) {
   if constexpr (!gx::texture::AsyncTextureReplacements) {
-    return;
+    return false;
   }
   start_worker_pool();
   std::lock_guard lock{s_jobMutex};
@@ -964,10 +1004,11 @@ void queue_full_load(const EntryLoadSnapshot& entry) {
   const auto [it, inserted] = s_pendingFullLoads.emplace(entry.id, priority);
   if (!inserted) {
     it->second = priority;
-    return;
+    return false;
   }
   s_highPriorityJobs.push_back({.tier = Tier::Full, .entry = entry});
   s_jobCv.notify_one();
+  return true;
 }
 
 void queue_thumbnail_load(const EntryLoadSnapshot& entry) {
@@ -1857,11 +1898,82 @@ void shutdown() noexcept {
 // so a session's replacement memory climbed room by room. A replacement nothing else holds
 // any more (the texture object caches let go of a texture some seconds after its last use)
 // and not looked up for a minute is freed; it loads again if a room asks for it.
+//
+// Under memory pressure (aurora_set_memory_pressure) it sweeps once a second and at once when the level
+// rises: moderate frees the replacements nothing holds that no frame looked up for 10 s, severe the ones
+// the last second didn't, and reloads the drawn ones above the severe size limit at that limit.
+void sweep_pressure_cache(int level) noexcept {
+  constexpr uint64_t kModerateIdleFrames = 600;
+  constexpr uint64_t kSevereIdleFrames = 60;
+  constexpr uint64_t kLogFrames = 600;
+  constexpr uint64_t kReduceFrames = 300;
+  static uint64_t s_freedCount = 0;
+  static uint64_t s_freedBytes = 0;
+  static uint64_t s_reloads = 0;
+  static uint64_t s_lastLogFrame = 0;
+  static uint64_t s_lastReduceFrame = 0;
+  const uint64_t idleFrames = level >= 2 ? kSevereIdleFrames : kModerateIdleFrames;
+  const uint32_t maxDim = level >= 2 ? effective_max_dim() : 0;
+  uint64_t freedBytes = 0;
+  {
+    std::lock_guard lock{s_registryMutex};
+    for (auto lru = s_replacementLru.end(); lru != s_replacementLru.begin();) {
+      --lru;
+      const auto cache = s_cacheByKey.find(*lru);
+      if (cache == s_cacheByKey.end()) {
+        continue;
+      }
+      if (cache->second.handle.use_count() > 1 || s_replacementFrame - cache->second.lastUseFrame < idleFrames) {
+        const auto& handle = cache->second.handle;
+        if (maxDim != 0 && cache->second.tier == Tier::Full && handle &&
+            loads_smaller(handle->size.width, handle->size.height, handle->mipCount, maxDim)) {
+          if (const auto* entry = find_selected_entry_locked(*lru); entry != nullptr && entry->id == cache->second.id) {
+            if (const auto snapshot = snapshot_entry(*lru, *entry); is_dds_entry(snapshot) && queue_full_load(snapshot)) {
+              ++s_reloads;
+            }
+          }
+        }
+        continue;
+      }
+      const auto key = *lru;
+      lru = std::next(lru);
+      ++s_freedCount;
+      freedBytes += cache->second.bytes;
+      erase_cache_locked(key);
+    }
+  }
+  s_freedBytes += freedBytes;
+  // Dawn keeps the heaps of freed textures for reuse; hand them back while memory is short.
+  if (freedBytes != 0 && s_replacementFrame - s_lastReduceFrame >= kReduceFrames) {
+    s_lastReduceFrame = s_replacementFrame;
+    aurora_reduce_gpu_memory();
+  }
+  if ((s_freedCount != 0 || s_reloads != 0) && s_replacementFrame - s_lastLogFrame >= kLogFrames) {
+    s_lastLogFrame = s_replacementFrame;
+    Log.info("texture_replacement: memory pressure ({}): freed {} replacements ({} MiB), reloading {} above {} px",
+             level >= 2 ? "severe" : "moderate", s_freedCount, s_freedBytes >> 20, s_reloads,
+             effective_max_dim());
+    s_freedCount = 0;
+    s_freedBytes = 0;
+    s_reloads = 0;
+  }
+}
+
 void sweep_idle_cache() noexcept {
   constexpr uint64_t kSweepFrames = 600;
+  constexpr uint64_t kPressureSweepFrames = 60;
   constexpr uint64_t kIdleFrames = 3600;
   constexpr uint64_t kKeepBytes = uint64_t(256) << 20;
-  if (++s_replacementFrame % kSweepFrames != 0) {
+  static int s_lastLevel = 0;
+  ++s_replacementFrame;
+  const int level = pressure_level();
+  if (level != 0 && (level > s_lastLevel || s_replacementFrame % kPressureSweepFrames == 0)) {
+    s_lastLevel = level;
+    sweep_pressure_cache(level);
+    return;
+  }
+  s_lastLevel = level;
+  if (s_replacementFrame % kSweepFrames != 0) {
     return;
   }
   std::lock_guard lock{s_registryMutex};
@@ -1951,6 +2063,16 @@ StreamingStats process_streaming() noexcept {
       continue;
     }
 
+    // Loaded before memory ran short (or before it ran shorter): load it again at the current limit
+    // rather than publish the larger one. The thumbnail stays drawn meanwhile.
+    if (const uint32_t maxDim = effective_max_dim();
+        is_dds_entry(completion.entry) &&
+        loads_smaller(completion.texture->width, completion.texture->height, completion.texture->mips, maxDim)) {
+      finish_full_load(completion.entry.id);
+      queue_full_load(completion.entry);
+      continue;
+    }
+
     const uint64_t bytes = converted_upload_bytes(*completion.texture);
     if (!publish_fits_budget(stats.publishes, stats.publishBytes, bytes)) {
       deferred.push_back(std::move(completion));
@@ -1977,6 +2099,8 @@ StreamingStats process_streaming() noexcept {
     gx::texture::invalidate_bindings();
     ++stats.publishes;
     stats.publishBytes += bytes;
+    s_pressurePublished.fetch_add(static_cast<int64_t>(std::min<uint64_t>(bytes, INT64_MAX)),
+                                  std::memory_order_relaxed);
   }
   s_readyPublishes = std::move(deferred);
   stats.pendingLoads = pending_full_load_count();
@@ -2106,3 +2230,11 @@ bool wait_for_completions(uint64_t id, uint32_t count, uint32_t timeoutMs) noexc
 }
 } // namespace testing
 } // namespace aurora::gfx::texture_replacement
+
+void aurora_set_memory_pressure(int64_t headroomBytes, int64_t moderateBytes, int64_t severeBytes) {
+  using namespace aurora::texture;
+  s_pressureModerate.store(std::max<int64_t>(moderateBytes, 0), std::memory_order_relaxed);
+  s_pressureSevere.store(std::max<int64_t>(severeBytes, 0), std::memory_order_relaxed);
+  s_pressurePublished.store(0, std::memory_order_relaxed);
+  s_pressureHeadroom.store(headroomBytes, std::memory_order_relaxed);
+}
