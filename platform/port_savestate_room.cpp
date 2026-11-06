@@ -1205,6 +1205,11 @@ int ApplyRoomState(CStateManager& mgr, const RoomState& room, RoomApplyProgress&
         stats.fields += set;
         log.Note(d.obj->editorId, "fields restored");
         ++stats.changed;
+        // The fields may have moved, shown or hidden the actor: the collision lists take its bounds
+        // again on the next sort (states written before mNotInSortedLists was left out saved it).
+        if (CActor* actor = TCastToPtr< CActor >(ent)) {
+          actor->SetTransformDirty();
+        }
       }
     }
     // After the fields: entering the saved states changed the materials too.

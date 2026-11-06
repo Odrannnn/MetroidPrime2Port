@@ -708,8 +708,11 @@ struct PortStateCodec {
     if (anim >= static_cast< int >(a->mCharInfo.GetAnimationIndexList().size())) {
       return false;
     }
+    // Without a transition (noTrans): the rebuilt actor's own animation must not blend into the saved
+    // one, as a transition tree that is not animating (a finished one-shot: the Landing Site statue's
+    // eye) stays at its start, near the old pose, and its phase is not the saved animation's.
     if (anim >= 0 && anim != a->GetCurrentAnimation()) {
-      a->SetAnimation(CAnimPlaybackParms(anim, -1, 1.f, (bits & 2) != 0), false);
+      a->SetAnimation(CAnimPlaybackParms(anim, -1, 1.f, (bits & 2) != 0), true);
       changed = true;
     }
     a->mLoop = (bits & 1) != 0;
@@ -839,11 +842,13 @@ bool SavedField(const PortSchemaClass& cls, const PortSchemaField& f) {
       std::strstr(f.name, "ThisFrame") != nullptr) {
     return false;
   }
+  // Not mNotInSortedLists (GetTransformDirty): SetTransform sets it and CStateManager's
+  // UpdateActorInSortedLists clears it once the actor's bounds are in the collision lists. A saved
+  // false put back after a restore moved or reactivated the actor left those lists on the rebuilt
+  // room's pose: a platform drawn at its saved place with no collision there.
   if (std::strcmp(cls.name, "CActor") == 0) {
     return Named(f.name, {"mModelData", "mDrawFlags", "mMuted", "mCallTouch", "mRenderParticleDBInside",
-                          "mTargetableVisorFlags", "mEnableRender", "mDrawEnabled", "mDoTargetDistanceTest",
-                          // Render-sort cache: SetTransform sets it, the next sort clears it.
-                          "mNotInSortedLists"});
+                          "mTargetableVisorFlags", "mEnableRender", "mDrawEnabled", "mDoTargetDistanceTest"});
   }
   if (std::strcmp(cls.name, "CPhysicsActor") == 0) {
     // Motion too, though kTagMotion has velocity and momentum: these are applied after the
