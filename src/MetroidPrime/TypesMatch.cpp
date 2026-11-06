@@ -449,6 +449,10 @@ const CGameCamera* CCameraManager::CastGameCameratoFirstPersonCamera(const CGame
 }
 
 CAST_TO_PTR_IMPL(CFirstPersonCamera, kET_FirstPersonCamera)
+#ifdef TARGET_PC
+// Port: third person's CGameCamera::ConvertToScreenSpace casts by reference; retail has no such cast.
+CAST_TO_REF_IMPL(CFirstPersonCamera, kET_FirstPersonCamera)
+#endif
 CAST_TO_REF_IMPL(CFixedCamera, kET_FixedCamera)
 CAST_TO_PTR_IMPL(CFixedCamera, kET_FixedCamera)
 CAST_TO_REF_IMPL(CFishCloud, kET_FishCloud)

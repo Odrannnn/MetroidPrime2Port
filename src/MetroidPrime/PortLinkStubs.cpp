@@ -38,10 +38,6 @@ extern "C" __attribute__((weak)) void mpReachStub(const char* mangled, const cha
 
 // --- appended by tools/restub_reach.py on 2026-10-08T00:23:15 ---
 // Unresolved symbols one boot-probe link asked for. Diagnostic only; see the file header.
-// CFirstPersonCamera* TCastToPtr<CFirstPersonCamera>(CEntity&)
-extern "C" void reachstub_10() asm("_Z10TCastToPtrI18CFirstPersonCameraEPT_R7CEntity");
-extern "C" void reachstub_10() { mpReachStub("_Z10TCastToPtrI18CFirstPersonCameraEPT_R7CEntity", "CFirstPersonCamera* TCastToPtr<CFirstPersonCamera>(CEntity&)"); }
-
 // DebugDrawAABox(CAABox const&, float, float, float, float)
 // (removed: retail's body at DOL 0x80083FDC is a bare `blr`, and the real definition now lives in
 // src/Kyoto/Graphics/PortDrawDebug.cpp.)
