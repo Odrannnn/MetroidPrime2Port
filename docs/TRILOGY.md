@@ -104,6 +104,11 @@ Real crash found by the trace: Trilogy FRME v5 text panes carry 9 more bytes (2 
 after `scaleToViewport`; `CGuiTextPane::Create` skips them for `version >= 5` (TARGET_PC).
 TARGET_PC guards: `CScriptGuiScreen.cpp` `StartMultiplayerGame`/`UpdateUnlocks` (null switches/menus/teleporters;
 the `[mp] start:` stderr line was dropped in `d90bd61c3`), `CWorldLayerState::GetLayerCount` (arena worlds have no SAVW layer table).
+Match end (2026-11-06, #76 comment): continuing from the results screen crashed in `CScriptGuiMenu::SetSelection`
+(USA and PAL Trilogy, not a font issue: every results-screen FONT/model exists on both). The front end's return path
+(`CScriptGuiScreen`, previous game was Coin/DeathMatch) sets each player's invert/rumble menu before that menu's own
+AreaLoaded built `mItems`, so retail indexes an empty list. TARGET_PC: `SetSelection` builds the list first and skips
+out-of-range indices. Verified on Xvfb, both rvz: Deathmatch, console `mpend`, A on results -> Game Mode, menus work.
 GC USA 2-player start was not reproduced through the GC front-end wheel (stick-direction selection, would not
 reach Multiplayer in 5 attempts); GC FRME is v4 so the text-pane change does not touch it.
 

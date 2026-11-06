@@ -216,6 +216,18 @@ void CScriptGuiMenu::SetSelection(int idx, CStateManager& mgr) {
     return;
   }
 
+#ifdef TARGET_PC
+  // Port: the multiplayer return sets the setup menus before their own AreaLoaded built the item
+  // list (retail reads the empty list's null data); build it now, and skip an index it lacks.
+  BuildItemList(mgr);
+  if (idx == mSelection || idx < 0 || idx >= static_cast< int >(mItems.size())) {
+    return;
+  }
+  if (mSelection < 0 || mSelection >= static_cast< int >(mItems.size())) {
+    mSelection = idx;
+    return;
+  }
+#endif
   TUniqueId oldId = mItems[mSelection];
   CEntity* oldItem = mgr.ObjectById(oldId);
   mgr.SendScriptMsg(oldItem, GetUniqueId(), kSM_Close);
