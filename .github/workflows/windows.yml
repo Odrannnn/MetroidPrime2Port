@@ -181,6 +181,8 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path dist | Out-Null
           Copy-Item build-win/metroid_prime2_port.exe dist/
+          python tools/write_recomplauncher.py --platform windows dist/recomplauncher.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           # The button-prompt textures are built into the executable (MP_EMBED_RESOURCES), so the
           # zip carries no loose copies.
           Get-ChildItem build-win/*.dll | Copy-Item -Destination dist/

@@ -76,6 +76,10 @@ for every setting.
 On Linux the AppImage bundles no libraries: FreeType, libpng and a Vulkan
 driver, X11 or Wayland come from the system.
 
+## RecompLauncher
+
+Desktop archives include a project-owned profile for disc selection, launch, settings and save discovery. The standalone Linux AppImage embeds the same build's profile at its filesystem root. For launcher versions that need a separate manifest, use the AppImage compatibility archive, which includes the JSON beside the image.
+
 ## Running
 
 ```sh
