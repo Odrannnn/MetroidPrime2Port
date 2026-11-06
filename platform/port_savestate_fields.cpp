@@ -708,8 +708,11 @@ struct PortStateCodec {
     if (anim >= static_cast< int >(a->mCharInfo.GetAnimationIndexList().size())) {
       return false;
     }
+    // Without a transition (noTrans): the rebuilt actor's own animation must not blend into the saved
+    // one, as a transition tree that is not animating (a finished one-shot: the Landing Site statue's
+    // eye) stays at its start, near the old pose, and its phase is not the saved animation's.
     if (anim >= 0 && anim != a->GetCurrentAnimation()) {
-      a->SetAnimation(CAnimPlaybackParms(anim, -1, 1.f, (bits & 2) != 0), false);
+      a->SetAnimation(CAnimPlaybackParms(anim, -1, 1.f, (bits & 2) != 0), true);
       changed = true;
     }
     a->mLoop = (bits & 1) != 0;
