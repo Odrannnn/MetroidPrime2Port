@@ -45,6 +45,7 @@
 
 #ifdef TARGET_PC
 #include "port_motion_watch.h"
+#include "port_third_person.h"
 #endif
 
 static const CMaterialList BallTransitionInclude = CMaterialList(kMT_Solid);
@@ -1832,8 +1833,15 @@ void CPlayer::UpdateTransitionFilter(float dt, CStateManager& mgr) {
 
 void CPlayer::UpdateMorphBallTransition(float dt, CStateManager& mgr) {
   const EPlayerMorphBallState morphState = mMorphBallState;
+#ifdef TARGET_PC
+  // Port: the third-person body is seen from the first-person camera, so its locomotion
+  // animation runs as it does in multiplayer (root motion still only during morph transitions).
+  if (mgr.IsMultiplayer() || !mBodyController->IsLocomotionActive() ||
+      !mgr.GetCameraManager(mPlayerIndex)->IsInFPCamera() || PortThirdPerson::ShowBody(mgr)) {
+#else
   if (mgr.IsMultiplayer() || !mBodyController->IsLocomotionActive() ||
       !mgr.GetCameraManager(mPlayerIndex)->IsInFPCamera()) {
+#endif
     const CAdvancementDeltas deltas = UpdateAnimation(dt, mgr, true);
     if (mBodyController->IsMorphTransitionActive()) {
       MoveInOneFrameOR(deltas.GetOffsetDelta(), dt);
