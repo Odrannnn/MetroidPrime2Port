@@ -146,6 +146,9 @@ public:
     mPortPointerAimPoint = point;
   }
   void PortAimShotAtPointer(CTransform4f& xf) const;
+  // Third person: a shot's world transform starts at the body's cannon and heads for the locked
+  // target or the point under the camera's centre ray.
+  void PortShotFromThirdPersonCannon(CStateManager& mgr, CTransform4f& xf) const;
   // Lock-on free aim: a shot aimed off the combat lock's centre does not home on the lock.
   bool PortShotOffLock(CStateManager& mgr) const;
   TUniqueId PortHomingTargetId(CStateManager& mgr);

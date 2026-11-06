@@ -288,6 +288,8 @@ public:
   float GetRadarXYRadiusOverride() const { return mRadarXYRadiusOverride; }
   float GetRadarZRadiusOverride() const { return mRadarZRadiusOverride; }
 #ifdef TARGET_PC
+  // Third person: a shot from the body's cannon heads for the locked target's assisted aim.
+  const CVector3f& PortAssistedTargetAim() const { return mAssistedTargetAim; }
   // Inlined in retail (SwampBossStage2 fn_79_9F4C writes the three fields directly).
   void SetRadarRadiusOverride(float xy, float z) {
     mOverrideRadarRadius = true;

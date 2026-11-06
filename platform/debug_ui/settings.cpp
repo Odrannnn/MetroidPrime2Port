@@ -17,6 +17,7 @@
 #include "port_settings.h"
 #include "port_suit_colours.h"
 #include "port_textures.h"
+#include "port_third_person.h"
 #include "port_update_check.h"
 #include "port_video.h"
 
@@ -539,6 +540,17 @@ const SettingKey kSettingKeys[] = {
     BoolKey< &sCardBackup >("card_backup"),
     BoolKey< &sLogFile >("log_file"),
     BoolKey< &sHideHelmet >("no_helmet"),
+    {"third_person", [](const std::string& value) { PortThirdPerson::SetEnabled(ParseBool(value)); },
+     [](std::ostream& out) { WriteBool(out, PortThirdPerson::Enabled()); }, false, "1", "0"},
+    {"third_person_distance",
+     [](const std::string& value) { PortThirdPerson::SetDistance(std::strtof(value.c_str(), nullptr)); },
+     [](std::ostream& out) { out << PortThirdPerson::GetParams().distance; }, false, "2.5", "4"},
+    {"third_person_shoulder",
+     [](const std::string& value) { PortThirdPerson::SetShoulder(std::strtof(value.c_str(), nullptr)); },
+     [](std::ostream& out) { out << PortThirdPerson::GetParams().shoulder; }, false, "0.7", "-0.5"},
+    {"third_person_height",
+     [](const std::string& value) { PortThirdPerson::SetHeight(std::strtof(value.c_str(), nullptr)); },
+     [](std::ostream& out) { out << PortThirdPerson::GetParams().height; }, false, "0.5", "0"},
     {"trilogy_radial_selectors",
      [](const std::string& value) { PortOverlay::SetTrilogyRadialSelectors(ParseBool(value)); },
      [](std::ostream& out) { WriteBool(out, sTrilogyRadialSelectors); }, false, "1", "0"},

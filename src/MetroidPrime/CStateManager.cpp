@@ -171,6 +171,7 @@
 #include "port_console.h"
 #endif
 #include "port_freecam.h"
+#include "port_third_person.h"
 #endif
 
 #include <alloca.h>
@@ -1505,7 +1506,9 @@ void CStateManager::DrawWorld(const CInGameGuiManagerSet& gui) {
     // corner. Morph ball and scripted cameras keep their own FOVs. The cannon's FOV is a setting
     // (MP1 ae213ea30, retail 55), and "Arm cannon follows FOV" keeps the world's projection.
     const CGameCamera& gunCam = *mCameraManager->GetCurrentCamera(*this, true);
-    const bool gunFov = mCameraManager->IsInFPCamera() && PortOverlay::GunOwnFov(gunCam.GetFov());
+    // Not in third person: its grapple beam leaves the body's hand, in the world's view.
+    const bool gunFov = mCameraManager->IsInFPCamera() && !PortThirdPerson::Active() &&
+                        PortOverlay::GunOwnFov(gunCam.GetFov());
     const CGraphics::CProjectionState gunProj = CGraphics::GetProjectionState();
     if (gunFov) {
       const CViewport& gunViewport = CGraphics::GetViewport();
@@ -2500,6 +2503,7 @@ CStateManager::~CStateManager() {
   // update clears it once this manager is gone, until the front end's or the next game's publishes.
   PortOverlay::SetGameState(0u, -1, nullptr);
   PortSaveState::Forget(this);
+  PortThirdPerson::Reset();
 #endif
   mTearingDown = true;
   CMemory::OffsetFakeStatics(-(mObjectLists.size() * sizeof(CObjectList) +
@@ -4687,6 +4691,10 @@ void CStateManager::Update(float inputDt, CArchitectureQueue& queue) {
     for (uint player = 0; player < mNumPlayers; ++player) {
       mCameraManagers[player]->Update(cameraDt, *this);
     }
+#ifdef TARGET_PC
+    // Port: the third-person camera follows the first-person one it moves back from.
+    PortThirdPerson::Update(*this, cameraDt);
+#endif
   }
   ThinkNewObjects(dt);
   if (mGameState != kGS_Paused) {

@@ -165,7 +165,7 @@ Statuses:
 | Apply suit colours | video.cpp:141 | video.cpp, "Apply suit colours" beside Random | SAME (f1-video): label, always shown, disabled until pending, MP1's tooltip role; shows "Applying..." during the reload |
 | Scan image spread | video.cpp:164 | "Scan image spread" (video.cpp), "Widest HUD spread" | SAME (f1-video): label and tooltip as MP1; Echoes keeps the slider disabled while the widescreen HUD is off |
 | Custom crosshair colour | video.cpp:216 | video.cpp, after Crosshair style (inside the aim-crosshair block) | SAME (f1-video): checkbox + colour picker; the backend (`PortOverlay::CrosshairColor`, `crosshair_color` keys, CTargetReticles) already existed |
-| Third-person camera | video.cpp:239 | — | SKIPPED (f1-video): MP1 `PortThirdPerson` (202 + body lines) hooks CStateManager, CGameCamera, CTargetReticles and a Samus body model; none of those hooks exist in Echoes and the body/arm-hiding needs its player model. Too large for a row package; needs its own package. |
+| Third-person camera | video.cpp:239 | video.cpp; `platform/port_third_person.cpp` (from MP1, no body module: Echoes draws CPlayer's own model) | DONE (Xvfb 2026-11-06: walk, turn, lock-on reticle on the target, locked shot hits it, toggle off/on): single player only; hooks CStateManager (update, gun FOV), CGameCamera::ConvertToScreenSpace, CPlayer (body, cannon at GUN_LCTR), CPlayerGun (shot origin), CPlayerOrbit (target search), CTargetReticles, CInGameGuiManager (helmet). No morph-ball camera handoff, no charge/muzzle effects on the body. Persisted as `third_person` |
 | Field of view | video.cpp:254 | video.cpp:196 | SAME |
 | Sun shadows, projected actor shadows | video.cpp:459,465 | — | MP1-ONLY: Remastered render backends |
 | HD font | video.cpp:602 | — | MP1-ONLY: font from a Remastered import |
@@ -284,7 +284,7 @@ checks.
 4. **Video rows.**
    - Files: `video.cpp`, `settings.cpp`.
    - Rows: sharp scan window, suit-coloured morph balls, apply suit colours, scan image spread,
-     custom crosshair colour, third-person camera. Simulation rate is a separate decision.
+     custom crosshair colour, third-person camera (done 2026-11-06). Simulation rate is a separate decision.
    - Size: about 0.8k lines.
 5. **Debug page.**
    - Files: `debug.cpp`, `cheats.cpp`, new `audio.cpp`.

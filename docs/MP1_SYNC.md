@@ -55,7 +55,7 @@ the work list.
 
 ### MP1 after 174975c2c (to `3dde164eb`, 2026-10-25, 172 commits)
 
-About 120 are Remastered/HDR, Dread Samus import or third-person camera (not portable). The rest:
+About 120 are Remastered/HDR, Dread Samus import or third-person camera (not portable then; third person since ported, package 33). The rest:
 
 9. **Follow-ups to merged packages** (small, low risk): dynamic resolution UI rework and review
    fixes (`5cf4ac1f4`, `429fdb7bf`, `278f7923c`, issue #186); Remap Presets button (`ffaa3d4ab`,
@@ -190,6 +190,10 @@ Each needs MP2 game-side hooks found fresh; a row with no possible MP2 backend i
     apply); `f3cfa6ff1` console `areas` prints the current area's transform (this commit; seen in a
     run). All build only except `areas`. Skipped: `beam_switch_fire` (user), `a8e0b562f`, `ead1cb698`,
     `72d530b0f`, remastered/decals.
+33. **Third-person camera** (2026-11-06, from MP1 at `6e921f77f`): `port_third_person.{h,cpp}` +
+    tests as MP1's, hooked per player 0 (single player only); MP1's `PortThirdPersonBody` is not
+    needed (CPlayer's own model is drawn, the cannon at GUN_LCTR). Not taken: the morph-ball
+    camera handoff (`MorphCameraPosition` in CBallCamera/failsafe), body charge/muzzle effects.
 
 Skipped from this range: Phazon Beam cheat and stacked beam rate (MP1 items), mods page/import
 fixes (wait for package 8), decomp matches.

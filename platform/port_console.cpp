@@ -20,6 +20,7 @@
 #include "port_mouse.h"
 #include "port_radial.h"
 #include "port_freecam.h"
+#include "port_third_person.h"
 #include "port_livesplit.h"
 #include "port_photo.h"
 
@@ -1467,6 +1468,49 @@ void CmdFreeCam(CStateManager& mgr, const Args& args, std::string& out) {
   const bool enabled = args.size() < 2 ? !PortFreeCam::Active() : ArgToInt(args[1], 1) != 0;
   PortFreeCam::SetActive(enabled, &mgr);
   out += enabled ? "free camera on\n" : "free camera off\n";
+}
+
+// `thirdperson [on|off] [distance <m>] [shoulder <m>] [height <m>]` (MP1's, without its body
+// module's clip/feet/backwalk options): the third-person camera for this run (the F1 row and the
+// third_person* settings keep it); prints its state and where the camera is.
+void CmdThirdPerson(CStateManager&, const Args& args, std::string& out) {
+  for (size_t i = 1; i < args.size(); ++i) {
+    const std::string arg(args[i]);
+    if (arg == "on" || arg == "off") {
+      PortThirdPerson::SetEnabled(arg == "on");
+    } else if ((arg == "distance" || arg == "shoulder" || arg == "height") && i + 1 < args.size()) {
+      const std::string value(args[++i]);
+      char* end = nullptr;
+      const float number = std::strtof(value.c_str(), &end);
+      if (end == value.c_str()) {
+        Fail("usage: thirdperson [on|off] [distance <m>] [shoulder <m>] [height <m>]");
+        return;
+      }
+      if (arg == "distance") {
+        PortThirdPerson::SetDistance(number);
+      } else if (arg == "shoulder") {
+        PortThirdPerson::SetShoulder(number);
+      } else {
+        PortThirdPerson::SetHeight(number);
+      }
+    } else {
+      Fail("usage: thirdperson [on|off] [distance <m>] [shoulder <m>] [height <m>]");
+      return;
+    }
+  }
+  const PortThirdPerson::Params p = PortThirdPerson::GetParams();
+  float cam[3] = {0.f, 0.f, 0.f};
+  PortThirdPerson::GetCameraPosition(cam);
+  char line[192];
+  std::snprintf(line, sizeof(line),
+                "thirdperson %s (%s) distance %.2f shoulder %.2f height %.2f camera %.2f %.2f %.2f\n",
+                PortThirdPerson::Enabled() ? "on" : "off",
+                PortThirdPerson::Active()    ? "active"
+                : PortThirdPerson::Enabled() ? "waiting: next frame, first person, single player"
+                                             : "inactive",
+                p.distance, p.shoulder, p.height,
+                cam[0], cam[1], cam[2]);
+  out += line;
 }
 
 // `photo [on|off|1|2|4]`: photo mode (the free camera with the HUD hidden and the game frozen, the
@@ -5707,6 +5751,9 @@ const CommandSpec kCommands[] = {
       "help                        this list\n"},
     {"freecam", CmdFreeCam,
       "freecam [0|1]              free camera (photo mode); no argument toggles it\n"},
+    {"thirdperson", CmdThirdPerson,
+      "thirdperson [on|off] [distance <m>] [shoulder <m>] [height <m>]\n"
+      "                            third-person camera (single player; F1 Video, third_person* settings)\n"},
     {"photo", CmdPhoto,
       "photo [on|off|1|2|4]       photo mode (F8): on/off; a factor saves a PNG, supersampled by it\n"},
     {"livesplit", CmdLiveSplit,

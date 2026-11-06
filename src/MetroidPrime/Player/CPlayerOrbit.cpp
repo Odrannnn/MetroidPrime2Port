@@ -6,6 +6,7 @@
 #include "port_mouse.h"
 #include "MetroidPrime/PortScanTarget.hpp"
 #include "port_overlay.h"
+#include "port_third_person.h"
 #include "port_touch.h"
 #endif
 
@@ -986,7 +987,12 @@ void CPlayer::UpdateOrbitableObjects(CStateManager& mgr) {
     mNearbyOrbitObjects.clear();
     mOffScreenOrbitObjects.clear();
     if (!CheckOrbitDisableSourceList(mgr)) {
+#ifdef TARGET_PC
+      // Third person: the search volume is the view the reticle is aimed in.
+      const CTransform4f cameraXf = PortThirdPerson::TickView(GetFirstPersonCameraTransform());
+#else
       const CTransform4f& cameraXf = GetFirstPersonCameraTransform();
+#endif
       float distance = GetOrbitMaxTargetDistance();
       if (mExtendTargetDistance) {
         distance *= 5.f;
@@ -1257,7 +1263,12 @@ void CPlayer::UpdateAimCandidates(CStateManager& mgr) {
   }
   --mAimCandidateRefreshFrames;
   if (mAimCandidateRefreshFrames == 0) {
+#ifdef TARGET_PC
+    // Third person: the search volume is the view the reticle is aimed in.
+    const CTransform4f cameraXf = PortThirdPerson::TickView(GetFirstPersonCameraTransform());
+#else
     const CTransform4f& cameraXf = GetFirstPersonCameraTransform();
+#endif
     float distance = GetTweakPlayer()->GetAimMaxDistance();
     if (mExtendTargetDistance) {
       distance *= 5.f;

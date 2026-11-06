@@ -3,6 +3,20 @@
 The Status section of AGENTS.md links here: this is the per-session detail, rewritten rather than
 appended, dated as in the heading there.
 
+## 2026-11-06: third-person camera (MP1 package 33)
+
+- `platform/port_third_person.cpp` (MP1's camera minus its body module; Echoes draws the real
+  CPlayer body): F1 Video "Third-person camera", settings `third_person*`, console `thirdperson`.
+  Single player, first-person camera only. Drawn view = blended `View`, simulation = `TickView`
+  (orbit/aim searches, screen-space conversion, reticle clamping).
+- The body renders and holds the cannon at its gun locator; shots leave that locator toward the
+  locked target's assisted aim or `AimPoint`; grapple beam from the hand; helmet, reflection and the
+  gun's own FOV pass are off while active; reticles project from the third-person view.
+- Verified on Xvfb (new game, Temple Grounds): body over the shoulder, lock-on ring on the web
+  target, locked shot hits it. `port_third_person_tests` pass, upstream 87 files OK.
+- Gaps: no morph-ball camera handoff, no charge/muzzle effects on the body, pointer aim ignored,
+  console changes not persisted.
+
 ## 2026-11-05: save states keep every script object's fields (why cutscene bugs kept coming)
 
 - Cause: the room save's `kTagFields` was an allowlist (CPatterned + generated pickups/debris), so

@@ -106,6 +106,7 @@
 #include "port_mouse.h"
 #include "MetroidPrime/PortScanTarget.hpp"
 #include "port_freecam.h"
+#include "port_third_person.h"
 #include "port_overlay.h"
 #include "port_photo.h"
 #include "port_touch.h"
@@ -3372,10 +3373,11 @@ void CPlayer::Render(const CStateManager& mgr) const {
       doRender = mMorphBallState == kMS_Morphed && (camera->GetFlags() & 0x40);
     }
   }
-  // Port: the free and photo cameras show the body the first-person view leaves out (MP1 773191a7a).
+  // Port: the free, photo and third-person cameras show the body the first-person view leaves out
+  // (MP1 773191a7a).
   if ((mCameraState == kCS_FirstPerson
 #ifdef TARGET_PC
-           && !PortFreeCam::ShowPlayer()
+           && !PortFreeCam::ShowPlayer() && !PortThirdPerson::Active()
 #endif
        || !doRender) &&
       !mCameraManager->ShouldBypassInterpolationCamera()) {
@@ -3402,9 +3404,9 @@ void CPlayer::Render(const CStateManager& mgr) const {
         mBallTransitionBeamModel->Touch(mgr, 0);
       }
 #ifdef TARGET_PC
-      // Port: the free and photo cameras' body holds its cannon; single player only places it
-      // during morph transitions, so put it on the gun locator here.
-      if (PortFreeCam::ShowPlayer() && !mgr.IsMultiplayer()) {
+      // Port: the free, photo and third-person cameras' body holds its cannon; single player only
+      // places it during morph transitions, so put it on the gun locator here.
+      if ((PortFreeCam::ShowPlayer() || PortThirdPerson::Active()) && !mgr.IsMultiplayer()) {
         mBallTransitionBeamModel->Render(
             mgr, GetTransform() * GetModelData()->GetScaledLocatorTransform(rstl::string_l(kGunLocator)),
             GetActorLights(), mPlayerDrawFlags.UseShaderSet(mTransitionBeamShader));
@@ -3570,6 +3572,16 @@ void CPlayer::RenderGun(const CStateManager& mgr, const CVector3f& position) con
   }
 
   CGrappleArm* grappleArm = mGun->GrappleArm();
+#ifdef TARGET_PC
+  // Port: in third person the beam leaves the body's grapple hand, as another player's does.
+  if (PortThirdPerson::Active()) {
+    if (grappleArm && grappleArm->GetActive() &&
+        grappleArm->GetAnimState() != CGrappleArm::kAS_Done) {
+      const CTransform4f grappleXf = GetTransform() * GetScaledLocatorTransform(mGrappleLocator);
+      grappleArm->RenderGrappleBeam(mgr, grappleXf.GetTranslation(), false);
+    }
+  } else
+#endif
   if (grappleArm && grappleArm->GetActive() &&
       grappleArm->GetAnimState() != CGrappleArm::kAS_Done) {
     grappleArm->RenderGrappleBeam(mgr, position, true);
@@ -3586,7 +3598,7 @@ void CPlayer::RenderGun(const CStateManager& mgr, const CVector3f& position) con
                             ? CModelFlags(GetModelFlags(), false, 0)
                             : CModelFlags::AlphaBlended(mGunAlpha);
 #ifdef TARGET_PC
-    if (!PortFreeCam::Active())
+    if (!PortFreeCam::Active() && !PortThirdPerson::Active())
 #endif
     mGun->Render(mgr, position, flags);
   }

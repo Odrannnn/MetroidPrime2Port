@@ -72,6 +72,7 @@
 #include "MetroidPrime/PortEfbCopy.hpp"
 #include "port_mouse.h"
 #include "port_overlay.h"
+#include "port_third_person.h"
 #include "port_power_charge_release.h"
 #include "port_presentation_rules.h"
 #endif
@@ -251,6 +252,9 @@ void CPlayerGun::UpdateNormalShotCycle(float dt, CStateManager& mgr) {
 #endif
     }
     xf.AddTranslation(player->GetCameraManager()->GetGlobalCameraTranslation(mgr, true));
+#ifdef TARGET_PC
+    PortShotFromThirdPersonCannon(mgr, xf);
+#endif
     switch (mCurrentBeamId) {
     case CPlayerState::kBI_Dark:
     case CPlayerState::kBI_Light:
@@ -341,6 +345,37 @@ void CPlayerGun::PortAimShotAtPointer(CTransform4f& xf) const {
   }
   xf = CTransform4f::LookAt(CVector3f::Zero(), toAim);
   xf.SetTranslation(position);
+}
+
+void CPlayerGun::PortShotFromThirdPersonCannon(CStateManager& mgr, CTransform4f& xf) const {
+  if (!PortThirdPerson::Active()) {
+    return;
+  }
+  const CPlayer& player = *GetPlayer(mgr);
+  const CVector3f origin =
+      (player.GetTransform() *
+       player.GetModelData()->GetScaledLocatorTransform(rstl::string_l(kGunLocator)))
+          .GetTranslation();
+  const CFirstPersonCamera* fp = player.GetCameraManager()->GetFirstPersonCamera();
+  CVector3f aimPoint;
+  bool have = false;
+  if (player.GetOrbitTargetId() != kInvalidUniqueId &&
+      TCastToConstPtr< CActor >(mgr.GetObjectById(player.GetOrbitTargetId())) != nullptr) {
+    aimPoint = player.PortAssistedTargetAim();
+    have = true;
+  } else {
+    have = PortThirdPerson::AimPoint(aimPoint);
+  }
+  const CVector3f camFwd = fp != nullptr ? fp->GetTransform().GetForward() : xf.GetForward();
+  if (have && camFwd.CanBeNormalized()) {
+    const CVector3f f = camFwd.AsNormalized();
+    const PortThirdPerson::Vec3 d =
+        PortThirdPerson::AimDirection({origin.GetX(), origin.GetY(), origin.GetZ()},
+                                      {aimPoint.GetX(), aimPoint.GetY(), aimPoint.GetZ()},
+                                      {f.GetX(), f.GetY(), f.GetZ()});
+    xf = CTransform4f::LookAt(CVector3f::Zero(), CVector3f(d.x, d.y, d.z));
+  }
+  xf.SetTranslation(origin);
 }
 
 void CPlayerGun::PortStartRapidCharge(CStateManager& mgr) {
@@ -2528,6 +2563,9 @@ void CPlayerGun::FireSecondary(float dt, CStateManager& mgr, TUniqueId target, u
 #endif
   }
   xf.AddTranslation(GetPlayer(mgr)->GetCameraManager()->GetGlobalCameraTranslation(mgr, true));
+#ifdef TARGET_PC
+  PortShotFromThirdPersonCannon(mgr, xf);
+#endif
   if (transform != nullptr) {
     xf = xf * *transform;
   }

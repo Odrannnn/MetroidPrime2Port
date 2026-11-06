@@ -650,7 +650,7 @@ if(AURORA_SDL3_TARGET)
         platform/port_pointer.cpp platform/port_pointer_menu.cpp
         platform/port_events.cpp platform/port_vpads.cpp platform/port_livesplit.cpp platform/port_harness.cpp platform/port_mouse.cpp
         platform/port_radial.cpp
-        platform/port_warp.cpp platform/port_freecam.cpp platform/port_photo.cpp platform/port_console.cpp platform/port_overlay.cpp platform/port_map_pickups.cpp platform/port_disc_replace.cpp
+        platform/port_warp.cpp platform/port_freecam.cpp platform/port_third_person.cpp platform/port_photo.cpp platform/port_console.cpp platform/port_overlay.cpp platform/port_map_pickups.cpp platform/port_disc_replace.cpp
         platform/port_gyro_motion.cpp
         platform/port_dynamic_res.cpp platform/port_video.cpp platform/port_gpu_driver.cpp
         platform/port_data_folder.cpp
@@ -933,6 +933,11 @@ if(AURORA_SDL3_TARGET)
     target_include_directories(port_flick_stick_tests PRIVATE platform/include)
     add_test(NAME port_flick_stick_tests COMMAND port_flick_stick_tests)
     set_tests_properties(port_flick_stick_tests PROPERTIES TIMEOUT 30 LABELS port)
+    # The third-person camera's pure maths (platform/include/port_third_person.h, MP1's).
+    add_executable(port_third_person_tests tests/port_third_person.cpp)
+    target_include_directories(port_third_person_tests PRIVATE platform/include)
+    add_test(NAME port_third_person_tests COMMAND port_third_person_tests)
+    set_tests_properties(port_third_person_tests PROPERTIES TIMEOUT 30 LABELS port)
     add_executable(port_tri_orbit_tests tests/port_tri_orbit.cpp)
     target_include_directories(port_tri_orbit_tests PRIVATE platform/include)
     add_test(NAME port_tri_orbit_tests COMMAND port_tri_orbit_tests)

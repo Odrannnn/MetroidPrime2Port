@@ -9,6 +9,7 @@
 #include "port_overlay.h"
 #include "port_savestate.h"
 #include "port_suit_colours.h"
+#include "port_third_person.h"
 #include "port_build_info.h"
 #include "port_update_check.h"
 #include "port_video.h"
@@ -197,6 +198,14 @@ void DrawVideoDisplay() {
     ImGui::EndDisabled();
   }
   Changed(ImGui::Checkbox("Hide helmet", &sHideHelmet));
+  bool thirdPerson = PortThirdPerson::Enabled();
+  if (Changed(ImGui::Checkbox("Third-person camera", &thirdPerson))) {
+    PortThirdPerson::SetEnabled(thirdPerson);
+  }
+  ImGui::SetItemTooltip(
+      "Plays from behind Samus's shoulder (single player; not the morph ball or cutscenes),\n"
+      "showing her body and hiding the arm cannon and helmet. Distance, shoulder and height:\n"
+      "console `thirdperson`, or third_person_* in the settings file.");
   Changed(ImGui::Checkbox("Hide visor effects", &sHideVisorEffects));
   ImGui::SetItemTooltip("The scan visor's window and edges are what a visor effect draws here.");
   Changed(ImGui::Checkbox("Cutscene black bars", &sCinemaBars));

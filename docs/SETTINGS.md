@@ -417,6 +417,12 @@ Video > Display:
   crosshair there, turned down the pointer ray (Classic on a GameCube disc; MP1 255afaf13).
 - `no_helmet`, `no_visor_fx`: HUD and view > Hide helmet, Hide visor effects; env
   `MP2_NO_HELMET`, `MP2_NO_VISOR_FX`.
+- `third_person` (default off): Video > Third-person camera (MP1's): the camera sits behind Samus's
+  shoulder in single player while she is unmorphed, first person and no cutscene plays, and pulls
+  in at walls; shots leave the body's cannon toward the screen centre (or the locked target), the
+  helmet and arm cannon are hidden. `third_person_distance` (m, default 3.5),
+  `third_person_shoulder` (m right, default 0.9, negative = left) and `third_person_height` (m,
+  default 0.25) are file/console only; console `thirdperson`.
 - `cinema_bars` (default on, env `MP2_CINEMA_BARS`): HUD and view > Cutscene black bars; off drops
   the cutscene letterbox and its viewport shrink. Original experience keeps them.
 - `crosshair_dark`, `crosshair_echo` (default off, env `MP2_CROSSHAIR_DARK`, `MP2_CROSSHAIR_ECHO`):
