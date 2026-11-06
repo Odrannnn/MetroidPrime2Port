@@ -14,6 +14,10 @@
 #include "MetroidPrime/ScriptObjects/CScriptCameraHint.hpp"
 #include "MetroidPrime/TCastTo.hpp"
 
+#ifdef TARGET_PC
+#include "port_third_person.h"
+#endif
+
 namespace {
 CMaterialList skTransitionInclude = CMaterialList(kMT_Solid);
 CMaterialList skTransitionExclude =
@@ -95,10 +99,41 @@ bool CBallCamera::UpdateTransitionFromBallCamera(CStateManager& mgr) {
   float zDelta = position.GetZ() - eyePos.GetZ();
   zDelta *= CMath::Clamp(0.f, 1.f - 1.5f * factor, 1.f);
   position.SetZ(zDelta + eyePos.GetZ());
+#ifdef TARGET_PC
+  // Third person: the spline ends at the eye; its end slides out to the third-person camera
+  // and the look to straight ahead of it, so standing up hands over without a cut.
+  CTransform4f portRest = player.GetTransform();
+  portRest.SetTranslation(eyePos);
+  CVector3f portEnd = eyePos;
+  const bool portThirdPerson = PortThirdPerson::MorphCameraPosition(mgr, portRest, portEnd);
+  if (portThirdPerson) {
+    position += factor * (portEnd - eyePos);
+    CVector3f out = position - eyePos;
+    const float outLength = out.Magnitude();
+    if (outLength > 0.0011920929f) {
+      out = out * (1.f / outLength);
+      const CRayCastResult wall =
+          mgr.RayStaticIntersection(eyePos, out, outLength, skTransitionFilter);
+      if (wall.IsValid()) {
+        position = eyePos + out * CMath::Max(0.f, wall.GetTime() - PortThirdPerson::kWallMargin);
+      }
+    }
+  }
+  const CVector3f portLookPos =
+      eyePos + CMath::Clamp(0.f, 1.f - 2.f * factor, 1.f) * (mFromBallTransition->mLookPos - eyePos) +
+      factor * (portEnd + 10.f * portRest.GetForward() - eyePos);
+  CVector3f horizontalDelta = (portThirdPerson ? portLookPos : eyePos) - position;
+#else
   CVector3f horizontalDelta = eyePos - position;
+#endif
   horizontalDelta.SetZ(0.f);
   const float horizontalDistance = horizontalDelta.Magnitude();
   CCameraManager& cameraManager = CameraManager(mgr);
+#ifdef TARGET_PC
+  if (portThirdPerson && horizontalDistance > 0.0011920929f) {
+    SetTransform(CTransform4f::LookAt(position, portLookPos, CVector3f::Up()));
+  } else
+#endif
   if (horizontalDistance > 0.0011920929f) {
     const CVector3f lookDelta = mFromBallTransition->mLookPos - eyePos;
     const float lookFactor = CMath::Clamp(0.f, 1.f - 2.f * factor, 1.f);
@@ -111,7 +146,11 @@ bool CBallCamera::UpdateTransitionFromBallCamera(CStateManager& mgr) {
   cameraManager.FirstPersonCamera()->Reset(GetTransform(), mgr);
   mFromBallTransition->mPlayerXf = player.GetTransform();
 
+#ifdef TARGET_PC
+  if (CVector3f((portThirdPerson ? portEnd : eyePos) - GetTranslation()).Magnitude() > 0.5f) {
+#else
   if (CVector3f(eyePos - GetTranslation()).Magnitude() > 0.5f) {
+#endif
     CVector3f direction = GetTranslation() - oldPosition;
     if (direction.CanBeNormalized()) {
       direction = direction.AsNormalized();
@@ -139,7 +178,21 @@ bool CBallCamera::CheckFailsafeToMorphBallState(CStateManager& mgr) {
 bool CBallCamera::TransitionToMorphBallState(CStateManager& mgr) {
   const CTransform4f playerXf = GetPlayer(mgr).GetTransform();
   const CTransform4f firstPersonXf = GetCameraManager(mgr).FirstPersonCamera()->GetTransform();
+#ifdef TARGET_PC
+  // Third person: the morph starts where its camera is, not at the eye.
+  CVector3f portStart;
+  const bool portThirdPerson =
+      PortThirdPerson::MorphCameraPosition(mgr, firstPersonXf, portStart);
+  if (portThirdPerson) {
+    CTransform4f portXf = firstPersonXf;
+    portXf.SetTranslation(portStart);
+    TeleportCamera(portXf, mgr);
+  } else {
+    TeleportCamera(firstPersonXf, mgr);
+  }
+#else
   TeleportCamera(firstPersonXf, mgr);
+#endif
   TeleportLookAtStuff(mgr);
 
   const CVector3f lookPos =
@@ -163,7 +216,15 @@ bool CBallCamera::TransitionToMorphBallState(CStateManager& mgr) {
 
   rstl::vector< CVector3f > points;
   points.reserve(4);
+#ifdef TARGET_PC
+  if (portThirdPerson) {
+    // Already behind her: straight on to the ball camera rather than in toward the eye first.
+    desiredPoint = portStart + 0.5f * (ballPos - portStart);
+  }
+  points.push_back_unsafe(portThirdPerson ? portStart : eyePos);
+#else
   points.push_back_unsafe(eyePos);
+#endif
   points.push_back_unsafe(desiredPoint);
   points.push_back_unsafe(ballPos);
   points.push_back_unsafe(ballPos);

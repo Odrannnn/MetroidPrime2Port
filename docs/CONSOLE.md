@@ -151,7 +151,7 @@ hp, hp_max, visor, beam, freecam) for scripts.
 - `gallery [mask]` — the slideshow gallery unlock mask (0..63): print, or set via PercentScans/mode flags
 - `help` — this list
 - `freecam [0|1]` — the plain free camera (no photo panel, HUD stays); no argument toggles it
-- `thirdperson [on|off|distance <m>|shoulder <m>|height <m>]` — the third-person camera (F1 Video; `third_person*` settings, not saved from here); prints on/off, whether it is active (`waiting` until the next frame or while morphed, in a cutscene or split screen) and the camera position
+- `thirdperson [on|off|distance <m>|shoulder <m>|height <m>]` — the third-person camera (F1 Video; `third_person*` settings, saved on change); prints on/off, whether it is active (`waiting` until the next frame or while morphed, in a cutscene or split screen) and the camera position
 - `photo [on|off|1|2|4]` — photo mode (F8, F1 > Game): the free camera with the game frozen, HUD/cannon/visor hidden and the Photo mode panel. `on`/`off` enter and leave (refused with a toast when Samus is dead, a cutscene plays or no game runs); a factor saves a PNG supersampled by it; no argument enters when off and captures when on
 - `livesplit [0|1|addr <host:port>|send <line>]` — the LiveSplit link (the F1 setting); no argument: status
 - `touchact <actor id> <other id>` — run an actor's touch handler for the other actor (coverage)

@@ -38,6 +38,7 @@
 #include "port_overlay.h"
 #include "port_photo.h"
 #include "port_radial.h"
+#include "port_third_person.h"
 
 namespace {
 // Morph Ball camera control (issue #54), per player. Kept out of CBallCamera so the save-state
@@ -2139,7 +2140,15 @@ void CBallCamera::SetState(EBallCameraState state, CStateManager& mgr) {
   case kBCS_ToBall: {
     const CTransform4f xf = GetCameraManager(mgr).GetFirstPersonCamera()->GetTransform();
     SetTransform(xf);
+#ifdef TARGET_PC
+    // Third person: from its camera (TransitionToMorphBallState's spline starts there too).
+    CVector3f portStart = xf.GetTranslation();
+    PortThirdPerson::MorphCameraPosition(mgr, xf, portStart);
+    SetTranslation(portStart);
+    TeleportCamera(portStart, mgr);
+#else
     TeleportCamera(xf.GetTranslation(), mgr);
+#endif
     const CFirstPersonCamera* fpCam = GetCameraManager(mgr).GetFirstPersonCamera();
     InterpolateFOV(fpCam->GetFov(), 1.f, 0.f, GetUniqueId(), mgr);
     InvalidateSpline();

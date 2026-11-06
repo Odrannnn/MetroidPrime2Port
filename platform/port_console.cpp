@@ -1498,6 +1498,11 @@ void CmdThirdPerson(CStateManager&, const Args& args, std::string& out) {
       return;
     }
   }
+  if (args.size() > 1) {
+    // Kept like the F1 checkbox and sliders (third_person* settings).
+    PortOverlaySettings::MarkDirty();
+    PortOverlaySettings::SaveSettings();
+  }
   const PortThirdPerson::Params p = PortThirdPerson::GetParams();
   float cam[3] = {0.f, 0.f, 0.f};
   PortThirdPerson::GetCameraPosition(cam);

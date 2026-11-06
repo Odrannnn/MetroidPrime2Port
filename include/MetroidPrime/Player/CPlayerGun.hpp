@@ -149,6 +149,9 @@ public:
   // Third person: a shot's world transform starts at the body's cannon and heads for the locked
   // target or the point under the camera's centre ray.
   void PortShotFromThirdPersonCannon(CStateManager& mgr, CTransform4f& xf) const;
+  // Third person: the first-person gun's charge and muzzle effects (posed in gun space) drawn at
+  // the body's cannon, `muzzleXf` in world space (MP1's CPlayerGun::PortRenderMuzzleFxAt).
+  void PortRenderThirdPersonFx(const CStateManager& mgr, const CTransform4f& muzzleXf) const;
   // Lock-on free aim: a shot aimed off the combat lock's centre does not home on the lock.
   bool PortShotOffLock(CStateManager& mgr) const;
   TUniqueId PortHomingTargetId(CStateManager& mgr);

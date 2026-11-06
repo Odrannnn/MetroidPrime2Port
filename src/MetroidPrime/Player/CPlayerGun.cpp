@@ -359,7 +359,12 @@ void CPlayerGun::PortShotFromThirdPersonCannon(CStateManager& mgr, CTransform4f&
   const CFirstPersonCamera* fp = player.GetCameraManager()->GetFirstPersonCamera();
   CVector3f aimPoint;
   bool have = false;
-  if (player.GetOrbitTargetId() != kInvalidUniqueId &&
+  if (mPortPointerAimValid) {
+    // Pointer aim: the point under the pointer, cast from the third-person view (CPlayer's
+    // pointer block); it wins over a lock as in first person (PortShotOffLock).
+    aimPoint = mPortPointerAimPoint;
+    have = true;
+  } else if (player.GetOrbitTargetId() != kInvalidUniqueId &&
       TCastToConstPtr< CActor >(mgr.GetObjectById(player.GetOrbitTargetId())) != nullptr) {
     aimPoint = player.PortAssistedTargetAim();
     have = true;
@@ -1621,6 +1626,49 @@ void CPlayerGun::Render(const CStateManager& mgr, const CVector3f& cameraTransla
   CGraphics::SetDepthRange(1.f / 8.f, 1.f);
   CGraphics::SetProjectionState(backupProjection);
 }
+
+#ifdef TARGET_PC
+// Render's gun-space effects (charge, muzzle flash, missile and seeker charge, combo transfer,
+// missile secondary), with the gun placed so its muzzle locator lands on `muzzleXf`. The gun
+// model, its wipe and beam-specific gun fx stay off: the body carries its own cannon.
+void CPlayerGun::PortRenderThirdPersonFx(const CStateManager& mgr,
+                                         const CTransform4f& muzzleXf) const {
+  const CTransform4f gunXf = muzzleXf * mBeamLocalXf.GetInverse();
+  const CTransform4f worldView(CGraphics::GetViewMatrix());
+  CGraphics::SetViewPointMatrix(gunXf.GetInverse() * worldView);
+  gpRender->SetModelMatrix(CTransform4f::Identity());
+  if (mChargeEffectVisible) {
+    if (mAuxMuzzleGenerators[mCurrentBeamId].get() != nullptr && mChargePhase == kCP_Charged) {
+      mAuxMuzzleGenerators[mCurrentBeamId]->Render();
+    }
+    if (mMuzzleEffectVisTimer > 0.f ||
+        (mChargePhase != kCP_NotCharging && mChargePhase != kCP_ChargeRequested &&
+         mChargePhase != kCP_Charging)) {
+      mCurrentBeam->DrawMuzzleFx(mgr);
+    }
+    if (mMissileAuxMuzzleGenerator.get() != nullptr && mSeekerChargeState == kSCS_FullyCharged) {
+      mMissileAuxMuzzleGenerator->Render();
+    }
+    if (!mSeekerMuzzleGenerators.empty() &&
+        (mMuzzleEffectVisTimer > 0.f ||
+         (mSeekerChargeState != kSCS_NotCharging && mSeekerChargeState != kSCS_Requested &&
+          mSeekerChargeState != kSCS_Opening))) {
+      for (int i = 0; i < mSeekerMuzzleGenerators.size(); ++i) {
+        if (mSeekerMuzzleGenerators[i].get() != nullptr) {
+          mSeekerMuzzleGenerators[i]->Render();
+        }
+      }
+    }
+  }
+  if (mComboFiring && mComboTransferGenerator.get() != nullptr) {
+    mComboTransferGenerator->Render();
+  }
+  if (mSeekerSecondaryFx != CGunWeapon::kSFT_None && mMissileSecondaryGenerator.get() != nullptr) {
+    mMissileSecondaryGenerator->Render();
+  }
+  CGraphics::SetViewPointMatrix(worldView);
+}
+#endif
 
 void CPlayerGun::Reset(CStateManager& mgr) {
   CPlayerGunBase::Reset(mgr);

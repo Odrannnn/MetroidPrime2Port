@@ -192,8 +192,8 @@ Each needs MP2 game-side hooks found fresh; a row with no possible MP2 backend i
     `72d530b0f`, remastered/decals.
 33. **Third-person camera** (2026-11-06, from MP1 at `6e921f77f`): `port_third_person.{h,cpp}` +
     tests as MP1's, hooked per player 0 (single player only); MP1's `PortThirdPersonBody` is not
-    needed (CPlayer's own model is drawn, the cannon at GUN_LCTR). Not taken: the morph-ball
-    camera handoff (`MorphCameraPosition` in CBallCamera/failsafe), body charge/muzzle effects.
+    needed (CPlayer's own model is drawn, the cannon at GUN_LCTR). Morph-ball camera handoff
+    (`MorphCameraPosition` in CBallCamera) and body charge/muzzle effects added the same day.
 
 Skipped from this range: Phazon Beam cheat and stacked beam rate (MP1 items), mods page/import
 fixes (wait for package 8), decomp matches.

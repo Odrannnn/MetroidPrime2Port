@@ -14,8 +14,12 @@ appended, dated as in the heading there.
   gun's own FOV pass are off while active; reticles project from the third-person view.
 - Verified on Xvfb (new game, Temple Grounds): body over the shoulder, lock-on ring on the web
   target, locked shot hits it. `port_third_person_tests` pass, upstream 87 files OK.
-- Gaps: no morph-ball camera handoff, no charge/muzzle effects on the body, pointer aim ignored,
-  console changes not persisted.
+- Follow-up (same day): morph-ball handoff (CBallCamera ToBall spline starts at the third-person
+  camera, unmorph returns to `MorphCameraPosition` with a wall pull-in; `ShowBody` keeps the body
+  drawn and solid while the ball camera takes over), charge/muzzle/missile/combo fx re-posed at the
+  body's cannon (`CPlayerGun::PortRenderThirdPersonFx`), pointer aim (shots go to the pointer's aim
+  point; picks use `TickView`), console `thirdperson` changes saved. Verified on Xvfb: smooth morph
+  in/out, charge glow at the cannon, pointer shot hits off-centre, settings.cfg updated.
 
 ## 2026-11-05: save states keep every script object's fields (why cutscene bugs kept coming)
 

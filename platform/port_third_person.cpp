@@ -9,6 +9,7 @@
 #include "MetroidPrime/CActor.hpp"
 #include "MetroidPrime/CCameraManager.hpp"
 #include "MetroidPrime/CStateManager.hpp"
+#include "MetroidPrime/Cameras/CBallCamera.hpp"
 #include "MetroidPrime/Cameras/CFirstPersonCamera.hpp"
 #include "MetroidPrime/Player/CPlayer.hpp"
 
@@ -87,6 +88,8 @@ void Frame(const CFirstPersonCamera& fp) {
   sFramed = Framed(sParams, std::tan(0.5f * fp.GetRenderFov() * kDegToRad), fp.GetAspectRatio());
 }
 
+} // namespace
+
 // Single player only: each split-screen viewport has its own camera manager and the HUD,
 // reticles and shots below read player 0's.
 bool ViewAllowed(const CStateManager& mgr) {
@@ -94,6 +97,8 @@ bool ViewAllowed(const CStateManager& mgr) {
          mgr.GetPlayer(0) != nullptr && mgr.GetCameraManager(0) != nullptr &&
          !mgr.GetCameraManager(0)->IsInCinematicCamera();
 }
+
+namespace {
 
 bool StateAllows(const CStateManager& mgr) {
   if (!ViewAllowed(mgr)) {
@@ -117,6 +122,19 @@ void SetEnabled(bool on) {
   }
 }
 bool Active() { return sEnabled && sActive; }
+
+bool ShowBody(const CStateManager& mgr) {
+  if (Active()) {
+    return true;
+  }
+  if (!ViewAllowed(mgr)) {
+    return false;
+  }
+  const CCameraManager* cams = mgr.GetCameraManager(0);
+  const CBallCamera* ball = cams->GetBallCamera();
+  return ball != nullptr && mgr.GetPlayer(0)->GetCameraState() == CPlayer::kCS_FirstPerson &&
+         cams->GetCurrentCameraId(true) == ball->GetUniqueId();
+}
 
 Params GetParams() { return sParams; }
 void SetDistance(float m) { sParams.distance = Clamp(m, kDistanceMin, kDistanceMax, sParams.distance); }

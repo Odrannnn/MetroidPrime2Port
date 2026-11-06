@@ -1044,8 +1044,8 @@ void CPlayer::UpdateGunTransform(const CVector3f& position, CStateManager& mgr) 
       PortMouse::PointerAimPosition(pointerX, pointerY, mPlayerIndex) && (pointerX != 0.f || pointerY != 0.f) &&
       (MouseAimAllowed(mgr) || PortLockFreeAim(mgr))) {
     const CFirstPersonCamera* cam = mCameraManager->GetFirstPersonCamera();
-    // The view's own transform: the crosshair is drawn from it.
-    const CTransform4f& viewXf = cam->GetTransform();
+    // The view's own transform: the crosshair is drawn from it (third person's, while it draws).
+    const CTransform4f viewXf = PortThirdPerson::TickView(cam->GetTransform());
     float yaw = 0.f;
     float pitch = 0.f;
     PortMouse::PointerAim::RayAngles(pointerX, pointerY, cam->GetFov(), cam->GetAspectRatio(),
@@ -3377,7 +3377,7 @@ void CPlayer::Render(const CStateManager& mgr) const {
   // (MP1 773191a7a).
   if ((mCameraState == kCS_FirstPerson
 #ifdef TARGET_PC
-           && !PortFreeCam::ShowPlayer() && !PortThirdPerson::Active()
+           && !PortFreeCam::ShowPlayer() && !PortThirdPerson::ShowBody(mgr)
 #endif
        || !doRender) &&
       !mCameraManager->ShouldBypassInterpolationCamera()) {
@@ -3406,7 +3406,7 @@ void CPlayer::Render(const CStateManager& mgr) const {
 #ifdef TARGET_PC
       // Port: the free, photo and third-person cameras' body holds its cannon; single player only
       // places it during morph transitions, so put it on the gun locator here.
-      if ((PortFreeCam::ShowPlayer() || PortThirdPerson::Active()) && !mgr.IsMultiplayer()) {
+      if ((PortFreeCam::ShowPlayer() || PortThirdPerson::ShowBody(mgr)) && !mgr.IsMultiplayer()) {
         mBallTransitionBeamModel->Render(
             mgr, GetTransform() * GetModelData()->GetScaledLocatorTransform(rstl::string_l(kGunLocator)),
             GetActorLights(), mPlayerDrawFlags.UseShaderSet(mTransitionBeamShader));
@@ -3580,6 +3580,9 @@ void CPlayer::RenderGun(const CStateManager& mgr, const CVector3f& position) con
       const CTransform4f grappleXf = GetTransform() * GetScaledLocatorTransform(mGrappleLocator);
       grappleArm->RenderGrappleBeam(mgr, grappleXf.GetTranslation(), false);
     }
+    // Charge and muzzle effects at the body's cannon.
+    mGun->PortRenderThirdPersonFx(
+        mgr, GetTransform() * GetModelData()->GetScaledLocatorTransform(rstl::string_l(kGunLocator)));
   } else
 #endif
   if (grappleArm && grappleArm->GetActive() &&
@@ -3635,6 +3638,13 @@ void CPlayer::UpdateTransitionAlpha(CStateManager& mgr) {
         mAlpha = gpTweakPlayerRes->GetMorphAlphaSpline().EvaluateAt(
             (1.f - distance) * mMorphDuration * 0.5f + halfDuration);
       }
+#ifdef TARGET_PC
+      // Port: from third person the camera starts behind her, not at her eye, so the body she
+      // morphs from stays drawn as it is with the camera pulled back (no fade-in from nothing).
+      else if (PortThirdPerson::ViewAllowed(mgr)) {
+        mAlpha = gpTweakPlayerRes->GetMorphAlphaSpline().EvaluateAt(halfDuration);
+      }
+#endif
       break;
     }
     case kMS_Unmorphing: {

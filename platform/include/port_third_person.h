@@ -95,6 +95,12 @@ bool Enabled();
 void SetEnabled(bool on);
 // Third person is drawing this tick (enabled, and the camera and player are in a state it takes).
 bool Active();
+// Third person may take the view (on, single player, no cinematic or free camera), whatever
+// state she is in.
+bool ViewAllowed(const CStateManager& mgr);
+// Her body is drawn for third person: Active(), or the ball camera has taken over from the
+// first-person one for a morph that has not begun yet (she still stands).
+bool ShowBody(const CStateManager& mgr);
 
 Params GetParams();
 void SetDistance(float metres);
