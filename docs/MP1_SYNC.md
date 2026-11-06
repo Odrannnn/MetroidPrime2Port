@@ -194,6 +194,12 @@ Each needs MP2 game-side hooks found fresh; a row with no possible MP2 backend i
     tests as MP1's, hooked per player 0 (single player only); MP1's `PortThirdPersonBody` is not
     needed (CPlayer's own model is drawn, the cannon at GUN_LCTR). Morph-ball camera handoff
     (`MorphCameraPosition` in CBallCamera) and body charge/muzzle effects added the same day.
+34. **Range `ed1fb93c7..b601be339`** (2026-11-06). Taken: `5991eb3ab` texture packs thin out under
+    memory pressure + `8ef516364` user_textures created at startup (`1e44f03e3`, build only);
+    `45c288c28` + `e9ad2a939` damage taken/dealt sliders (`4b6f85f3e`, build only); `c67662b03`
+    Shoot in Scan Visor (`71f3fbe28`, Xvfb); `d2187f77a` + `6e921f77f` moon jump, Boost Ball
+    speed/duration/anywhere/steer, move Samus to the free camera (`7efb40368`, Xvfb). Open (maybe):
+    `59e55a8ad` beam colours. The rest: releases, MP1-only fixes, remastered, decomp.
 
 Skipped from this range: Phazon Beam cheat and stacked beam rate (MP1 items), mods page/import
 fixes (wait for package 8), decomp matches.
@@ -203,9 +209,9 @@ set differs; the approach can be reused), Archipelago, MP1 randomizer logic.
 
 ## Status
 
-Packages 1-32 are merged; the dated per-merge log moved verbatim to
+Packages 1-34 are merged; the dated per-merge log moved verbatim to
 `docs/history/MP1_SYNC-to-2026-10-29.md`. MP1 was last reviewed through `e3d8c8940`
-(2026-10-29), then through `5e1a88514` (2026-11-02, package 30), then through `16eb691fe` (2026-11-03, package 31), then through `ed1fb93c7` (2026-11-04, package 32); take later commits by `git -C ../MetroidPrimePort log --no-merges ed1fb93c7..HEAD`.
+(2026-10-29), then through `5e1a88514` (2026-11-02, package 30), then through `16eb691fe` (2026-11-03, package 31), then through `ed1fb93c7` (2026-11-04, package 32), then through `b601be339` (2026-11-06, package 34); take later commits by `git -C ../MetroidPrimePort log --no-merges b601be339..HEAD`.
 
 Still unrun/unverified per that log (no device or hardware available then):
 
