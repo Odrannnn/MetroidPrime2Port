@@ -47,6 +47,8 @@ extern bool sIgtTimer;
 extern bool sOriginalExperience;
 extern bool sUnlockHardMode;
 extern bool sUnlockGalleries;
+extern float sDamageTakenMult;
+extern float sDamageDealtMult;
 extern bool sUnlockBeamDoors;
 extern bool sStackBeams;
 extern bool sStackBeamsSkipDark;

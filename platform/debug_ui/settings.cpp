@@ -324,6 +324,28 @@ const SettingKey kSettingKeys[] = {
      [](std::ostream& out) { out << sSeamlessPickups; }, false, "1", "2"},
     BoolKey< &sUnlockHardMode >("unlock_hard_mode"),
     BoolKey< &sUnlockGalleries >("unlock_galleries"),
+    {"damage_taken",
+     [](const std::string& value) {
+       float parsed = 0.f;
+       if (ParseFloat(value, parsed) && parsed >= PortOverlay::kDamageMultMin &&
+           parsed <= PortOverlay::kDamageMultMax)
+         sDamageTakenMult = parsed;
+     },
+     [](std::ostream& out) { out << sDamageTakenMult; },
+     false,
+     "0.5",
+     "3"},
+    {"damage_dealt",
+     [](const std::string& value) {
+       float parsed = 0.f;
+       if (ParseFloat(value, parsed) && parsed >= PortOverlay::kDamageMultMin &&
+           parsed <= PortOverlay::kDamageMultMax)
+         sDamageDealtMult = parsed;
+     },
+     [](std::ostream& out) { out << sDamageDealtMult; },
+     false,
+     "0.5",
+     "3"},
     BoolKey< &sUnlockBeamDoors >("unlock_beam_doors"),
     BoolKey< &sStackBeams >("stack_beams"),
     BoolKey< &sStackBeamsSkipDark >("stack_beams_skip_dark"),

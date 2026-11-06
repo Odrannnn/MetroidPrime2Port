@@ -161,6 +161,11 @@ Game page:
   Stack beams (each shot also fires the other beams you own, at no extra ammo cost); env `MP2_UNLOCK_HARD_MODE`,
   `MP2_UNLOCK_GALLERIES`, `MP2_STACK_BEAMS`. Not written into the save, and Original experience
   greys them.
+- `damage_taken`, `damage_dealt`: Game > Difficulty > Damage taken / Damage dealt (x0.1 to x10, default
+  1; Reset difficulty sets both to 1); env `MP2_DAMAGE_TAKEN`, `MP2_DAMAGE_DEALT`. Single player only:
+  multiply the damage Samus takes (every type, Dark Aether's atmosphere included) and the damage she
+  deals to enemies, at the points Hard mode uses, on top of a Hard file's own multipliers. Original
+  experience reads 1.
 - `unlock_beam_doors`: Debug > Cheats > Unlock beam doors; env `MP2_UNLOCK_BEAM_DOORS`.
   Colour-locked doors (the door's own vulnerability, or a damageable-trigger lock) open to any of
   the four beams; missile locks stay. Saved, not written into the save file; Original experience

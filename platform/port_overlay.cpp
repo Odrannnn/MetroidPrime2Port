@@ -97,6 +97,8 @@ bool sIgtTimer = false;
 bool sOriginalExperience = false;
 bool sUnlockHardMode = false;
 bool sUnlockGalleries = false;
+float sDamageTakenMult = 1.f;
+float sDamageDealtMult = 1.f;
 bool sUnlockBeamDoors = false;
 bool sStackBeams = false;
 bool sStackBeamsSkipDark = false;
@@ -2501,6 +2503,36 @@ void SetUnlockHardMode(bool enabled) {
   ReadEnv();
   sUnlockHardMode = enabled;
   Persist();
+}
+
+float DamageTakenMultiplier() {
+  ReadEnv();
+  return OriginalExperience() ? 1.f
+                              : EnvFloatIn("MP2_DAMAGE_TAKEN", sDamageTakenMult, kDamageMultMin,
+                                           kDamageMultMax);
+}
+
+void SetDamageTakenMultiplier(float m) {
+  ReadEnv();
+  if (std::isfinite(m)) {
+    sDamageTakenMult = std::clamp(m, kDamageMultMin, kDamageMultMax);
+    Persist();
+  }
+}
+
+float DamageDealtMultiplier() {
+  ReadEnv();
+  return OriginalExperience() ? 1.f
+                              : EnvFloatIn("MP2_DAMAGE_DEALT", sDamageDealtMult, kDamageMultMin,
+                                           kDamageMultMax);
+}
+
+void SetDamageDealtMultiplier(float m) {
+  ReadEnv();
+  if (std::isfinite(m)) {
+    sDamageDealtMult = std::clamp(m, kDamageMultMin, kDamageMultMax);
+    Persist();
+  }
 }
 
 bool UnlockGalleries() {

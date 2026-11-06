@@ -102,6 +102,34 @@ void DrawGameSection() {
   }
 }
 
+// MP1's Game > Difficulty section: damage multipliers on top of the file's own difficulty.
+static void DrawDifficultySection() {
+  ImGui::SeparatorText("Difficulty");
+  ImGui::BeginDisabled(PortOverlay::OriginalExperience());
+  float taken = sDamageTakenMult;
+  if (ImGui::SliderFloat("Damage taken", &taken, PortOverlay::kDamageMultMin,
+                         PortOverlay::kDamageMultMax, "x%.2f", ImGuiSliderFlags_AlwaysClamp)) {
+    PortOverlay::SetDamageTakenMultiplier(taken);
+  }
+  ItemHelp("Multiplies the damage Samus takes, Dark Aether's atmosphere included. A Hard file's own "
+           "multiplier applies on top. Ctrl+click to type a value.");
+  float dealt = sDamageDealtMult;
+  if (ImGui::SliderFloat("Damage dealt", &dealt, PortOverlay::kDamageMultMin,
+                         PortOverlay::kDamageMultMax, "x%.2f", ImGuiSliderFlags_AlwaysClamp)) {
+    PortOverlay::SetDamageDealtMultiplier(dealt);
+  }
+  ItemHelp("Multiplies all damage Samus deals to enemies, as Hard does. A Hard file's own "
+           "multiplier applies on top. Ctrl+click to type a value.");
+  ImGui::BeginDisabled(sDamageTakenMult == 1.f && sDamageDealtMult == 1.f);
+  if (ImGui::Button("Reset difficulty")) {
+    PortOverlay::SetDamageTakenMultiplier(1.f);
+    PortOverlay::SetDamageDealtMultiplier(1.f);
+  }
+  ImGui::EndDisabled();
+  ImGui::SetItemTooltip("Both back to x1, the file's own difficulty.");
+  ImGui::EndDisabled();
+}
+
 // MP1's Game > Unlocks section: what finishing the game unlocks, applied without writing the save.
 // Only the unlocks Echoes has: its Fusion Suit and the Remastered galleries are Prime 1's.
 static void DrawUnlocksSection() {
@@ -133,6 +161,7 @@ void DrawCutscenesSection() {
     Changed(true);
   }
   ImGui::EndDisabled();
+  DrawDifficultySection();
   DrawUnlocksSection();
 }
 

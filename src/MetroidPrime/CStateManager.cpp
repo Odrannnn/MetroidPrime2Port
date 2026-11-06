@@ -3330,7 +3330,14 @@ CDamageInfo CStateManager::GetModifiedDamageInfo(TUniqueId damager, TUniqueId ow
     return damage;
   }
 
+#ifdef TARGET_PC
+  // Port: custom difficulty (F1 > Game > Difficulty) scales the player's damage to enemies at
+  // the same point as Hard, on top of a Hard file's own multiplier.
+  const float portDealt = IsMultiplayer() ? 1.f : PortOverlay::DamageDealtMultiplier();
+  if ((gpGameState->GetHardModeEnabled() || portDealt != 1.f) &&
+#else
   if (gpGameState->GetHardModeEnabled() &&
+#endif
       TCastToConstPtr< CPlayer >(GetObjectById(owner)) != nullptr) {
     bool aiDamage = false;
     if (TCastToConstPtr< CPatterned >(GetObjectById(damagee)) != nullptr) {
@@ -3342,7 +3349,15 @@ CDamageInfo CStateManager::GetModifiedDamageInfo(TUniqueId damager, TUniqueId ow
       }
     }
     if (aiDamage) {
+#ifdef TARGET_PC
+      CDamageInfo result = gpGameState->GetHardModeEnabled()
+                               ? NGunUtils::DifficultyModifyDamageInfo(damage)
+                               : damage;
+      result.MultiplyDamage(portDealt);
+      return result;
+#else
       return NGunUtils::DifficultyModifyDamageInfo(damage);
+#endif
     }
   }
   return damage;
@@ -3447,6 +3462,12 @@ bool CStateManager::ApplyLocalDamage(const CVector3f& pos, const CVector3f& dir,
         break;
       }
     }
+#ifdef TARGET_PC
+    // Port: custom difficulty (F1 > Game > Difficulty), every damage type, single player only.
+    if (!IsMultiplayer()) {
+      useDamage *= PortOverlay::DamageTakenMultiplier();
+    }
+#endif
 
     float damageReduction = 0.0f;
     const EWeaponType weaponType = EWeaponType(damageInfo.GetWeaponMode().GetRawType());

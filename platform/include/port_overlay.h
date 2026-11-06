@@ -297,6 +297,16 @@ bool UnlockHardMode();
 void SetUnlockHardMode(bool enabled);
 bool UnlockGalleries();
 void SetUnlockGalleries(bool enabled);
+// Custom difficulty (F1 > Game > Difficulty, `damage_taken` / `damage_dealt`, env
+// `MP2_DAMAGE_TAKEN` / `MP2_DAMAGE_DEALT`): multipliers on the damage the player takes in single
+// player and the damage the player deals to enemies, on top of a Hard file's own (Hard's x2 skips
+// atmosphere and hazard types; these don't). 1 is retail; Original experience reads 1.
+constexpr float kDamageMultMin = 0.1f;
+constexpr float kDamageMultMax = 10.f;
+float DamageTakenMultiplier();
+void SetDamageTakenMultiplier(float m);
+float DamageDealtMultiplier();
+void SetDamageDealtMultiplier(float m);
 // Beam doors (`MP2_UNLOCK_BEAM_DOORS`): a colour-locked door (a door or damageable trigger that some
 // of the Power, Dark, Light and Annihilator beams hit and others do not) takes any of the four beams.
 // Stack beams (`MP2_STACK_BEAMS`): a beam fired while another is selected also fires the other
