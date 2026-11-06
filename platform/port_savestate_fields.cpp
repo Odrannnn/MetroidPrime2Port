@@ -839,11 +839,13 @@ bool SavedField(const PortSchemaClass& cls, const PortSchemaField& f) {
       std::strstr(f.name, "ThisFrame") != nullptr) {
     return false;
   }
+  // Not mNotInSortedLists (GetTransformDirty): SetTransform sets it and CStateManager's
+  // UpdateActorInSortedLists clears it once the actor's bounds are in the collision lists. A saved
+  // false put back after a restore moved or reactivated the actor left those lists on the rebuilt
+  // room's pose: a platform drawn at its saved place with no collision there.
   if (std::strcmp(cls.name, "CActor") == 0) {
     return Named(f.name, {"mModelData", "mDrawFlags", "mMuted", "mCallTouch", "mRenderParticleDBInside",
-                          "mTargetableVisorFlags", "mEnableRender", "mDrawEnabled", "mDoTargetDistanceTest",
-                          // Render-sort cache: SetTransform sets it, the next sort clears it.
-                          "mNotInSortedLists"});
+                          "mTargetableVisorFlags", "mEnableRender", "mDrawEnabled", "mDoTargetDistanceTest"});
   }
   if (std::strcmp(cls.name, "CPhysicsActor") == 0) {
     // Motion too, though kTagMotion has velocity and momentum: these are applied after the
