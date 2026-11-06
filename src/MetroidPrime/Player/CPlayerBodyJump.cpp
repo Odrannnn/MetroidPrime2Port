@@ -8,6 +8,26 @@
 
 #include <float.h>
 
+#ifdef TARGET_PC
+#include "MetroidPrime/CAnimData.hpp"
+#include "port_third_person.h"
+
+// Port third person: single player's character (Samus_SinglePlayer) lists no jump arc or double
+// jump flip, so its body would hold the jump loop pose. The same ANCS's multiplayer character 0
+// (Samus_Low_Res_HIGH) has them; in third person the body plays that character's animations.
+static int PortThirdPersonJumpAnimation(CStateManager& mgr, CPlayerBodyController& controller,
+                                        const CPASAnimParmData& parms) {
+  if (!PortThirdPerson::Enabled() || mgr.IsMultiplayer()) {
+    return -1;
+  }
+  CAnimData* animData = controller.GetPlayer().AnimationData();
+  if (animData == nullptr || animData->GetCharacterIndex() == 0) {
+    return -1;
+  }
+  return animData->PortBorrowAnimation(0, parms, *mgr.Random());
+}
+#endif
+
 CPlayerBodyController::SJumpState::SJumpState()
 : mState(kS_Invalid)
 , mAnimationVariant(-1)
@@ -101,6 +121,14 @@ bool CPlayerBodyController::SJumpState::PlayDoubleJump(CStateManager& mgr,
     mState = kS_Jump;
     return true;
   }
+#ifdef TARGET_PC
+  const int borrowed = PortThirdPersonJumpAnimation(mgr, controller, parms);
+  if (borrowed >= 0) {
+    controller.RequestAnimation(CAnimPlaybackParms(borrowed, -1, 1.f, true), false, false);
+    mState = kS_Jump;
+    return true;
+  }
+#endif
   return false;
 }
 
@@ -116,6 +144,14 @@ bool CPlayerBodyController::SJumpState::PlayJump(CStateManager& mgr,
     mState = kS_Jump;
     return true;
   }
+#ifdef TARGET_PC
+  const int borrowed = PortThirdPersonJumpAnimation(mgr, controller, parms);
+  if (borrowed >= 0) {
+    controller.RequestAnimation(CAnimPlaybackParms(borrowed, -1, 1.f, true), false, false);
+    mState = kS_Jump;
+    return true;
+  }
+#endif
   return false;
 }
 

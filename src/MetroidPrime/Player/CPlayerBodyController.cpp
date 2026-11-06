@@ -14,6 +14,11 @@
 
 #include <string.h>
 
+#ifdef TARGET_PC
+#include "Kyoto/CResFactory.hpp"
+#include "port_third_person.h"
+#endif
+
 const TStateMachineState< CPlayerBodyController >::STriggerFunction
     CPlayerBodyController::skTriggerFunctions[22] = {
         {"StateOver", &CPlayerBodyController::StateOver},
@@ -90,7 +95,11 @@ CPlayerBodyController::CPlayerBodyController(CPlayer& player, CAssetId stateMach
 , mUnfreezing(false)
 , mMorphTransitionActive(false)
 , mDeathReactionOver(false)
-, mDeathReactionActive(false) {
+, mDeathReactionActive(false)
+#ifdef TARGET_PC
+, mPortThirdPersonFsmActive(false)
+#endif
+{
   mStateMachineResource.Lock();
 
   const CAnimData& animData = *player.GetAnimationData();
@@ -122,6 +131,9 @@ void CPlayerBodyController::Update(float dt, CStateManager& mgr) {
     mAnimationOver =
         !mPlayer->GetAnimationData()->IsAnimTimeRemaining(dt, rstl::string_l("Whole Body"));
     CheckDeathCommands(mgr);
+#ifdef TARGET_PC
+    PortUpdateThirdPersonFsm(mgr);
+#endif
     mBodyState.Update(mgr, *this, dt);
     mAdditiveState.Update(mgr, *this, dt);
     mCommandMgr.ClearCmds();
@@ -197,6 +209,61 @@ void CPlayerBodyController::SetupStateMachines(CStateManager& mgr) {
   mStateMachinesInitialized = true;
   ResetStates(mgr);
 }
+
+#ifdef TARGET_PC
+void CPlayerBodyController::PortSetupMachine(CStateManager& mgr, const CStateMachine* machine) {
+  const rstl::string body(mBodyState.GetName());
+  const char* additiveName = mAdditiveState.GetName();
+  const rstl::string additive(additiveName != nullptr ? additiveName : "AdditiveIdle");
+  mBodyState.Reset(mgr, *this);
+  mAdditiveState.Reset(mgr, *this);
+  mBodyState.Setup(machine);
+  mAdditiveState.Setup(machine);
+  mBodyState.SetTriggerFunctions(skTriggerFunctions, 22);
+  mBodyState.SetStateFunctions(skStateFunctions, 26);
+  mAdditiveState.SetTriggerFunctions(skTriggerFunctions, 22);
+  mAdditiveState.SetStateFunctions(skStateFunctions, 26);
+  mBodyState.SetState(mgr, *this, body);
+  mAdditiveState.SetState(mgr, *this, additive);
+}
+
+void CPlayerBodyController::PortUpdateThirdPersonFsm(CStateManager& mgr) {
+  // Multiplayer already runs PlayerAnimCtrl.
+  const bool want = PortThirdPerson::Enabled() && !mgr.IsMultiplayer();
+  if (want == mPortThirdPersonFsmActive) {
+    return;
+  }
+  // Swap only between the resting states both machines share, so no jump, morph or screw
+  // attack is cut short.
+  const char* name = mBodyState.GetName();
+  if (name == nullptr || (strcmp(name, "Locomotion") != 0 && strcmp(name, "Morphball") != 0)) {
+    return;
+  }
+  const CStateMachine* machine = nullptr;
+  if (want) {
+    if (!mPortThirdPersonFsm) {
+      const SObjectTag* tag = gpResourceFactory->GetResourceIdByName("PlayerAnimCtrl");
+      if (tag == nullptr) {
+        mPortThirdPersonFsmActive = want; // no such resource: keep single player's machine
+        return;
+      }
+      mPortThirdPersonFsm = TCachedToken< CStateMachine >(gpSimplePool->GetObj(*tag));
+      mPortThirdPersonFsm->Lock();
+    }
+    if (!mPortThirdPersonFsm->TryCache()) {
+      return;
+    }
+    machine = mPortThirdPersonFsm->GetObject();
+  } else {
+    machine = GetStateMachine();
+  }
+  if (machine == nullptr) {
+    return;
+  }
+  PortSetupMachine(mgr, machine);
+  mPortThirdPersonFsmActive = want;
+}
+#endif
 
 void CPlayerBodyController::CheckDeathCommands(CStateManager& mgr) {
   if (mCommandMgr.GetCmd(kPBSC_DeathReaction) != nullptr &&

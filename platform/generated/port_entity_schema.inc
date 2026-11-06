@@ -4277,8 +4277,10 @@ template <> const PortSchemaClass& PortEntitySchema::Describe< CPlayerBodyContro
       {"mMorphTransitionActive", "bool", PortSchemaKind::bitfield, 1, kPortSchemaPrivate, 0, nullptr, PES_GETI(CPlayerBodyController, mMorphTransitionActive), PES_SETI(CPlayerBodyController, mMorphTransitionActive)},
       {"mDeathReactionOver", "bool", PortSchemaKind::bitfield, 1, kPortSchemaPrivate, 0, nullptr, PES_GETI(CPlayerBodyController, mDeathReactionOver), PES_SETI(CPlayerBodyController, mDeathReactionOver)},
       {"mDeathReactionActive", "bool", PortSchemaKind::bitfield, 1, kPortSchemaPrivate, 0, nullptr, PES_GETI(CPlayerBodyController, mDeathReactionActive), PES_SETI(CPlayerBodyController, mDeathReactionActive)},
+      {"mPortThirdPersonFsm", "rstl::optional_object<TCachedToken<CStateMachine>>", PortSchemaKind::smart_ptr, 0, kPortSchemaPrivate, sizeof(CPlayerBodyController::mPortThirdPersonFsm), PES_ADDR(CPlayerBodyController, mPortThirdPersonFsm), nullptr, nullptr},
+      {"mPortThirdPersonFsmActive", "bool", PortSchemaKind::bool_, 0, kPortSchemaPrivate, sizeof(CPlayerBodyController::mPortThirdPersonFsmActive), PES_ADDR(CPlayerBodyController, mPortThirdPersonFsmActive), PES_GETI(CPlayerBodyController, mPortThirdPersonFsmActive), PES_SETI(CPlayerBodyController, mPortThirdPersonFsmActive)},
   };
-  static const PortSchemaClass desc = {"CPlayerBodyController", "CEntity", fields, 28, 0x14B47985AEABD7C3ull};
+  static const PortSchemaClass desc = {"CPlayerBodyController", "CEntity", fields, 30, 0xF185F11157323BF4ull};
   return desc;
 }
 template <> const PortSchemaClass& PortEntitySchema::Describe< CPlayerGun >() {
@@ -8229,4 +8231,4 @@ const PortSchemaClass* const* PortEntitySchema::Classes(int& count) {
 }
 
 const int PortEntitySchema::kClassCount = 243;
-const int PortEntitySchema::kFieldCount = 6290;
+const int PortEntitySchema::kFieldCount = 6292;

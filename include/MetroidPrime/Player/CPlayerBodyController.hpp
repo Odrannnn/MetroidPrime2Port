@@ -350,6 +350,15 @@ private:
   bool mMorphTransitionActive : 1;
   bool mDeathReactionOver : 1;
   bool mDeathReactionActive : 1;
+#ifdef TARGET_PC
+  // Port third person: single player's body FSM (SinglePlayerAnimCtrl) has no jump, dash,
+  // grapple or knockback states, so the drawn body would never jump or flip. While third person
+  // is on, the body runs multiplayer's FSM (PlayerAnimCtrl, a superset of the same states).
+  void PortUpdateThirdPersonFsm(CStateManager& mgr);
+  void PortSetupMachine(CStateManager& mgr, const CStateMachine* machine);
+  rstl::optional_object< TCachedToken< CStateMachine > > mPortThirdPersonFsm;
+  bool mPortThirdPersonFsmActive;
+#endif
 };
 CHECK_SIZEOF(CPlayerBodyController, 0x794)
 

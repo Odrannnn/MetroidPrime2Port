@@ -222,6 +222,10 @@ public:
   const CPoseAsTransforms_Linear& PortPresentedPose() const;
   // Port: the ANCS this animation data was built from (the console's `spawn ... ancs <actor>`).
   CAssetId PortSelfId() const { return mSelfId; }
+  // Port: picks an animation from another character of the same ANCS (its PAS database) and makes
+  // it playable here, appending its animation-set index to this character's list. Returns this
+  // character's animation id, or -1 without a match.
+  int PortBorrowAnimation(int character, const CPASAnimParmData& parms, CRandom16& random);
   struct SPortPoseHistory;
   // Owns mPortPoseHistory; never copied.
   CAnimData(const CAnimData&) = delete;

@@ -58,6 +58,10 @@ public:
   const rstl::vector< rstl::pair< uint, CAABox > >& GetAnimBoundsById() const {
     return mAnimBoundsById;
   }
+#ifdef TARGET_PC
+  // Port: CAnimData::PortBorrowAnimation appends another character's animations.
+  rstl::vector< uint >& PortAnimationIndexList() { return mAnimIdxs; }
+#endif
 
 private:
   ushort mTableCount;

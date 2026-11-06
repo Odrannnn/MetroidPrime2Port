@@ -703,6 +703,11 @@ struct PortStateCodec {
     }
     // Counted only when it changes (GetField): an idle actor's animation usually still matches.
     bool changed = a->mLoop != ((bits & 1) != 0) || a->mAnimating != ((bits & 2) != 0) || a->mSpeedScale != speed;
+    // A third-person body's borrowed animation (CAnimData::PortBorrowAnimation) may not be in this
+    // run's list yet.
+    if (anim >= static_cast< int >(a->mCharInfo.GetAnimationIndexList().size())) {
+      return false;
+    }
     if (anim >= 0 && anim != a->GetCurrentAnimation()) {
       a->SetAnimation(CAnimPlaybackParms(anim, -1, 1.f, (bits & 2) != 0), false);
       changed = true;

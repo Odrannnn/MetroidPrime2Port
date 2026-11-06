@@ -22,6 +22,14 @@ appended, dated as in the heading there.
   body's cannon (`CPlayerGun::PortRenderThirdPersonFx`), pointer aim (shots go to the pointer's aim
   point; picks use `TickView`), console `thirdperson` changes saved. Verified on Xvfb: smooth morph
   in/out, charge glow at the cannon, pointer shot hits off-centre, settings.cfg updated.
+- Body animation: 91c2e3b89 advances the body's animation in third person. Then the jump/flip
+  commit: single player's FSM (SinglePlayerAnimCtrl) has no Jump/Dash/Grapple/HeavyHit states, so
+  in third person the body runs PlayerAnimCtrl (`CPlayerBodyController::PortUpdateThirdPersonFsm`,
+  swapped only in Locomotion/Morphball). Samus_SinglePlayer (character 3, own CINF) lists only
+  jump loop/land/hard-land; jump arc and `B_doublejump(_backwards)_samus` are borrowed from
+  character 0 (`CAnimData::PortBorrowAnimation` appends the anim-set index to the player's list;
+  savestates skip an anim id past the list). Verified on Xvfb: jump arc, double-jump flip
+  (upside-down mid-flip, limbs intact), FSM swaps back on `thirdperson off`.
 
 ## 2026-11-05: save states keep every script object's fields (why cutscene bugs kept coming)
 
