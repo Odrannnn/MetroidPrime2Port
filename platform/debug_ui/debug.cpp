@@ -54,6 +54,10 @@ void DrawFreeCam() {
     pose.pitch = look[1];
     PortFreeCam::SetPose(pose);
   }
+  if (ImGui::Button("Move Samus here")) {
+    PortFreeCam::RequestMovePlayerHere();
+  }
+  ImGui::SetItemTooltip("Puts Samus where the camera is, facing its way, and turns the camera off.");
   ImGui::TextWrapped("Close this menu to fly with the left stick, C stick, L / R and Z.");
 
   ImGui::SeparatorText("Photo");

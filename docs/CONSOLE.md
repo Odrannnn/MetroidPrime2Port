@@ -28,6 +28,8 @@ hp, hp_max, visor, beam, freecam) for scripts.
 - `settled` — `busy 0|1` (a warp or layer request still being served), the free object ids and the update frame; `tools/statecheck.py` polls it after a `layer` instead of sleeping
 - `god <0|1>` — god mode (the F1 cheat)
 - `nodarkair <0|1>` — no Dark Aether air damage (the F1 cheat)
+- `moonjump [0|1]` — moon jump (the F1 cheat): holding jump in the air keeps Samus rising, on foot only; no argument prints it. Not saved; set but inactive under Original experience (`(refused: Original experience)`)
+- `boost [speed <1..10>] [time <1..10>] [air 0|1] [steer 0|1]` — the F1 Boost Ball cheats: push and boosted-time scales, boosting in the air (and through bomb/spring jumps), steering a boosted ball; prints all four. Not saved; refused as `moonjump`. Bare `boost` releases a boost (below)
 - `combocost [0..30]`, `combomissiles [0..5]`, `beamammo [50..100]` — combo beam ammo cost, combo missile cost, Dark/Light ammo per capacity pickup (F1 Cheats, each with a Reset); no argument prints it
 - `infammo [all|missile|powerbomb|dark|light] [0|1]` — infinite ammo per counter (fire at zero, HUD shows ∞, real counts and pickups kept; F1 Cheats); no 0|1 flips
 - `mpforce <0|1>` — IsMultiplayer reports true (multiplayer-only arms)
@@ -151,7 +153,7 @@ hp, hp_max, visor, beam, freecam) for scripts.
 - `at <update> <command>` — run one command on that game update (`frame`), not on arrival, so runs at different speeds act on the same tick
 - `gallery [mask]` — the slideshow gallery unlock mask (0..63): print, or set via PercentScans/mode flags
 - `help` — this list
-- `freecam [0|1]` — the plain free camera (no photo panel, HUD stays); no argument toggles it
+- `freecam [0|1|here]` — the plain free camera (no photo panel, HUD stays); no argument toggles it; `here` puts Samus at the camera (eyes, or the ball's middle, where it is, facing its way, standing still) and turns it off (F1 > Debug > Camera > Move Samus here)
 - `thirdperson [on|off|distance <m>|shoulder <m>|height <m>]` — the third-person camera (F1 Video; `third_person*` settings, saved on change); prints on/off, whether it is active (`waiting` until the next frame or while morphed, in a cutscene or split screen) and the camera position
 - `photo [on|off|1|2|4]` — photo mode (F8, F1 > Game): the free camera with the game frozen, HUD/cannon/visor hidden and the Photo mode panel. `on`/`off` enter and leave (refused with a toast when Samus is dead, a cutscene plays or no game runs); a factor saves a PNG supersampled by it; no argument enters when off and captures when on
 - `livesplit [0|1|addr <host:port>|send <line>]` — the LiveSplit link (the F1 setting); no argument: status

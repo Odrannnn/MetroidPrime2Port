@@ -798,6 +798,7 @@ CIOWin::EMessageReturn CMFGame::OnMessage(const CArchitectureMessage& message,
       mStateManager->SetRandomAvailable(true);
 #ifdef TARGET_PC
       // Port: the free camera takes controller 0's input while it is on.
+      PortFreeCam::TakeRequests(*mStateManager);
       if (!(static_cast< int >(input.ControllerNumber()) == 0 && PortPhoto::Input(input)))
 #endif
       mStateManager->ProcessInput(input);

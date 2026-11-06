@@ -101,6 +101,32 @@ void SetGodMode(bool enabled);
 // Light Suit (CPlayer::UpdateDarkAetherDamage); safe zones still heal. Never saved.
 bool NoDarkAetherDamage();
 void SetNoDarkAetherDamage(bool enabled);
+// Cheat (F1 > Cheats, console `moonjump`): holding Jump in the air lifts Samus at a steady speed,
+// on foot (CPlayer::ProcessInput). Never saved; off in the Original experience. The Set getters
+// return the values as set.
+bool MoonJumpSet();
+bool MoonJump();
+void SetMoonJump(bool enabled);
+// Cheat (F1 > Cheats, console `boost`): Boost Ball speed and duration multipliers, 1 = retail.
+// Speed scales the boost's push (CMorphBall::EnterBoosting), duration both the time the ball
+// stays boosted and, over that time, how slowly it loses speed. Never saved; 1 in the Original
+// experience.
+constexpr float kBoostScaleMax = 10.f;
+float BoostSpeedScaleSet();
+float BoostDurationScaleSet();
+float BoostSpeedScale();
+float BoostDurationScale();
+void SetBoostScales(float speed, float duration);
+// Cheats (F1 > Cheats, console `boost air|steer`). BoostAnywhere: the Boost Ball also fires in the
+// air (after a bomb or spring jump) and a boost no longer ends, damped, when the ball leaves the
+// ground. BoostSteer: the stick turns a boosted ball's course, keeping its speed. Never saved; off
+// in the Original experience.
+bool BoostAnywhereSet();
+bool BoostAnywhere();
+void SetBoostAnywhere(bool enabled);
+bool BoostSteerSet();
+bool BoostSteer();
+void SetBoostSteer(bool enabled);
 // Cheat (F1 > Cheats, a checkbox per counter; `MP2_INFINITE_AMMO=1` turns on all four): firing
 // spends none of the chosen ammo (CPlayerState::DecrementAmmoAndDisplayAlertIfOut). Never saved.
 enum : unsigned {

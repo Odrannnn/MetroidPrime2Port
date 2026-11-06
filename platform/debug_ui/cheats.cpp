@@ -28,6 +28,7 @@
 #include <cstdio>
 #include <iterator>
 #include <string>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -56,12 +57,15 @@ void GrantItem(CPlayerState& ps, CPlayerState::EItemType type, int capacity, int
 // UpdateTouchScroll can tell a scroll from a drag, so scrolling the page past
 // these sliders filled Samus's ammo and tanks. The value is held back until
 // release and dropped when the drag became a scroll.
-bool CheatSlider(const char* label, int& value, int max) {
+template <typename T>
+bool CheatSlider(const char* label, T& value, T min, T max, const char* format = nullptr) {
+  static_assert(std::is_same_v<T, int> || std::is_same_v<T, float>);
   static ImGuiID sEditing = 0;
-  static int sPending = 0;
+  static T sPending = 0;
   const ImGuiID id = ImGui::GetID(label);
-  int shown = sEditing == id ? sPending : value;
-  ImGui::SliderInt(label, &shown, 0, max);
+  T shown = sEditing == id ? sPending : value;
+  ImGui::SliderScalar(label, std::is_same_v<T, float> ? ImGuiDataType_Float : ImGuiDataType_S32, &shown,
+                      &min, &max, format);
   if (ImGui::IsItemActive()) {
     sEditing = id;
     sPending = shown;
@@ -77,6 +81,8 @@ bool CheatSlider(const char* label, int& value, int max) {
   value = sPending;
   return true;
 }
+
+bool CheatSlider(const char* label, int& value, int max) { return CheatSlider(label, value, 0, max); }
 
 struct SItemCheck {
   const char* name;
@@ -220,6 +226,36 @@ void DrawCheatsSection() {
   ImGui::SetItemTooltip("Stacked shots skip the Dark Beam unless it's the one in hand, so they "
                         "don't drain light beacons and crystals.");
   ImGui::EndDisabled();
+  bool moonJump = PortOverlay::MoonJumpSet();
+  if (ImGui::Checkbox("Moon jump", &moonJump)) {
+    PortOverlay::SetMoonJump(moonJump);
+  }
+  ImGui::SetItemTooltip("Holding Jump in the air lifts Samus at a steady speed, on foot only. Not saved.");
+  float boostSpeed = PortOverlay::BoostSpeedScaleSet();
+  float boostDuration = PortOverlay::BoostDurationScaleSet();
+  bool boostChanged = CheatSlider("Boost Ball speed", boostSpeed, 1.f, PortOverlay::kBoostScaleMax, "%.1fx");
+  ImGui::SetItemTooltip("Multiplies the Boost Ball's push. 1x is the game's. Not saved.");
+  boostChanged |=
+      CheatSlider("Boost Ball duration", boostDuration, 1.f, PortOverlay::kBoostScaleMax, "%.1fx");
+  ImGui::SetItemTooltip("Multiplies how long the ball stays boosted and how slowly it loses speed meanwhile. "
+                        "The boost still ends on leaving the ground or hitting a wall. 1x is the game's. "
+                        "Not saved.");
+  if (boostChanged) {
+    PortOverlay::SetBoostScales(boostSpeed, boostDuration);
+  }
+  bool boostAnywhere = PortOverlay::BoostAnywhereSet();
+  if (ImGui::Checkbox("Boost anywhere", &boostAnywhere)) {
+    PortOverlay::SetBoostAnywhere(boostAnywhere);
+  }
+  ImGui::SetItemTooltip("The Boost Ball also fires in the air, after a bomb or spring jump, and a boost "
+                        "no longer stops short when the ball leaves the ground, so a boost into a spring "
+                        "jump keeps its height. Not saved.");
+  ImGui::SameLine();
+  bool boostSteer = PortOverlay::BoostSteerSet();
+  if (ImGui::Checkbox("Steer while boosting", &boostSteer)) {
+    PortOverlay::SetBoostSteer(boostSteer);
+  }
+  ImGui::SetItemTooltip("The stick turns a boosted ball's course, keeping its speed. Not saved.");
   ImGui::EndDisabled();
 
   CPlayerState* ps = gpGameState != nullptr ? gpGameState->GetPlayerState().GetPtr() : nullptr;

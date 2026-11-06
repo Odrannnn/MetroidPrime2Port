@@ -253,6 +253,12 @@ bool sVisible = false;
 bool sGodMode = false; // never saved: a cheat must not persist, so it is not a setting
 unsigned sInfiniteAmmo = 0; // InfiniteAmmoKind bits; never saved, as sGodMode
 bool sNoDarkAetherDamage = false; // never saved, as sGodMode
+// The movement cheats (PortOverlay::MoonJump and the Boost Ball ones); never saved, as sGodMode.
+static bool sMoonJump = false;
+static float sBoostSpeedScale = 1.f;
+static float sBoostDurationScale = 1.f;
+static bool sBoostAnywhere = false;
+static bool sBoostSteer = false;
 uint32_t sWorldId = 0;
 int sAreaId = -1;
 std::vector< SRoomEntry > sRooms;
@@ -1065,6 +1071,29 @@ void SetNoDarkAetherDamage(bool enabled) {
   ReadEnv();
   sNoDarkAetherDamage = enabled;
 }
+
+bool MoonJumpSet() { return sMoonJump; }
+bool MoonJump() { return sMoonJump && !OriginalExperience(); }
+void SetMoonJump(bool enabled) { sMoonJump = enabled; }
+
+static float BoostScale(float value) {
+  return std::isfinite(value) ? std::clamp(value, 1.f, kBoostScaleMax) : 1.f;
+}
+float BoostSpeedScaleSet() { return sBoostSpeedScale; }
+float BoostDurationScaleSet() { return sBoostDurationScale; }
+float BoostSpeedScale() { return OriginalExperience() ? 1.f : sBoostSpeedScale; }
+float BoostDurationScale() { return OriginalExperience() ? 1.f : sBoostDurationScale; }
+void SetBoostScales(float speed, float duration) {
+  sBoostSpeedScale = BoostScale(speed);
+  sBoostDurationScale = BoostScale(duration);
+}
+
+bool BoostAnywhereSet() { return sBoostAnywhere; }
+bool BoostAnywhere() { return sBoostAnywhere && !OriginalExperience(); }
+void SetBoostAnywhere(bool enabled) { sBoostAnywhere = enabled; }
+bool BoostSteerSet() { return sBoostSteer; }
+bool BoostSteer() { return sBoostSteer && !OriginalExperience(); }
+void SetBoostSteer(bool enabled) { sBoostSteer = enabled; }
 
 unsigned InfiniteAmmoKind(int itemType) {
   switch (itemType) {

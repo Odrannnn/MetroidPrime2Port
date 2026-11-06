@@ -1106,6 +1106,83 @@ void CmdNoDarkAether(CStateManager&, const Args& args, std::string& out) {
   out += enabled ? "no dark aether damage on\n" : "no dark aether damage off\n";
 }
 
+// The cheats below are kept but do nothing under Original experience (MP1's commands).
+const char* CheatRefused(bool set, bool applied) {
+  return set && !applied ? " (refused: Original experience)" : "";
+}
+
+bool ParseSwitch(const std::string& arg, bool& value) {
+  if (arg != "0" && arg != "1" && arg != "on" && arg != "off") {
+    return false;
+  }
+  value = arg == "1" || arg == "on";
+  return true;
+}
+
+void CmdMoonJump(CStateManager&, const Args& args, std::string& out) {
+  if (args.size() > 2) {
+    Fail("usage: moonjump [0|1]");
+    return;
+  }
+  if (args.size() == 2) {
+    bool on = false;
+    if (!ParseSwitch(std::string(args[1]), on)) {
+      Fail("usage: moonjump [0|1]");
+      return;
+    }
+    PortOverlay::SetMoonJump(on);
+  }
+  out += PortOverlay::MoonJumpSet() ? "moonjump 1" : "moonjump 0";
+  out += CheatRefused(PortOverlay::MoonJumpSet(), PortOverlay::MoonJump());
+  out += '\n';
+}
+
+// `boost <key> <value>...` (CmdBoost without arguments releases a boost).
+void CmdBoostCheats(const Args& args, std::string& out) {
+  static const char* const usage = "usage: boost [speed <1..10>] [time <1..10>] [air 0|1] [steer 0|1]";
+  float speed = PortOverlay::BoostSpeedScaleSet();
+  float duration = PortOverlay::BoostDurationScaleSet();
+  bool air = PortOverlay::BoostAnywhereSet();
+  bool steer = PortOverlay::BoostSteerSet();
+  if (args.size() % 2 == 0) {
+    Fail(usage);
+    return;
+  }
+  for (size_t i = 1; i + 1 < args.size(); i += 2) {
+    const std::string key(args[i]);
+    const std::string value(args[i + 1]);
+    if (key == "air" || key == "steer") {
+      if (!ParseSwitch(value, key == "air" ? air : steer)) {
+        Fail(usage);
+        return;
+      }
+    } else if (key == "speed" || key == "time") {
+      char* end = nullptr;
+      const float number = std::strtof(value.c_str(), &end);
+      if (end == value.c_str() || *end != '\0') {
+        Fail(usage);
+        return;
+      }
+      (key == "speed" ? speed : duration) = number;
+    } else {
+      Fail(usage);
+      return;
+    }
+  }
+  PortOverlay::SetBoostScales(speed, duration);
+  PortOverlay::SetBoostAnywhere(air);
+  PortOverlay::SetBoostSteer(steer);
+  const bool set = PortOverlay::BoostSpeedScaleSet() != 1.f || PortOverlay::BoostDurationScaleSet() != 1.f ||
+                   air || steer;
+  const bool applied = PortOverlay::BoostSpeedScale() != 1.f || PortOverlay::BoostDurationScale() != 1.f ||
+                       PortOverlay::BoostAnywhere() || PortOverlay::BoostSteer();
+  char line[128];
+  std::snprintf(line, sizeof(line), "boost speed %.2f time %.2f air %d steer %d%s\n",
+                PortOverlay::BoostSpeedScaleSet(), PortOverlay::BoostDurationScaleSet(), air ? 1 : 0,
+                steer ? 1 : 0, CheatRefused(set, applied));
+  out += line;
+}
+
 // infammo [all|missile|powerbomb|dark|light] [0|1]: the F1 Cheats "Infinite" boxes; no 0|1 flips.
 void CmdInfiniteAmmo(CStateManager&, const Args& args, std::string& out) {
   struct Kind {
@@ -1463,6 +1540,11 @@ void CmdFreeCam(CStateManager& mgr, const Args& args, std::string& out) {
     pose.pitch = static_cast< float >(std::atof(std::string(args[3]).c_str()));
     PortFreeCam::SetPose(pose);
     out += "pose set\n";
+    return;
+  }
+  if (args.size() >= 2 && args[1] == "here") {
+    out += PortFreeCam::MovePlayerHere(mgr) ? "player moved to the camera, camera off\n"
+                                             : "the free camera is off\n";
     return;
   }
   const bool enabled = args.size() < 2 ? !PortFreeCam::Active() : ArgToInt(args[1], 1) != 0;
@@ -1997,8 +2079,12 @@ void CmdPointer(CStateManager&, const Args& args, std::string& out) {
 }
 
 // boost: start a boost-ball charge release on the morphed player (what releasing a held A does), so
-// lanes reach boost-hit arms without timing pad input.
-void CmdBoost(CStateManager& mgr, const Args&, std::string& out) {
+// lanes reach boost-hit arms without timing pad input. With arguments: the Boost Ball cheats.
+void CmdBoost(CStateManager& mgr, const Args& args, std::string& out) {
+  if (args.size() > 1) {
+    CmdBoostCheats(args, out);
+    return;
+  }
   CPlayer* player = mgr.GetPlayer(0);
   if (player == nullptr || player->GetMorphBall() == nullptr ||
       player->GetMorphballTransitionState() != CPlayer::kMS_Morphed) {
@@ -5577,7 +5663,9 @@ const CommandSpec kCommands[] = {
     {"aspect", CmdAspect,
       "aspect [4:3|16:9|window]    aspect ratio, as the F1 Video > Display row does\n"},
     {"boost", CmdBoost,
-      "boost                       boost-ball release on the morphed player\n"},
+      "boost                       boost-ball release on the morphed player\n"
+      "boost [speed <1..10>] [time <1..10>] [air 0|1] [steer 0|1]\n"
+      "                            cheats: Boost Ball speed/duration scales, boost anywhere, steer while boosting\n"},
     {"noise", CmdNoise,
       "noise <type> [x y z]        InformListeners at the player (6 = safe-zone noise)\n"},
     {"gameevent", CmdGameEvent,
@@ -5763,7 +5851,10 @@ const CommandSpec kCommands[] = {
     {"help", CmdHelp,
       "help                        this list\n"},
     {"freecam", CmdFreeCam,
-      "freecam [0|1]              free camera (photo mode); no argument toggles it\n"},
+      "freecam [0|1|here]          free camera (photo mode); no argument toggles it; here moves Samus\n"
+      "                            to it and turns it off\n"},
+    {"moonjump", CmdMoonJump,
+      "moonjump [0|1]              cheat: holding jump in the air keeps rising; no argument prints it\n"},
     {"thirdperson", CmdThirdPerson,
       "thirdperson [on|off] [distance <m>] [shoulder <m>] [height <m>]\n"
       "                            third-person camera (single player; F1 Video, third_person* settings)\n"},

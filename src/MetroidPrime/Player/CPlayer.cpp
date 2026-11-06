@@ -2693,6 +2693,20 @@ void CPlayer::ProcessInput(const CFinalInput& input, CStateManager& mgr) {
           playerState, GetTranslation(), GetVelocityWR(),
           CVector2f(activeInput.GetAnalogLeftX(), activeInput.GetAnalogLeftY()));
     }
+
+#ifdef TARGET_PC
+    // The moon jump cheat: Jump held in the air rises at a steady speed. In the ball Jump is the
+    // boost, so only on foot.
+    static const float kMoonJumpSpeed = 12.f;
+    if (PortOverlay::MoonJump() && mOrbitState != kOS_Grapple &&
+        mMovementState != NPlayer::kMS_OnGround && JumpHeld(activeInput)) {
+      CVector3f vel = GetVelocityWR();
+      if (vel.GetZ() < kMoonJumpSpeed) {
+        vel.SetZ(kMoonJumpSpeed);
+        SetVelocityWR(vel);
+      }
+    }
+#endif
   }
 
   ComputeFreeLook(activeInput, mgr);

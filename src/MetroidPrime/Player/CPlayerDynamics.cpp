@@ -1193,7 +1193,14 @@ void CPlayer::BombJump(const CVector3f& position, CStateManager& mgr) {
       const CVector3f newVelocity(0.f, 0.f, velocity);
       SetVelocityWR(newVelocity);
       mMorphBall->SetDamageTimer(0.1f);
+#ifdef TARGET_PC
+      // The boost-anywhere cheat keeps a Boost Ball charge through the jump.
+      if (!PortOverlay::BoostAnywhere()) {
+        mMorphBall->CancelBoosting();
+      }
+#else
       mMorphBall->CancelBoosting();
+#endif
       mMorphBall->SetDisableSpiderBallTime(.4f);
       if (mMorphBall->GetCloseToCollisionTime() > .1f) {
         mGun->AddBombReloadTime(.4f);
