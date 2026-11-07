@@ -1789,9 +1789,6 @@ int OrientationQuarters(SDL_DisplayOrientation orientation) {
   }
 }
 
-// Pitch (x, positive tilts the far edge up) and yaw (positive turns right) rates in rad/s from
-// the chosen source, after calibration and gyro space; false when there is none. dt is the time
-// since the last call.
 // Steam turns a controller's motion sensor off when its own layout uses no gyro (switching layouts
 // on a focus change can): the reports keep coming with the motion frozen while SDL still has the
 // sensors on, so its driver never asks again. A running sensor's readings always carry some noise,
@@ -1875,6 +1872,9 @@ void NoteSteamPhysical(int port, SDL_Gamepad* virtualPad, SDL_Gamepad* physical)
   sKnown[port] = true;
 }
 
+// Pitch (x, positive tilts the far edge up) and yaw (positive turns right) rates in rad/s from
+// the chosen source, after calibration and gyro space; false when there is none. dt is the time
+// since the last call.
 bool ReadGyroRates(int port, const GyroSettings& cfg, float& pitch, float& yaw, float dt) {
   GyroPort& st = sGyro[port];
   const int gyroSource = cfg.source;

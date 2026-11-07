@@ -393,7 +393,9 @@ Controls > Touch & gyro (Gyro aim):
   virtual pad:
   - Sony and Nintendo controllers: they are taken off that list, so SDL opens the physical
     controller too, only for its gyro and back buttons (it never becomes a player). The status line
-    shows `controller (behind Steam Input)`. Not the Switch 2 controllers: SDL's driver for them
+    shows `controller (behind Steam Input)`. Steam doesn't say which physical pad is behind which
+    virtual one, so with two of one model (or, if Steam reports another product id, one vendor)
+    behind Steam Input neither gets a gyro or back buttons rather than another player's. Not the Switch 2 controllers: SDL's driver for them
     takes over their USB interface, which Steam is using, so they have no gyro under Steam Input.
   - A 2026 Steam Controller (wired, Bluetooth or its puck) or a Steam Deck's own controls: read from
     the controller's own HID reports (SDL's drivers for them change lizard mode and the motion

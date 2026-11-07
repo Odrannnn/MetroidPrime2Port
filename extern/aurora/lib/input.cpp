@@ -669,20 +669,38 @@ void initialize() noexcept {
 }
 
 SDL_Gamepad* steam_physical_gamepad(Uint16 vendor, Uint16 product) noexcept {
-  // The same vendor and product; else the only one of that vendor.
+  // The only one of that vendor and product; else the only one of that vendor. Only when it can't
+  // be another player's: Steam's slot info carries no serial, so two pads of one model (or vendor)
+  // behind Steam Input can't be told apart, and neither gets a gyro rather than the wrong one.
+  int sameProductPads = 0;
+  int sameVendorPads = 0;
+  for (const auto& [instance, controller] : g_GameControllers) {
+    if (controller.m_controller == nullptr || SDL_GetGamepadSteamHandle(controller.m_controller) == 0 ||
+        controller.m_vid != vendor) {
+      continue;
+    }
+    ++sameVendorPads;
+    sameProductPads += controller.m_pid == product ? 1 : 0;
+  }
+  SDL_Gamepad* sameProduct = nullptr;
   SDL_Gamepad* sameVendor = nullptr;
+  int sameProductCount = 0;
   int sameVendorCount = 0;
   for (const auto& [instance, pad] : g_steamPhysical) {
     if (SDL_GetGamepadVendor(pad) != vendor) {
       continue;
     }
     if (SDL_GetGamepadProduct(pad) == product) {
-      return pad;
+      sameProduct = pad;
+      ++sameProductCount;
     }
     sameVendor = pad;
     ++sameVendorCount;
   }
-  return sameVendorCount == 1 ? sameVendor : nullptr;
+  if (sameProductCount == 1 && sameProductPads <= 1) {
+    return sameProduct;
+  }
+  return sameProductCount == 0 && sameVendorCount == 1 && sameVendorPads <= 1 ? sameVendor : nullptr;
 }
 
 bool is_steam_physical(Uint32 instance) noexcept { return g_steamPhysical.contains(instance); }
