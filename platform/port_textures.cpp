@@ -50,7 +50,8 @@ bool sUserOn = true;
 
 // Every name DeviceDirForType can return; used to tell a device-pack root from
 // a single device-agnostic pack.
-constexpr const char* kDeviceDirs[] = {"xbox", "playstation", "switch", "gamecube", "standard", "keyboard"};
+constexpr const char* kDeviceDirs[] = {"xbox", "playstation", "switch", "gamecube", "standard", "keyboard",
+                                       "steamdeck"};
 
 // SDL's gamepad types back PADControllerType, so this mirrors the pad in use.
 const char* DeviceDirForType(PADControllerType type) {
@@ -394,5 +395,16 @@ UserPackUsage UserPackMatches() {
 
 const char* DeviceName() { return sDevice.c_str(); }
 
-const char* PadDeviceName() { return DeviceDirForType(PADGetControllerType(PAD_CHAN0)); }
+// A Valve controller (the Steam Deck's own pad, a Steam Controller, or Steam Input's virtual pad)
+// gets the Steam Deck set: SDL types the virtual pad as an Xbox 360 one, and reports the physical
+// controller's ids behind it when Steam says which it is.
+const char* PadDeviceName() {
+  u32 vid = 0;
+  u32 pid = 0;
+  PADGetVidPid(PAD_CHAN0, &vid, &pid);
+  if (vid == 0x28de) {
+    return "steamdeck";
+  }
+  return DeviceDirForType(PADGetControllerType(PAD_CHAN0));
+}
 } // namespace PortTextures

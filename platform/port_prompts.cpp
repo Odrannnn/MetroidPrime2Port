@@ -363,6 +363,12 @@ const char* SuffixForSdlButton(int button) {
   case SDL_GAMEPAD_BUTTON_DPAD_DOWN: return "dpad_down";
   case SDL_GAMEPAD_BUTTON_DPAD_LEFT: return "dpad_left";
   case SDL_GAMEPAD_BUTTON_DPAD_RIGHT: return "dpad_right";
+  // Only the Steam Deck set has art for the back grips; elsewhere the file is missing and the
+  // prompt keeps its static icon.
+  case SDL_GAMEPAD_BUTTON_LEFT_PADDLE1: return "leftpaddle1";
+  case SDL_GAMEPAD_BUTTON_RIGHT_PADDLE1: return "rightpaddle1";
+  case SDL_GAMEPAD_BUTTON_LEFT_PADDLE2: return "leftpaddle2";
+  case SDL_GAMEPAD_BUTTON_RIGHT_PADDLE2: return "rightpaddle2";
   case PAD_NATIVE_BUTTON_TRIGGER_LEFT: return "lt";
   case PAD_NATIVE_BUTTON_TRIGGER_RIGHT: return "rt";
   default: return nullptr;
@@ -1037,7 +1043,8 @@ const char* ConfirmLabel() {
     }
     return "A";
   }
-  if (std::strcmp(device, "xbox") == 0 || std::strcmp(device, "gamecube") == 0) {
+  if (std::strcmp(device, "xbox") == 0 || std::strcmp(device, "gamecube") == 0 ||
+      std::strcmp(device, "steamdeck") == 0) {
     return "A";
   }
   // A pad's mapping is positional: the game's A usually sits on the south button.

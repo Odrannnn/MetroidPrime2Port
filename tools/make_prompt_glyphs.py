@@ -16,7 +16,8 @@ keyboard) in use. The keyboard icons label the keys the port binds by default
 The bindings/ set holds one icon per key and pad input, which the port swaps
 in when an action is rebound.
 
-Icons come from Kenney's "Input Prompts" pack, which is CC0; the ones used are
+Icons come from Kenney's "Input Prompts" pack, which is CC0, and the Steam Deck
+set from Xelu's "Free Controllers & Keyboard Prompts", also CC0; the ones used are
 vendored in tools/prompt_icons/ (see the README there). Run with an output
 directory, usually the `textures` folder beside the executable:
 
@@ -100,6 +101,17 @@ DEVICE_ICONS = {
                "l": "switch_button_zl.png", "r": "switch_button_zr.png",
                "z": "switch_button_r.png",
                **pad_sticks_and_dpad("switch")},
+    # Valve's controllers (the Steam Deck, the Steam Controller): Xbox-positioned face buttons, so
+    # A is A. The pack has no per-direction stick art; those are built (deck_stick_direction).
+    "steamdeck": {"a": "steamdeck_a.png", "b": "steamdeck_b.png",
+                  "x": "steamdeck_x.png", "y": "steamdeck_y.png",
+                  "start": "steamdeck_menu.png",
+                  "l": "steamdeck_l2.png", "r": "steamdeck_r2.png", "z": "steamdeck_r1.png",
+                  "stick": "steamdeck_left_stick.png", "cstick": "steamdeck_right_stick.png",
+                  "dpad": "steamdeck_dpad.png",
+                  **{f"stick_{d}": f"steamdeck_left_stick_{d}.png" for d in DIRECTIONS},
+                  **{f"cstick_{d}": f"steamdeck_right_stick_{d}.png" for d in DIRECTIONS},
+                  **{f"dpad_{d}": f"steamdeck_dpad_{d}.png" for d in DIRECTIONS}},
     # The sticks and the D-pad on their default keys: WASD, IJKL and the arrows.
     "keyboard": {"a": "keyboard_x.png", "b": "keyboard_z.png", "x": "keyboard_c.png",
                  "y": "keyboard_v.png", "start": "keyboard_enter.png",
@@ -165,6 +177,24 @@ PAD_ICONS = {
         "leftstick": "switch_stick_l_press.png", "rightstick": "switch_stick_r_press.png",
         "lt": "switch_button_zl.png", "rt": "switch_button_zr.png",
         **pad_icons_for_axes("switch"),
+    },
+    # The Steam Deck / Steam Controller set (tools/prompt_icons/steamdeck_*, from Xelu's pack). Menu
+    # and View are Start and Back; the back grips are SDL's paddles (L4/R4 the first pair).
+    "steamdeck": {
+        "south": "steamdeck_a.png", "east": "steamdeck_b.png",
+        "west": "steamdeck_x.png", "north": "steamdeck_y.png",
+        "start": "steamdeck_menu.png", "back": "steamdeck_inventory.png",
+        "leftshoulder": "steamdeck_l1.png", "rightshoulder": "steamdeck_r1.png",
+        "leftstick": "steamdeck_left_stick_click.png",
+        "rightstick": "steamdeck_right_stick_click.png",
+        "lt": "steamdeck_l2.png", "rt": "steamdeck_r2.png",
+        "leftpaddle1": "steamdeck_l4.png", "rightpaddle1": "steamdeck_r4.png",
+        "leftpaddle2": "steamdeck_l5.png", "rightpaddle2": "steamdeck_r5.png",
+        "stick_l": "steamdeck_left_stick.png", "stick_r": "steamdeck_right_stick.png",
+        "dpad": "steamdeck_dpad.png",
+        **{f"stick_l_{d}": f"steamdeck_left_stick_{d}.png" for d in DIRECTIONS},
+        **{f"stick_r_{d}": f"steamdeck_right_stick_{d}.png" for d in DIRECTIONS},
+        **{f"dpad_{d}": f"steamdeck_dpad_{d}.png" for d in DIRECTIONS},
     },
     # Keyed by the GameCube button rather than the SDL one: the port names a GC
     # pad's button after the action its default mapping gives it (see
@@ -263,7 +293,79 @@ def write_dds(img, path):
 
 
 def load_icon(name):
+    stem = name[:-4] if name.endswith(".png") else name
+    m = re.fullmatch(r"(steamdeck_(?:left|right)_stick)_(up|down|left|right)", stem)
+    if m:
+        return deck_stick_direction(m.group(1), m.group(2))
     return Image.open(os.path.join(ICONS_DIR, name)).convert("RGBA")
+
+
+def kenney_arrow():
+    """Kenney's direction arrow, lifted out of xbox_stick_l_left (the pack draws it into each
+    stick-direction icon rather than on its own): the connected shape holding the icon's leftmost
+    texel, which is the arrow, standing clear of the stick. It points left, cropped. The left one
+    is used because up and down touch the stick's outline in the Xbox art."""
+    pushed = load_icon("xbox_stick_l_left.png")
+    pp = pushed.load()
+    w, h = pushed.size
+    start = min(((x, y) for y in range(h) for x in range(w) if pp[x, y][3] > 0))
+    shape, stack = {start}, [start]
+    while stack:
+        x, y = stack.pop()
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                q = (x + dx, y + dy)
+                if 0 <= q[0] < w and 0 <= q[1] < h and q not in shape and pp[q][3] > 0:
+                    shape.add(q)
+                    stack.append(q)
+    arrow = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    ap = arrow.load()
+    for q in shape:
+        ap[q] = pp[q]
+    return arrow.crop(arrow.getbbox()), w
+
+
+# The Steam Deck art's colours: the grey of a stick or button face and its dark rim.
+DECK_FACE = (79, 79, 79)
+DECK_RIM = (21, 21, 21)
+
+
+def deck_arrow(arrow):
+    """Kenney's white arrow in the Deck art's colours: the face grey, with a dark rim around it
+    as the Deck icons have."""
+    from PIL import ImageFilter
+    rim = max(1, round(min(arrow.size) / 6))
+    pad = rim + 1
+    canvas = Image.new("RGBA", (arrow.width + 2 * pad, arrow.height + 2 * pad), (0, 0, 0, 0))
+    canvas.alpha_composite(arrow, (pad, pad))
+    alpha = canvas.getchannel("A")
+    outline = alpha.filter(ImageFilter.MaxFilter(2 * rim + 1))
+    out = Image.new("RGBA", canvas.size, DECK_RIM + (0,))
+    out.putalpha(outline)
+    face = Image.new("RGBA", canvas.size, DECK_FACE + (0,))
+    face.putalpha(alpha)
+    out.alpha_composite(face)
+    return out
+
+
+def deck_stick_direction(stick, direction):
+    """A Steam Deck stick pushed one way: the stick at the size of its plain icon, as the other
+    sets keep theirs, with Kenney's arrow (kenney_arrow, in the Deck's colours) at the canvas
+    edge on that side. The Deck art fills its canvas, so the arrow sits over the stick's rim
+    rather than in a margin; its own dark rim keeps it apart from the stick."""
+    ARROW_SCALE = 1.1
+    out = load_icon(stick + ".png")
+    size = out.width
+    arrow, kenney_size = kenney_arrow()
+    scale = size / kenney_size * ARROW_SCALE
+    arrow = arrow.resize((max(1, round(arrow.width * scale)), max(1, round(arrow.height * scale))),
+                         Image.LANCZOS)
+    arrow = deck_arrow(arrow)
+    arrow = arrow.rotate({"left": 0, "down": 90, "right": 180, "up": 270}[direction], expand=True)
+    pos = {"left": (0, (size - arrow.height) // 2), "right": (size - arrow.width, (size - arrow.height) // 2),
+           "up": ((size - arrow.width) // 2, 0), "down": ((size - arrow.width) // 2, size - arrow.height)}
+    out.alpha_composite(arrow, pos[direction])
+    return out
 
 
 def make_cluster(stems):

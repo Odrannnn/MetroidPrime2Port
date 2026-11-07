@@ -12,6 +12,16 @@ anyway. The pack ships a `License.txt` alongside the download.
 
 Only the icons the port needs are copied here.
 
+The `steamdeck_*.png` set (100x100, the Steam Deck's buttons, also used for the Steam
+Controller and Steam Input's virtual pad) comes from Xelu's **Free Controllers & Keyboard
+Prompts** pack: https://thoseawesomeguys.com/prompts/ — also Creative Commons CC0 1.0. The
+files are the pack's `Steam Deck` folder, renamed from `SteamDeck_<Name>.png` to
+`steamdeck_<name>.png`. Menu is Start, Inventory (the View button) is Back, L4/R4/L5/R5 are
+the back grips (SDL's paddles). The pack has no per-direction stick art, so
+`tools/make_prompt_glyphs.py` builds it: the Deck stick at full size, with Kenney's arrow
+(lifted out of `xbox_stick_l_left.png`, rotated per direction, recoloured to the Deck art's
+grey face and dark rim) over its rim on that side.
+
 The device icons label the A, B, X, Y, Start, L, R and Z prompts, and the
 stick, C-stick and D-pad prompts (whole and per direction), for each
 controller family. The Switch set is positional, like SDL3's button names: the
