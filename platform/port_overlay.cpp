@@ -93,6 +93,7 @@ int sMapPickups = PortOverlay::kMapPickups_Off;
 bool sMapPickupKinds = false;
 bool sRevealMap = false;
 int sPromptGlyphs = 0;
+bool sPromptRing = true;
 bool sIgtTimer = false;
 bool sOriginalExperience = false;
 bool sUnlockHardMode = false;
@@ -2358,6 +2359,12 @@ void SetLanguage(int index) {
   ReadEnv();
   sLanguage = std::clamp(index, 0, kLanguageMax);
   Persist();
+}
+
+bool PromptRing() {
+  ReadEnv();
+  // Original experience is the game's own art and geometry.
+  return !OriginalExperience() && EnvBool("MP2_PROMPT_RING", sPromptRing);
 }
 
 const char* PromptGlyphs() {

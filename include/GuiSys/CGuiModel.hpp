@@ -6,6 +6,7 @@
 class CModelFlags;
 #ifdef TARGET_PC
 class CAABox;
+class CCubeModel;
 class CTexture;
 #endif
 
@@ -39,6 +40,10 @@ public:
   // Beam's centre triangle is a second surface with its own texture). The first layer is the
   // icon's cell in the shared atlas.
   int PortIconLayers(PortIconLayer* out, int max) const;
+  // The model's mesh in the frame's database (null until the frame has loaded), and how it blends:
+  // for the drawn button ring (port_prompt_ring.h).
+  const CCubeModel* PortCubeModel() const;
+  int PortDrawFlags() const { return mDrawFlags; }
 #endif
   static void BeginDraw();                        // Guessed name
   static void EndDraw();                          // Guessed name

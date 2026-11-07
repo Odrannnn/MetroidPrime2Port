@@ -10,6 +10,7 @@
 #include "dolphin/gx/GXVert.h"
 #ifdef TARGET_PC
 #include "Kyoto/Graphics/PortDrawDebug.hpp"
+#include "port_prompt_ring.h"
 #endif
 
 #include <string.h>
@@ -170,7 +171,10 @@ CCubeModel::CCubeModel(rstl::vector< void* >* surfaces,
 }
 
 #ifdef TARGET_PC
-CCubeModel::~CCubeModel() { PortDrawDebug::OnModelDestroyed(this); }
+CCubeModel::~CCubeModel() {
+  PortDrawDebug::OnModelDestroyed(this);
+  PortPromptRing::ModelGone(this); // Port: the drawn button ring's records of it
+}
 #endif
 
 void CCubeModel::MakeTexturesFromMats(const void* data,
