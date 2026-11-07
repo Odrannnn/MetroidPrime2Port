@@ -1484,6 +1484,9 @@ void CStateManager::DrawWorld(const CInGameGuiManagerSet& gui) {
   }
   if (visor == CPlayerState::kPV_Scan) {
     CScopedProfiler visorProfile(rstl::string_l("*GameVisor"), true);
+#ifdef TARGET_PC
+    CPortPipelineContextScope globalPipelines(AURORA_PIPELINE_CONTEXT_GLOBAL);
+#endif
     CapturePlayerTextures();
     mCurrentRenderPlayer->GetTargeting()->Draw(*this, gui);
   }

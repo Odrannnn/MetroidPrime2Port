@@ -1320,10 +1320,17 @@ int main(int argc, char** argv) {
   // included, so walking back is free. It trims on Android's memory warnings (port_memory_log.cpp)
   // and on the memory log's MemAvailable check every 5 s: under 1024 MiB available it releases
   // what a minute of frames didn't draw, under 512 MiB all but what the last frames drew (GLOBAL
-  // pipelines stay). Overrides: MP2_PIPELINE_TRIM_MIB / MP2_PIPELINE_TRIM_SEVERE_MIB (0 turns a
+  // pipelines stay: Samus, gun, HUD, visors). Android has no moderate level: a 3-4 GB phone sits
+  // under 1024 MiB available all the time, and rebuilding pipelines costs up to 2 s each on a Mali
+  // (issue #98). Overrides: MP2_PIPELINE_TRIM_MIB / MP2_PIPELINE_TRIM_SEVERE_MIB (0 turns a
   // level off), MP2_PIPELINE_EVICT=<frames> (a fixed idle sweep at every frame start, any mode).
   if (config.pipelineCacheLazy) {
-    const int trimMib = port::EnvInt("MP2_PIPELINE_TRIM_MIB", 1024);
+#ifdef __ANDROID__
+    constexpr int kDefaultTrimMib = 0;
+#else
+    constexpr int kDefaultTrimMib = 1024;
+#endif
+    const int trimMib = port::EnvInt("MP2_PIPELINE_TRIM_MIB", kDefaultTrimMib);
     const int severeMib = port::EnvInt("MP2_PIPELINE_TRIM_SEVERE_MIB", 512);
     PortMemoryLog::SetPipelinePressure(trimMib, severeMib);
     if (std::getenv("MP2_PIPELINE_TRIM_MIB") != nullptr ||

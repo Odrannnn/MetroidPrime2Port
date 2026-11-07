@@ -495,9 +495,10 @@ Video > Quality and Frame rate:
   builds pipelines when first drawn instead of all at startup (default on for Android, where a
   low-RAM device - `isLowRamDevice()` or under 4 GiB - is also named in the startup line; off on
   desktop). With it on, the memory log (Linux and Android) checks system memory every 5 s and evicts idle pipelines when
-  available memory falls below `MP2_PIPELINE_TRIM_MIB` (default 1024: those unused for 3600
-  frames) or `MP2_PIPELINE_TRIM_SEVERE_MIB` (default 512: those unused for 16 frames), at most
-  every 30 s while it stays low. `MP2_PIPELINE_EVICT=<frames>` evicts pipelines unused for that
+  available memory falls below `MP2_PIPELINE_TRIM_MIB` (default 1024, 0 = off on Android: those unused for
+  3600 frames) or `MP2_PIPELINE_TRIM_SEVERE_MIB` (default 512: those unused for 16 frames), at most
+  every 30 s while it stays low. GLOBAL pipelines (Samus and her morph ball, gun, HUD, visors) are
+  never evicted. `MP2_PIPELINE_EVICT=<frames>` evicts pipelines unused for that
   many frames regardless of memory. Console `pipetrim [frames]` forces one eviction.
 - Texture-pack memory (env only, MP1 issue #266; `platform/port_memory_log.cpp`): each second the memory log
   (Linux, Windows, Android) takes the smallest headroom of available memory, the commit limit (Windows) and
