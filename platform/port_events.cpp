@@ -20,6 +20,7 @@
 #include "port_overlay.h"
 #include "port_photo.h"
 #include "port_pointer.h"
+#include "port_steam_triton.h"
 #include "port_vpads.h"
 #include "port_prompts.h"
 #include "port_memory_log.h"
@@ -620,6 +621,9 @@ bool PortPumpEvents() {
   // Pad 0 is the input engine's (keyboard, mouse buttons and the controller through controls.toml),
   // read once per iteration, before the game's PADRead; Aurora still merges the console's and
   // MP2_INPUT's virtual pad on top of it.
+  // The Steam Controller's and Deck's own reports (gyro and back buttons) first, so the polls below
+  // read this frame's.
+  PortSteamTriton::Update();
   PortVpads::Poll();
   PortInputDevices::PollPortActions();
   PortInputDevices::PollGyro();

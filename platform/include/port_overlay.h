@@ -421,9 +421,10 @@ void SetPointerAim(bool enabled);
 int PointerAimBox();
 int PointerAimTurn();
 // Gyro aim (`MP2_GYRO_AIM=1`, default off; MP1's gyro aim in "always aim" mode, pointer only): a
-// controller's gyro (or the phone's, `MP2_GYRO_SOURCE` 0 auto, 1 controller, 2 phone) moves the
-// pointer while pointer aim is on. `MP2_GYRO_CURSOR_ANGLE` degrees of pad turn sweep the pointer
-// across the screen. Space (`MP2_GYRO_SPACE`, PortGyro::Space), auto calibrate
+// controller's gyro (or the phone's, `MP2_GYRO_SOURCE` 0 auto, 1 controller, 2 phone; under Steam
+// Input, the physical controller's behind Player 1's virtual pad, see PADGetSteamPhysicalGamepad)
+// moves the pointer while pointer aim is on. `MP2_GYRO_CURSOR_ANGLE` degrees of pad turn sweep the
+// pointer across the screen. Space (`MP2_GYRO_SPACE`, PortGyro::Space), auto calibrate
 // (`MP2_GYRO_AUTO_CALIBRATE` 0 off, 1 always, 2 only in menus), smoothing and tightening
 // (`MP2_GYRO_SMOOTHING`/`MP2_GYRO_TIGHTENING`, deg/s, 0 = off) are MP1's, ranges and defaults.
 const int kGyroSourceDefault = 0;
@@ -468,6 +469,9 @@ bool MenuStandardButtons();
 void SetMenuStandardButtons(bool enabled);
 void SetGyroAim(bool enabled);
 int GyroSource();
+// Under Steam Input, read the back buttons (SDL's paddles) of the physical controller behind Player
+// 1's virtual pad, which has none (`MP2_STEAM_INPUT_BACK_BUTTONS`, default on; Linux only).
+bool SteamInputBackButtons();
 int GyroSpace();
 int GyroAutoCalibrate();
 float GyroSmoothing();

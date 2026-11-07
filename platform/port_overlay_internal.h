@@ -70,6 +70,7 @@ extern int sPointerAimBox;
 extern int sPointerAimTurn;
 extern bool sGyroAim;
 extern int sGyroSource;
+extern bool sSteamInputBackButtons;
 extern int sGyroSpace;
 extern int sGyroAutoCalibrate;
 extern float sGyroSmoothing;

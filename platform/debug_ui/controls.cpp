@@ -5,6 +5,7 @@
 
 #include "../input/port_input_devices.h"
 #include "port_controls.h"
+#include "port_steam_triton.h"
 #include "port_gyro_motion.h"
 #include "port_input_remap_ui.h"
 #include "port_mouse.h"
@@ -339,6 +340,27 @@ void DrawControlsController() {
   } else {
     PortControls::DrawDeadZones();
   }
+#if defined(__linux__) && !defined(__ANDROID__)
+  // Under Steam Input: the back buttons of the physical controller behind Player 1's virtual pad
+  // (Aurora opens it for its gyro and back buttons only; Steam's virtual pad has neither).
+  ImGui::SeparatorText("Back buttons");
+  Changed(ImGui::Checkbox("Steam Input back buttons", &sSteamInputBackButtons));
+  ItemHelp("Under Steam Input, reads Player 1's controller's back buttons (Steam Controller and Steam "
+           "Deck L4, R4, L5, R5; DualSense Edge back and Fn buttons; Joy-Con SL and SR), which Steam "
+           "Input doesn't pass to the game, as Paddle 1-4 on the Remap page (bind Gyro aim to one "
+           "there, say). If the game's Steam layout also maps them, bind each button in one place, "
+           "not both.");
+  if (sSteamInputBackButtons) {
+    SDL_Gamepad* physical = PADGetSteamPhysicalGamepad(PAD_CHAN0);
+    const char* name = physical != nullptr ? SDL_GetGamepadName(physical) : nullptr;
+    const PortSteamTriton::Stats sc = PortSteamTriton::GetStats();
+    if (sc.receiving) {
+      ImGui::Text("Behind Steam Input: %s (read directly)", sc.device);
+    } else {
+      ImGui::Text("Behind Steam Input: %s", physical == nullptr ? "none" : name != nullptr ? name : "a controller");
+    }
+  }
+#endif
 }
 
 // MP1 draws the touch rows on Android only; this port's touch overlay also runs on a desktop (a
