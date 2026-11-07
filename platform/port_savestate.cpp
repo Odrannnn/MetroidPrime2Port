@@ -1379,7 +1379,15 @@ bool HidesPicture(CStateManager&) {
     sResumeBoot = false;
   }
   // A cinematic the rebuilt world starts is hidden too: the load skips it (LoadAwaitsCinematic).
-  return sPlace.active;
+  if (sPlace.active) {
+    return true;
+  }
+  // Samus is placed before the room's saved state is applied (TickRoom: the saved layers first, then
+  // each area once it is back), so the rebuilt room showed for a few frames and then changed to the
+  // saved one (objects, animations, platforms). Held until her own area is applied (sRoom.replaced),
+  // at most kRoomHoldCapFrames after she was placed; areas around it may still follow off screen.
+  constexpr int kRoomHoldCapFrames = 180;
+  return sRoom.active && !sRoom.replaced && sRoom.waited <= kRoomHoldCapFrames;
 }
 
 bool ModReloadActive() {
