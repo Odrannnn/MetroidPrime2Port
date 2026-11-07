@@ -1794,8 +1794,10 @@ int OrientationQuarters(SDL_DisplayOrientation orientation) {
 // sensors on, so its driver never asks again. A running sensor's readings always carry some noise,
 // so all six unchanged for 0.1 s is a frozen one: the sensors go off and on again (at most once a
 // second), which makes SDL's driver send the controller its IMU setting again (the Switch drivers'
-// SetSensorsEnabled do). Frozen readings are not used meanwhile. The Steam Controller and Deck,
-// read directly, have their own (port_steam_triton_hid.cpp WakeImu).
+// SetSensorsEnabled do; SDL's own retry waits 3 s). Sony pads always report their sensors and SDL's
+// drivers send them nothing for it (it only re-reads their calibration), so they aren't toggled.
+// Frozen readings are not used meanwhile. The Steam Controller and Deck, read directly, have their
+// own (port_steam_triton_hid.cpp WakeImu).
 struct SteamImuWatch {
   float last[6] = {};
   uint64_t changedNs = 0;
@@ -1831,14 +1833,15 @@ bool SteamImuFrozen(int port, SDL_Gamepad* pad, const float gyro[3], const float
   }
   if (!w.frozen) {
     std::fprintf(stderr,
-                 "[gyro] t=%.1fs the motion sensor behind Steam Input stopped (Steam turned it off?); turning it "
-                 "back on (last gyro %+.2f %+.2f %+.2f rad/s)\n",
-                 SecondsSinceStart(now), v[0], v[1], v[2]);
+                 "[gyro] t=%.1fs the motion sensor behind Steam Input stopped (Steam turned it off?)%s (last gyro "
+                 "%+.2f %+.2f %+.2f rad/s)\n",
+                 SecondsSinceStart(now), SDL_GetGamepadVendor(pad) == 0x057e ? "; turning it back on" : "", v[0],
+                 v[1], v[2]);
     w.frozen = true;
     w.frozenNs = w.changedNs;
     w.wakes = 0;
   }
-  if (w.wokeNs == 0 || now - w.wokeNs >= kWakeEveryNs) {
+  if (SDL_GetGamepadVendor(pad) == 0x057e && (w.wokeNs == 0 || now - w.wokeNs >= kWakeEveryNs)) {
     w.wokeNs = now;
     ++w.wakes;
     SDL_SetGamepadSensorEnabled(pad, SDL_SENSOR_GYRO, false);
