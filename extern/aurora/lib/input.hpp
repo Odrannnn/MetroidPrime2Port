@@ -62,10 +62,6 @@ void set_device_rumble_intensity(uint16_t low_freq_intensity, uint16_t high_freq
 uint32_t controller_count() noexcept;
 void initialize() noexcept;
 void persist_controller_for_player(uint32_t player, const GameController* controller) noexcept;
-// Port: the physical controller behind a Steam Input virtual pad of that vendor and product, opened
-// for its motion sensors only (nullptr if none), and whether an instance is one.
-SDL_Gamepad* steam_physical_gamepad(Uint16 vendor, Uint16 product) noexcept;
-bool is_steam_physical(Uint32 instance) noexcept;
 extern absl::flat_hash_map<Uint32, GameController> g_GameControllers;
 
 void set_mouse_scroll(float scrollX, float scrollY) noexcept;

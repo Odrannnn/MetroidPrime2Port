@@ -279,6 +279,261 @@ int main() {
     CHECK(std::memcmp(report, head, sizeof(head)) == 0);
   }
 
+  // Sony and Nintendo controllers: which are read, their reports and calibration.
+  auto put16 = [](uint8_t* r, size_t at, int v) {
+    r[at] = uint8_t(v & 0xff);
+    r[at + 1] = uint8_t((v >> 8) & 0xff);
+  };
+  auto put32 = [](uint8_t* r, size_t at, uint32_t v) {
+    for (int i = 0; i < 4; ++i) r[at + i] = uint8_t(v >> (8 * i));
+  };
+  // A Bluetooth report's CRC (zlib's CRC-32 over 0xA1 and the report), as SDL's VerifyCRC.
+  auto sealCrc = [&](uint8_t* r, size_t size) {
+    uint32_t crc = 0xFFFFFFFFu;
+    auto feed = [&](uint8_t b) {
+      crc ^= b;
+      for (int k = 0; k < 8; ++k) crc = (crc & 1u) ? (crc >> 1) ^ 0xEDB88320u : crc >> 1;
+    };
+    feed(0xA1);
+    for (size_t i = 0; i + 4 < size; ++i) feed(r[i]);
+    put32(r, size - 4, ~crc);
+  };
+  constexpr float kDegPerCountSony = 1.f / 16.f;
+  {
+    Family f = Family::Valve;
+    CHECK(OtherFamily(kVendorSony, kProductDualSense, f) && f == Family::DualSense);
+    CHECK(OtherFamily(kVendorSony, kProductDualSenseEdge, f) && f == Family::DualSenseEdge);
+    CHECK(OtherFamily(kVendorSony, kProductDualShock4v2, f) && f == Family::DualShock4);
+    CHECK(OtherFamily(kVendorNintendo, kProductSwitchPro, f) && f == Family::SwitchPro);
+    CHECK(OtherFamily(kVendorNintendo, kProductJoyConR, f) && f == Family::JoyConR);
+    CHECK_MSG(!OtherFamily(kVendorNintendo, 0x2069, f) && !OtherFamily(kVendorNintendo, kProductJoyConPair, f),
+              "not the Switch 2 Pro Controller, nor SDL's virtual Joy-Con pair id");
+    CHECK_MSG(!OtherFamily(kVendor, kProductPuck, f) && !OtherFamily(0x045e, 0x0b13, f), "Valve and others aren't");
+  }
+  // DualSense (Edge) USB state: gyro at state 15, accel at 21, sensor timestamp at 27, Edge buttons at 9.
+  {
+    uint8_t r[64] = {0x01};
+    uint8_t* st = r + 1;
+    put16(st, 15, 1600);
+    put16(st, 17, -320);
+    put16(st, 19, 16);
+    put16(st, 21, 0);
+    put16(st, 23, 8192);
+    put16(st, 25, -4096);
+    put32(st, 27, 777);
+    st[9] = kEdgeRightPaddle | kEdgeLeftFn;
+    const ImuScale nominal = SonyDefaultScale();
+    Sample s;
+    REQUIRE_MSG(ParseSonyState(Family::DualSenseEdge, r, sizeof(r), nominal, s), "DualSense USB report");
+    CHECK(Near(s.gyro[0], 100.f * kPi / 180.f) && Near(s.gyro[1], -20.f * kPi / 180.f) &&
+          Near(s.gyro[2], 1.f * kPi / 180.f));
+    CHECK(Near(s.accel[1], kG) && Near(s.accel[2], -kG / 2.f) && Near(s.accel[0], 0.f));
+    CHECK_EQ(s.imuTimestamp, 777u);
+    CHECK_EQ(s.paddles, (1u << kRightPaddle1) | (1u << kLeftPaddle2));
+    REQUIRE(ParseSonyState(Family::DualSense, r, sizeof(r), nominal, s));
+    CHECK_MSG(s.paddles == 0, "a plain DualSense has no back buttons");
+    CHECK_MSG(!ParseSonyState(Family::DualSense, r, 10, nominal, s), "the simple report has no IMU");
+    CHECK_MSG(!ParseSonyState(Family::SwitchPro, r, sizeof(r), nominal, s), "not a Sony family");
+    // Bluetooth 0x31: state at 2, CRC over the report.
+    uint8_t bt[78] = {0x31, 0x00};
+    std::memcpy(bt + 2, st, 31);
+    sealCrc(bt, sizeof(bt));
+    Sample b;
+    REQUIRE_MSG(ParseSonyState(Family::DualSenseEdge, bt, sizeof(bt), nominal, b), "DualSense Bluetooth report");
+    CHECK(Near(b.gyro[0], s.gyro[0]) && b.imuTimestamp == 777u && b.paddles != 0);
+    bt[20] ^= 1;
+    CHECK_MSG(!ParseSonyState(Family::DualSense, bt, sizeof(bt), nominal, b), "a bad CRC is dropped");
+  }
+  // DualShock 4: USB 0x01 (state at 1, gyro at 12, accel at 18, u16 timestamp at 9), Bluetooth
+  // 0x11 (state at 3, CRC over 78 bytes).
+  {
+    uint8_t usb[64] = {0x01};
+    put16(usb + 1, 9, 0xBEEF);
+    put16(usb + 1, 12, -160);
+    put16(usb + 1, 18, 8192);
+    Sample s;
+    REQUIRE(ParseSonyState(Family::DualShock4, usb, sizeof(usb), SonyDefaultScale(), s));
+    CHECK(Near(s.gyro[0], -10.f * kPi / 180.f) && Near(s.accel[0], kG) && s.imuTimestamp == 0xBEEFu);
+    usb[31] = 0x04;
+    CHECK_MSG(!ParseSonyState(Family::DualShock4, usb, sizeof(usb), SonyDefaultScale(), s),
+              "no controller behind the wireless adapter");
+    uint8_t bt[78] = {0x11, 0xC0, 0x00};
+    put16(bt + 3, 12, -160);
+    sealCrc(bt, sizeof(bt));
+    REQUIRE(ParseSonyState(Family::DualShock4, bt, sizeof(bt), SonyDefaultScale(), s));
+    CHECK(Near(s.gyro[0], -10.f * kPi / 180.f));
+    bt[1] = 0x00;
+    sealCrc(bt, sizeof(bt));
+    CHECK_MSG(!ParseSonyState(Family::DualShock4, bt, sizeof(bt), SonyDefaultScale(), s), "no HID data in it");
+  }
+  // Calibration: nominal extents give the nominal scale; a bias moves the zero; SDL's sanity limits.
+  {
+    uint8_t c[41] = {kDualSenseCalibrationReport};
+    put16(c, 1, 10);
+    put16(c, 3, -20);
+    put16(c, 5, 0);
+    for (int i = 0; i < 3; ++i) {
+      put16(c, 7 + 4 * i, 8640);
+      put16(c, 9 + 4 * i, -8640);
+      put16(c, 23 + 4 * i, 8192 + 100);
+      put16(c, 25 + 4 * i, -8192 + 100);
+    }
+    put16(c, 19, 540);
+    put16(c, 21, 540);
+    ImuScale cal;
+    REQUIRE_MSG(ParseDualSenseCalibration(c, sizeof(c), cal), "DualSense calibration");
+    const ImuScale nominal = SonyDefaultScale();
+    for (int i = 0; i < 6; ++i) {
+      CHECK_MSG(Near(cal.scale[i], nominal.scale[i]), "nominal extents, nominal scale");
+    }
+    CHECK(cal.bias[0] == 10.f && cal.bias[1] == -20.f && cal.bias[3] == 100.f);
+    ImuScale kept = nominal;
+    put16(c, 1, 2000);
+    CHECK_MSG(!ParseDualSenseCalibration(c, sizeof(c), kept) && kept.bias[0] == 0.f, "a bias over 1024 is rejected");
+    put16(c, 1, 10);
+    put16(c, 7, 30000);
+    CHECK_MSG(!ParseDualSenseCalibration(c, sizeof(c), kept), "a sensitivity off by half is rejected");
+    CHECK_MSG(!ParseDualSenseCalibration(c, 34, kept), "short report");
+
+    // DualShock 4: USB lists plus, minus per axis; Bluetooth all plus, then all minus.
+    uint8_t u[41] = {kDualShock4CalibrationReportUsb};
+    uint8_t b[41] = {kDualShock4CalibrationReportBluetooth};
+    for (uint8_t* r : {u, b}) {
+      put16(r, 1, 10);
+      put16(r, 19, 540);
+      put16(r, 21, 540);
+      for (int i = 0; i < 3; ++i) {
+        put16(r, 23 + 4 * i, 8192);
+        put16(r, 25 + 4 * i, -8192);
+      }
+    }
+    for (int i = 0; i < 3; ++i) {
+      const int bias = i == 0 ? 10 : 0;
+      put16(u, 7 + 4 * i, bias + 8640);
+      put16(u, 9 + 4 * i, bias - 8640);
+      put16(b, 7 + 2 * i, bias + 8640);
+      put16(b, 13 + 2 * i, bias - 8640);
+    }
+    ImuScale cu, cb;
+    REQUIRE(ParseDualShock4Calibration(u, sizeof(u), false, cu));
+    REQUIRE(ParseDualShock4Calibration(b, sizeof(b), true, cb));
+    for (int i = 0; i < 6; ++i) {
+      CHECK_MSG(Near(cu.scale[i], nominal.scale[i]) && Near(cb.scale[i], nominal.scale[i]), "DS4 nominal scale");
+    }
+    CHECK(cu.bias[0] == 10.f && cb.bias[0] == 10.f);
+    CHECK_MSG(!ParseDualShock4Calibration(u, sizeof(u), true, cu), "the Bluetooth id over Bluetooth only");
+    uint8_t zero[41] = {kDualShock4CalibrationReportUsb};
+    CHECK_MSG(!ParseDualShock4Calibration(zero, sizeof(zero), false, cu), "an all-zero report is rejected");
+  }
+  // Switch full report: three IMU samples averaged, SDL's axis shuffle, Joy-Con flips and paddles.
+  {
+    uint8_t r[kSwitchFullReportSize] = {kSwitchReportFull};
+    for (int k = 0; k < 3; ++k) {
+      uint8_t* imu = r + 13 + 12 * k;
+      put16(imu, 0, 4096);      // accel x: 1 g
+      put16(imu, 2, 0);
+      put16(imu, 4, -2048 * k); // accel z: mean -1/2 g
+      put16(imu, 6, 1428);      // gyro x ~100 deg/s
+      put16(imu, 8, 0);
+      put16(imu, 10, 0);
+    }
+    const float gx = 1428.f / 14.2842f * kPi / 180.f;
+    Sample s;
+    REQUIRE(ParseSwitchState(Family::SwitchPro, false, r, sizeof(r), s));
+    CHECK_MSG(Near(s.gyro[2], -gx) && Near(s.gyro[0], 0.f) && Near(s.gyro[1], 0.f), "gyro x is SDL's -z");
+    CHECK_MSG(Near(s.accel[2], -kG) && Near(s.accel[1], -kG / 2.f), "accel shuffle, three samples averaged");
+    Sample right;
+    REQUIRE(ParseSwitchState(Family::JoyConR, false, r, sizeof(r), right));
+    CHECK_MSG(Near(right.gyro[2], -gx) && Near(right.accel[1], kG / 2.f), "right Joy-Con flips x and y");
+    Sample mini;
+    REQUIRE(ParseSwitchState(Family::JoyConL, true, r, sizeof(r), mini));
+    CHECK_MSG(Near(mini.gyro[0], -gx) && Near(mini.gyro[2], 0.f) && Near(mini.accel[0], -kG),
+              "sideways left Joy-Con: SDL's mini-gamepad swap");
+    REQUIRE(ParseSwitchState(Family::JoyConR, true, r, sizeof(r), mini));
+    CHECK_MSG(Near(mini.gyro[0], gx) && Near(mini.gyro[2], 0.f), "sideways right Joy-Con");
+    r[5] = 0x20; // left SL
+    r[3] = 0x10; // right SR
+    REQUIRE(ParseSwitchState(Family::JoyConL, false, r, sizeof(r), s));
+    CHECK_EQ(s.paddles, 1u << kLeftPaddle1);
+    REQUIRE(ParseSwitchState(Family::JoyConR, false, r, sizeof(r), s));
+    CHECK_EQ(s.paddles, 1u << kRightPaddle1);
+    REQUIRE(ParseSwitchState(Family::JoyConR, true, r, sizeof(r), s));
+    CHECK_MSG(s.paddles == 0, "a sideways Joy-Con's SL and SR are its shoulders");
+    REQUIRE(ParseSwitchState(Family::SwitchPro, false, r, sizeof(r), s));
+    CHECK_MSG(s.paddles == 0, "the Pro Controller has no back buttons");
+    // Steam's IMU off zeroes the block: the stamp stops; a running IMU moves it.
+    uint8_t off[kSwitchFullReportSize] = {kSwitchReportFull, 1};
+    Sample a, b2;
+    REQUIRE(ParseSwitchState(Family::SwitchPro, false, off, sizeof(off), a));
+    off[1] = 2;
+    off[3] = 0x04;
+    REQUIRE(ParseSwitchState(Family::SwitchPro, false, off, sizeof(off), b2));
+    CHECK_MSG(a.imuTimestamp == b2.imuTimestamp, "a zeroed IMU block keeps its stamp");
+    off[20] = 1;
+    REQUIRE(ParseSwitchState(Family::SwitchPro, false, off, sizeof(off), b2));
+    CHECK(a.imuTimestamp != b2.imuTimestamp);
+    CHECK_MSG(!ParseSwitchState(Family::SwitchPro, false, r, sizeof(r) - 1, s), "short report");
+    r[0] = 0x21;
+    CHECK_MSG(!ParseSwitchState(Family::SwitchPro, false, r, sizeof(r), s), "subcommand replies aren't state");
+    CHECK_MSG(!ParseSwitchState(Family::DualSense, false, off, sizeof(off), s), "not a Switch family");
+
+    uint8_t cmd[kSwitchOutputReportSize];
+    CHECK_EQ(BuildSwitchImuEnable(0x13, false, cmd), size_t(64));
+    const uint8_t head[] = {0x01, 0x03, 0x00, 0x01, 0x40, 0x40, 0x00, 0x01, 0x40, 0x40, 0x40, 0x01, 0x00};
+    CHECK(std::memcmp(cmd, head, sizeof(head)) == 0);
+    CHECK_EQ(BuildSwitchImuEnable(0, true, cmd), size_t(49));
+  }
+  // Which Sony or Nintendo controller is Player 1's: unambiguous matches only.
+  {
+    const PadId ds{kVendorSony, kProductDualSense};
+    const PadId ds4{kVendorSony, kProductDualShock4};
+    const PadId pro{kVendorNintendo, kProductSwitchPro};
+    const PadId left{kVendorNintendo, kProductJoyConL};
+    const PadId right{kVendorNintendo, kProductJoyConR};
+    const PadId pair{kVendorNintendo, kProductJoyConPair};
+    const PadId xbox{0x045e, 0x0b13};
+    {
+      const PadId steam[] = {ds, xbox};
+      const PadId devs[] = {ds, pro};
+      CHECK_MSG(IsBehindPlayerOne(ds, steam, 2, ds, devs, 2), "the one DualSense behind the one DualSense pad");
+      CHECK_MSG(!IsBehindPlayerOne(ds, steam, 2, pro, devs, 2), "not another vendor's");
+      CHECK_MSG(!IsBehindPlayerOne(xbox, steam, 2, ds, devs, 2), "an Xbox pad as Player 1");
+    }
+    {
+      const PadId steam[] = {ds, ds};
+      const PadId devs[] = {ds, ds};
+      CHECK_MSG(!IsBehindPlayerOne(ds, steam, 2, ds, devs, 2), "two DualSenses: neither");
+      const PadId one[] = {ds};
+      CHECK_MSG(!IsBehindPlayerOne(ds, steam, 2, ds, one, 1), "two DualSense pads, one read: still ambiguous");
+    }
+    {
+      // Steam reports another product id: the one Sony controller behind the one Sony pad.
+      const PadId steam[] = {ds4};
+      const PadId devs[] = {ds};
+      CHECK_MSG(IsBehindPlayerOne(ds4, steam, 1, ds, devs, 1), "vendor fallback");
+      const PadId two[] = {ds, ds4};
+      CHECK_MSG(!IsBehindPlayerOne(ds4, steam, 1, ds, two, 2), "the DS4 itself is there: not the DualSense");
+    }
+    {
+      const PadId devs[] = {left, right};
+      const PadId steamPair[] = {pair};
+      CHECK(IsJoyConPair(steamPair, 1, devs, 2));
+      CHECK_MSG(IsBehindPlayerOne(pair, steamPair, 1, left, devs, 2) &&
+                    IsBehindPlayerOne(pair, steamPair, 1, right, devs, 2),
+                "both Joy-Cons of a pair");
+      const PadId steamAsRight[] = {right};
+      CHECK_MSG(IsBehindPlayerOne(right, steamAsRight, 1, left, devs, 2), "a pair Steam reports as the right one");
+      const PadId steamSingles[] = {left, right};
+      CHECK(!IsJoyConPair(steamSingles, 2, devs, 2));
+      CHECK_MSG(IsBehindPlayerOne(left, steamSingles, 2, left, devs, 2) &&
+                    !IsBehindPlayerOne(left, steamSingles, 2, right, devs, 2),
+                "two single Joy-Cons: Player 1's only");
+      const PadId lone[] = {right};
+      CHECK_MSG(!IsJoyConPair(steamPair, 1, lone, 1) && IsBehindPlayerOne(pair, steamPair, 1, right, lone, 1),
+                "a pair's survivor by vendor");
+    }
+  }
+
   if (port_test::Failures() == 0) {
     std::printf("port_steam_triton: ok\n");
   }

@@ -13,6 +13,8 @@
 // The Steam Deck's built-in controller is read the same way: under Steam Input it too reaches the
 // game as a virtual pad with no gyro and no back buttons. Its reports use the older Valve layout
 // (SDL's src/joystick/hidapi/SDL_hidapi_steamdeck.c and steam/controller_structs.h).
+//
+// Sony and Nintendo controllers behind Steam Input are read here too (see Family below).
 namespace PortSteamTriton {
 
 // The HID client runs on Linux (desktop and the Steam Deck) only, where it is tested; elsewhere
@@ -132,6 +134,86 @@ struct Sample {
 // interfaces) return false.
 bool ParseState(const uint8_t* data, size_t size, Sample& out);
 
+// Sony and Nintendo controllers behind Steam Input, read the same way. Steam hides them from SDL
+// too, and SDL's own drivers for them would write their lights, player lights and report modes
+// against Steam's (docs/SETTINGS.md), so this reads their reports only. The one write is a Switch
+// controller's IMU-on subcommand, while Steam has its IMU off and the gyro is wanted. Layouts and
+// scaling: SDL's src/joystick/hidapi/SDL_hidapi_ps5.c, SDL_hidapi_ps4.c and SDL_hidapi_switch.c.
+constexpr uint16_t kVendorSony = 0x054c;
+constexpr uint16_t kVendorNintendo = 0x057e;
+constexpr uint16_t kProductDualShock4 = 0x05c4;
+constexpr uint16_t kProductDualShock4v2 = 0x09cc;
+constexpr uint16_t kProductDualSense = 0x0ce6;
+constexpr uint16_t kProductDualSenseEdge = 0x0df2;
+constexpr uint16_t kProductJoyConL = 0x2006;
+constexpr uint16_t kProductJoyConR = 0x2007;
+// SDL's id for a combined Joy-Con pair (a Steam pad may carry it; no HID device has it).
+constexpr uint16_t kProductJoyConPair = 0x2008;
+constexpr uint16_t kProductSwitchPro = 0x2009;
+
+enum class Family : uint8_t { Valve, DualShock4, DualSense, DualSenseEdge, SwitchPro, JoyConL, JoyConR };
+// The family of a Sony or Nintendo controller read here; false for any other (the Switch 2
+// controllers among them: SDL claims their USB interface through libusb, which Steam is using).
+bool OtherFamily(uint16_t vendor, uint16_t product, Family& out);
+constexpr bool IsSony(Family f) {
+  return f == Family::DualShock4 || f == Family::DualSense || f == Family::DualSenseEdge;
+}
+constexpr bool IsJoyCon(Family f) { return f == Family::JoyConL || f == Family::JoyConR; }
+
+// Raw IMU counts to SDL's units: (raw - bias) * scale, gyro x, y, z then accel x, y, z.
+struct ImuScale {
+  float bias[6] = {};
+  float scale[6] = {};
+};
+// A Sony controller without its calibration: SDL's nominal scale (the DualSense's and the
+// DualShock 4's are the same: 16 counts per deg/s, 8192 per g).
+ImuScale SonyDefaultScale();
+// A Sony controller's factory calibration, from its feature report (report id first): DualSense
+// 0x05, DualShock 4 0x02 over USB and 0x05 over Bluetooth (Bluetooth's lists the plus extents
+// before the minus ones). False, out untouched, for a short report or one SDL would reject.
+constexpr uint8_t kDualSenseCalibrationReport = 0x05;
+constexpr uint8_t kDualShock4CalibrationReportUsb = 0x02;
+constexpr uint8_t kDualShock4CalibrationReportBluetooth = 0x05;
+bool ParseDualSenseCalibration(const uint8_t* data, size_t size, ImuScale& out);
+bool ParseDualShock4Calibration(const uint8_t* data, size_t size, bool bluetooth, ImuScale& out);
+
+// The Edge's back buttons (state byte 9): right and left paddle, right and left Fn, as SDL maps
+// them (paddle 1 right paddle, 2 left paddle, 3 right Fn, 4 left Fn).
+constexpr uint8_t kEdgeRightPaddle = 0x80;
+constexpr uint8_t kEdgeLeftPaddle = 0x40;
+constexpr uint8_t kEdgeRightFn = 0x20;
+constexpr uint8_t kEdgeLeftFn = 0x10;
+// A Sony state report: USB 0x01 (the full one, with the IMU), Bluetooth 0x31 (DualSense) or
+// 0x11-0x19 (DualShock 4), whose CRC must hold. imuTimestamp is the sensor's own.
+bool ParseSonyState(Family family, const uint8_t* data, size_t size, const ImuScale& scale, Sample& out);
+
+// A Switch controller's full state report (0x30): the three IMU samples in it averaged.
+// imuTimestamp is a hash of the IMU block (it has no timestamp; Steam's IMU off zeroes it).
+// miniGamepad: a single Joy-Con held sideways (SDL turns its axes to match); its SL and SR are its
+// shoulders then, which Steam passes on, so only a Joy-Con of a pair reports them as back buttons
+// (SDL's combined mapping: left SL paddle 1, SR paddle 2; right SR paddle 1, SL paddle 2).
+constexpr uint8_t kSwitchReportFull = 0x30;
+constexpr size_t kSwitchFullReportSize = 1 + 12 + 36;
+bool ParseSwitchState(Family family, bool miniGamepad, const uint8_t* data, size_t size, Sample& out);
+// The IMU-on subcommand (0x40, 1) with neutral rumble, padded as SDL writes it (64 bytes over USB,
+// 49 over Bluetooth); counter is the 4-bit packet number. Returns the length to write.
+constexpr size_t kSwitchOutputReportSize = 64;
+size_t BuildSwitchImuEnable(uint8_t counter, bool bluetooth, uint8_t out[kSwitchOutputReportSize]);
+
+// Whether a Sony or Nintendo controller read here is the one behind Player 1's Steam pad. Steam's
+// slot info gives the pad the physical controller's vendor and product but no serial, so only an
+// unambiguous match counts: the one controller of that product behind the one Steam pad of it;
+// either Joy-Con of a pair (one Steam pad for any Joy-Con, at most one of each side); else the one
+// controller of that vendor behind the one Steam pad of it, when none has the pad's product.
+struct PadId {
+  uint16_t vendor = 0;
+  uint16_t product = 0;
+};
+bool IsBehindPlayerOne(PadId playerOne, const PadId* steamPads, size_t steamPadCount, PadId device,
+                       const PadId* devices, size_t deviceCount);
+// Whether the Joy-Cons read here are a pair: one of each side, behind at most one Steam Joy-Con pad.
+bool IsJoyConPair(const PadId* steamPads, size_t steamPadCount, const PadId* devices, size_t deviceCount);
+
 // Whether the IMU is live. Steam turns the controller's IMU off when its own layout has no gyro
 // in use; the state reports keep coming with the IMU block frozen (timestamp and values
 // unchanged, not zero), so liveness is the IMU timestamp moving.
@@ -153,9 +235,10 @@ struct ImuWatch {
 };
 
 // The client (SDL's HID API; Linux only, see kAvailable). Update once per input poll, before the
-// readers below: it opens the controller while wanted (Gyro source Auto or Controller with gyro in
-// use, or the Steam Input back buttons setting on), drains its reports and keeps the newest. The
-// motion sensor is only turned back on while the gyro is wanted.
+// readers below: it opens the controllers Steam hides from SDL while wanted (Gyro source Auto or
+// Controller with gyro in use, or the Steam Input back buttons setting on), drains their reports
+// and keeps the newest of the one behind Player 1's pad. The motion sensor is only turned back on
+// while the gyro is wanted.
 void Update();
 // The newest gyro and accelerometer, while reports are arriving.
 bool Motion(float gyro[3], float accel[3]);

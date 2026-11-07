@@ -10,11 +10,9 @@
 #include <absl/container/flat_hash_map.h>
 #include <algorithm>
 #include <array>
-#include <cstdio>
 #include <filesystem>
 #include <string>
 #include <utility>
-#include <vector>
 
 using namespace std::string_view_literals;
 
@@ -23,64 +21,6 @@ absl::flat_hash_map<Uint32, GameController> g_GameControllers;
 
 namespace {
 constexpr Module Log{"aurora::input"};
-
-// Port: Steam Input hides the physical controllers it virtualizes from the game (its
-// SDL_GAMECONTROLLER_IGNORE_DEVICES list), and its virtual pads have no motion sensors or back
-// buttons. The Sony and Nintendo controllers on that list are taken off it, so SDL opens the physical
-// controller too, only for its gyro and back buttons: it never gets a player (steam_physical_gamepad
-// finds it behind a player's virtual pad). The rest stay hidden, Valve's own among them: SDL's Steam
-// Controller and Deck drivers manage lizard mode and the IMU setting against Steam (dropouts, a
-// frozen gyro), so the port reads those controllers' reports itself (port_steam_triton.h).
-std::vector<std::pair<Uint16, Uint16>> g_steamHidden;
-absl::flat_hash_map<Uint32, SDL_Gamepad*> g_steamPhysical;
-
-bool steam_motion_controller(Uint16 vendor, Uint16 product) noexcept {
-  // Not the Switch 2 controllers (Joy-Con 2066-2068, Pro 2069, GameCube 2073): SDL's driver for them
-  // claims the USB interface through libusb, which Steam is using.
-  if (vendor == 0x057e && ((product >= 0x2066 && product <= 0x2069) || product == 0x2073)) {
-    return false;
-  }
-  return vendor == 0x054c || vendor == 0x057e;
-}
-
-bool steam_hidden(Uint16 vendor, Uint16 product) noexcept {
-  return std::find(g_steamHidden.begin(), g_steamHidden.end(), std::make_pair(vendor, product)) !=
-         g_steamHidden.end();
-}
-
-// Under Steam: keeps its ignore list, minus those controllers, which SDL then opens.
-void steam_unhide_motion_controllers() noexcept {
-  // Tested on Linux (desktop and the Steam Deck) only.
-#if defined(SDL_PLATFORM_LINUX) && !defined(SDL_PLATFORM_ANDROID)
-  const char* list = SDL_getenv("SDL_GAMECONTROLLER_IGNORE_DEVICES");
-  if (list == nullptr || *list == '\0' || SDL_getenv("SteamVirtualGamepadInfo") == nullptr) {
-    return;
-  }
-  std::string kept;
-  std::string entry;
-  size_t unhidden = 0;
-  const std::string all(list);
-  for (size_t start = 0; start <= all.size();) {
-    const size_t end = std::min(all.find(',', start), all.size());
-    entry = all.substr(start, end - start);
-    start = end + 1;
-    unsigned vendor = 0;
-    unsigned product = 0;
-    if (std::sscanf(entry.c_str(), "%x/%x", &vendor, &product) == 2) {
-      g_steamHidden.emplace_back(Uint16(vendor), Uint16(product));
-      if (steam_motion_controller(Uint16(vendor), Uint16(product))) {
-        ++unhidden;
-        continue;
-      }
-    }
-    if (!entry.empty()) {
-      kept += kept.empty() ? entry : "," + entry;
-    }
-  }
-  SDL_SetHintWithPriority(SDL_HINT_GAMECONTROLLER_IGNORE_DEVICES, kept.c_str(), SDL_HINT_OVERRIDE);
-  Log.info("Steam Input: {} Sony/Nintendo controller ids opened for their sensors and back buttons only", unhidden);
-#endif
-}
 
 constexpr uint32_t kPortPreferencesMagic = SBIG('CPRT');
 constexpr uint32_t kPortPreferencesVersion = 3;
@@ -504,20 +444,6 @@ static void map_digital_triggers(SDL_Gamepad* ctrl) noexcept {
 
 SDL_JoystickID add_controller(SDL_JoystickID which) noexcept {
   auto* ctrl = SDL_OpenGamepad(which);
-  // A physical controller Steam Input virtualizes (opened for its gyro and back buttons only, see
-  // steam_unhide_motion_controllers): no player, no buttons of its own.
-  if (ctrl != nullptr && SDL_GetGamepadSteamHandle(ctrl) == 0 &&
-      steam_motion_controller(SDL_GetGamepadVendor(ctrl), SDL_GetGamepadProduct(ctrl)) &&
-      steam_hidden(SDL_GetGamepadVendor(ctrl), SDL_GetGamepadProduct(ctrl))) {
-    g_steamPhysical[SDL_GetJoystickID(SDL_GetGamepadJoystick(ctrl))] = ctrl;
-    // SDL numbers every opened pad; this one must not hold a player number a virtual pad needs.
-    SDL_SetGamepadPlayerIndex(ctrl, -1);
-    Log.info("Steam Input's physical '{}' ({:04x}:{:04x}) opened for its gyro and back buttons only (gyro {})",
-             SDL_GetGamepadName(ctrl) != nullptr ? SDL_GetGamepadName(ctrl) : "unknown",
-             SDL_GetGamepadVendor(ctrl), SDL_GetGamepadProduct(ctrl),
-             SDL_GamepadHasSensor(ctrl, SDL_SENSOR_GYRO) ? "yes" : "no");
-    return -1;
-  }
   if (ctrl != nullptr) {
 #ifdef SDL_PLATFORM_ANDROID
     map_digital_triggers(ctrl);
@@ -554,14 +480,6 @@ SDL_JoystickID add_controller(SDL_JoystickID which) noexcept {
 }
 
 void remove_controller(Uint32 instance) noexcept {
-  if (auto it = g_steamPhysical.find(instance); it != g_steamPhysical.end()) {
-    Log.info("Steam Input's physical '{}' ({:04x}:{:04x}) removed",
-             SDL_GetGamepadName(it->second) != nullptr ? SDL_GetGamepadName(it->second) : "unknown",
-             SDL_GetGamepadVendor(it->second), SDL_GetGamepadProduct(it->second));
-    SDL_CloseGamepad(it->second);
-    g_steamPhysical.erase(it);
-    return;
-  }
   if (auto it = g_GameControllers.find(instance); it != g_GameControllers.end()) {
     Log.info("Removed controller '{}' (instance {})",
              SDL_GetGamepadName(it->second.m_controller) != nullptr ? SDL_GetGamepadName(it->second.m_controller)
@@ -662,48 +580,8 @@ void initialize() noexcept {
     SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI, "0");
     flags &= ~SDL_INIT_HAPTIC;
   }
-  if (!headless()) {
-    steam_unhide_motion_controllers();
-  }
   AURORA_ASSERT(SDL_Init(flags), "Failed to initialize SDL subsystems: {}", SDL_GetError());
 }
-
-SDL_Gamepad* steam_physical_gamepad(Uint16 vendor, Uint16 product) noexcept {
-  // The only one of that vendor and product; else the only one of that vendor. Only when it can't
-  // be another player's: Steam's slot info carries no serial, so two pads of one model (or vendor)
-  // behind Steam Input can't be told apart, and neither gets a gyro rather than the wrong one.
-  int sameProductPads = 0;
-  int sameVendorPads = 0;
-  for (const auto& [instance, controller] : g_GameControllers) {
-    if (controller.m_controller == nullptr || SDL_GetGamepadSteamHandle(controller.m_controller) == 0 ||
-        controller.m_vid != vendor) {
-      continue;
-    }
-    ++sameVendorPads;
-    sameProductPads += controller.m_pid == product ? 1 : 0;
-  }
-  SDL_Gamepad* sameProduct = nullptr;
-  SDL_Gamepad* sameVendor = nullptr;
-  int sameProductCount = 0;
-  int sameVendorCount = 0;
-  for (const auto& [instance, pad] : g_steamPhysical) {
-    if (SDL_GetGamepadVendor(pad) != vendor) {
-      continue;
-    }
-    if (SDL_GetGamepadProduct(pad) == product) {
-      sameProduct = pad;
-      ++sameProductCount;
-    }
-    sameVendor = pad;
-    ++sameVendorCount;
-  }
-  if (sameProductCount == 1 && sameProductPads <= 1) {
-    return sameProduct;
-  }
-  return sameProductCount == 0 && sameVendorCount == 1 && sameVendorPads <= 1 ? sameVendor : nullptr;
-}
-
-bool is_steam_physical(Uint32 instance) noexcept { return g_steamPhysical.contains(instance); }
 
 struct MouseScrollStatus {
   float scrollX;

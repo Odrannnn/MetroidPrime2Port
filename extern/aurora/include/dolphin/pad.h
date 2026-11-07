@@ -224,11 +224,6 @@ BOOL PADIsGCAdapter(u32 port);
  * Returns the SDL gamepad for the index into the controller map.
  */
 struct SDL_Gamepad* PADGetSDLGamepadForIndex(u32 index);
-/* Port: under Steam Input, the physical controller behind the port's virtual pad, opened only for
- * its motion sensors and back buttons (Sony and Nintendo controllers); NULL otherwise. */
-struct SDL_Gamepad* PADGetSteamPhysicalGamepad(u32 port);
-/* Port: whether an SDL joystick instance is such a physical controller (not a player's pad). */
-BOOL PADIsSteamPhysicalGamepad(u32 instance);
 /* Returns the first native button which is currently pressed */
 s32 PADGetNativeButtonPressed(u32 port);
 /* Returns the first native axis which is currently pulled halfway or more */

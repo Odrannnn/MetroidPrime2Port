@@ -316,10 +316,11 @@ Controls > Controller settings:
   `MP2_STEAM_INPUT_BACK_BUTTONS`; Linux only). Under Steam Input, Player 1 also gets the back
   buttons (SDL's paddles) of the physical controller behind its virtual pad, which Steam Input
   doesn't pass to the game: L4, R4, L5, R5 on a 2026 Steam Controller or a Steam Deck (shown on the
-  Remap page as Paddle 1 (R4) and so on), the DualSense Edge's back and Fn buttons, Joy-Con SL and
-  SR. Bind Gyro aim to one on the Remap page, say. If the game's Steam layout also maps them, one
-  press does both, so bind each in one place. The row shows which controller is behind Steam Input.
-  On its own (gyro off) this setting leaves a Steam Controller's motion sensor as Steam set it.
+  Remap page as Paddle 1 (R4) and so on), the DualSense Edge's back and Fn buttons, SL and SR of a
+  Joy-Con pair (a single sideways Joy-Con's are its shoulders, which Steam passes on). Bind Gyro
+  aim to one on the Remap page, say. If the game's Steam layout also maps them, one press does
+  both, so bind each in one place. The row shows which controller is behind Steam Input.
+  On its own (gyro off) this setting leaves a controller's motion sensor as Steam set it.
 
 Controls > Remap:
 
@@ -390,27 +391,24 @@ Controls > Touch & gyro (Gyro aim):
 - Gyro under Steam Input (Linux only): Steam Input hands the game virtual Xbox pads with no motion
   sensors and hides the physical controllers from SDL (its `SDL_GAMECONTROLLER_IGNORE_DEVICES`
   list). Source Controller (or Auto) still reads the gyro of the controller behind Player 1's
-  virtual pad:
-  - Sony and Nintendo controllers: they are taken off that list, so SDL opens the physical
-    controller too, only for its gyro and back buttons (it never becomes a player). The status line
-    shows `controller (behind Steam Input)`. Steam doesn't say which physical pad is behind which
-    virtual one, so with two of one model (or, if Steam reports another product id, one vendor)
-    behind Steam Input neither gets a gyro or back buttons rather than another player's. SDL's
-    drivers set the controller's lights when they open it: a DualSense's lightbar turns blue and its
-    player lights go off, a Switch controller's player lights go off, until Steam sets them again.
-    A Switch controller on USB also gets SDL's USB handshake. Not the Switch 2 controllers: SDL's driver for them
-    takes over their USB interface, which Steam is using, so they have no gyro under Steam Input.
-  - A 2026 Steam Controller (wired, Bluetooth or its puck) or a Steam Deck's own controls: read from
-    the controller's own HID reports (SDL's drivers for them change lizard mode and the motion
-    sensor against Steam). It needs read access to `/dev/hidraw*`, which Steam's udev rules give
-    (the Flatpak's `--device=all` covers it). The status line shows `controller (Steam Controller /
-    Deck, read directly)`.
+  virtual pad (Player 1 only), from the controller's own HID reports beside Steam: a 2026 Steam
+  Controller (wired, Bluetooth or its puck), a Steam Deck's own controls, a DualSense (and Edge),
+  a DualShock 4, a Switch Pro Controller or Joy-Cons (a pair: the right one's gyro). SDL stays out
+  of them: its drivers change lizard mode, the motion sensor, lights and report modes against Steam
+  (a DualSense's lightbar would turn blue). Nothing is written to them but the motion-sensor-on
+  request below; Sony controllers are sent nothing (their factory calibration is read once).
+  Switch controllers use SDL's nominal scale (their own calibration is not read). It needs read
+  access to `/dev/hidraw*`, which Steam's udev rules give (the Flatpak's `--device=all` covers it).
+  The status line shows `controller (behind Steam Input, read directly)`. Steam doesn't say which
+  physical pad is behind which virtual one, so with two of one model (or, if Steam reports another
+  product id, one vendor) behind Steam Input neither is read rather than another player's. Not the
+  Switch 2 controllers (Steam uses their USB interface) or a Joy-Con charging grip.
   Launched outside Steam (or with Steam Input off for a controller), none of this is used: SDL
   drives every one of these controllers itself, gyro and back buttons included.
   Steam turns a controller's motion sensor off when its layout uses no gyro; the game notices the
-  frozen readings and turns it back on. Set the Steam layout's Gyro Behavior to None, or Steam's
-  gyro also arrives as mouse motion. The log has `Steam Input's physical ...`, `[steamctl]` and
-  `[gyro]` lines.
+  frozen readings and turns it back on (Valve and Switch controllers; Sony ones always report). Set
+  the Steam layout's Gyro Behavior to None, or Steam's gyro also arrives as mouse motion. The log
+  has `[steamctl]` and `[gyro]` lines.
 - Player 1 on a Steam Deck: the Deck's built-in controller ranks below any other controller for
   Player 1. A connected controller takes Player 1 from it whatever Steam's order, and the Deck
   gets it back when that controller leaves. Choosing Player 1's controller on the Remap page saves

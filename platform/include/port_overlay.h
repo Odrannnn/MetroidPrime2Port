@@ -422,7 +422,7 @@ int PointerAimBox();
 int PointerAimTurn();
 // Gyro aim (`MP2_GYRO_AIM=1`, default off; MP1's gyro aim in "always aim" mode, pointer only): a
 // controller's gyro (or the phone's, `MP2_GYRO_SOURCE` 0 auto, 1 controller, 2 phone; under Steam
-// Input, the physical controller's behind Player 1's virtual pad, see PADGetSteamPhysicalGamepad)
+// Input, the physical controller's behind Player 1's virtual pad, see port_steam_triton.h)
 // moves the pointer while pointer aim is on. `MP2_GYRO_CURSOR_ANGLE` degrees of pad turn sweep the
 // pointer across the screen. Space (`MP2_GYRO_SPACE`, PortGyro::Space), auto calibrate
 // (`MP2_GYRO_AUTO_CALIBRATE` 0 off, 1 always, 2 only in menus), smoothing and tightening

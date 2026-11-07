@@ -4,7 +4,6 @@
 #include "../../io.hpp"
 #include <dolphin/pad.h>
 #include <dolphin/si.h>
-#include <SDL3/SDL_gamepad.h>
 #include <SDL3/SDL_mouse.h>
 #include <SDL3/SDL_timer.h>
 
@@ -1985,17 +1984,6 @@ SDL_Gamepad* PADGetSDLGamepadForIndex(const u32 index) {
 
   return ctrl->m_controller;
 }
-
-SDL_Gamepad* PADGetSteamPhysicalGamepad(const u32 port) {
-  const s32 index = PADGetIndexForPort(port);
-  SDL_Gamepad* pad = index >= 0 ? PADGetSDLGamepadForIndex(static_cast<u32>(index)) : nullptr;
-  if (pad == nullptr || SDL_GetGamepadSteamHandle(pad) == 0) {
-    return nullptr;
-  }
-  return aurora::input::steam_physical_gamepad(SDL_GetGamepadVendor(pad), SDL_GetGamepadProduct(pad));
-}
-
-BOOL PADIsSteamPhysicalGamepad(const u32 instance) { return aurora::input::is_steam_physical(instance); }
 
 void PADSetDefaultMapping(const PADDefaultMapping* mapping, const PADControllerType type) {
   if (g_initialized) {
