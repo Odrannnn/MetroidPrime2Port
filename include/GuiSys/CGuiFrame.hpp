@@ -48,7 +48,8 @@ public:
   void SetSpreadWeightTree(const CGuiWidget* root, float (*weight)());
   // Port: draw `member` (a model spanning the view) cut at `cut` of the authored half-width: the
   // middle stays, everything outside slides whole with the screen edge, nothing stretches. A null
-  // `member` splits every model of the frame that spans the view.
+  // `member` splits every model of the frame that spans the view. A negative `cut` stretches the
+  // model evenly instead, the authored view's edges onto the screen's.
   void SetSpreadSplit(const CGuiWidget* member, float cut);
   // Port: a frame made of a main window and a side panel (the pause screen): under the spread the
   // window [windowLeft, windowRight] (fractions of the authored half-width) grows to the screen's

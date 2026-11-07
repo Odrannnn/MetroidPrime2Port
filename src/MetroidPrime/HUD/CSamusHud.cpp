@@ -573,9 +573,9 @@ void CSamusHud::InitializeFrameGlueMutable(const CStateManager& mgr) {
     camera->SetParms(hudCamera->GetParms());
 #ifdef TARGET_PC
     camera->SetSpreadable(true);
-    // The helmet's glass brackets go with the HUD frame's (above), and the rest of the helmet is cut
-    // the same way so the glass's gradient still meets the plate above it.
-    mLoadedHelmetFrame->SetSpreadSplit(nullptr, 0.285f);
+    // The helmet (#97) stretches evenly, as an emulator's widescreen draws it: cut or eased in
+    // slices, its arc kinked where the pieces met and its middle lights stayed narrow.
+    mLoadedHelmetFrame->SetSpreadSplit(nullptr, -1.f);
 #endif
     camera->SetO2WTransform(CTransform4f::Translate(hudCamera->GetLocalPosition()));
   }
