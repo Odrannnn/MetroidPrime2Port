@@ -60,6 +60,15 @@ void NoteTouchInput(bool xboxLayout);
 // CTexture's own address, so it holds whatever the texels are) and BindTexture returns true.
 // UnbindTexture drops it (the CTexture's destructor). Both main-thread only.
 bool IsPromptAsset(uint32_t id);
+// The scan, message and logbook boxes' button, for the drawn ring (port_prompt_ring.h): the texture
+// is the boxes' ring (whatever it is served as); it is served blank because the ring is drawn; any
+// is; it is the boxes' teal disc, served.
+bool IsBoxRing(const void* texture);
+bool DrawsRing(const void* texture);
+bool AnyDrawnRing();
+bool IsTealDisc(const void* texture);
+// The texture is the boxes' lit disc (whatever it is served as).
+bool IsBoxDisc(const void* texture);
 bool BindTexture(const void* owner, uint32_t id, uint32_t width, uint32_t height);
 void UnbindTexture(const void* owner);
 } // namespace PortPrompts

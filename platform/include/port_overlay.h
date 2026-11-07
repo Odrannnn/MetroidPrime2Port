@@ -252,6 +252,12 @@ enum EPromptGlyphs {
   kPromptGlyphs_Keyboard
 };
 const char* PromptGlyphs();
+// Options > On-screen prompts > Render button prompt rings (`prompt_ring`, `MP2_PROMPT_RING`; on
+// by default; off under Original experience): the scan, message and logbook boxes' button, with any
+// glyph set, is the game's teal disc in a ring drawn as geometry, the box's notch made a round hole
+// (port_prompt_ring.cpp); off, the game's own button (GameCube glyphs) or a ring and grey disc drawn
+// into the game's two textures.
+bool PromptRing();
 // Tap or click on the HUD minimap opens the map screen (default on; MP2_MINIMAP_TAP).
 bool MinimapTap();
 void SetMinimapTap(bool enabled);

@@ -259,6 +259,12 @@ Controls > Options:
 - `prompt_glyphs`: Options > On-screen prompts > Button glyphs (Auto follows the last-used device;
   Xbox, PlayStation, Switch, GameCube or Keyboard forces the set in the F1 UI and the game's
   prompts; env `MP2_PROMPT_GLYPHS` 0-5, and `MP2_TEXTURE_DEVICE` still wins).
+- `prompt_ring`: Options > On-screen prompts > Render button prompt rings (default on; env
+  `MP2_PROMPT_RING`). Draws the ring around the scan, message and logbook boxes' button as geometry
+  instead of leaving a gap in the box for a texture: sharp at any resolution, the box's frame closed
+  around it, the game's teal disc with the bound button inside (platform/port_prompt_ring.cpp), with
+  every glyph set, the GameCube's included. Off: the game's own button with GameCube glyphs, else a
+  ring and a grey disc drawn into the game's two textures. Off under Original experience.
 - `minimap_tap`: Options > Menus > Tap minimap for map (a tap or click on the HUD minimap opens the
   map screen; default on; env `MP2_MINIMAP_TAP`; console `minimap`, `maptap`).
 - `map_pickups`: Tracker > Map > Pickups on the map (0 off, 1 rooms: tint the map rooms that still

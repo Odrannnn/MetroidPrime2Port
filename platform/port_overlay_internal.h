@@ -43,6 +43,7 @@ extern int sMapPickups;
 extern bool sMapPickupKinds;
 extern bool sRevealMap;
 extern int sPromptGlyphs;
+extern bool sPromptRing;
 extern bool sIgtTimer;
 extern bool sOriginalExperience;
 extern bool sUnlockHardMode;

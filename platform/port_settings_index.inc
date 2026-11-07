@@ -25,6 +25,7 @@
 {"Controls", "Options", "Quick setup", "Use mouse & keyboard", "mouse aim keyboard wasd preset layout kbm pc quick setup"},
 {"Controls", "Options", "Quick setup", "Use twin-stick controller", "twin stick dual sticks right stick aim controller gamepad remastered preset layout quick setup"},
 {"Controls", "Options", "On-screen prompts", "Button glyphs", "prompt glyphs xbox playstation switch nintendo gamecube keyboard icons buttons"},
+{"Controls", "Options", "On-screen prompts", "Render button prompt rings", "prompt ring rings render draw geometry scan box message logbook button disc notch circle"},
 {"Controls", "Options", "Buttons", "Toggle Lock-On", "lock on target latch hold l trigger"},
 {"Controls", "Options", "Buttons", "Toggle Spider Ball", "spider ball track cling latch hold r"},
 {"Controls", "Options", "Buttons", "Aim Lock-On", "lock on target nearest crosshair aim priority"},

@@ -7,6 +7,7 @@
 #include "port_env.h"
 #include "port_harness.h"
 #include "port_overlay.h"
+#include "port_prompt_ring_math.h"
 
 #include "input/port_input_devices.h"
 #include "port_textures.h"
@@ -83,7 +84,15 @@ struct PromptKey {
 // was ragged on its inner edge, which the game's bright disc hides and a dark one shows. With the
 // game's own art (no icon) both are left to the game and the texture pack. A whole icon in place of either left a gap in the frame with a
 // dim icon floating in it, as a dark icon added onto the screen barely shows.
-enum PromptStyle : uint8_t { kIcon, kGlow, kDisc, kRing, kDiscLabel };
+// kBoxDisc is the scan, message and logbook boxes' lit disc, and kRing their ring: with Render
+// button prompt rings on (PortOverlay::PromptRing, port_prompt_ring.cpp) the disc is the game's
+// teal and centred (kTealDisc), and the ring texture, which carries the game's own letter, is
+// served as a clean white ring for the drawn ring to sample through the game's material
+// (kRingDrawn, port_prompt_ring.cpp: the game's own quad is emptied); off,
+// the grey kDisc and the drawn kRing texture above.
+enum PromptStyle : uint8_t {
+  kIcon, kGlow, kDisc, kRing, kDiscLabel, kBoxDisc, kTealDisc, kTealDiscLabel, kRingDrawn
+};
 struct PromptAsset {
   uint32_t id;
   uint32_t prompt;
@@ -119,7 +128,8 @@ constexpr PromptAsset kAssets[] = {
     {0x71AA55E3, PAD_BUTTON_B}, // Trilogy only: Wii B, jump / Space Jump / Screw Attack
     {0x72A83A41, PROMPT_STICK},
     {0x738A4798, PROMPT_CSTICK_UP}, {0x73E9B3B2, PROMPT_CSTICK_LEFT},
-    {0x7F409C85, PAD_BUTTON_A}, // the logbook's "A to scroll the text" prompt (#34)
+    // The logbook's "A to scroll the text" prompt (#34): its lit disc.
+    {0x7F409C85, PAD_BUTTON_A, kBoxDisc},
     {0x83A73184, PAD_BUTTON_START},
     {0x8D13D507, PROMPT_CSTICK_UP}, {0x8E28D58C, PROMPT_STICK},
     {0x8EC3AB0B, PAD_BUTTON_X}, // multiplayer front end
@@ -131,7 +141,7 @@ constexpr PromptAsset kAssets[] = {
     {0xBC322C63, PAD_TRIGGER_Z}, {0xBFE00316, PAD_TRIGGER_Z}, // the second: multiplayer front end, 64x32
     {0xC14A95C6, PAD_TRIGGER_Z}, {0xC3E07487, PROMPT_STICK_RIGHT}, {0xC622B06F, PAD_BUTTON_RIGHT},
     {0xC83111AA, PROMPT_CSTICK_DOWN},
-    {0xC96F93E3, PAD_BUTTON_A, kDisc}, // the scan and message boxes' A: the lit disc
+    {0xC96F93E3, PAD_BUTTON_A, kBoxDisc}, // the scan and message boxes' A: the lit disc
     {0xCDA81421, PROMPT_STICK},
     {0xD212C48A, PAD_BUTTON_X}, {0xD3D8817F, PROMPT_CSTICK}, {0xD523DE3B, PAD_BUTTON_A},
     {0xD89B9F7C, PAD_TRIGGER_R},
@@ -618,7 +628,7 @@ void GlowVariant(std::vector<uint8_t>& bytes) {
 // light, dark or cut out, so a Deck button's light letter, a keycap's dark one and an Xbox
 // button's hole all come out white. Only the icon's core counts, inside its own outline by more
 // than its rim, so the edge of a shape that is no circle (a Deck trigger) stays out. `bytes` is a DDS as GlowVariant's.
-void DiscVariant(std::vector<uint8_t>& bytes, bool ring, bool label) {
+void DiscVariant(std::vector<uint8_t>& bytes, bool ring, bool label, bool teal = false) {
   constexpr size_t kHeader = 128;
   if (bytes.size() <= kHeader) {
     return;
@@ -743,7 +753,8 @@ void DiscVariant(std::vector<uint8_t>& bytes, bool ring, bool label) {
   // higher above the button than beside it, and centred, the ring left a sliver of it showing at
   // the top.
   constexpr float kCentreUp = 0.4f;
-  const float cy = h * 0.5f + kCentreUp * static_cast<float>(h) / 32.f;
+  // The teal disc sits in a ring drawn as geometry, centred on the texture as the game's is.
+  const float cy = h * 0.5f + (teal ? 0.f : kCentreUp * static_cast<float>(h) / 32.f);
   const float oy = cy - sh * scale * 0.5f;
   const auto sample = [&](float fx, float fy) {
     // Bilinear, in the symbol's own texels.
@@ -758,10 +769,12 @@ void DiscVariant(std::vector<uint8_t>& bytes, bool ring, bool label) {
     return (m(ix, iy) * (1 - tx) + m(ix + 1, iy) * tx) * (1 - ty) +
            (m(ix, iy + 1) * (1 - tx) + m(ix + 1, iy + 1) * tx) * ty;
   };
-  const float discR = 13.f / 32.f * static_cast<float>(std::min(w, h));
+  // The teal disc stops half a game texel inside the drawn ring (13 of 32): an even gap all round.
+  const float discR = (teal ? PortPromptRingMath::kDiscRadius : 13.f) / 32.f * static_cast<float>(std::min(w, h));
   // A neutral dark grey rather than the game's teal, which belongs to the GameCube's green A and
   // muddied the other sets' symbols.
-  constexpr float kFace[3] = {40.f, 40.f, 40.f};
+  // The teal is the game's own (its lit disc), under a drawn ring that gives the box back its look.
+  const float kFace[3] = {teal ? 0.f : 40.f, teal ? 107.f : 40.f, teal ? 121.f : 40.f};
   constexpr float kLetter[3] = {240.f, 255.f, 255.f};
   uint8_t* out = bytes.data() + kHeader;
   if (ring) {
@@ -774,7 +787,11 @@ void DiscVariant(std::vector<uint8_t>& bytes, bool ring, bool label) {
         const float dx = x + 0.5f - w * 0.5f, dy = y + 0.5f - cy;
         const float d = std::sqrt(dx * dx + dy * dy) * 32.f / static_cast<float>(std::min(w, h));
         const float px = static_cast<float>(std::min(w, h)) / 32.f; // texels per game texel
-        const float band = std::clamp(std::min(d - 13.f, 15.75f - d) * px + 0.5f, 0.f, 1.f);
+        // The drawn ring's (teal) is the frame line's profile bent round, shared with the ring
+        // that samples it (port_prompt_ring_math.h).
+        const float band =
+            teal ? PortPromptRingMath::BandCoverage(d)
+                 : std::clamp(std::min(d - 13.f, 15.75f - d) * px + 0.5f, 0.f, 1.f);
         uint8_t* p = out + (size_t(y) * w + x) * 4;
         p[0] = p[1] = p[2] = static_cast<uint8_t>(255.f * band + 0.5f);
         p[3] = 255;
@@ -807,8 +824,22 @@ void DiscVariant(std::vector<uint8_t>& bytes, bool ring, bool label) {
 void ApplyStyle(std::vector<uint8_t>& bytes, uint8_t style) {
   if (style == kGlow) {
     GlowVariant(bytes);
+  } else if (style == kRingDrawn) {
+    // A clean white ring, centred, at 256x256 whatever the icon's size (it is only sampled by the
+    // drawn ring's mesh, which can be large on screen): the DDS header's height, width and pitch.
+    constexpr size_t kHeader = 128;
+    constexpr uint32_t kSize = 256;
+    if (bytes.size() < kHeader) {
+      return;
+    }
+    bytes.resize(kHeader + size_t(kSize) * kSize * 4);
+    const uint32_t dims[3] = {kSize, kSize, kSize * 4};
+    std::memcpy(bytes.data() + 12, dims, sizeof(dims));
+    DiscVariant(bytes, true, false, true);
   } else if (style == kDisc || style == kRing || style == kDiscLabel) {
     DiscVariant(bytes, style == kRing, style == kDiscLabel);
+  } else if (style == kTealDisc || style == kTealDiscLabel) {
+    DiscVariant(bytes, false, style == kTealDiscLabel, true);
   }
 }
 
@@ -1106,8 +1137,14 @@ struct BoundPrompt {
   uint8_t style;
   aurora::texture::ReplacementRegistration handle{};
   bool registered = false;
+  // The style served: a box disc or ring's depends on Render button prompt rings.
+  uint8_t served = kIcon;
 };
 std::unordered_map<const void*, BoundPrompt> sBound;
+// Whether any bound texture is served as the drawn ring's white ring (AnyDrawnRing, asked for
+// every HUD model drawn): worked out again only after sBound changes (bound, re-served, unbound).
+bool sDrawnRingStale = true;
+bool sDrawnRing = false;
 // Each action's stem as Poll last resolved it, by kActions index.
 std::string sActionStems[std::size(kActions)];
 
@@ -1161,12 +1198,22 @@ const IconPixels* StablePixels(const IconSource* source) {
   return &pixels;
 }
 
-void ApplyBound(const void* owner, BoundPrompt& bound, const std::string& stem) {
+void ApplyBound(const void* owner, BoundPrompt& bound, const std::string& actionStem) {
+  sDrawnRingStale = true;
   if (bound.registered) {
     aurora::texture::unregister_replacement(bound.handle);
     bound.handle = {};
     bound.registered = false;
   }
+  // With Render button prompt rings on, the boxes' button is always drawn by the port, the
+  // GameCube set's too: where the game's own art would show (a GameCube pad on its own mapping, or
+  // the GameCube set chosen), it takes the GameCube icon for the action. Off is the game's art.
+  std::string stem = actionStem;
+  if (stem.empty() && (bound.style == kBoxDisc || bound.style == kRing) &&
+      PortOverlay::PromptRing()) {
+    stem = GameCubeStemForAction(static_cast<PADButton>(bound.prompt));
+  }
+  bound.served = kIcon;
   if (stem.empty()) {
     return;
   }
@@ -1174,15 +1221,23 @@ void ApplyBound(const void* owner, BoundPrompt& bound, const std::string& stem) 
   // made for a slot twice as large, and comes out at twice the resolution of a plain icon (4x the
   // game's, as HD texture packs draw the box around it), with a sharper symbol to draw from.
   uint8_t style = bound.style;
+  const bool drawnRing = PortOverlay::PromptRing();
+  if (style == kBoxDisc) {
+    style = drawnRing ? kTealDisc : kDisc;
+  } else if (style == kRing && drawnRing) {
+    style = kRingDrawn;
+  }
   std::string iconPath;
-  if (style == kDisc) {
+  if (style == kDisc || style == kTealDisc) {
     // A ready label for the symbol, where the icon set has one (the Steam Deck's).
     iconPath = FindIconFile(stem + "_symbol.dds");
     if (!iconPath.empty()) {
-      style = kDiscLabel;
+      style = style == kTealDisc ? kTealDiscLabel : kDiscLabel;
     }
   }
-  if (iconPath.empty() && (style == kDisc || style == kRing)) {
+  bound.served = style;
+  if (iconPath.empty() &&
+      (style == kDisc || style == kRing || style == kTealDisc || style == kRingDrawn)) {
     iconPath = FindIconForSize(stem, bound.width * 2, bound.height * 2);
   }
   if (iconPath.empty()) {
@@ -1218,10 +1273,12 @@ void ApplyBound(const void* owner, BoundPrompt& bound, const std::string& stem) 
   // Above the user's texture pack (priority 1) and the static device set (0): a remapped
   // action still shows the key or button it is bound to.
   // The style's own name, so two styles of one file are two replacements.
-  const char* suffix = style == kGlow ? "#glow"
-                       : style == kDisc || style == kDiscLabel ? "#disc"
-                       : style == kRing ? "#ring"
-                                        : "";
+  const char* suffix = style == kGlow                                 ? "#glow"
+                       : style == kDisc || style == kDiscLabel         ? "#disc"
+                       : style == kTealDisc || style == kTealDiscLabel ? "#teal"
+                       : style == kRing                                ? "#ring"
+                       : style == kRingDrawn                           ? "#ringdrawn"
+                                                                       : "";
   bound.handle = aurora::texture::register_virtual_replacement(
       aurora::texture::TexturePointerKey{owner}, iconPath + suffix,
       aurora::texture::VirtualFileSource{&ReadIconBytes, const_cast<IconSource*>(source)},
@@ -1365,6 +1422,17 @@ void Poll() {
   static uint64_t sLastResolveNs = 0;
   const uint64_t nowNs = SDL_GetTicksNS();
   const bool map = PortHarness::MapScreenOpen();
+  // Render button prompt rings changes what the boxes' disc and ring textures are served as.
+  static bool sLastRing = PortOverlay::PromptRing();
+  const bool ring = PortOverlay::PromptRing();
+  if (ring != sLastRing) {
+    sLastRing = ring;
+    for (auto& [owner, bound] : sBound) {
+      if (bound.style == kRing || bound.style == kBoxDisc) {
+        ApplyBound(owner, bound, ActionStem(bound.prompt));
+      }
+    }
+  }
   const bool changed = sLastDevice != device || sLastMap != map;
   if (!changed && sLastResolveNs != 0 && nowNs - sLastResolveNs < 250000000ull) {
     return;
@@ -1408,6 +1476,41 @@ void Poll() {
 
 bool IsPromptAsset(uint32_t id) { return FindAsset(id) != nullptr; }
 
+bool IsBoxRing(const void* texture) {
+  const auto it = sBound.find(texture);
+  return it != sBound.end() && it->second.style == kRing;
+}
+
+bool DrawsRing(const void* texture) {
+  const auto it = sBound.find(texture);
+  return it != sBound.end() && it->second.registered && it->second.served == kRingDrawn;
+}
+
+bool AnyDrawnRing() {
+  if (sDrawnRingStale) {
+    sDrawnRingStale = false;
+    sDrawnRing = false;
+    for (const auto& [owner, bound] : sBound) {
+      if (bound.registered && bound.served == kRingDrawn) {
+        sDrawnRing = true;
+        break;
+      }
+    }
+  }
+  return sDrawnRing;
+}
+
+bool IsBoxDisc(const void* texture) {
+  const auto it = sBound.find(texture);
+  return it != sBound.end() && it->second.style == kBoxDisc;
+}
+
+bool IsTealDisc(const void* texture) {
+  const auto it = sBound.find(texture);
+  return it != sBound.end() && it->second.registered &&
+         (it->second.served == kTealDisc || it->second.served == kTealDiscLabel);
+}
+
 bool BindTexture(const void* owner, uint32_t id, uint32_t width, uint32_t height) {
   const PromptAsset* asset = FindAsset(id);
   if (asset == nullptr) {
@@ -1419,10 +1522,11 @@ bool BindTexture(const void* owner, uint32_t id, uint32_t width, uint32_t height
     aurora::texture::unregister_replacement(bound.handle);
   }
   bound = BoundPrompt{prompt, width, height, asset->style};
+  sDrawnRingStale = true;
   if (sEnabled) {
     // Textures stream in after Poll ran: give this one the action's current icon.
     const std::string& stem = ActionStem(prompt);
-    if (!stem.empty()) {
+    if (!stem.empty() || bound.style == kBoxDisc || bound.style == kRing) {
       ApplyBound(owner, bound, stem);
     }
   }
@@ -1438,6 +1542,7 @@ void UnbindTexture(const void* owner) {
     aurora::texture::unregister_replacement(it->second.handle);
   }
   sBound.erase(it);
+  sDrawnRingStale = true;
 }
 bool KeyboardActive() { return sActiveInput.load(std::memory_order_relaxed) == ActiveInput::Keyboard; }
 

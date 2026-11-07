@@ -665,7 +665,7 @@ if(AURORA_SDL3_TARGET)
         platform/input/port_input_remap_ui.cpp
         platform/input/port_input_devices.cpp platform/input/port_steam_triton_hid.cpp
         platform/input/port_input_user_presets.cpp platform/input/port_input_user_presets_store.cpp
-        platform/port_embedded.cpp platform/port_textures.cpp platform/port_zip.cpp platform/port_prompts.cpp
+        platform/port_embedded.cpp platform/port_textures.cpp platform/port_zip.cpp platform/port_prompts.cpp platform/port_prompt_ring.cpp
         platform/port_discord.cpp
         platform/port_disc_verify.cpp
         platform/port_disc_verify_core.cpp)
@@ -979,6 +979,13 @@ if(AURORA_SDL3_TARGET)
     target_include_directories(port_steam_triton_tests PRIVATE platform/include)
     add_test(NAME port_steam_triton_tests COMMAND port_steam_triton_tests)
     set_tests_properties(port_steam_triton_tests PROPERTIES TIMEOUT 30 LABELS port)
+    # The drawn button ring's arithmetic (platform/include/port_prompt_ring_math.h, header-only): the
+    # ring's profile, display-list parsing, the quad-to-model map, the line ends' circle, the fill's
+    # round hole and the ring's fit to its disc.
+    add_executable(port_prompt_ring_tests tests/port_prompt_ring.cpp)
+    target_include_directories(port_prompt_ring_tests PRIVATE platform/include)
+    add_test(NAME port_prompt_ring_tests COMMAND port_prompt_ring_tests)
+    set_tests_properties(port_prompt_ring_tests PROPERTIES TIMEOUT 30 LABELS port)
     # The bindings parser/writer (platform/input/port_input_bindings.cpp): a controls file parses
     # into engine bindings and round-trips, with bad input rejected rather than half-applied.
     add_executable(port_input_bindings_tests tests/port_input_bindings.cpp

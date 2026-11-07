@@ -400,6 +400,7 @@ const SettingKey kSettingKeys[] = {
             PortOverlay::kPortalTransition_Skip >("portal_transition", "0", "2"),
     IntKey< &sPromptGlyphs, PortOverlay::kPromptGlyphs_Auto, PortOverlay::kPromptGlyphs_Keyboard >(
         "prompt_glyphs", "0", "5"),
+    BoolKey< &sPromptRing >("prompt_ring"),
     BoolKey< &sMinimapTap >("minimap_tap"),
     IntKey< &sMapPickups, PortOverlay::kMapPickups_Off, PortOverlay::kMapPickups_All >(
         "map_pickups", "0", "2"),

@@ -64,6 +64,11 @@ void DrawControlsOptions() {
   ItemHelp("Which buttons the game's prompts and tutorials show. Follow: the keyboard, controller or "
            "touch layout you last used. GameCube shows the game's own art; Original experience "
            "forces it.");
+  Changed(ImGui::Checkbox("Render button prompt rings", &sPromptRing));
+  ItemHelp("Draws the ring around the scan, message and logbook boxes' button as geometry, sharp at "
+           "any resolution, instead of leaving a gap in the box for a small texture. Off: the "
+           "game's own button (with GameCube glyphs) or the ring drawn into its texture. Original "
+           "experience turns it off.");
 
   ImGui::SeparatorText("Buttons");
   // Original experience (Game > Cutscenes) reads the tweaks below as retail.
